@@ -15,7 +15,7 @@ or from ref:`tight binding <sec-tb-models>` models. Also k.p models are supporte
 Real-space systems
 ======================
 .. autoclass:: wannierberri.system.System_R
-   :members: set_structure, set_symmetry_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_projections
+   :members: set_structure, set_pointgroup_from_structure, set_R_mat, set_spin, set_spin_pairs, set_spin_from_projections
    :undoc-members:
    :show-inheritance:
    :member-order: bysource

@@ -96,6 +96,9 @@ def grid_from_kpoints(kpoints, grid=None):
     ----------
     kpoints : np.array((nk, ndim), dtype=float)
         list of kpoints in fractional coordinates
+    grid : tuple(int), optional
+        size of the grid in each direction, used to select only points which belong to the grid.
+        If None, the grid is calculated from the kpoints, and it is assumed that all kpoints are on the grid.
 
     Returns
     -------
@@ -111,15 +114,18 @@ def grid_from_kpoints(kpoints, grid=None):
     """
     if grid is None:
         grid = tuple(np.lcm.reduce([Fraction(k).limit_denominator(100).denominator for k in kp]) for kp in kpoints.T)
+        returngrid = True
+    else:
+        returngrid = False
     npgrid = np.array(grid)
     print(f"mpgrid = {npgrid}, {len(kpoints)}")
     kpoints_unique = set()
     selected_kpoints = []
     for i, k in enumerate(kpoints):
         if is_round(k * npgrid, prec=1e-5):
-            kint = np.round(k * npgrid).astype(int)
+            kint = tuple(np.round(k * npgrid).astype(int))
             if kint not in kpoints_unique:
-                kpoints_unique.append(kint)
+                kpoints_unique.add(kint)
                 selected_kpoints.append(i)
             else:
                 warnings.warn(f"k-point {k} is repeated")
@@ -132,4 +138,7 @@ def grid_from_kpoints(kpoints, grid=None):
         raise RuntimeError("Some k-points are taken twice - this must be a bug")
     if len(kpoints_unique) < len(kpoints):
         warnings.warn("Some k-points are not on the grid or are repeated")
-    return grid, selected_kpoints
+    if returngrid:
+        return grid
+    else:
+        return selected_kpoints

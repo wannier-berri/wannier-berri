@@ -236,6 +236,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     seedname = os.path.join(data_dir, "GaAs")
     system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True,
                                       transl_inv_MV=True,
+                                      read_npz=False,
                                       ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
@@ -251,6 +252,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     system = wberri.system.System_w90(seedname, morb=True,
                                       transl_inv_JM=True, spin=True,
                                       OSD=True, SHCryoo=True,
+                                      read_npz=False,
                                       ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
@@ -412,7 +414,7 @@ def system_Chiral_OSD():
     # Load system
     model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
     system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
-    # system.set_symmetry(["C3z","TimeReversal"])
+    # system.set_pointgroup(["C3z","TimeReversal"])
     return system
 
 
@@ -713,7 +715,7 @@ def get_system_random_GaAs_load_sym(sym=False, use_ws=True):
             atom_labels=['Ga', 'As'],
             positions=np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]])
         )
-        system.set_symmetry_from_structure()
+        system.set_pointgroup_from_structure()
     return system
 
 

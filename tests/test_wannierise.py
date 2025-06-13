@@ -11,6 +11,7 @@ import os
 import shutil
 
 from wannierberri.symmetry.projections import Projection
+from wannierberri.w90files.eig import EIG
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
@@ -44,7 +45,7 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
         w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
@@ -213,6 +214,80 @@ def test_create_sawf_Fe(check_sawf, include_TR):
     check_sawf(sawf_new, sawf_ref)
 
 
+def test_create_w90files_Fe():
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
+    path_tmp = os.path.join(OUTPUT_DIR, "Fe-create-w90-files")
+    os.makedirs(path_tmp, exist_ok=True)
+
+    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe',
+                                normalize=False, magmom=[[0, 0, 1]])
+
+    norms = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
+    assert abs(1 - np.array(norms)**2).max() < 1e-8, "norms of wavefunctions are not 1, check the bandstructure"
+
+
+    pos = [[0, 0, 0]]
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
+    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
+    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
+    proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
+
+    w90data = wberri.w90files.Wannier90data(
+    ).from_bandstructure(bandstructure,
+                         files=["mmn", "eig", "amn", "unk", "spn"],
+                         write_npz_list=["amn", "mmn", "eig", "chk", "unk", "spn"],
+                         seedname=os.path.join(path_tmp, "Fe"),
+                         projections=proj_set,
+                         normalize=False,
+                         unk_grid=(18,) * 3,
+                )
+    eig = w90data.get_file("eig")
+    eig_ref = EIG().from_npz(os.path.join(path_data, "Fe.eig.npz"))
+    assert np.allclose(eig.data, eig_ref.data, atol=1e-6), f"eig data differs by {np.max(np.abs(w90data.eig.data - eig_ref.data))} > 1e-6"
+
+    mmn_new = w90data.get_file("mmn")
+    mmn_ref = wberri.w90files.MMN().from_npz(os.path.join(path_data, "Fe.mmn.npz"))
+    bk_latt_new = np.array(mmn_new.bk_latt)
+    bk_latt_ref = np.array(mmn_ref.bk_latt)
+    bk_latt_new_list = [tuple(bk) for bk in bk_latt_new]
+    bk_new_order = [bk_latt_new_list.index(tuple(bk)) for bk in bk_latt_ref]
+    print(f"bk_new_order = {bk_new_order}")
+    assert np.all(bk_latt_new[bk_new_order] == bk_latt_ref), f"bk_latt differs after reordering: {bk_latt_new[bk_new_order]} != {bk_latt_ref}"
+    assert np.all(mmn_new.neighbours[:, bk_new_order] == mmn_ref.neighbours), f"neighbors differ after reordering: {mmn_new.neighbors[:, bk_new_order]} != {mmn_ref.neighbors}"
+    assert np.all(mmn_new.G[:, bk_new_order] == mmn_ref.G), f"G vectors differ after reordering: {mmn_new.G[:, bk_new_order]} != {mmn_ref.G}"
+
+    mmn_data_new = mmn_new.data[:, bk_new_order]
+    assert np.allclose(mmn_data_new, mmn_ref.data, atol=3e-5), f"mmn data differs by {np.max(np.abs(mmn_new.data[:, bk_new_order] - mmn_ref.data))} > 3e-5"
+    print(f"mmn's differ by more than 1e-5 at some points : {np.where(np.abs(mmn_data_new - mmn_ref.data) > 1e-5)}")
+    # TODO - check if accuracy of agreement may be improved
+
+    # This actually compares with a wannierberri calculation, while other files are compared directly to pw2wannier
+    # this is because the definition of radial function in pw2wannier is different from the one in wannierberri, so the amn file is not exactly the same
+    amn = w90data.get_file("amn")
+    amn_ref = wberri.w90files.AMN().from_npz(os.path.join(path_data, "Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
+    assert np.allclose(amn.data, amn_ref.data, atol=1e-6), f"amn data differs by {np.max(np.abs(w90data.amn.data - amn_ref.data))} > 1e-6"
+
+    spn = w90data.get_file("spn")
+    spn_ref = wberri.w90files.SPN().from_npz(os.path.join(path_data, "Fe.spn.npz"))
+    assert np.allclose(spn.data, spn_ref.data, atol=1e-6), f"spn data differs by {np.max(np.abs(w90data.spn.data - spn_ref.data))} > 1e-6"
+
+    unk_new = w90data.get_file("unk")
+    unk_ref = wberri.w90files.unk.UNK().from_npz(os.path.join(path_data, "Fe-kp03-red18.unk.npz"))
+    print(f"unk_new.data  has {len(unk_new.data)} k-points, unk_ref.data has {len(unk_ref.data)} k-points")
+
+    factor = 18**(-3 / 2)
+    for ik in (0, 3):
+        data_new = unk_new.data[ik] * factor
+        data_ref = unk_ref.data[ik] * factor
+        for ib, (b1, b2) in enumerate(zip(data_new, data_ref)):
+            print(f"norm of unk_new.data[ik={ik}][{ib}] = {np.linalg.norm(b1)}")
+            print(f"norm of unk_ref.data[ik={ik}][{ib}] = {np.linalg.norm(b2)}")
+        assert data_new is not None, f"unk_new.data[ik={ik}] is None, but should not be"
+        assert data_ref is not None, f"unk_ref.data[ik={ik}] is None, but should not be"
+        assert np.allclose(data_new, data_ref, atol=1e-6), f"unk data differs by {np.max(np.abs(data_new - data_ref))} > 1e-6 at ik={ik}"
+    
+
+
 @pytest.mark.parametrize("include_TR", [True, False])
 def _test_create_sawf_Fe_444(check_sawf, include_TR):
     "this test is disabled, because the necessary data is not included into repo, but need to be generated with QE"
@@ -236,7 +311,7 @@ def _test_create_sawf_Fe_444(check_sawf, include_TR):
 @pytest.mark.parametrize("use_window", [True, False])
 def test_sitesym_Fe(include_TR, use_window):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
+    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
     symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
@@ -262,7 +337,6 @@ def test_sitesym_Fe(include_TR, use_window):
     assert spreads[10] == approx(spreads[12], abs=atol)
     assert spreads[11] == approx(spreads[13], abs=atol)
     system = wberri.system.System_w90(w90data=w90data, berry=True)
-    # system.set_symmetry(spacegroup=bandstructure.spacegroup)
     tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
                 }
 

@@ -44,13 +44,13 @@ def test_symmetry_group_failure():
 
 def test_symmetry_spglib_GaAs(system_GaAs_W90, check_pointgroup_equal):
     system_explicit = deepcopy(system_GaAs_W90)
-    system_explicit.set_symmetry(symmetries_GaAs)
+    system_explicit.set_pointgroup(symmetries_GaAs)
 
     system_spglib = deepcopy(system_GaAs_W90)
     positions = [[0., 0., 0.], [0.25, 0.25, 0.25]]
     labels = ["Ga", "As"]
     system_spglib.set_structure(positions, labels)
-    system_spglib.set_symmetry_from_structure()
+    system_spglib.set_pointgroup_from_structure()
 
     check_pointgroup_equal(system_explicit.pointgroup, system_spglib.pointgroup)
 
@@ -63,16 +63,16 @@ def test_symmetry_spglib_Fe(system_Fe_W90, check_pointgroup_equal):
     import spglib
     if pversion(spglib.__version__) < pversion("2"):
         symmetries_Fe_except_TR = [sym for sym in symmetries_Fe if not sym.TR]
-        system_explicit.set_symmetry(symmetries_Fe_except_TR)
+        system_explicit.set_pointgroup(symmetries_Fe_except_TR)
     else:
-        system_explicit.set_symmetry(symmetries_Fe)
+        system_explicit.set_pointgroup(symmetries_Fe)
 
     system_spglib = deepcopy(system_Fe_W90)
     positions = [[0., 0., 0.]]
     labels = ["Fe"]
     magnetic_moments = [[0., 0., 1.]]
     system_spglib.set_structure(positions, labels, magnetic_moments)
-    system_spglib.set_symmetry_from_structure()
+    system_spglib.set_pointgroup_from_structure()
 
     try:
         sg1 = system_explicit.pointgroup

@@ -18,6 +18,8 @@ from copy import copy
 import warnings
 import numpy as np
 from ..wannierise import wannierise
+from ..symmetry.sawf import SymmetrizerSAWF
+from .utility import grid_from_kpoints
 
 from .win import WIN
 from .eig import EIG
@@ -64,7 +66,7 @@ class Wannier90data:
         kmesh_tol : float
             see :class:`~wannierberri.w90files.chk.CheckPoint`
         bk_complete_tol : float
-            see :class:`~wannierberri.w90files.chk.CheckPoint`
+            see :class:`~wannierberri.w90files.chk.CheckPoint`mp_grid
 
     Attributes
     ----------
@@ -88,16 +90,102 @@ class Wannier90data:
     # todo :  rotate uHu and spn
     # todo : symmetry
 
-    def __init__(self, seedname="wannier90",
-                 read_npz=True,
-                 write_npz_list=('mmn', 'eig', 'amn'),
-                 write_npz_formatted=True,
-                 overwrite_npz=False,
-                 formatted=tuple(),
-                 readfiles=tuple(),
-                 ):  # ,sitesym=False):
-        assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
+    def __init__(self, ):
         self.bands_were_selected = False
+        self._files = {}
+
+    def from_bandstructure(self, bandstructure,
+                          seedname="wannier90",
+                          files=("mmn", "eig", "amn", "symmetrizer"),
+                          write_npz_list=(),
+                          projections=None,
+                          unk_grid=None,
+                          normalize=True):
+        """
+        Create a Wannier90data object from a bandstructure object
+
+        Parameters
+        ----------
+        bandstructure : `irrep.bandstructure.BandStructure`
+            the bandstructure object containing the kpoints, lattice, and number of bands
+        seedname : str
+            the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc) to save the npz files (if write_npz_list is not empty)
+        files : tuple(str)
+            the list of files to be created. Possible values are 'mmn', 'eig', 'amn', 'symmetrizer', 'unk'
+        write_npz_list : list(str)
+            the list of files to be written as npz files. If empty, no files are written as npz
+        projections : `~wannierberri.symmetry.projections.ProjectionSet`
+            the projections to be used for the AMN and symmetrizer files.
+        unk_grid : tuple(int)
+            the grid to be used for the UNK file. If None, the grid is calculated from the g-vectors
+        normalize : bool
+            if True, the wavefunctions are normalized to have unit norm.
+
+        Returns
+        -------
+        Wannier90data
+            the Wannier90data object containing the files specified in `files`
+
+        """
+        if "amn" in files or "symmetrizer" in files:
+            assert projections is not None, "projections should be provided if amn or symmetrizer are requested"
+        self.read_npz = False
+        self.write_npz_list = set([s.lower() for s in write_npz_list])
+        self.seedname = copy(seedname)
+        kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
+        mp_grid = grid_from_kpoints(kpt_latt)
+        chk = CheckPoint(real_lattice=bandstructure.lattice,
+                      num_wann=projections.num_wann,
+                      num_bands=bandstructure.num_bands,
+                      kpt_latt=kpt_latt,
+                      mp_grid=mp_grid,)
+        self.set_file('chk', chk)
+        if "eig" in files:
+            eig = EIG().from_bandstructure(bandstructure)
+            self.set_file('eig', eig)
+            if "eig" in self.write_npz_list:
+                eig.to_npz(seedname + ".eig.npz")
+        if "amn" in files:
+            amn = AMN().from_bandstructure(bandstructure, projections, normalize=normalize)
+            self.set_file('amn', amn)
+            if "amn" in self.write_npz_list:
+                amn.to_npz(seedname + ".amn.npz")
+        if "mmn" in files:
+            mmn = MMN().from_bandstructure(bandstructure, normalize=normalize)
+            if "mmn" in self.write_npz_list:
+                mmn.to_npz(seedname + ".mmn.npz")
+            self.set_file('mmn', mmn)
+        if "spn" in files:
+            spn = SPN().from_bandstructure(bandstructure, normalize=normalize)
+            self.set_file('spn', spn)
+            if "spn" in self.write_npz_list:
+                spn.to_npz(seedname + ".spn.npz")
+        # TODO : use a cutoff ~100eV for symmetrizer
+        if "unk" in files:
+            unk = UNK().from_bandstructure(bandstructure, grid_size=unk_grid, normalize=normalize)
+            self.set_file('unk', unk)
+            if "unk" in self.write_npz_list:
+                unk.to_npz(seedname + ".unk.npz")
+        if "symmetrizer" in files:
+            symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
+            symmetrizer.set_D_wann_from_projections(projections)
+            self.set_symmetrizer(symmetrizer)
+            if "symmetrizer" in self.write_npz_list:
+                symmetrizer.to_npz(seedname + ".symmetrizer.npz")
+        return self
+
+
+
+
+    def from_w90_files(self, seedname="wannier90",
+                     read_npz=True,
+                     write_npz_list=('mmn', 'eig', 'amn'),
+                     write_npz_formatted=True,
+                     overwrite_npz=False,
+                     formatted=tuple(),
+                     readfiles=tuple(),
+                     ):
+        assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
         self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
@@ -106,18 +194,23 @@ class Wannier90data:
             self.write_npz_list.update(formatted)
             self.write_npz_list.update(['mmn', 'eig', 'amn'])
         self.formatted_list = formatted
-        self._files = {}
-        # chk should be set last
-        if 'chk' in readfiles:
-            _readfiles = copy(readfiles)
-            _readfiles.remove('chk')
-            _readfiles.append('chk')
-            readfiles = tuple(_readfiles)
-        for f in readfiles:
-            self.set_file(f)
-        if 'chk' not in readfiles:
-            assert "win" in readfiles, "either 'chk' or 'win' should be in readfiles"
+
+        _read_files_loc = [f.lower() for f in readfiles]
+        assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
+        if 'win' in _read_files_loc:
+            self.set_file('win')
+            _read_files_loc.remove('win')
+        if 'chk' in _read_files_loc:
+            self.set_chk(read=True)
+            _read_files_loc.remove('chk')
+        else:
             self.set_chk(read=False)
+        if 'mmn' in _read_files_loc:
+            self.set_file('mmn', kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+            _read_files_loc.remove('mmn')
+        for f in _read_files_loc:
+            self.set_file(f)
+        return self
 
 
     @cached_property
@@ -192,15 +285,22 @@ class Wannier90data:
         if key == "chk":
             self.set_chk(val=val, read=True, overwrite=overwrite, **kwargs)
             return
-        kwargs_auto = self.auto_kwargs_files(key)
-        kwargs_auto.update(kwargs)
         if not overwrite and self.has_file(key):
             raise RuntimeError(f"file '{key}' was already set")
         if val is None:
             if key not in FILES_CLASSES:
                 raise ValueError(f"key '{key}' is not a valid w90 file")
+            kwargs_auto = self.auto_kwargs_files(key)
+            kwargs_auto.update(kwargs)
+            if key in ['uhu', 'uiu', 'shu', 'siu']:
+                assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
+                assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
+                kwargs_auto['bk_reorder'] = self.get_file('mmn').bk_reorder
+
             val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
         self.check_conform(key, val)
+        if key == 'amn' and self.has_file('chk'):
+            self.get_file('chk').num_wann = val.NW
         self._files[key] = val
 
     def has_file(self, key):
@@ -233,9 +333,7 @@ class Wannier90data:
         self.kpt_mp_grid = [tuple(k) for k in
                             np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
                                      dtype=int) % self.chk.mp_grid]
-        if self.has_file("mmn"):
-            self.mmn.set_bk(mp_grid=self.chk.mp_grid, kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
-        self.win_index = [np.arange(self.eig.NB)] * self.chk.num_kpts
+        self.win_index = [np.arange(self.chk.num_bands)] * self.chk.num_kpts
 
 
     def write(self, seedname, files=None):
