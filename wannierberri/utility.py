@@ -24,6 +24,11 @@ import datetime
 def time_now_iso():
     return datetime.datetime.now().isoformat()
 
+pauli_x = [[0, 1], [1, 0]]
+pauli_y = [[0, -1j], [1j, 0]]
+pauli_z = [[1, 0], [0, -1]]
+pauli_xyz = np.array([pauli_x, pauli_y, pauli_z]).transpose((1, 2, 0))
+
 
 alpha_A = np.array([1, 2, 0])
 beta_A = np.array([2, 0, 1])

@@ -234,8 +234,8 @@ def test_create_w90files_Fe():
 
     w90data = wberri.w90files.Wannier90data(
     ).from_bandstructure(bandstructure,
-                         files=["mmn", "eig", "amn", "unk"],
-                         write_npz_list=["amn", "mmn", "eig", "chk", "unk"],
+                         files=["mmn", "eig", "amn", "unk", "spn"],
+                         write_npz_list=["amn", "mmn", "eig", "chk", "unk", "spn"],
                          seedname=os.path.join(path_tmp, "Fe"),
                          projections=proj_set,
                          normalize=False,
@@ -261,9 +261,15 @@ def test_create_w90files_Fe():
     print(f"mmn's differ by more than 1e-5 at some points : {np.where(np.abs(mmn_data_new - mmn_ref.data) > 1e-5)}")
     # TODO - check if accuracy of agreement may be improved
 
+    # This actually compares with a wannierberri calculation, while other files are compared directly to pw2wannier
+    # this is because the definition of radial function in pw2wannier is different from the one in wannierberri, so the amn file is not exactly the same
     amn = w90data.get_file("amn")
     amn_ref = wberri.w90files.AMN().from_npz(os.path.join(path_data, "Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
     assert np.allclose(amn.data, amn_ref.data, atol=1e-6), f"amn data differs by {np.max(np.abs(w90data.amn.data - amn_ref.data))} > 1e-6"
+
+    spn = w90data.get_file("spn")
+    spn_ref = wberri.w90files.SPN().from_npz(os.path.join(path_data, "tmp/Fe.spn.npz"))
+    assert np.allclose(spn.data, spn_ref.data, atol=1e-6), f"spn data differs by {np.max(np.abs(w90data.spn.data - spn_ref.data))} > 1e-6"
 
     unk_new = w90data.get_file("unk")
     unk_ref = wberri.w90files.unk.UNK().from_npz(os.path.join(path_data, "Fe-kp03-red18.unk.npz"))
@@ -279,6 +285,7 @@ def test_create_w90files_Fe():
         assert data_new is not None, f"unk_new.data[ik={ik}] is None, but should not be"
         assert data_ref is not None, f"unk_ref.data[ik={ik}] is None, but should not be"
         assert np.allclose(data_new, data_ref, atol=1e-6), f"unk data differs by {np.max(np.abs(data_new - data_ref))} > 1e-6 at ik={ik}"
+    
 
 
 @pytest.mark.parametrize("include_TR", [True, False])

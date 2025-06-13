@@ -7,8 +7,8 @@ from collections import defaultdict
 import glob
 
 from ..fourier.rvectors import Rvectors
-from .system import System, pauli_xyz
-from ..utility import clear_cached, one2three
+from .system import System
+from ..utility import clear_cached, one2three, pauli_xyz
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from ..symmetry.wyckoff_position import split_into_orbits
 

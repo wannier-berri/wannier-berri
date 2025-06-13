@@ -155,6 +155,11 @@ class Wannier90data:
             if "mmn" in self.write_npz_list:
                 mmn.to_npz(seedname + ".mmn.npz")
             self.set_file('mmn', mmn)
+        if "spn" in files:
+            spn = SPN().from_bandstructure(bandstructure, normalize=normalize)
+            self.set_file('spn', spn)
+            if "spn" in self.write_npz_list:
+                spn.to_npz(seedname + ".spn.npz")
         # TODO : use a cutoff ~100eV for symmetrizer
         if "unk" in files:
             unk = UNK().from_bandstructure(bandstructure, grid_size=unk_grid, normalize=normalize)
