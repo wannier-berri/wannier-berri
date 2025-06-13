@@ -667,6 +667,17 @@ class System_R(System):
 
     def set_symmetry_from_structure(self):
         """
+        a wrapper for set_pointgroup_from_structure
+        This method is deprecated and will be removed in future versions.
+        """
+        warnings.warn(
+            "set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.",
+            DeprecationWarning
+        )
+        self.set_pointgroup_from_structure()
+
+    def set_pointgroup_from_structure(self):
+        """
         Set the symmetry group of the :class:`System`. Requires spglib to be installed.
         :meth:`System.set_structure` must be called in advance.
 

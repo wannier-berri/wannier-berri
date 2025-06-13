@@ -89,7 +89,6 @@ class W90_file(SavableNPZ):
 
     @property
     def NK(self):
-
         return self.data.shape[0]
 
     @property

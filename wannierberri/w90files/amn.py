@@ -251,7 +251,7 @@ def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
     Create an AMN object from a BandStructure object
     this function is kept for backward compatibility,
     use `AMN().from_bandstructure()` instead
-    
+
     Parameters
     ----------
     bandstructure : BandStructure

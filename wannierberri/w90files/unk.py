@@ -31,14 +31,18 @@ class UNK(W90_file):
     """
 
     def __init__(self, seedname=None, autoread=False, **parameters):
+        self.npz_tags = ["grid_size", "spinor", "_NB", "_NK"]
         super().__init__(seedname=seedname, autoread=autoread, **parameters)
         # if autoread:
         #     self.from_w90_file(seedname, **parameters)
 
     "a class that stores all UNK files"
 
-    def from_w90_file(self, seedname=None, selected_bands=None, path=None, NK=None, NKmax=10000, kptirr=None, spinor=False):
-
+    def from_w90_file(self, seedname=None, selected_bands=None, path=None,
+                      NK=None, NKmax=10000, spinor=False,
+                      spin_channel=1,
+                      reduce_grid=(1, 1, 1),
+                      selected_kpoints=None):
         assert (path is None) != (seedname is None), "either path or seedname should be provided, and not both"
         if path is None:
             path = os.path.dirname(seedname)
@@ -54,44 +58,107 @@ class UNK(W90_file):
         nspinor = 2 if spinor else 1
         self.grid_size = None
 
+        if spinor:
+            spin_channel = 'NC'
+        else:
+            spin_channel = str(spin_channel)
+
+        if selected_bands is not None:
+            assert NK is not None, "NK should be provided if selected_bands is not None"
         # readint = lambda: FIN.read_record('i4')
         # readfloat = lambda: FIN.read_record('f8')
         self._NB = None
         for i in range(NKmax):
-            filename = os.path.join(path, f"UNK{i + 1:05d}.1")
-            # print(f"trying to read {filename}")
-            if (kptirr is None or i in kptirr):
-                if os.path.exists(filename):
-                    # print(f"reading {filename}")
-                    f = FortranFileR(filename)
-                    nr1, nr2, nr3, ikr, _NB = f.read_record(dtype=np.int32)
-                    if self.grid_size is None:
-                        self.grid_size = (nr1, nr2, nr3)
-                    else:
-                        assert self.grid_size == (nr1, nr2, nr3), f"NK={i} : grid_size={self.grid_size} != {(nr1, nr2, nr3)}"
-                    assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i + 1}"
-                    if selected_bands is None:
-                        selected_bands = np.arange(_NB)
-                    if self._NB is None:
-                        self._NB = len(selected_bands)
-                    else:
-                        assert self._NB == len(selected_bands), f"NK={i} : _NB={self._NB} != len(selected_bands)={len(selected_bands)} (selected_bands={selected_bands})"
-                    U = np.zeros((self.NB, nr1, nr2, nr3, nspinor), dtype=complex)
-                    for i in range(self.NB):
-                        for j in range(nspinor):
-                            U[i, :, :, :, j] = f.read_record(dtype=np.complex128).reshape(nr1, nr2, nr3, order='F')
-                    self.data.append(U)
+            if selected_kpoints is not None:
+                if i not in selected_kpoints:
+                    self.data.append(None)
+                    print(f"skipping UNK file for k-point {i} not in selected_kpoints")
+                    continue
+            filename = os.path.join(path, f"UNK{i + 1:05d}.{spin_channel}")
+            if os.path.exists(filename):
+                # print(f"reading {filename}")
+                f = FortranFileR(filename)
+                nr1, nr2, nr3, ikr, _NB = f.read_record(dtype=np.int32)
+                nr1_red, nr2_red, nr3_red = int(nr1 // reduce_grid[0]), int(nr2 // reduce_grid[1]), int(nr3 // reduce_grid[2])
+                if self.grid_size is None:
+                    self.grid_size = (nr1, nr2, nr3)
                 else:
+                    assert self.grid_size == (nr1, nr2, nr3), f"NK={i} : grid_size={self.grid_size} != {(nr1, nr2, nr3)}"
+                assert ikr == i + 1, f"read ik = {ikr} from file {filename}, expected {i + 1}"
+                if selected_bands is None:
+                    selected_bands = np.arange(_NB)
+                if self._NB is None:
+                    self._NB = len(selected_bands)
+                else:
+                    assert self._NB == len(selected_bands), f"NK={i} : _NB={self._NB} != len(selected_bands)={len(selected_bands)} (selected_bands={selected_bands})"
+                U = np.zeros((self.NB, nr1_red, nr2_red, nr3_red, nspinor), dtype=complex)
+                for i in range(self.NB):
+                    for j in range(nspinor):
+                        U[i, :, :, :, j] = f.read_record(dtype=np.complex128).reshape(
+                            nr1, nr2, nr3, order='F')[::reduce_grid[0], ::reduce_grid[1], ::reduce_grid[2]]
+                        print(f"norm of band {i} (spinor {j}) = {np.linalg.norm(U[i, :, :, :, j])}")
+                    print(f"norm of band {i} = {np.linalg.norm(U[i, :, :, :, :])}")
+                self.data.append(U)
+            else:
+                if selected_kpoints is None:
                     print(f"{filename} not found, stopping reading UNK files, read {len(self.data)} files")
                     NK = i
                     break
-            else:
-                print(f"skipping {filename}")
-                self.data.append(None)
-                continue
+                else:
+                    raise FileNotFoundError(f"UNK file {filename} not found, but k-point {i} is selected in selected_kpoints")
         print(f"NK={NK}")
+        self._NK = NK
         return self
 
+    def from_bandstructure(self, bandstructure,
+                           grid_size=None,
+                           normalize=False,
+                           selected_kpoints=None):
+        """
+        Initialize UNK from a bandstructure object.
+        This is useful for reading UNK files from a bandstructure calculation.
+        """
+        self._NK = len(bandstructure.kpoints)
+        self._NB = bandstructure.num_bands
+        self.spinor = bandstructure.spinor
+        nspinor = 2 if self.spinor else 1
+        if grid_size is None:
+            igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
+            igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
+            igmin_glob = igmin_k.min(axis=0)
+            igmax_glob = igmax_k.max(axis=0)
+            ig_grid = igmax_glob - igmin_glob + 1
+            grid_size = tuple(ig_grid)
+            print(f"grid_size is not provided, using {grid_size} from bandstructure g-vectors")
+        else:
+            assert len(grid_size) == 3, "grid_size should be a tuple of 3 integers"
+            grid_size = tuple(grid_size)
+            print(f"using provided grid_size {grid_size}")
+        self.grid_size = grid_size
+
+        self.data = []
+
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(len(bandstructure.kpoints))
+            print(f"selected_kpoints is not provided, using all {len(bandstructure.kpoints)} k-points")
+        selected_kpoints = [int(k) for k in selected_kpoints]
+
+        for ik, k in enumerate(bandstructure.kpoints):
+            if ik in selected_kpoints:
+                WF_grid = np.zeros((self.NB, *self.grid_size, nspinor), dtype=complex)
+                g = k.ig[:3, :]
+                if normalize:
+                    k.WF /= np.linalg.norm(k.WF, axis=1)[:, None]
+                ng = g.shape[1]
+                for ig, g in enumerate(g.T):
+                    for j in range(nspinor):
+                        WF_grid[:, g[0], g[1], g[2], j] = k.WF[:, ig + j * ng]
+                WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
+                self.data.append(WF_grid)
+            else:
+                print(f"skipping k-point {ik} not in selected_kpoints {selected_kpoints}")
+                self.data.append(None)
+        return self
 
 
     def select_bands(self, selected_bands):
@@ -101,6 +168,36 @@ class UNK(W90_file):
                 if u is not None:
                     self.data[i] = u[selected_bands]
 
+    def as_dict(self):
+        dic = super().as_dict()
+        for i, u in enumerate(self.data):
+            if u is not None:
+                dic[f"UNK_{i}"] = u
+        return dic
+
+    def from_dict(self, dic):
+        super().from_dict(dic)
+        if "data" in dic:
+            print("loading data from 'data' key in dictionary")
+            self.data = list([d for d in dic["data"]])
+        else:
+            print(f"loading data from 'UNK_i' keys in dictionary {dic.keys()}")
+            self.data = []
+            for i in range(self.NK):
+                if f"UNK_{i}" in dic:
+                    print(f"loading UNK_{i} from dictionary")
+                    self.data.append(dic[f"UNK_{i}"])
+                else:
+                    print(f"UNK_{i} not found in dictionary, appending None")
+                    self.data.append(None)
+
+        return self
+
+
     @property
     def NB(self):
         return self._NB
+
+    @property
+    def NK(self):
+        return self._NK

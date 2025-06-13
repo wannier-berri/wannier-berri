@@ -97,9 +97,36 @@ class Wannier90data:
     def from_bandstructure(self, bandstructure,
                           seedname="wannier90",
                           files=("mmn", "eig", "amn", "symmetrizer"),
-                           write_npz_list=(),
-                        projections=None,
-                        normalize=True):
+                          write_npz_list=(),
+                          projections=None,
+                          unk_grid=None,
+                          normalize=True):
+        """
+        Create a Wannier90data object from a bandstructure object
+
+        Parameters
+        ----------
+        bandstructure : `irrep.bandstructure.BandStructure`
+            the bandstructure object containing the kpoints, lattice, and number of bands
+        seedname : str
+            the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc) to save the npz files (if write_npz_list is not empty)
+        files : tuple(str)
+            the list of files to be created. Possible values are 'mmn', 'eig', 'amn', 'symmetrizer', 'unk'
+        write_npz_list : list(str)
+            the list of files to be written as npz files. If empty, no files are written as npz
+        projections : `~wannierberri.symmetry.projections.ProjectionSet`
+            the projections to be used for the AMN and symmetrizer files.
+        unk_grid : tuple(int)
+            the grid to be used for the UNK file. If None, the grid is calculated from the g-vectors
+        normalize : bool
+            if True, the wavefunctions are normalized to have unit norm.
+
+        Returns
+        -------
+        Wannier90data
+            the Wannier90data object containing the files specified in `files`
+
+        """
         if "amn" in files or "symmetrizer" in files:
             assert projections is not None, "projections should be provided if amn or symmetrizer are requested"
         self.read_npz = False
@@ -129,6 +156,11 @@ class Wannier90data:
                 mmn.to_npz(seedname + ".mmn.npz")
             self.set_file('mmn', mmn)
         # TODO : use a cutoff ~100eV for symmetrizer
+        if "unk" in files:
+            unk = UNK().from_bandstructure(bandstructure, grid_size=unk_grid, normalize=normalize)
+            self.set_file('unk', unk)
+            if "unk" in self.write_npz_list:
+                unk.to_npz(seedname + ".unk.npz")
         if "symmetrizer" in files:
             symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
             symmetrizer.set_D_wann_from_projections(projections)
