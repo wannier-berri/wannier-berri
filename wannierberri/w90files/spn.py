@@ -66,7 +66,7 @@ class SPN(W90_file):
             print(f"Creating SPN from bandstructure with {bandstructure.num_bands} bands and {len(bandstructure.kpoints)} k-points")
         self.data = []
         for kp in bandstructure.kpoints:
-            print (f"setting spn for k={kp.k}")
+            print(f"setting spn for k={kp.k}")
             ng = kp.ig.shape[1]
             wf = kp.WF
             if normalize:
@@ -74,8 +74,8 @@ class SPN(W90_file):
             wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
             data = np.einsum('mri,nsi,rst->mnt', wf.conj(), wf, pauli_xyz)
             self.data.append(data)
-            
-        print (f"length of data = {len(data)}")
+
+        print(f"length of data = {len(data)}")
         print("NK={self.NK}")
         return self
 

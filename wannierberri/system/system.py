@@ -19,6 +19,7 @@ from functools import cached_property
 from ..symmetry.point_symmetry import PointGroup
 from ..utility import real_recip_lattice
 
+
 def num_cart_dim(key):
     """
     returns the number of cartesian dimensions of a matrix by key
