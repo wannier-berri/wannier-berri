@@ -268,7 +268,7 @@ def test_create_w90files_Fe():
     assert np.allclose(amn.data, amn_ref.data, atol=1e-6), f"amn data differs by {np.max(np.abs(w90data.amn.data - amn_ref.data))} > 1e-6"
 
     spn = w90data.get_file("spn")
-    spn_ref = wberri.w90files.SPN().from_npz(os.path.join(path_data, "tmp/Fe.spn.npz"))
+    spn_ref = wberri.w90files.SPN().from_npz(os.path.join(path_data, "Fe.spn.npz"))
     assert np.allclose(spn.data, spn_ref.data, atol=1e-6), f"spn data differs by {np.max(np.abs(w90data.spn.data - spn_ref.data))} > 1e-6"
 
     unk_new = w90data.get_file("unk")
