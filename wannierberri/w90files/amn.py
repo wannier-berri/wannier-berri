@@ -1,12 +1,11 @@
 from datetime import datetime
 import multiprocessing
 import numpy as np
-from irrep.bandstructure import BandStructure
 from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
-from .w90file import W90_file
+from .w90file import W90_file, check_shape
 
 
 class AMN(W90_file):
@@ -37,37 +36,21 @@ class AMN(W90_file):
         the data projections
     """
 
-    @property
-    def NB(self):
-        return self.data.shape[1]
+    extension = "amn"
 
-    def select_bands(self, selected_bands):
-        """
-        Select the bands to be used in the calculation, the rest are excluded
-
-        Parameters
-        ----------
-        selected_bands : list of int or bool
-            the indices of the bands to be used, or a boolean mask
-        """
-        # print(f"selecting bands {selected_bands} in amn")
-        if selected_bands is not None:
-            self.data = self.data[:, selected_bands, :]
-
-    @property
-    def NW(self):
-        return self.data.shape[2]
+    def __init__(self, data, NK=None):
+        super().__init__(data=data, NK=NK)
+        self.NB, self.NW = check_shape(self.data)
 
     @property
     def num_wann(self):
         return self.NW
 
-    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(),
-                 **kwargs):
-        self.npz_tags = ["data"]
-        super().__init__(seedname=seedname, ext="amn", npar=npar, **kwargs)
 
-    def from_w90_file(self, seedname, npar):
+    @classmethod
+    def from_w90_file(cls, seedname, npar=None):
+        if npar is None:
+            npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
         print(f"reading {seedname}.amn: " + f_amn_in[0].strip())
         s = f_amn_in[1]
@@ -75,7 +58,8 @@ class AMN(W90_file):
         block = NW * NB
         allmmn = (f_amn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
-        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
+        data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
+        return AMN(data=data)
 
     def to_w90_file(self, seedname):
         f_amn_out = open(seedname + ".amn", "w")
@@ -122,7 +106,110 @@ class AMN(W90_file):
     #     f_amn_out.close()
 
 
-def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, normalize=True, return_object=True):
+    def from_bandstructure_s_delta(self, bandstructure, positions, normalize=True):
+        """
+        Create an AMN object from a BandStructure object
+        NOTE!!: Only for delta-localised s-orbitals
+
+        more complete implementation is in from_bandstructure()
+
+        Parameters
+        ----------
+        bandstructure : irrep.bandstructure.BandStructure
+            the band structure object
+        positions : array( (N, 3), dtype=float)
+            the positions of the orbitals
+        normalize : bool
+            if True, the wavefunctions are normalised
+        """
+        data = []
+        pos = np.array(positions)
+        for kp in bandstructure.kpoints:
+            igk = kp.ig[:3, :] + kp.k[:, None]
+            exppgk = np.exp(-2j * np.pi * (pos @ igk))
+            wf = kp.WF.conj()
+            if normalize:
+                wf /= np.linalg.norm(wf, axis=1)[:, None]
+            data.append(wf @ exppgk.T)
+        self.data = np.array(data)
+        return self
+
+    @classmethod
+    def from_bandstructure(cls, bandstructure, projections: ProjectionsSet,
+                           normalize=True, verbose=False):
+        """
+        Create an AMN object from a BandStructure object
+        So far only delta-localised s-orbitals are implemented
+
+        Parameters
+        ----------
+        bandstructure : BandStructure
+            the band structure object
+        projections : ProjectionsSet
+            the projections set as an object
+        normalize : bool
+            if True, the wavefunctions are normalised
+        """
+        positions = []
+        orbitals = []
+        basis_list = []
+        print(f"Creating amn. Using projections_set \n{projections}")
+        for proj in projections.projections:
+            pos, orb = proj.get_positions_and_orbitals()
+            positions += pos
+            orbitals += orb
+            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
+            if verbose:
+                print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+        spinor = projections.spinor
+
+
+        if verbose:
+            print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
+        data = []
+        pos = np.array(positions)
+        rec_latt = bandstructure.RecLattice
+        bessel = Bessel_j_exp_int()
+        for kp in bandstructure.kpoints:
+            igk = kp.ig[:3, :] + kp.k[:, None]
+            expgk = np.exp(-2j * np.pi * (pos @ igk))
+            wf = kp.WF.conj()
+            if normalize:
+                wf /= np.linalg.norm(wf, axis=1)[:, None]
+            if spinor:
+                wf_up = wf[:, :wf.shape[1] // 2]
+                wf_down = wf[:, wf.shape[1] // 2:]
+
+            gk = igk.T @ rec_latt
+            projector = Projector(gk, bessel)
+            prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
+            # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
+            # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
+            proj_gk = np.array(prj) * expgk
+            if spinor:
+                proj_up = wf_up @ proj_gk.T
+                proj_down = wf_down @ proj_gk.T
+                datak = []
+                for u, d in zip(proj_up.T, proj_down.T):
+                    datak.append(u)
+                    datak.append(d)
+                data.append(np.array(datak).T)
+            else:
+                data.append(wf @ proj_gk.T)
+        return AMN(data=data)
+
+    def equals(self, other, tolerance=1e-8):
+        iseq, message = super().equals(other, tolerance)
+        if not iseq:
+            return iseq, message
+        if self.NW != other.NW:
+            return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
+        return True, ""
+
+
+
+
+def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):
     """
     Create an AMN object from a BandStructure object
     NOTE!!: Only for delta-localised s-orbitals
@@ -131,7 +218,7 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
 
     Parameters
     ----------
-    bandstructure : BandStructure
+    bandstructure : irrep.bandstructure.BandStructure
         the band structure object
     positions : array( (N, 3), dtype=float)
         the positions of the orbitals
@@ -140,27 +227,19 @@ def amn_from_bandstructure_s_delta(bandstructure: BandStructure, positions, norm
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    data = []
-    pos = np.array(positions)
-    for kp in bandstructure.kpoints:
-        igk = kp.ig[:3, :] + kp.k[:, None]
-        exppgk = np.exp(-2j * np.pi * (pos @ igk))
-        wf = kp.WF.conj()
-        if normalize:
-            wf /= np.linalg.norm(wf, axis=1)[:, None]
-        data.append(wf @ exppgk.T)
-    data = np.array(data)
+    amn = AMN.from_bandstructure_s_delta(bandstructure, positions, normalize=normalize)
     if return_object:
-        return AMN(data=data)
+        return amn
     else:
-        return data
+        return amn.data
 
 
-def amn_from_bandstructure(bandstructure: BandStructure, projections: ProjectionsSet,
-                           normalize=True, return_object=True, spinor=False, verbose=False):
+def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
+                           normalize=True, return_object=True, verbose=False):
     """
     Create an AMN object from a BandStructure object
-    So far only delta-localised s-orbitals are implemented
+    this function is kept for backward compatibility,
+    use `AMN.from_bandstructure()` instead
 
     Parameters
     ----------
@@ -173,54 +252,8 @@ def amn_from_bandstructure(bandstructure: BandStructure, projections: Projection
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    positions = []
-    orbitals = []
-    basis_list = []
-    print(f"Creating amn. Using projections_set \n{projections}")
-    for proj in projections.projections:
-        pos, orb = proj.get_positions_and_orbitals()
-        positions += pos
-        orbitals += orb
-        basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
-        if verbose:
-            print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
-    spinor = projections.spinor
-
-
-    if verbose:
-        print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
-    data = []
-    pos = np.array(positions)
-    rec_latt = bandstructure.RecLattice
-    bessel = Bessel_j_exp_int()
-    for kp in bandstructure.kpoints:
-        igk = kp.ig[:3, :] + kp.k[:, None]
-        expgk = np.exp(-2j * np.pi * (pos @ igk))
-        wf = kp.WF.conj()
-        if normalize:
-            wf /= np.linalg.norm(wf, axis=1)[:, None]
-        if spinor:
-            wf_up = wf[:, :wf.shape[1] // 2]
-            wf_down = wf[:, wf.shape[1] // 2:]
-
-        gk = igk.T @ rec_latt
-        projector = Projector(gk, bessel)
-        prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
-        # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
-        # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
-        proj_gk = np.array(prj) * expgk
-        if spinor:
-            proj_up = wf_up @ proj_gk.T
-            proj_down = wf_down @ proj_gk.T
-            datak = []
-            for u, d in zip(proj_up.T, proj_down.T):
-                datak.append(u)
-                datak.append(d)
-            data.append(np.array(datak).T)
-        else:
-            data.append(wf @ proj_gk.T)
-    data = np.array(data)
+    amn = AMN.from_bandstructure(bandstructure, projections, normalize=normalize, verbose=verbose)
     if return_object:
-        return AMN().from_dict(data=data)
+        return amn
     else:
-        return data
+        return amn.data

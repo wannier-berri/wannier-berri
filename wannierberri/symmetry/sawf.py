@@ -6,7 +6,7 @@ import numpy as np
 
 
 from ..utility import clear_cached
-from ..io import SavableNPZ
+from ..w90files.amn import AMN
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 
@@ -14,7 +14,7 @@ from .Dwann import Dwann
 from .orbitals import OrbitalRotator
 
 
-class SymmetrizerSAWF(SavableNPZ):
+class SymmetrizerSAWF:
     """
     A class to handle the symmetry of the Wannier functions and the ab initio bands
 
@@ -68,12 +68,13 @@ class SymmetrizerSAWF(SavableNPZ):
         weather the symmetry operation includes time reversal or not
     """
 
+    npz_tags = ['D_wann_block_indices', '_NB',
+                'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
+                '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
+    npz_tags_optional = ['eig_irr', 'kpoints_all']
+
+
     def __init__(self):
-        self.npz_tags = ['D_wann_block_indices', '_NB',
-                    'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
-                   '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
-        self.npz_tags_optional = ["eig_irr", "kpoints_all"]
-        self.default_tags = {}
         self._NB = 0
         self.num_wann = 0
         self.D_wann_block_indices = np.zeros((0, 2), dtype=int)
@@ -268,7 +269,6 @@ class SymmetrizerSAWF(SavableNPZ):
         for isym, symop in enumerate(self.spacegroup.symmetries):
             for block, (ws, _) in enumerate(self.D_wann_block_indices):
                 norb = self.rot_orb_list[block][0, 0].shape[0]
-                # print(f"block={block}, isym={isym} rot_orb_list[block].shape={self.rot_orb_list[block].shape} norb={norb}")
                 T = self.T_list[block][:, isym]
                 num_points = T.shape[0]
                 atom_map = self.atommap_list[block][:, isym]
@@ -276,15 +276,9 @@ class SymmetrizerSAWF(SavableNPZ):
                     start_a = ws + atom_a * norb
                     atom_b = atom_map[atom_a]
                     start_b = ws + atom_b * norb
-                    # print(f"block={block}, isym={isym}, atom_a={atom_a}, atom_b={atom_b}, start_a={start_a}, start_b={start_b}, norb={norb}")
                     XX_L = wcc_red_in[start_a:start_a + norb]
-                    # print(f"XX_L.shape={XX_L.shape}")
                     if ncart > 0:
                         XX_L = symop.transform_r(XX_L) + T[atom_a]
-                    # print(f"XX_L.shape={XX_L.shape}")
-                    # XX_L = symop.transform_r(wcc_red_in[start_a:start_a + norb]) + T[atom_a]
-                    # NOTE : I do not fully understand why the transpose are needed here but it works TODO  : check
-                    # print(f"shapes : {self.rot_orb_dagger_list[block][atom_a,isym].shape}, {XX_L.shape}, {self.rot_orb_list[block][atom_a,isym].shape}")
                     transformed = np.einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym].T, XX_L, self.rot_orb_list[block][atom_a, isym].T).real
                     WCC_red_out[start_b:start_b + norb] += transformed
         if ncart > 0:
@@ -327,7 +321,11 @@ class SymmetrizerSAWF(SavableNPZ):
         return self
 
     def as_dict(self):
-        dic = super().as_dict()
+        dic = {k: self.__getattribute__(k) for k in self.__class__.npz_tags}
+        for k in self.__class__.npz_tags_optional:
+            if hasattr(self, k):
+                dic[k] = self.__getattribute__(k)
+
         for ik in range(self.NKirr):
             dic[f'd_band_block_indices_{ik}'] = self.d_band_block_indices[ik]
             for i in range(len(self.d_band_block_indices[ik])):
@@ -344,9 +342,20 @@ class SymmetrizerSAWF(SavableNPZ):
                     dic[f'{attrname}_{i}'] = t
         return dic
 
+    def from_dict(self, dic=None, return_obj=True, **kwargs):
+        dic_loc = {}
+        cls = self.__class__
+        for k in self.__class__.npz_tags:
+            dic_loc[k] = dic[k]
 
-    def from_dict(self, dic):
-        super().from_dict(dic)
+        for k in cls.npz_tags_optional:
+            if k in dic:
+                dic_loc[k] = dic[k]
+
+
+        for k, v in dic_loc.items():
+            self.__setattr__(k, v)
+
         self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -545,9 +554,15 @@ class SymmetrizerSAWF(SavableNPZ):
         -------
         float
             the maximum error
+
+        Note:
+        -----
+        Works only when ALL k-points are included in the amn.
         """
-        if not isinstance(amn, np.ndarray):
+        if isinstance(amn, AMN):
             amn = amn.data
+        if isinstance(amn, dict):
+            amn = np.array([amn[ik] for ik in range(self.NK)])
         maxerr = 0
         assert amn.shape == (self.NK, self.NB, self.num_wann), f"amn.shape = {amn.shape} != (NK={self.NK}, NB={self.NB}, num_wann={self.num_wann}) "
         if ignore_lower_bands is not None:
@@ -630,6 +645,16 @@ class SymmetrizerSAWF(SavableNPZ):
         shape = (self.NK, self.NB, self.num_wann)
         amn = np.random.random(shape) + 1j * np.random.random(shape)
         return self.symmetrize_amn(amn)
+
+    def to_npz(self, f_npz):
+        dic = self.as_dict()
+        print(f"saving to {f_npz} : ")
+        np.savez_compressed(f_npz, **dic)
+        return self
+
+    def from_npz(self, f_npz):
+        dic = np.load(f_npz)
+        return self.from_dict(dic)
 
 
     #
