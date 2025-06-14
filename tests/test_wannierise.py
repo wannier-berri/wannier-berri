@@ -235,57 +235,51 @@ def test_create_w90files_Fe():
     w90data = wberri.w90files.Wannier90data(
     ).from_bandstructure(bandstructure,
                          files=["mmn", "eig", "amn", "unk", "spn"],
-                         write_npz_list=["amn", "mmn", "eig", "chk", "unk", "spn"],
+                         write_npz_list=[],
+                         read_npz_list=[],
                          seedname=os.path.join(path_tmp, "Fe"),
                          projections=proj_set,
                          normalize=False,
                          unk_grid=(18,) * 3,
                 )
     eig = w90data.get_file("eig")
-    eig_ref = EIG().from_npz(os.path.join(path_data, "Fe.eig.npz"))
-    assert np.allclose(eig.data, eig_ref.data, atol=1e-6), f"eig data differs by {np.max(np.abs(w90data.eig.data - eig_ref.data))} > 1e-6"
+    eig_ref = EIG.from_npz(os.path.join(path_data, "tmp/Fe.eig.npz"))
+    eql, msg = eig.equals(eig_ref, tolerance=1e-6)
+    assert eql, f"EIG files differ: {msg}"
 
     mmn_new = w90data.get_file("mmn")
-    mmn_ref = wberri.w90files.MMN().from_npz(os.path.join(path_data, "Fe.mmn.npz"))
-    bk_latt_new = np.array(mmn_new.bk_latt)
-    bk_latt_ref = np.array(mmn_ref.bk_latt)
-    bk_latt_new_list = [tuple(bk) for bk in bk_latt_new]
-    bk_new_order = [bk_latt_new_list.index(tuple(bk)) for bk in bk_latt_ref]
-    print(f"bk_new_order = {bk_new_order}")
-    assert np.all(bk_latt_new[bk_new_order] == bk_latt_ref), f"bk_latt differs after reordering: {bk_latt_new[bk_new_order]} != {bk_latt_ref}"
-    assert np.all(mmn_new.neighbours[:, bk_new_order] == mmn_ref.neighbours), f"neighbors differ after reordering: {mmn_new.neighbors[:, bk_new_order]} != {mmn_ref.neighbors}"
-    assert np.all(mmn_new.G[:, bk_new_order] == mmn_ref.G), f"G vectors differ after reordering: {mmn_new.G[:, bk_new_order]} != {mmn_ref.G}"
+    mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, "tmp/Fe.mmn.npz"))
+    mmn_ref.reorder_bk(bk_latt_new=mmn_new.bk_latt)
+    eql, msg = mmn_new.equals(mmn_ref, tolerance=3e-5, check_reorder=False)
+    assert eql, f"MMN files differ: {msg}"
 
-    mmn_data_new = mmn_new.data[:, bk_new_order]
-    assert np.allclose(mmn_data_new, mmn_ref.data, atol=3e-5), f"mmn data differs by {np.max(np.abs(mmn_new.data[:, bk_new_order] - mmn_ref.data))} > 3e-5"
-    print(f"mmn's differ by more than 1e-5 at some points : {np.where(np.abs(mmn_data_new - mmn_ref.data) > 1e-5)}")
-    # TODO - check if accuracy of agreement may be improved
-
-    # This actually compares with a wannierberri calculation, while other files are compared directly to pw2wannier
-    # this is because the definition of radial function in pw2wannier is different from the one in wannierberri, so the amn file is not exactly the same
     amn = w90data.get_file("amn")
-    amn_ref = wberri.w90files.AMN().from_npz(os.path.join(path_data, "Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
-    assert np.allclose(amn.data, amn_ref.data, atol=1e-6), f"amn data differs by {np.max(np.abs(w90data.amn.data - amn_ref.data))} > 1e-6"
+    amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "tmp/Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
+    eql, msg = amn.equals(amn_ref, tolerance=1e-6)
+    assert eql, f"AMN files differ: {msg}"
 
     spn = w90data.get_file("spn")
-    spn_ref = wberri.w90files.SPN().from_npz(os.path.join(path_data, "Fe.spn.npz"))
-    assert np.allclose(spn.data, spn_ref.data, atol=1e-6), f"spn data differs by {np.max(np.abs(w90data.spn.data - spn_ref.data))} > 1e-6"
+    spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_data, "tmp/Fe.spn.npz"))
+    eql, msg = spn.equals(spn_ref, tolerance=1e-6)
+    assert eql, f"SPN files differ: {msg}"
 
     unk_new = w90data.get_file("unk")
-    unk_ref = wberri.w90files.unk.UNK().from_npz(os.path.join(path_data, "Fe-kp03-red18.unk.npz"))
-    print(f"unk_new.data  has {len(unk_new.data)} k-points, unk_ref.data has {len(unk_ref.data)} k-points")
+    unk_new.select_kpoints((0, 3))  # select only k=0 and k=3
+    unk_ref = wberri.w90files.unk.UNK.from_npz(os.path.join(path_data, "tmp/Fe-kp03-red18.unk.npz"))
+    eql, msg = unk_new.equals(unk_ref, tolerance=1e-6)
+    assert eql, f"UNK files differ: {msg}"
 
-    factor = 18**(-3 / 2)
-    for ik in (0, 3):
-        data_new = unk_new.data[ik] * factor
-        data_ref = unk_ref.data[ik] * factor
-        for ib, (b1, b2) in enumerate(zip(data_new, data_ref)):
-            print(f"norm of unk_new.data[ik={ik}][{ib}] = {np.linalg.norm(b1)}")
-            print(f"norm of unk_ref.data[ik={ik}][{ib}] = {np.linalg.norm(b2)}")
-        assert data_new is not None, f"unk_new.data[ik={ik}] is None, but should not be"
-        assert data_ref is not None, f"unk_ref.data[ik={ik}] is None, but should not be"
-        assert np.allclose(data_new, data_ref, atol=1e-6), f"unk data differs by {np.max(np.abs(data_new - data_ref))} > 1e-6 at ik={ik}"
-    
+    # factor = 18**(-3 / 2)
+    # for ik in (0, 3):
+    #     data_new = unk_new.data[ik] * factor
+    #     data_ref = unk_ref.data[ik] * factor
+    #     for ib, (b1, b2) in enumerate(zip(data_new, data_ref)):
+    #         print(f"norm of unk_new.data[ik={ik}][{ib}] = {np.linalg.norm(b1)}")
+    #         print(f"norm of unk_ref.data[ik={ik}][{ib}] = {np.linalg.norm(b2)}")
+    #     assert data_new is not None, f"unk_new.data[ik={ik}] is None, but should not be"
+    #     assert data_ref is not None, f"unk_ref.data[ik={ik}] is None, but should not be"
+    #     assert np.allclose(data_new, data_ref, atol=1e-6), f"unk data differs by {np.max(np.abs(data_new - data_ref))} > 1e-6 at ik={ik}"
+
 
 
 @pytest.mark.parametrize("include_TR", [True, False])

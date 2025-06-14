@@ -5,7 +5,7 @@ from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
-from .w90file import W90_file
+from .w90file import W90_file, check_shape
 
 
 class AMN(W90_file):
@@ -36,37 +36,19 @@ class AMN(W90_file):
         the data projections
     """
 
-    @property
-    def NB(self):
-        return self.data.shape[1]
+    extension = "amn"
 
-    def select_bands(self, selected_bands):
-        """
-        Select the bands to be used in the calculation, the rest are excluded
-
-        Parameters
-        ----------
-        selected_bands : list of int or bool
-            the indices of the bands to be used, or a boolean mask
-        """
-        # print(f"selecting bands {selected_bands} in amn")
-        if selected_bands is not None:
-            self.data = self.data[:, selected_bands, :]
-
-    @property
-    def NW(self):
-        return self.data.shape[2]
+    def __init__(self, data, NK=None):
+        super().__init__(data=data, NK=NK)
+        self.NB, self.NW = check_shape(self.data)
 
     @property
     def num_wann(self):
         return self.NW
 
-    def __init__(self, seedname="wannier90", npar=multiprocessing.cpu_count(),
-                 **kwargs):
-        self.npz_tags = ["data"]
-        super().__init__(seedname=seedname, ext="amn", npar=npar, **kwargs)
 
-    def from_w90_file(self, seedname, npar=None):
+    @classmethod
+    def from_w90_file(cls, seedname, npar=None):
         if npar is None:
             npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
@@ -76,8 +58,8 @@ class AMN(W90_file):
         block = NW * NB
         allmmn = (f_amn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
-        self.data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
-        return self
+        data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
+        return AMN(data=data)
 
     def to_w90_file(self, seedname):
         f_amn_out = open(seedname + ".amn", "w")
@@ -152,8 +134,8 @@ class AMN(W90_file):
         self.data = np.array(data)
         return self
 
-
-    def from_bandstructure(self, bandstructure, projections: ProjectionsSet,
+    @classmethod
+    def from_bandstructure(cls, bandstructure, projections: ProjectionsSet,
                            normalize=True, verbose=False):
         """
         Create an AMN object from a BandStructure object
@@ -214,8 +196,15 @@ class AMN(W90_file):
                 data.append(np.array(datak).T)
             else:
                 data.append(wf @ proj_gk.T)
-        self.data = np.array(data)
-        return self
+        return AMN(data=data)
+
+    def equals(self, other, tolerance=1e-8):
+        iseq, message = super().equals(other, tolerance)
+        if not iseq:
+            return iseq, message
+        if self.NW != other.NW:
+            return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
+        return True, ""
 
 
 
@@ -238,7 +227,7 @@ def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, ret
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    amn = AMN().from_bandstructure_s_delta(bandstructure, positions, normalize=normalize)
+    amn = AMN.from_bandstructure_s_delta(bandstructure, positions, normalize=normalize)
     if return_object:
         return amn
     else:
@@ -250,7 +239,7 @@ def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
     """
     Create an AMN object from a BandStructure object
     this function is kept for backward compatibility,
-    use `AMN().from_bandstructure()` instead
+    use `AMN.from_bandstructure()` instead
 
     Parameters
     ----------
@@ -263,7 +252,7 @@ def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
     return_object : bool
         if True, return an AMN object, otherwise return the data as a numpy array
     """
-    amn = AMN().from_bandstructure(bandstructure, projections, normalize=normalize, verbose=verbose)
+    amn = AMN.from_bandstructure(bandstructure, projections, normalize=normalize, verbose=verbose)
     if return_object:
         return amn
     else:

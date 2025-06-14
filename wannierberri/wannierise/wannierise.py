@@ -113,7 +113,7 @@ def wannierise(w90data,
         symmetrizer = VoidSymmetrizer(NK=NK)
         include_k = np.ones(NK, dtype=bool)
 
-    frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
+    frozen = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 
@@ -136,8 +136,8 @@ def wannierise(w90data,
         raise ValueError("init should be 'amn' or 'random'")
 
     neighbours_all = w90data.mmn.neighbours
-    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
-                                       for neigh in w90data.mmn.neighbours[kptirr]])
+    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ikb] for ikb in w90data.mmn.neighbours[ik]]
+                                       for ik in kptirr])
 
     # wk = w90data.mmn.wk_unique
     bk_cart = w90data.mmn.bk_cart

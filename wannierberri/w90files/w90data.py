@@ -97,7 +97,8 @@ class Wannier90data:
     def from_bandstructure(self, bandstructure,
                           seedname="wannier90",
                           files=("mmn", "eig", "amn", "symmetrizer"),
-                          write_npz_list=(),
+                          read_npz_list=None,
+                          write_npz_list=None,
                           projections=None,
                           unk_grid=None,
                           normalize=True):
@@ -107,7 +108,7 @@ class Wannier90data:
         Parameters
         ----------
         bandstructure : `irrep.bandstructure.BandStructure`
-            the bandstructure object containing the kpoints, lattice, and number of bands
+            the bandstructure object contself.data = np.array(data)aining the kpoints, lattice, and number of bands
         seedname : str
             the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc) to save the npz files (if write_npz_list is not empty)
         files : tuple(str)
@@ -129,8 +130,11 @@ class Wannier90data:
         """
         if "amn" in files or "symmetrizer" in files:
             assert projections is not None, "projections should be provided if amn or symmetrizer are requested"
-        self.read_npz = False
-        self.write_npz_list = set([s.lower() for s in write_npz_list])
+        if read_npz_list is None:
+            read_npz_list = files
+        if write_npz_list is None:
+            write_npz_list = files
+        write_npz_list = set([s.lower() for s in write_npz_list])
         self.seedname = copy(seedname)
         kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
         mp_grid = grid_from_kpoints(kpt_latt)
@@ -141,31 +145,40 @@ class Wannier90data:
                       mp_grid=mp_grid,)
         self.set_file('chk', chk)
         if "eig" in files:
-            eig = EIG().from_bandstructure(bandstructure)
+            eig = EIG.autoread(seedname=seedname, read_npz=("eig" in read_npz_list),
+                               read_w90=False,
+                               write_npz="eig" in write_npz_list,
+                               bandstructure=bandstructure)
             self.set_file('eig', eig)
-            if "eig" in self.write_npz_list:
-                eig.to_npz(seedname + ".eig.npz")
         if "amn" in files:
-            amn = AMN().from_bandstructure(bandstructure, projections, normalize=normalize)
+            amn = AMN.autoread(seedname=seedname, read_npz=("amn" in read_npz_list),
+                               read_w90=False,
+                               write_npz="amn" in write_npz_list,
+                               bandstructure=bandstructure,
+                               kwargs_bandstructure={"normalize": normalize, "projections": projections})
             self.set_file('amn', amn)
-            if "amn" in self.write_npz_list:
-                amn.to_npz(seedname + ".amn.npz")
         if "mmn" in files:
-            mmn = MMN().from_bandstructure(bandstructure, normalize=normalize)
-            if "mmn" in self.write_npz_list:
-                mmn.to_npz(seedname + ".mmn.npz")
+            mmn = MMN.autoread(seedname=seedname, read_npz=("mmn" in read_npz_list),
+                               read_w90=False,
+                               write_npz="mmn" in write_npz_list,
+                               bandstructure=bandstructure,
+                               kwargs_bandstructure={"normalize": normalize})
             self.set_file('mmn', mmn)
         if "spn" in files:
-            spn = SPN().from_bandstructure(bandstructure, normalize=normalize)
+            spn = SPN.autoread(seedname=seedname, read_npz=("spn" in read_npz_list),
+                               read_w90=False,
+                               write_npz="spn" in write_npz_list,
+                               bandstructure=bandstructure,
+                               kwargs_bandstructure={"normalize": normalize})
             self.set_file('spn', spn)
-            if "spn" in self.write_npz_list:
-                spn.to_npz(seedname + ".spn.npz")
         # TODO : use a cutoff ~100eV for symmetrizer
         if "unk" in files:
-            unk = UNK().from_bandstructure(bandstructure, grid_size=unk_grid, normalize=normalize)
+            unk = UNK.autoread(seedname=seedname, read_npz=("unk" in read_npz_list),
+                               read_w90=False,
+                               write_npz="unk" in write_npz_list,
+                               bandstructure=bandstructure,
+                               kwargs_bandstructure={"normalize": normalize, "grid_size": unk_grid})
             self.set_file('unk', unk)
-            if "unk" in self.write_npz_list:
-                unk.to_npz(seedname + ".unk.npz")
         if "symmetrizer" in files:
             symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
             symmetrizer.set_D_wann_from_projections(projections)
@@ -198,7 +211,8 @@ class Wannier90data:
         _read_files_loc = [f.lower() for f in readfiles]
         assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
         if 'win' in _read_files_loc:
-            self.set_file('win')
+            win = WIN(seedname=seedname, autoread=True)
+            self.set_file('win', win)
             _read_files_loc.remove('win')
         if 'chk' in _read_files_loc:
             self.set_chk(read=True)
@@ -206,7 +220,7 @@ class Wannier90data:
         else:
             self.set_chk(read=False)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn', kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice))
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             self.set_file(f)
@@ -257,6 +271,8 @@ class Wannier90data:
         self.symmetrizer = symmetrizer
 
     def set_file(self, key, val=None, overwrite=False, allow_selected_bands=False,
+                 read_npz=True,
+                 kwargs_w90={},
                  **kwargs):
         """
         Set the file with the key `key` to the value `val`
@@ -290,14 +306,15 @@ class Wannier90data:
         if val is None:
             if key not in FILES_CLASSES:
                 raise ValueError(f"key '{key}' is not a valid w90 file")
-            kwargs_auto = self.auto_kwargs_files(key)
-            kwargs_auto.update(kwargs)
+            # kwargs_auto = self.auto_kwargs_files(key)
+            # kwargs_auto.update(kwargs)
+            kwargs_w90 = copy(kwargs_w90)
             if key in ['uhu', 'uiu', 'shu', 'siu']:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
-                kwargs_auto['bk_reorder'] = self.get_file('mmn').bk_reorder
+                kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
 
-            val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
+            val = FILES_CLASSES[key].autoread(self.seedname, read_npz=read_npz, kwargs_w90=kwargs_w90)
         self.check_conform(key, val)
         if key == 'amn' and self.has_file('chk'):
             self.get_file('chk').num_wann = val.NW
@@ -352,31 +369,31 @@ class Wannier90data:
         for key in files:
             self.get_file(key).to_w90_file(seedname)
 
-    def auto_kwargs_files(self, key):
-        """
-        Returns the default keyword arguments for the file with the key `key`
+    # def auto_kwargs_files(self, key):
+    #     """
+    #     Returns the default keyword arguments for the file with the key `key`
 
-        Parameters
-        ----------
-        key : str
-            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+    #     Parameters
+    #     ----------
+    #     key : str
+    #         the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
 
-        Returns
-        -------
-        dict(str, Any)
-            the keyword arguments for the file
-        """
-        kwargs = {}
-        if key in ["uhu", "uiu", "shu", "siu"]:
-            kwargs["formatted"] = key in self.formatted_list
-        if key not in ["chk", "win", "unk"]:
-            kwargs["read_npz"] = self.read_npz
-            kwargs["write_npz"] = key in self.write_npz_list
-        if key == "chk":
-            kwargs["bk_complete_tol"] = 1e-5
-            kwargs["kmesh_tol"] = 1e-7
-        print(f"kwargs for {key} are {kwargs}")
-        return kwargs
+    #     Returns
+    #     -------
+    #     dict(str, Any)
+    #         the keyword arguments for the file
+    #     """
+    #     kwargs = {}
+    #     if key in ["uhu", "uiu", "shu", "siu"]:
+    #         kwargs["formatted"] = key in self.formatted_list
+    #     if key not in ["chk", "win", "unk"]:
+    #         kwargs["read_npz"] = self.read_npz
+    #         kwargs["write_npz"] = key in self.write_npz_list
+    #     if key == "chk":
+    #         kwargs["bk_complete_tol"] = 1e-5
+    #         kwargs["kmesh_tol"] = 1e-7
+    #     print(f"kwargs for {key} are {kwargs}")
+    #     return kwargs
 
 
     def get_file(self, key):
@@ -592,7 +609,7 @@ class Wannier90data:
                 selected_bands_bool[:band_start] = False
             if win_min > -np.inf or win_max < np.inf:
                 assert self.has_file('eig'), "eig file is not set - needed to apply window"
-                select_energy = (self.eig.data < win_max) * (self.eig.data > win_min)
+                select_energy = [(E < win_max) * (E > win_min) for E in self.eig.data.values()]
                 select_energy = np.any(select_energy, axis=0)
                 selected_bands_bool = selected_bands_bool * select_energy
             selected_bands = np.where(selected_bands_bool)[0]
@@ -620,7 +637,7 @@ class Wannier90data:
             if key != 'win' and key != 'chk':
                 print(f"key = {key} ,number of bands = {val.NB}")
                 if hasattr(val, 'data') and key != 'unk':
-                    print(f"key = {key} ,shape of data= {val.data.shape}")
+                    print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
@@ -729,9 +746,9 @@ class Wannier90data:
         sc_origin = sc_min_vec @ real_lattice
         sc_basis = sc_size_vec[:, None] * real_lattice
 
-        for ik, U in enumerate(self.unk.data):
-            if U is None:
-                raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
+        for ik in range(self.chk.num_kpts):
+            assert ik in self.unk.data, "plotWF from irreducible kpoints is not implemented yet"
+            U = self.unk.data[ik].copy()
             U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
             U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
             k_int = kpoints_int[ik]

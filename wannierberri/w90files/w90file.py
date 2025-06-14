@@ -1,5 +1,7 @@
 import abc
 import os
+
+import numpy as np
 from ..io import SavableNPZ
 
 
@@ -9,22 +11,9 @@ class W90_file(SavableNPZ):
 
     Parameters
     ----------
-    seedname : str
-        the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)
-    ext : str
-        the extension of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
-    tags : list(str)
-        the tags to be saved in the npz file
-    read_npz : bool
-        if True, try to read the files converted to npz (e.g. wanier90.mmn.npz instead of wannier90.mmn)
-    write_npz : bool
-        if True, write the files to npz
-    kwargs : dict
-        the keyword arguments to be passed to the constructor of the file
-        see :class:`~wannierberri.w90files.MMN`, :class:`~wannierberri.w90files.EIG`, :class:`~wannierberri.w90files.AMN`, 
-        :class:`~wannierberri.w90files.UIU`, :class:`~wannierberri.w90files.UHU`, :class:`~wannierberri.w90files.SIU`, 
-        :class:`~wannierberri.w90files.SHU`, :class:`~wannierberri.w90files.SPN`, :class:`~wannierberri.w90files.WIN`
-        for more details
+    data : dict
+        the data of the file
+
 
     Attributes
     ----------
@@ -32,42 +21,77 @@ class W90_file(SavableNPZ):
         the tags to be saved/loaded in the npz file
     """
 
-    def __init__(self, autoread=False, **kwargs):
-        if not hasattr(self, "npz_tags"):
-            self.npz_tags = ["data"]
-        super().__init__()
-        if autoread:
-            self.init_auto(**kwargs)
-
-    def init_auto(self, seedname="wannier90", ext="", read_npz=True, write_npz=True, data=None, selected_bands=None, **kwargs):
-        if not hasattr(self, "npz_tags"):
-            self.npz_tags = ["data"]
-        if data is not None:
-            self.data = data
-            return
-        f_npz = f"{seedname}.{ext}.npz"
-        print(f"calling w90 file with {seedname}, {ext}, tags={self.npz_tags}, read_npz={read_npz}, write_npz={write_npz}, kwargs={kwargs}")
-        if os.path.exists(f_npz) and read_npz:
-            self.from_npz(f_npz)
-        else:
-            self.from_w90_file(seedname, **kwargs)
-            if write_npz:
-                self.to_npz(f_npz)
-        # window is applied after, so that npz contains same data as original file
-        self.select_bands(selected_bands)
-
-
+    npz_keys_dict_int = ["data"]
+    npz_tags = ["NK"]
 
     @abc.abstractmethod
-    def from_w90_file(self, **kwargs):
+    def __init__(self, data: dict | list, NK=None):
+        if isinstance(data, list) or isinstance(data, np.ndarray):
+            NK = len(data)
+            data = {i: d for i, d in enumerate(data) if d is not None}
+        assert isinstance(data, dict), "data must be a dictionary or a list of numpy arrays"
+        assert NK is not None, "NK must be provided if data is a dictionary"
+        self.data = data
+        print(f"setting NK = {NK}")
+        self.NK = NK
+
+
+
+    @classmethod
+    def autoread(cls, seedname="wannier90", ext=None,
+                 read_npz=True,
+                 read_w90=True,
+                 bandstructure=None,
+                 write_npz=True,
+                 selected_bands=None,
+                 kwargs_w90=None,
+                 kwargs_bandstructure=None):
+        """First try to read  npz file, then read the w90 file if npz does not exist, 
+        otherwise generate from bandstructure if provided.
+        """
+        ext = cls.extension if ext is None else ext
+        f_npz = f"{seedname}.{ext}.npz"
+        if os.path.exists(f_npz) and read_npz:
+            obj = cls.from_npz(f_npz)
+            write_npz = False  # do not write npz again if it was read
+        elif read_w90:
+            try:
+                obj = cls.from_w90_file(seedname, **kwargs_w90)
+            except FileNotFoundError:
+                pass
+        elif bandstructure is not None:
+            if kwargs_bandstructure is None:
+                kwargs_bandstructure = {}
+            obj = cls.from_bandstructure(bandstructure, **kwargs_bandstructure)
+        else:
+            raise FileNotFoundError(f"Cannot find {f_npz} or {seedname}.{ext} and no bandstructure provided")
+        if write_npz:
+            obj.to_npz(f_npz)
+        # window is applied after, so that npz contains same data as original file
+        obj.select_bands(selected_bands)
+        return obj
+
+
+    @classmethod
+    def from_w90_file(cls, **kwargs):
         """
         abstract method to read the necessary data from Wannier90 file
         """
-        self.data = None
-        return self
+        raise NotImplementedError("{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
 
-    @abc.abstractmethod
-    def select_bands(self, selected_bands):
+    @classmethod
+    def from_bandstructure(cls, bandstructure, **kwargs):
+        """
+        abstract method to create the data from a band structure object
+
+        Parameters
+        ----------
+        bandstructure : irrep.bandstructure.BandStructure
+            the band structure object
+        """
+        raise NotImplementedError("{cls.__name__}.from_bandstructure method is not implemented ")
+
+    def select_bands(self, selected_bands, dimensions=(0,)):
         """
         abstract method to select the bands from the data
 
@@ -78,26 +102,128 @@ class W90_file(SavableNPZ):
         selected_bands : list of int
             the list of bands to be used in the calculation
         """
-        pass
+        if selected_bands is not None:
+            for ik in self.data.keys():
+                data = self.data[ik]
+                for d in dimensions:
+                    data = data.swapaxes(d, 0)
+                    data = data[selected_bands]
+                    data = data.swapaxes(0, d)
+                self.data[ik] = data
+            self.NB = len(selected_bands)
+        return self
 
-    @property
-    def n_neighb(self):
+
+
+    def equals(self, other, tolerance=1e-8):
         """
-        number of nearest neighbours (in the k grid) indices 
+        Compare two W90_file objects for equality.
+
+        Parameters
+        ----------
+        other : W90_file
+            The other W90_file object to compare with.
+        tolerance : float, optional
+            The tolerance for comparing floating point numbers
+
+        Returns
+        -------
+        bool
+            True if the two objects are equal, False otherwise.
+        str
+            An error message if the objects are not equal, otherwise an empty string.
+
         """
-        return 0
+        if self.NK != other.NK:
+            return False, f"the number of k-points is not equal: {self.NK} and {other.NK} correspondingly"
+        if self.NB != other.NB:
+            return False, f"the number of bands is not equal: {self.NB} and {other.NB} correspondingly"
+        ik1 = set(self.data.keys())
+        ik2 = set(other.data.keys())
+        if ik1 != ik2:
+            return False, f"the sets of selected k_points are not equal. {ik1} and {ik2} correspondingly"
+        for i in ik1:
+            if not np.allclose(self.data[i], other.data[i], atol=tolerance):
+                return False, f"the data at k-point {i} are not equal, the error is {np.max(np.abs(self.data[i] - other.data[i]))}"
+        return True, ""
 
-    @property
-    def NK(self):
-        return self.data.shape[0]
+    def select_kpoints(self, selected_kpoints, tag=None):
+        """
+        Select the k-points from the data. (modify the data in place)
 
-    @property
-    def NB(self):
-        return self.data.shape[1 + self.n_neighb]
-
-    @property
-    def NNB(self):
-        if self.n_neighb > 0:
-            return self.data.shape[1]
+        Parameters
+        ----------
+        selected_kpoints : list of int
+            the list of k-points to be used in the calculation
+        tag : str, optional
+            the tag of the data to be selected, if None, all data is selected.
+            The tags are defined in the npz_keys_dict_int class variable.
+            If tag is None, all data is selected.
+        Raises
+        ------
+        AssertionError
+            If a selected k-point is not in the data or if the tag is not in the data.
+        Returns
+        -------
+        self : W90_file
+            The modified W90_file object with only the selected k-points.
+        """
+        if tag is None:
+            for t in self.__class__.npz_keys_dict_int:
+                self.select_kpoints(selected_kpoints, t)
         else:
-            return None
+            dict = getattr(self, tag)
+            keys_to_remove = [k for k in dict if k not in selected_kpoints]
+            for k in keys_to_remove:
+                del dict[k]
+            for k in selected_kpoints:
+                assert k in dict, f"selected k-point {k} is not in the data {tag}"
+            return self
+
+    @property
+    def num_bands(self):
+        return self.NB
+
+    @property
+    def num_wann(self):
+        return self.NW
+
+    @property
+    def nspinor(self):
+        return 2 if self.spinor else 1
+
+
+
+
+def check_shape(data, shape=None):
+    """
+    Check if the data has the expected shape.
+
+    Parameters
+    ----------
+    data : dict
+        The data to check. a dictionary with keys as integers and values as np.arrays (should be the same shape)
+    shape : tuple of int, optional
+        The expected shape of the data. If None, taken from the first non-None element of data.
+
+    Raises
+    ------
+    ValueError
+        If the data does not have the expected shape or if all elements are None.
+
+    Returns
+    -------
+    tuple of int
+        The shape of the data if it is not None, otherwise None.
+    """
+    if data is None or len(data) == 0:
+        raise ValueError("Data is None or empty")
+    for i in sorted(data):
+        d = data[i]
+        if shape is None:
+            shape = d.shape
+        elif d.shape != shape:
+            raise ValueError(f"Data has unexpected shape {d.shape}, expected {shape}")
+    if shape is None:
+        raise ValueError("all elements of data are None, cannot determine shape")
+    return shape
