@@ -1,7 +1,6 @@
 """Test reading formatted Wannier90 files."""
 
 import os
-import numpy as np
 import pytest
 
 import wannierberri as wberri
@@ -61,15 +60,16 @@ def generate_formatted_files(create_files_GaAs_W90):
 
 def test_formatted_uXu(generate_formatted_files):
     data_dir = generate_formatted_files
-    uHu_unformatted = UHU.from_w90_file(os.path.join(data_dir, "GaAs") )
-    uHu_formatted = UHU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True )
+    uHu_unformatted = UHU.from_w90_file(os.path.join(data_dir, "GaAs"))
+    uHu_formatted = UHU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
     eql, msg = uHu_unformatted.equals(uHu_formatted)
     assert eql, msg
 
     uIu_unformatted = UIU.from_w90_file(os.path.join(data_dir, "GaAs"))
     uIu_formatted = UIU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
-    eql, msg =  uIu_unformatted.equals(uIu_formatted)
+    eql, msg = uIu_unformatted.equals(uIu_formatted)
     assert eql, msg
+
 
 def test_formatted_spn(generate_formatted_files):
     data_dir = generate_formatted_files
@@ -78,13 +78,14 @@ def test_formatted_spn(generate_formatted_files):
     eql, msg = spn_unformatted.equals(spn_formatted)
     assert eql, msg
 
+
 def test_formatted_sXu(generate_formatted_files):
     data_dir = generate_formatted_files
     sHu_unformatted = SHU.from_w90_file(os.path.join(data_dir, "GaAs"))
     sHu_formatted = SHU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
     eql, msg = sHu_unformatted.equals(sHu_formatted)
     assert eql, msg
-    
+
     sIu_unformatted = SIU.from_w90_file(os.path.join(data_dir, "GaAs"))
     sIu_formatted = SIU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
     eql, msg = sIu_unformatted.equals(sIu_formatted)

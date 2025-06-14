@@ -41,12 +41,12 @@ class AMN(W90_file):
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
-    
+
     @property
     def num_wann(self):
         return self.NW
 
-    
+
     @classmethod
     def from_w90_file(cls, seedname, npar=None):
         if npar is None:
@@ -197,7 +197,7 @@ class AMN(W90_file):
             else:
                 data.append(wf @ proj_gk.T)
         return AMN(data=data)
-    
+
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)
         if not iseq:

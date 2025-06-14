@@ -34,22 +34,22 @@ class UNK(W90_file):
     """
 
     extension = 'unk'
-    
+
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
         shape = check_shape(self.data)
-        self.NB, self.grid_size , nspinor = shape[0], shape[1:4], shape[4] 
+        self.NB, self.grid_size, nspinor = shape[0], shape[1:4], shape[4]
         self.spinor = (nspinor == 2)
 
 
     @classmethod
-    def from_w90_file(cls, seedname=None, 
+    def from_w90_file(cls, seedname=None,
                       path=None,
                       NK=None, NKmax=10000, spinor=False,
                       spin_channel=1,
                       reduce_grid=(1, 1, 1),
                       selected_kpoints=None):
-        
+
         assert (path is None) != (seedname is None), "either path or seedname should be provided, and not both"
         if path is None:
             path = os.path.dirname(seedname)
@@ -98,7 +98,7 @@ class UNK(W90_file):
         return UNK(data=data, NK=NK)
 
     @classmethod
-    def from_bandstructure(cls,bandstructure,
+    def from_bandstructure(cls, bandstructure,
                            grid_size=None,
                            normalize=False,
                            selected_kpoints=None):
@@ -106,7 +106,7 @@ class UNK(W90_file):
         Initialize UNK from a bandstructure object.
         This is useful for reading UNK files from a bandstructure calculation.
         """
-        NK = len(bandstructure.kpoints)
+        # NK = len(bandstructure.kpoints)
         NB = bandstructure.num_bands
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
@@ -146,4 +146,3 @@ class UNK(W90_file):
                 print(f"skipping k-point {ik} not in selected_kpoints {selected_kpoints}")
                 data.append(None)
         return UNK(data=data)
-    

@@ -10,7 +10,7 @@ class SPN(W90_file):
     """
 
     extension = "spn"
-    
+
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
         shape = check_shape(self.data)

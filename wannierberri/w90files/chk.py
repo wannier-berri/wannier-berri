@@ -310,7 +310,7 @@ class CheckPoint:
                 # Matrix < u_k | u_k+b > (mmn)
                 data = mmn.data[ik][ib]                   # Hamiltonian gauge
                 if eig is not None:
-                    data = data * eig.data[ik][ :, None]  # Hamiltonian gauge (add energies)
+                    data = data * eig.data[ik][:, None]  # Hamiltonian gauge (add energies)
                 AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
                 # Matrix for finite-difference schemes
                 AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :]
@@ -426,7 +426,7 @@ class CheckPoint:
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik][ib1]
                 for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik][ ib2]
+                    iknb2 = mmn.neighbours[ik][ib2]
                     # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
                     data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
                     CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
@@ -484,7 +484,7 @@ class CheckPoint:
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik in range(self.num_kpts):
-            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][ :, :, :] * eig.data[ik][ None, :, None], ik, ik)
+            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik)
         return SH_q
 
     def get_SHA_q(self, shu, mmn, phase=None, sum_b=False):
@@ -498,8 +498,8 @@ class CheckPoint:
         assert shu.NNB == mmn.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={mmn.NNB} - mismatch"
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik][ ib]
-                SHAW = self.wannier_gauge(shu.data[ik][ ib], ik, iknb)
+                iknb = mmn.neighbours[ik][ib]
+                SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
                 SHA_q_ik_ib = 1.j * SHAW[:, :, None, :] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None]
 
                 if phase is not None:
@@ -521,13 +521,13 @@ class CheckPoint:
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (mmn.NK, mmn.NB) == (self.num_kpts, self.num_bands), f"mmn file has NK={mmn.NK}, NB={mmn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik in range(self.num_kpts):
-            SH = spn.data[ik][ :, :, :]
+            SH = spn.data[ik][:, :, :]
             if eig is not None:
-                SH = SH * eig.data[ik][ None, :, None]
+                SH = SH * eig.data[ik][None, :, None]
             SHW = self.wannier_gauge(SH, ik, ik)
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik][ ib]
-                SHM = np.tensordot(SH, mmn.data[ik][ ib], axes=((1,), (0,))).swapaxes(-1, -2)
+                iknb = mmn.neighbours[ik][ib]
+                SHM = np.tensordot(SH, mmn.data[ik][ib], axes=((1,), (0,))).swapaxes(-1, -2)
                 SHRW = self.wannier_gauge(SHM, ik, iknb)
                 if phase is not None:
                     SHRW = SHRW * phase[:, :, ib, None]

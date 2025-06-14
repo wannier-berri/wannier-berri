@@ -145,38 +145,38 @@ class Wannier90data:
                       mp_grid=mp_grid,)
         self.set_file('chk', chk)
         if "eig" in files:
-            eig = EIG.autoread(seedname=seedname, read_npz=("eig" in read_npz_list), 
+            eig = EIG.autoread(seedname=seedname, read_npz=("eig" in read_npz_list),
                                read_w90=False,
-                               write_npz = "eig" in write_npz_list,
+                               write_npz="eig" in write_npz_list,
                                bandstructure=bandstructure)
             self.set_file('eig', eig)
         if "amn" in files:
-            amn = AMN.autoread(seedname=seedname, read_npz=("amn" in read_npz_list), 
+            amn = AMN.autoread(seedname=seedname, read_npz=("amn" in read_npz_list),
                                read_w90=False,
-                               write_npz = "amn" in write_npz_list,
-                               bandstructure=bandstructure, 
+                               write_npz="amn" in write_npz_list,
+                               bandstructure=bandstructure,
                                kwargs_bandstructure={"normalize": normalize, "projections": projections})
             self.set_file('amn', amn)
         if "mmn" in files:
-            mmn = MMN.autoread(seedname=seedname, read_npz=("mmn" in read_npz_list), 
+            mmn = MMN.autoread(seedname=seedname, read_npz=("mmn" in read_npz_list),
                                read_w90=False,
-                               write_npz = "mmn" in write_npz_list,
-                               bandstructure=bandstructure, 
+                               write_npz="mmn" in write_npz_list,
+                               bandstructure=bandstructure,
                                kwargs_bandstructure={"normalize": normalize})
             self.set_file('mmn', mmn)
         if "spn" in files:
             spn = SPN.autoread(seedname=seedname, read_npz=("spn" in read_npz_list),
                                read_w90=False,
-                               write_npz = "spn" in write_npz_list,
-                               bandstructure=bandstructure, 
+                               write_npz="spn" in write_npz_list,
+                               bandstructure=bandstructure,
                                kwargs_bandstructure={"normalize": normalize})
             self.set_file('spn', spn)
         # TODO : use a cutoff ~100eV for symmetrizer
         if "unk" in files:
             unk = UNK.autoread(seedname=seedname, read_npz=("unk" in read_npz_list),
                                read_w90=False,
-                               write_npz = "unk" in write_npz_list,
-                               bandstructure=bandstructure, 
+                               write_npz="unk" in write_npz_list,
+                               bandstructure=bandstructure,
                                kwargs_bandstructure={"normalize": normalize, "grid_size": unk_grid})
             self.set_file('unk', unk)
         if "symmetrizer" in files:
@@ -609,7 +609,7 @@ class Wannier90data:
                 selected_bands_bool[:band_start] = False
             if win_min > -np.inf or win_max < np.inf:
                 assert self.has_file('eig'), "eig file is not set - needed to apply window"
-                select_energy = [(E< win_max) * (E > win_min) for E in self.eig.data.values()]
+                select_energy = [(E < win_max) * (E > win_min) for E in self.eig.data.values()]
                 select_energy = np.any(select_energy, axis=0)
                 selected_bands_bool = selected_bands_bool * select_energy
             selected_bands = np.where(selected_bands_bool)[0]

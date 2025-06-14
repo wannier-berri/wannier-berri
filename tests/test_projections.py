@@ -297,9 +297,9 @@ def test_create_amn_diamond_s_bond():
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
     w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
-    print("amn.shape = ", amn.data.shape)
-    print("mmn.shape = ", w90data.mmn.data.shape)
-    print("eig.shape = ", w90data.eig.data.shape)
+    print("amn.shape = ", amn.data[0].shape)
+    print("mmn.shape = ", w90data.mmn.data[0].shape)
+    print("eig.shape = ", w90data.eig.data[0].shape)
     w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     # Now wannierise the system

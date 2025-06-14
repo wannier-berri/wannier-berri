@@ -21,7 +21,7 @@ class UXU(W90_file):
         assert shape[2] == shape[3], "NB must be the same for both indices m and n"
         self.NB = shape[2]
 
-    
+
     @classmethod
     def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix=None, bk_reorder=None):
         suffix = CLS.extension if suffix is None else suffix
@@ -54,17 +54,18 @@ class UXU(W90_file):
                 data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :][:, bk_reorder[ik], :, :]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
-        return CLS(data=data) 
+        return CLS(data=data)
 
     def select_bands(self, selected_bands):
         return super().select_bands(selected_bands, dimensions=(2, 3))
+
 
 class UHU(UXU):
     """
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
     """
     extension = 'uHu'
-    
+
 
 class UIU(UXU):
     """
@@ -72,7 +73,7 @@ class UIU(UXU):
     """
     extension = 'uIu'
 
-    
+
 
 class SXU(W90_file):
     """
@@ -125,7 +126,7 @@ class SXU(W90_file):
         print(f"----------\n  {suffix}   \n---------")
         file_name = seedname + "." + suffix
 
-        print (f"reading object of class {CLS.__name__} from file {file_name} with formatted={formatted} bk_reorder={bk_reorder}")
+        print(f"reading object of class {CLS.__name__} from file {file_name} with formatted={formatted} bk_reorder={bk_reorder}")
 
         if formatted:
             f_sXu_in = open(seedname + "." + suffix, 'r')
@@ -162,6 +163,7 @@ class SXU(W90_file):
     def select_bands(self, selected_bands):
         return super().select_bands(selected_bands, dimensions=(1, 2))
 
+
 class SIU(SXU):
     """
     SIU.data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k+b}>
@@ -178,6 +180,7 @@ class SIU(SXU):
     """
 
     extension = 'sIu'
+
 
 class SHU(SXU):
     """

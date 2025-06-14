@@ -30,9 +30,9 @@ class MMN(W90_file):
     """
 
     npz_tags = ["NK", "bk_cart", "bk_latt", "wk"]
-    npz_keys_dict_int = ["data","neighbours", "G", "bk_reorder"]
+    npz_keys_dict_int = ["data", "neighbours", "G", "bk_reorder"]
     extension = "mmn"
-    
+
     def __init__(self, data, neighbours, G, bk_latt, bk_cart, wk, bk_reorder=None, NK=None):
         super().__init__(data=data, NK=NK)
         G = sparselist_to_dict(G)
@@ -42,7 +42,7 @@ class MMN(W90_file):
         assert shape[1] == shape[2], f"MMN data should have NB x NB shape, got {shape[1]} x {shape[2]}"
         self.NNB = shape[0]
         if bk_reorder is None:
-            bk_reorder = {ik:np.arange(self.NNB) for ik in G.keys()}
+            bk_reorder = {ik: np.arange(self.NNB) for ik in G.keys()}
         bk_reorder = sparselist_to_dict(bk_reorder)
         self.NB = shape[1]
         self.neighbours = neighbours
@@ -109,10 +109,10 @@ class MMN(W90_file):
             kpt_latt=kpt_latt, recip_lattice=recip_lattice)
         for ik in selected_kpoints:
             srt = bk_reorder[ik]
-            data[ik][:] = data[ik][ srt, :]
-            G[ik][:] = G[ik][ srt]
+            data[ik][:] = data[ik][srt, :]
+            G[ik][:] = G[ik][srt]
             neighbours[ik][:] = neighbours[ik][srt]
-            
+
         return MMN(data=data,
                    neighbours=neighbours,
                    G=G,
@@ -135,7 +135,7 @@ class MMN(W90_file):
         f_mmn_out.close()
 
     def select_bands(self, selected_bands):
-        return super().select_bands(selected_bands, dimensions=(1,2))
+        return super().select_bands(selected_bands, dimensions=(1, 2))
 
     # TODO : combine with find_bk_vectors
     @staticmethod
@@ -192,14 +192,14 @@ class MMN(W90_file):
         wk = weight[srt_inv]
 
         return bk_cart, bk_latt, wk, bk_reorder
-        
+
     def reorder_bk(self,
-                    bk_reorder=None,
-                    bk_latt_new=None,
+                   bk_reorder=None,
+                   bk_latt_new=None,
                     ):
         """
         Reorder the bk vectors according to the given order
-        
+
         Parameters
         ----------
         bk_reorder : list of int or None
@@ -233,13 +233,13 @@ class MMN(W90_file):
             self.bk_reorder[ik] = self.bk_reorder[ik][bk_reorder]
 
     def equals(self, other, tolerance=1e-8, check_reorder=True):
-        iseq, message =  super().equals(other, tolerance)
+        iseq, message = super().equals(other, tolerance)
         if not iseq:
             return iseq, message
         if self.NNB != other.NNB:
             return False, f"the number of neighbouring bands is not equal: {self.NNB} and {other.NNB} correspondingly"
         if not np.all(self.bk_latt == other.bk_latt):
-            return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"  
+            return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"
         if not np.allclose(self.bk_cart, other.bk_cart):
             return False, f"the bk_cart vectors are not equal: {self.bk_cart} and {other.bk_cart} correspondingly"
         if not np.allclose(self.wk, other.wk):
@@ -249,7 +249,7 @@ class MMN(W90_file):
                 if not np.all(self.bk_reorder[ik] == other.bk_reorder[ik]):
                     return False, f"the bk_reorder vectors are not equal for k-point {ik}: {self.bk_reorder[ik]} and {other.bk_reorder[ik]} correspondingly"
         return True, ""
-        
+
 
     @classmethod
     def from_bandstructure(cls, bandstructure,
@@ -318,7 +318,7 @@ class MMN(W90_file):
                         f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
-                
+
         igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
         igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
 

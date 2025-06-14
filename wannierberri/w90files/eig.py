@@ -11,8 +11,8 @@ class EIG(W90_file):
         self.NB = check_shape(self.data)[0]
 
 
-    @classmethod    
-    def from_w90_file(cls,seedname, selected_kpoints=None):
+    @classmethod
+    def from_w90_file(cls, seedname, selected_kpoints=None):
         data = np.loadtxt(seedname + ".eig")
         NB = int(round(data[:, 0].max()))
         NK = int(round(data[:, 1].max()))

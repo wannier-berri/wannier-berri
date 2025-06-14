@@ -246,29 +246,29 @@ def test_create_w90files_Fe():
     eig_ref = EIG.from_npz(os.path.join(path_data, "tmp/Fe.eig.npz"))
     eql, msg = eig.equals(eig_ref, tolerance=1e-6)
     assert eql, f"EIG files differ: {msg}"
-    
+
     mmn_new = w90data.get_file("mmn")
     mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, "tmp/Fe.mmn.npz"))
     mmn_ref.reorder_bk(bk_latt_new=mmn_new.bk_latt)
     eql, msg = mmn_new.equals(mmn_ref, tolerance=3e-5, check_reorder=False)
     assert eql, f"MMN files differ: {msg}"
-    
+
     amn = w90data.get_file("amn")
     amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "tmp/Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
     eql, msg = amn.equals(amn_ref, tolerance=1e-6)
     assert eql, f"AMN files differ: {msg}"
-    
+
     spn = w90data.get_file("spn")
     spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_data, "tmp/Fe.spn.npz"))
     eql, msg = spn.equals(spn_ref, tolerance=1e-6)
     assert eql, f"SPN files differ: {msg}"
-    
+
     unk_new = w90data.get_file("unk")
     unk_new.select_kpoints((0, 3))  # select only k=0 and k=3
     unk_ref = wberri.w90files.unk.UNK.from_npz(os.path.join(path_data, "tmp/Fe-kp03-red18.unk.npz"))
     eql, msg = unk_new.equals(unk_ref, tolerance=1e-6)
     assert eql, f"UNK files differ: {msg}"
-    
+
     # factor = 18**(-3 / 2)
     # for ik in (0, 3):
     #     data_new = unk_new.data[ik] * factor
@@ -279,7 +279,7 @@ def test_create_w90files_Fe():
     #     assert data_new is not None, f"unk_new.data[ik={ik}] is None, but should not be"
     #     assert data_ref is not None, f"unk_ref.data[ik={ik}] is None, but should not be"
     #     assert np.allclose(data_new, data_ref, atol=1e-6), f"unk data differs by {np.max(np.abs(data_new - data_ref))} > 1e-6 at ik={ik}"
-    
+
 
 
 @pytest.mark.parametrize("include_TR", [True, False])

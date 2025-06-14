@@ -14,7 +14,7 @@ class W90_file(SavableNPZ):
     data : dict
         the data of the file
 
-    
+
     Attributes
     ----------
     npz_tags : list(str)
@@ -23,29 +23,29 @@ class W90_file(SavableNPZ):
 
     npz_keys_dict_int = ["data"]
     npz_tags = ["NK"]
-    
+
     @abc.abstractmethod
-    def __init__(self, data: dict |list, NK=None):
+    def __init__(self, data: dict | list, NK=None):
         if isinstance(data, list) or isinstance(data, np.ndarray):
             NK = len(data)
             data = {i: d for i, d in enumerate(data) if d is not None}
         assert isinstance(data, dict), "data must be a dictionary or a list of numpy arrays"
         assert NK is not None, "NK must be provided if data is a dictionary"
         self.data = data
-        print (f"setting NK = {NK}")
+        print(f"setting NK = {NK}")
         self.NK = NK
-        
+
 
 
     @classmethod
-    def autoread(cls, seedname="wannier90", ext=None, 
-                  read_npz=True, 
-                  read_w90=True,
-                  bandstructure=None,
-                  write_npz=True, 
-                  selected_bands=None, 
-                  kwargs_w90=None,
-                  kwargs_bandstructure=None):
+    def autoread(cls, seedname="wannier90", ext=None,
+                 read_npz=True,
+                 read_w90=True,
+                 bandstructure=None,
+                 write_npz=True,
+                 selected_bands=None,
+                 kwargs_w90=None,
+                 kwargs_bandstructure=None):
         """First try to read  npz file, then read the w90 file if npz does not exist, 
         otherwise generate from bandstructure if provided.
         """
@@ -78,7 +78,7 @@ class W90_file(SavableNPZ):
         abstract method to read the necessary data from Wannier90 file
         """
         raise NotImplementedError("{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
-    
+
     @classmethod
     def from_bandstructure(cls, bandstructure, **kwargs):
         """
@@ -111,9 +111,9 @@ class W90_file(SavableNPZ):
                     data = data.swapaxes(0, d)
                 self.data[ik] = data
             self.NB = len(selected_bands)
-        return self    
-                    
-                
+        return self
+
+
 
     def equals(self, other, tolerance=1e-8):
         """
@@ -140,13 +140,13 @@ class W90_file(SavableNPZ):
             return False, f"the number of bands is not equal: {self.NB} and {other.NB} correspondingly"
         ik1 = set(self.data.keys())
         ik2 = set(other.data.keys())
-        if ik1 != ik2 :
+        if ik1 != ik2:
             return False, f"the sets of selected k_points are not equal. {ik1} and {ik2} correspondingly"
         for i in ik1:
-            if not np.allclose( self.data[i], other.data[i], atol=tolerance):
+            if not np.allclose(self.data[i], other.data[i], atol=tolerance):
                 return False, f"the data at k-point {i} are not equal, the error is {np.max(np.abs(self.data[i] - other.data[i]))}"
         return True, ""
-    
+
     def select_kpoints(self, selected_kpoints, tag=None):
         """
         Select the k-points from the data. (modify the data in place)
@@ -179,33 +179,33 @@ class W90_file(SavableNPZ):
             for k in selected_kpoints:
                 assert k in dict, f"selected k-point {k} is not in the data {tag}"
             return self
-    
+
     @property
     def num_bands(self):
         return self.NB
-    
+
     @property
     def num_wann(self):
         return self.NW
-    
+
     @property
     def nspinor(self):
         return 2 if self.spinor else 1
-    
-    
 
 
-def check_shape(data, shape = None):
+
+
+def check_shape(data, shape=None):
     """
     Check if the data has the expected shape.
-    
+
     Parameters
     ----------
     data : dict
         The data to check. a dictionary with keys as integers and values as np.arrays (should be the same shape)
     shape : tuple of int, optional
         The expected shape of the data. If None, taken from the first non-None element of data.
-    
+
     Raises
     ------
     ValueError
@@ -226,5 +226,4 @@ def check_shape(data, shape = None):
             raise ValueError(f"Data has unexpected shape {d.shape}, expected {shape}")
     if shape is None:
         raise ValueError("all elements of data are None, cannot determine shape")
-    return shape        
-    
+    return shape

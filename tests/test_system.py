@@ -153,13 +153,13 @@ def check_system():
             else:
                 check_property(key, prec_loc, XX=False)
         for key in matrices:
-            print (f"checking matrix {key}", end="")
+            print(f"checking matrix {key}", end="")
             if key in extra_precision:
                 prec_loc = extra_precision[key]
             else:
                 prec_loc = precision_matrix_elements
             check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
-            print (f"check matrix {key} - Ok!")
+            print(f"check matrix {key} - Ok!")
 
     return _inner
 

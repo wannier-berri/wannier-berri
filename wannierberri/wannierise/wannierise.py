@@ -136,7 +136,7 @@ def wannierise(w90data,
         raise ValueError("init should be 'amn' or 'random'")
 
     neighbours_all = w90data.mmn.neighbours
-    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in w90data.mmn.neighbours]
+    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ikb] for ikb in w90data.mmn.neighbours[ik]]
                                        for ik in kptirr])
 
     # wk = w90data.mmn.wk_unique

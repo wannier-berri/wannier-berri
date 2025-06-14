@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 import scipy.io
 import fortio
-from copy import copy
+
 
 class FortranFileR(fortio.FortranFile):
 
@@ -31,8 +31,8 @@ class SavableNPZ(abc.ABC):
 
     npz_tags = []
     npz_tags_optional = []
-    npz_keys_dict_int = [] # dictionary with int-valued keys
-    
+    npz_keys_dict_int = []  # dictionary with int-valued keys
+
     @abc.abstractmethod
     def __init__(self):
         pass
@@ -48,14 +48,14 @@ class SavableNPZ(abc.ABC):
     def from_npz(cls, f_npz):
         dic = np.load(f_npz)
         return cls.from_dict(dic)
-        
+
     def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.__class__.npz_tags}
         for k in self.__class__.npz_tags_optional:
             if hasattr(self, k):
                 dic[k] = self.__getattribute__(k)
         for tag in self.__class__.npz_keys_dict_int:
-            dic.update( dic_to_keydic(self.__getattribute__(tag), tag) ) 
+            dic.update(dic_to_keydic(self.__getattribute__(tag), tag))
         return dic
 
     @classmethod
@@ -65,16 +65,17 @@ class SavableNPZ(abc.ABC):
             dic_loc[k] = dic[k]
 
         for tag in cls.npz_keys_dict_int:
-            dic_loc[tag] =  keydic_to_dic(dic, tag)
+            dic_loc[tag] = keydic_to_dic(dic, tag)
 
         for k in cls.npz_tags_optional:
             if k in dic:
                 dic_loc[k] = dic[k]
-        
+
         if return_obj:
             return cls(**dic_loc)
         else:
             return dic_loc
+
 
 def dic_to_keydic(dic, name="data"):
     """
@@ -89,10 +90,11 @@ def dic_to_keydic(dic, name="data"):
     """
 
     keydic = {}
-    for k,v in dic.items():
-        keydic[name+f"_{k}"] = v
+    for k, v in dic.items():
+        keydic[name + f"_{k}"] = v
     return keydic
-        
+
+
 def keydic_to_dic(keydic, name="data"):
     """
     Converts a dictionary with prefixed keys into a new dictionary without the prefix.
@@ -104,12 +106,13 @@ def keydic_to_dic(keydic, name="data"):
 
     Returns:
     dict: A new dictionary with keys without the specified prefix.
-    """ 
+    """
     dic = {}
-    for k,v in keydic.items():
-        if k.startswith(name+"_"):
-            dic[int(k[len(name)+1:])] = v
+    for k, v in keydic.items():
+        if k.startswith(name + "_"):
+            dic[int(k[len(name) + 1:])] = v
     return dic
+
 
 def sparselist_to_dict(slist):
     """
