@@ -243,29 +243,29 @@ def test_create_w90files_Fe():
                          unk_grid=(18,) * 3,
                 )
     eig = w90data.get_file("eig")
-    eig_ref = EIG.from_npz(os.path.join(path_data, "tmp/Fe.eig.npz"))
+    eig_ref = EIG.from_npz(os.path.join(path_data, "Fe.eig.npz"))
     eql, msg = eig.equals(eig_ref, tolerance=1e-6)
     assert eql, f"EIG files differ: {msg}"
 
     mmn_new = w90data.get_file("mmn")
-    mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, "tmp/Fe.mmn.npz"))
+    mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, "Fe.mmn.npz"))
     mmn_ref.reorder_bk(bk_latt_new=mmn_new.bk_latt)
     eql, msg = mmn_new.equals(mmn_ref, tolerance=3e-5, check_reorder=False)
     assert eql, f"MMN files differ: {msg}"
 
     amn = w90data.get_file("amn")
-    amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "tmp/Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
+    amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
     eql, msg = amn.equals(amn_ref, tolerance=1e-6)
     assert eql, f"AMN files differ: {msg}"
 
     spn = w90data.get_file("spn")
-    spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_data, "tmp/Fe.spn.npz"))
+    spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_data, "Fe.spn.npz"))
     eql, msg = spn.equals(spn_ref, tolerance=1e-6)
     assert eql, f"SPN files differ: {msg}"
 
     unk_new = w90data.get_file("unk")
     unk_new.select_kpoints((0, 3))  # select only k=0 and k=3
-    unk_ref = wberri.w90files.unk.UNK.from_npz(os.path.join(path_data, "tmp/Fe-kp03-red18.unk.npz"))
+    unk_ref = wberri.w90files.unk.UNK.from_npz(os.path.join(path_data, "Fe-kp03-red18.unk.npz"))
     eql, msg = unk_new.equals(unk_ref, tolerance=1e-6)
     assert eql, f"UNK files differ: {msg}"
 
