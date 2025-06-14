@@ -219,7 +219,7 @@ class Wannier90data:
         else:
             self.set_chk(read=False)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn', kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice))
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             self.set_file(f)
@@ -270,6 +270,8 @@ class Wannier90data:
         self.symmetrizer = symmetrizer
 
     def set_file(self, key, val=None, overwrite=False, allow_selected_bands=False,
+                 read_npz=True,
+                 kwargs_w90={},
                  **kwargs):
         """
         Set the file with the key `key` to the value `val`
@@ -303,14 +305,15 @@ class Wannier90data:
         if val is None:
             if key not in FILES_CLASSES:
                 raise ValueError(f"key '{key}' is not a valid w90 file")
-            kwargs_auto = self.auto_kwargs_files(key)
-            kwargs_auto.update(kwargs)
+            # kwargs_auto = self.auto_kwargs_files(key)
+            # kwargs_auto.update(kwargs)
+            kwargs_w90 = copy(kwargs_w90)
             if key in ['uhu', 'uiu', 'shu', 'siu']:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
-                kwargs_auto['bk_reorder'] = self.get_file('mmn').bk_reorder
+                kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
 
-            val = FILES_CLASSES[key](self.seedname, autoread=True, **kwargs_auto)
+            val = FILES_CLASSES[key].autoread(self.seedname, read_npz=read_npz, kwargs_w90=kwargs_w90)
         self.check_conform(key, val)
         if key == 'amn' and self.has_file('chk'):
             self.get_file('chk').num_wann = val.NW
@@ -365,31 +368,31 @@ class Wannier90data:
         for key in files:
             self.get_file(key).to_w90_file(seedname)
 
-    def auto_kwargs_files(self, key):
-        """
-        Returns the default keyword arguments for the file with the key `key`
+    # def auto_kwargs_files(self, key):
+    #     """
+    #     Returns the default keyword arguments for the file with the key `key`
 
-        Parameters
-        ----------
-        key : str
-            the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
+    #     Parameters
+    #     ----------
+    #     key : str
+    #         the key of the file, e.g. 'mmn', 'eig', 'amn', 'uiu', 'uhu', 'siu', 'shu', 'spn'
 
-        Returns
-        -------
-        dict(str, Any)
-            the keyword arguments for the file
-        """
-        kwargs = {}
-        if key in ["uhu", "uiu", "shu", "siu"]:
-            kwargs["formatted"] = key in self.formatted_list
-        if key not in ["chk", "win", "unk"]:
-            kwargs["read_npz"] = self.read_npz
-            kwargs["write_npz"] = key in self.write_npz_list
-        if key == "chk":
-            kwargs["bk_complete_tol"] = 1e-5
-            kwargs["kmesh_tol"] = 1e-7
-        print(f"kwargs for {key} are {kwargs}")
-        return kwargs
+    #     Returns
+    #     -------
+    #     dict(str, Any)
+    #         the keyword arguments for the file
+    #     """
+    #     kwargs = {}
+    #     if key in ["uhu", "uiu", "shu", "siu"]:
+    #         kwargs["formatted"] = key in self.formatted_list
+    #     if key not in ["chk", "win", "unk"]:
+    #         kwargs["read_npz"] = self.read_npz
+    #         kwargs["write_npz"] = key in self.write_npz_list
+    #     if key == "chk":
+    #         kwargs["bk_complete_tol"] = 1e-5
+    #         kwargs["kmesh_tol"] = 1e-7
+    #     print(f"kwargs for {key} are {kwargs}")
+    #     return kwargs
 
 
     def get_file(self, key):

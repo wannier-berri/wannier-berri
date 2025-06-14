@@ -61,28 +61,31 @@ def generate_formatted_files(create_files_GaAs_W90):
 
 def test_formatted_uXu(generate_formatted_files):
     data_dir = generate_formatted_files
-    uHu_unformatted = UHU(os.path.join(data_dir, "GaAs"), autoread=True)
-    uHu_formatted = UHU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, autoread=True)
-    assert np.allclose(uHu_unformatted.data, uHu_formatted.data)
+    uHu_unformatted = UHU.from_w90_file(os.path.join(data_dir, "GaAs") )
+    uHu_formatted = UHU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True )
+    eql, msg = uHu_unformatted.equals(uHu_formatted)
+    assert eql, msg
 
-    uIu_unformatted = UIU(os.path.join(data_dir, "GaAs"), autoread=True)
-    uIu_formatted = UIU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, autoread=True)
-    assert np.allclose(uIu_unformatted.data, uIu_formatted.data)
-
+    uIu_unformatted = UIU.from_w90_file(os.path.join(data_dir, "GaAs"))
+    uIu_formatted = UIU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    eql, msg =  uIu_unformatted.equals(uIu_formatted)
+    assert eql, msg
 
 def test_formatted_spn(generate_formatted_files):
     data_dir = generate_formatted_files
-    spn_unformatted = SPN(os.path.join(data_dir, "GaAs"), autoread=True)
-    spn_formatted = SPN(os.path.join(data_dir, "GaAs_formatted"), formatted=True, autoread=True)
-    assert np.allclose(spn_unformatted.data, spn_formatted.data)
-
+    spn_unformatted = SPN.from_w90_file(os.path.join(data_dir, "GaAs"))
+    spn_formatted = SPN.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    eql, msg = spn_unformatted.equals(spn_formatted)
+    assert eql, msg
 
 def test_formatted_sXu(generate_formatted_files):
     data_dir = generate_formatted_files
-    sHu_unformatted = SHU(os.path.join(data_dir, "GaAs"), autoread=True)
-    sHu_formatted = SHU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, autoread=True)
-    assert np.allclose(sHu_unformatted.data, sHu_formatted.data)
-
-    sIu_unformatted = SIU(os.path.join(data_dir, "GaAs"), autoread=True)
-    sIu_formatted = SIU(os.path.join(data_dir, "GaAs_formatted"), formatted=True, autoread=True)
-    assert np.allclose(sIu_unformatted.data, sIu_formatted.data)
+    sHu_unformatted = SHU.from_w90_file(os.path.join(data_dir, "GaAs"))
+    sHu_formatted = SHU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    eql, msg = sHu_unformatted.equals(sHu_formatted)
+    assert eql, msg
+    
+    sIu_unformatted = SIU.from_w90_file(os.path.join(data_dir, "GaAs"))
+    sIu_formatted = SIU.from_w90_file(os.path.join(data_dir, "GaAs_formatted"), formatted=True)
+    eql, msg = sIu_unformatted.equals(sIu_formatted)
+    assert eql, msg

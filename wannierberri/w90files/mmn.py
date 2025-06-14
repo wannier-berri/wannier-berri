@@ -31,6 +31,7 @@ class MMN(W90_file):
 
     npz_tags = ["NK", "bk_cart", "bk_latt", "wk"]
     npz_keys_dict_int = ["data","neighbours", "G", "bk_reorder"]
+    extension = "mmn"
     
     def __init__(self, data, neighbours, G, bk_latt, bk_cart, wk, bk_reorder=None, NK=None):
         super().__init__(data=data, NK=NK)

@@ -36,7 +36,7 @@ class W90_file(SavableNPZ):
         self.NK = NK
         
     @classmethod
-    def autoread(cls, seedname="wannier90", ext="", 
+    def autoread(cls, seedname="wannier90", ext=None, 
                   read_npz=True, 
                   read_w90=True,
                   bandstructure=None,
@@ -47,7 +47,7 @@ class W90_file(SavableNPZ):
         """First try to read  npz file, then read the w90 file if npz does not exist, 
         otherwise generate from bandstructure if provided.
         """
-        
+        ext = cls.extension if ext is None else ext
         f_npz = f"{seedname}.{ext}.npz"
         if os.path.exists(f_npz) and read_npz:
             obj = cls.from_npz(f_npz)
@@ -58,6 +58,8 @@ class W90_file(SavableNPZ):
             if kwargs_bandstructure is None:
                 kwargs_bandstructure = {}
             obj = cls.from_bandstructure(bandstructure, **kwargs_bandstructure)
+        else:
+            raise FileNotFoundError(f"Cannot find {f_npz} or {seedname}.{ext} and no bandstructure provided")
         if write_npz:
             obj.to_npz(f_npz)
         # window is applied after, so that npz contains same data as original file
@@ -65,15 +67,15 @@ class W90_file(SavableNPZ):
         return obj
 
 
-    @abc.abstractmethod
-    def from_w90_file(**kwargs):
+    @classmethod
+    def from_w90_file(cls, **kwargs):
         """
         abstract method to read the necessary data from Wannier90 file
         """
-        pass
+        raise NotImplementedError("{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
     
-    @abc.abstractmethod
-    def from_bandstructure(bandstructure, **kwargs):
+    @classmethod
+    def from_bandstructure(cls, bandstructure, **kwargs):
         """
         abstract method to create the data from a band structure object
 
@@ -82,7 +84,7 @@ class W90_file(SavableNPZ):
         bandstructure : irrep.bandstructure.BandStructure
             the band structure object
         """
-        pass
+        raise NotImplementedError("{cls.__name__}.from_bandstructure method is not implemented ")
 
     @abc.abstractmethod
     def select_bands(self, selected_bands):

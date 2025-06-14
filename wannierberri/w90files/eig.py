@@ -4,6 +4,8 @@ import numpy as np
 
 class EIG(W90_file):
 
+    extension = "eig"
+
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
         self.NB = check_shape(self.data)[0]

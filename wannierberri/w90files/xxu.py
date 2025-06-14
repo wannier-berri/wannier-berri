@@ -1,5 +1,5 @@
 import numpy as np
-from .w90file import W90_file
+from .w90file import W90_file, check_shape
 from .utility import readstr
 from ..io import FortranFileR
 
@@ -12,15 +12,19 @@ class UXU(W90_file):
     Here, we read to have data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|X|u_{n,k+b2}>.
     """
 
-    @property
-    def n_neighb(self):
-        """	
-        number of nearest neighbours indices
-        """
-        return 2
+    def __init__(self, data, NK=None):
+        super().__init__(data=data, NK=NK)
+        shape = check_shape(self.data)
+        assert len(shape) == 4, f"UXU data must have shape (NK, NNB, NNB, NB, NB), got {shape}"
+        assert shape[0] == shape[1], "NNB must be the same for both indices ib1 and ib2"
+        self.NNB = shape[0]
+        assert shape[2] == shape[3], "NB must be the same for both indices m and n"
+        self.NB = shape[2]
 
-
-    def from_w90_file(self, seedname='wannier90', suffix='uXu', formatted=False, bk_reorder=None):
+    
+    @classmethod
+    def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix=None, bk_reorder=None):
+        suffix = CLS.extension if suffix is None else suffix
         print(f"----------\n  {suffix}   \n---------")
         print(f'formatted == {formatted}')
         if formatted:
@@ -34,23 +38,23 @@ class UXU(W90_file):
 
         print(f"reading {seedname}.{suffix} : <{header}>")
 
-        self.data = np.zeros((NK, NNB, NNB, NB, NB), dtype=complex)
+        data = np.zeros((NK, NNB, NNB, NB, NB), dtype=complex)
         if formatted:
             tmp = np.array([f_uXu_in.readline().split() for i in range(NK * NNB * NNB * NB * NB)], dtype=float)
             tmp_cplx = tmp[:, 0] + 1.j * tmp[:, 1]
-            self.data = tmp_cplx.reshape(NK, NNB, NNB, NB, NB).transpose(0, 2, 1, 3, 4)
+            data = tmp_cplx.reshape(NK, NNB, NNB, NB, NB).transpose(0, 2, 1, 3, 4)
         else:
             for ik in range(NK):
                 for ib2 in range(NNB):
                     for ib1 in range(NNB):
                         tmp = f_uXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
-                        self.data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
+                        data[ik, ib1, ib2] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
         if bk_reorder is not None:
             for ik in range(NK):
-                self.data[ik, :, :, :] = self.data[ik, bk_reorder[ik], :, :][:, bk_reorder[ik], :, :]
+                data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :][:, bk_reorder[ik], :, :]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_uXu_in.close()
-        return self
+        return CLS(data=data) 
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:
@@ -61,19 +65,16 @@ class UHU(UXU):
     """
     UHU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|H(k)|u_{n,k+b2}>
     """
-
-    def __init__(self, seedname='wannier90', **kwargs):
-        super().__init__(seedname=seedname, ext='uHu', suffix='uHu', **kwargs)
-
+    extension = 'uHu'
+    
 
 class UIU(UXU):
     """
     UIU.data[ik, ib1, ib2, m, n] = <u_{m,k+b1}|u_{n,k+b2}>
     """
+    extension = 'uIu'
 
-    def __init__(self, seedname='wannier90', **kwargs):
-        super().__init__(seedname=seedname, ext='uIu', suffix='uIu', **kwargs)
-
+    
 
 class SXU(W90_file):
     """
@@ -83,14 +84,17 @@ class SXU(W90_file):
     Here, we read to have data[ik, ib, m, n, ipol] = <u_{m,k}|S_ipol * X|u_{n,k+b}>.
     """
 
-    @property
-    def n_neighb(self):
-        """	
-        number of nearest neighbours indices
-        """
-        return 1
+    def __init__(self, data, NK=None):
+        super().__init__(data=data, NK=NK)
+        shape = check_shape(self.data)
+        assert len(shape) == 4, f"SXU data must have shape (NK, NNB, NB, NB, 3), got {shape}"
+        self.NNB = shape[0]
+        assert shape[1] == shape[2], "NB must be the same for both indices m and n"
+        self.NB = shape[2]
+        assert shape[3] == 3, "S_ipol must have 3 components"
 
-    def from_w90_file(self, seedname='wannier90', formatted=False, suffix='sHu', bk_reorder=None,
+    @classmethod
+    def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix='sHu', bk_reorder=None,
                       **kwargs):
         """	
         Read the sHu or sIu file
@@ -119,6 +123,7 @@ class SXU(W90_file):
             the data of the file
         """
 
+        suffix = CLS.extension if suffix is None else suffix
         print(f"----------\n  {suffix}   \n---------")
 
         if formatted:
@@ -132,26 +137,26 @@ class SXU(W90_file):
 
         print(f"reading {seedname}.{suffix} : <{header}>")
 
-        self.data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
+        data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
 
         if formatted:
             tmp = np.array([f_sXu_in.readline().split() for i in range(NK * NNB * 3 * NB * NB)], dtype=float)
             tmp_cplx = tmp[:, 0] + 1j * tmp[:, 1]
-            self.data = tmp_cplx.reshape(NK, NNB, 3, NB, NB).transpose(0, 1, 3, 4, 2)
+            data = tmp_cplx.reshape(NK, NNB, 3, NB, NB).transpose(0, 1, 3, 4, 2)
         else:
             for ik in range(NK):
                 for ib in range(NNB):
                     for ipol in range(3):
                         tmp = f_sXu_in.read_record('f8').reshape((2, NB, NB), order='F').transpose(2, 1, 0)
                         # tmp[m, n] = <u_{m,k}|S_ipol*X|u_{n,k+b}>
-                        self.data[ik, ib, :, :, ipol] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
+                        data[ik, ib, :, :, ipol] = tmp[:, :, 0] + 1j * tmp[:, :, 1]
 
         if bk_reorder is not None:
             for ik in range(NK):
-                self.data[ik, :, :, :] = self.data[ik, bk_reorder[ik], :, :]
+                data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :]
         print(f"----------\n {suffix} OK  \n---------\n")
         f_sXu_in.close()
-        return self
+        return CLS(data=data)
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:
@@ -173,9 +178,7 @@ class SIU(SXU):
         see `~wannierberri.system.w90_files.SXU` for more details
     """
 
-    def __init__(self, seedname='wannier90', formatted=False, **kwargs):
-        super().__init__(seedname=seedname, ext='sIu', formatted=formatted, suffix='sIu', **kwargs)
-
+    extension = 'sIu'
 
 class SHU(SXU):
     """
@@ -192,5 +195,4 @@ class SHU(SXU):
         see `~wannierberri.system.w90_files.SXU` for more details
     """
 
-    def __init__(self, seedname='wannier90', formatted=False, **kwargs):
-        super().__init__(seedname=seedname, ext='sHu', formatted=formatted, suffix='sHu', **kwargs)
+    extension = 'sHu'

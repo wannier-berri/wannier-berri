@@ -9,6 +9,8 @@ class SPN(W90_file):
     SPN.data[ik, m, n, ipol] = <u_{m,k}|S_ipol|u_{n,k}>
     """
 
+    extension = "spn"
+    
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
         shape = check_shape(self.data)
