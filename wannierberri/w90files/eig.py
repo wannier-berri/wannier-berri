@@ -1,22 +1,27 @@
-from .w90file import W90_file
+from .w90file import W90_file, check_shape
 import numpy as np
 
 
 class EIG(W90_file):
 
-    def __init__(self, seedname="wannier90", **kwargs):
-        self.npz_tags = ["data"]
-        super().__init__(seedname=seedname, ext="eig", **kwargs)
+    def __init__(self, data, NK=None):
+        super().__init__(data=data, NK=NK)
+        self.NB = check_shape(self.data)[0]
 
-    def from_w90_file(self, seedname):
+
+    @classmethod    
+    def from_w90_file(cls,seedname, selected_kpoints=None):
         data = np.loadtxt(seedname + ".eig")
         NB = int(round(data[:, 0].max()))
         NK = int(round(data[:, 1].max()))
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(NK)
         data = data.reshape(NK, NB, 3)
         assert np.linalg.norm(data[:, :, 0] - 1 - np.arange(NB)[None, :]) < 1e-15
         assert np.linalg.norm(data[:, :, 1] - 1 - np.arange(NK)[:, None]) < 1e-15
-        self.data = data[:, :, 2]
-        return self
+        data = data[:, :, 2]
+        data = {ik: data[ik] for ik in selected_kpoints}
+        return EIG(data=data, NK=NK)
 
     def to_w90_file(self, seedname):
         file = open(seedname + ".eig", "w")
@@ -35,7 +40,9 @@ class EIG(W90_file):
     #     return self.__class__(data=data)
 
 
-    def from_bandstructure(self, bandstructure, verbose=False):
+    @classmethod
+    def from_bandstructure(cls, bandstructure, selected_kpoints=None,
+                           verbose=False):
         """
         Create an EIG object from a BandStructure object
 
@@ -45,11 +52,13 @@ class EIG(W90_file):
 
             the band structure object
         """
+        NK = len(bandstructure.kpoints)
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(NK)
 
         if verbose:
             print("Creating eig.")
-        data = []
-        for kp in bandstructure.kpoints:
-            data.append(kp.Energy_raw)
-        self.data = np.array(data)
-        return self
+        data = {}
+        for ik in selected_kpoints:
+            data[ik] = bandstructure.kpoints[ik].Energy_raw
+        return EIG(data=data, NK=NK)

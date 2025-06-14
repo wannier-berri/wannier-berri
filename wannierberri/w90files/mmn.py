@@ -3,7 +3,8 @@ import multiprocessing
 from time import time
 import numpy as np
 from .utility import convert, grid_from_kpoints
-from .w90file import W90_file
+from .w90file import W90_file, check_shape
+from ..io import sparselist_to_dict
 
 
 class MMN(W90_file):
@@ -28,30 +29,55 @@ class MMN(W90_file):
         the reciprocal lattice vectors connecting the k-points
     """
 
-    @property
-    def n_neighb(self):
-        """
-        number of nearest neighbours indices
-        """
-        return 1
+    npz_tags = ["NK", "bk_cart", "bk_latt", "wk"]
+    npz_keys_dict_int = ["data","neighbours", "G", "bk_reorder"]
+    
+    def __init__(self, data, neighbours, G, bk_latt, bk_cart, wk, bk_reorder=None, NK=None):
+        super().__init__(data=data, NK=NK)
+        G = sparselist_to_dict(G)
+        neighbours = sparselist_to_dict(neighbours)
+        shape = check_shape(self.data)
+        assert len(shape) == 3, f"MMN data should have 4 dimensions, got {len(shape)}"
+        assert shape[1] == shape[2], f"MMN data should have NB x NB shape, got {shape[1]} x {shape[2]}"
+        self.NNB = shape[0]
+        if bk_reorder is None:
+            bk_reorder = {ik:np.arange(self.NNB) for ik in G.keys()}
+        bk_reorder = sparselist_to_dict(bk_reorder)
+        self.NB = shape[1]
+        self.neighbours = neighbours
+        assert check_shape(self.neighbours) == (self.NNB,)
+        self.G = G
+        assert check_shape(self.G) == (self.NNB, 3)
+        self.bk_latt = np.array(bk_latt, dtype=int)
+        assert self.bk_latt.shape == (self.NNB, 3), \
+            f"MMN bk_latt should have shape (NNB, 3), got {self.bk_latt.shape}"
+        self.bk_cart = np.array(bk_cart, dtype=float)
+        assert self.bk_cart.shape == (self.NNB, 3), \
+            f"MMN bk_cart should have shape (NNB, 3), got {self.bk_cart.shape}"
+        self.wk = np.array(wk, dtype=float)
+        assert self.wk.shape == (self.NNB,), \
+            f"MMN wk should have shape (NNB,), got {self.wk.shape}"
+        if bk_reorder is None:
+            bk_reorder = sparselist_to_dict([np.arange(self.NNB, dtype=int) for _ in range(self.NK)])
+        self.bk_reorder = bk_reorder
 
-    def __init__(self, seedname="wannier90", **kwargs):
-        self.npz_tags = ["data", "neighbours", "G", "bk_cart", "bk_latt", "bk_reorder", "wk"]
-        super().__init__(seedname=seedname, ext="mmn", **kwargs)
-
-    def from_w90_file(self, seedname, kpt_latt, recip_lattice, npar=multiprocessing.cpu_count()):
+    @classmethod
+    def from_w90_file(cls, seedname, kpt_latt, recip_lattice, npar=multiprocessing.cpu_count(), selected_kpoints=None):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(NK)
         block = 1 + NB * NB
         data = []
         headstring = []
         mult = 4
 
-        # FIXME: npar = 0 does not work
+        # TODO: FIXME: npar = 0 does not work
         if npar > 0:
             pool = multiprocessing.Pool(npar)
+        # TODO : do trext conversion only for selected kpoints
         for j in range(0, NNB * NK, npar * mult):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
             if len(x) == 0:
@@ -69,15 +95,31 @@ class MMN(W90_file):
         f_mmn_in.close()
         t1 = time()
         data = [d[:, 0] + 1j * d[:, 1] for d in data]
-        self.data = np.array(data).reshape(NK, NNB, NB, NB).transpose((0, 1, 3, 2))
+        data = np.array(data).reshape(NK, NNB, NB, NB).transpose((0, 1, 3, 2))
+        data = {ik: data[ik] for ik in selected_kpoints}
         headstring = np.array([s.split() for s in headstring], dtype=int).reshape(NK, NNB, 5)
         assert np.all(headstring[:, :, 0] - 1 == np.arange(NK)[:, None])
-        self.neighbours = headstring[:, :, 1] - 1
-        self.G = headstring[:, :, 2:]
+        neighbours = headstring[:, :, 1] - 1
+        G = headstring[:, :, 2:]
         t2 = time()
         print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
-        self.set_bk(kpt_latt=kpt_latt, recip_lattice=recip_lattice)
-        return self
+        bk_cart, bk_latt, wk, bk_reorder = MMN.get_bk(
+            G=G, neighbours=neighbours, NNB=NNB, NK=NK,
+            kpt_latt=kpt_latt, recip_lattice=recip_lattice)
+        for ik in selected_kpoints:
+            srt = bk_reorder[ik]
+            data[ik][:] = data[ik][ srt, :]
+            G[ik][:] = G[ik][ srt]
+            neighbours[ik][:] = neighbours[ik][srt]
+            
+        return MMN(data=data,
+                   neighbours=neighbours,
+                   G=G,
+                   bk_latt=bk_latt,
+                   bk_cart=bk_cart,
+                   wk=wk,
+                   bk_reorder=bk_reorder,
+                   NK=NK)
 
     def to_w90_file(self, seedname):
         f_mmn_out = open(seedname + ".mmn", "w")
@@ -95,46 +137,44 @@ class MMN(W90_file):
         if selected_bands is not None:
             self.data = self.data[:, :, selected_bands, :][:, :, :, selected_bands]
 
-
-    def set_bk(self, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+    # TODO : combine with find_bk_vectors
+    @staticmethod
+    def get_bk(G, neighbours, NNB, NK, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
         mp_grid = np.array(grid_from_kpoints(kpt_latt))
         bk_latt_all = np.array(
             np.round(
                 [
                     (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
-                    for nbrs, G in zip(self.neighbours.T, self.G.transpose(1, 0, 2))
+                    for nbrs, G in zip(neighbours.T, G.transpose(1, 0, 2))
                 ]).transpose(1, 0, 2),
             dtype=int)
 
-        self.bk_latt = bk_latt_all[0]
+        bk_latt = bk_latt_all[0]
 
         ## Reorder the bk_latt vectors to match the order of the first k-point
-        bk_latt_tuples_0 = [tuple(b) for b in self.bk_latt]
-        self.bk_reorder = []
-        for ik in range(self.NK):
+        bk_latt_tuples_0 = [tuple(b) for b in bk_latt]
+        bk_reorder = []
+        for ik in range(NK):
             bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
             srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
-            assert len(srt) == self.NNB, f"Reordering failed for k-point {ik}. Expected {self.NNB} neighbours, got {len(srt)}"
-            assert np.all(self.bk_latt == bk_latt_all[ik, srt]), \
-                f"Reordering failed for k-point {ik}. Expected {self.bk_latt}, got {bk_latt_all[ik, srt]}"
-            self.bk_reorder.append(srt)
-            self.data[ik, :] = self.data[ik, srt, :]
-            self.G[ik, :] = self.G[ik, srt]
-            self.neighbours[ik, :] = self.neighbours[ik, srt]
-        self.bk_reorder = np.array(self.bk_reorder, dtype=int)
+            assert len(srt) == NNB, f"Reordering failed for k-point {ik}. Expected {NNB} neighbours, got {len(srt)}"
+            assert np.all(bk_latt == bk_latt_all[ik, srt]), \
+                f"Reordering failed for k-point {ik}. Expected {bk_latt}, got {bk_latt_all[ik, srt]}"
+            bk_reorder.append(srt)
+        bk_reorder = np.array(bk_reorder, dtype=int)
 
-        self.bk_cart = self.bk_latt.dot(recip_lattice / mp_grid[:, None])
-        bk_length = np.linalg.norm(self.bk_cart, axis=1)
+        bk_cart = bk_latt.dot(recip_lattice / mp_grid[:, None])
+        bk_length = np.linalg.norm(bk_cart, axis=1)
         srt = np.argsort(bk_length)
         srt_inv = np.argsort(srt)
         bk_length_srt = bk_length[srt]
         brd = [
             0,
         ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
-            self.NNB,
+            NNB,
         ]
         shell_mat = []
-        shell_mat = np.array([self.bk_cart[srt[b1:b2]].T.dot(self.bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
+        shell_mat = np.array([bk_cart[srt[b1:b2]].T.dot(bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
         shell_mat_line = shell_mat.reshape(-1, 9)
         u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
         s = 1. / s
@@ -145,19 +185,78 @@ class MMN(W90_file):
             raise RuntimeError(
                 f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
                 f"failed to be identity by an error of {tol}. Further debug information :  \n"
-                f"bk_latt={self.bk_latt} \n bk_cart={self.bk_cart} \n"
+                f"bk_latt={bk_latt} \n bk_cart={bk_cart} \n"
                 f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
                 f"weight_shell={weight_shell}, srt={srt}\n")
         weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
-        self.wk = weight[srt_inv]
-        print(f"the weights of the bk vectors are {self.wk} ")
+        wk = weight[srt_inv]
 
+        return bk_cart, bk_latt, wk, bk_reorder
+        
+    def reorder_bk(self,
+                    bk_reorder=None,
+                    bk_latt_new=None,
+                    ):
+        """
+        Reorder the bk vectors according to the given order
+        
+        Parameters
+        ----------
+        bk_reorder : list of int or None
+            the new order of the bk vectors. If None, the order is taken from bk_latt_new
+        bk_latt_new : list of tuple or None
+            the new list of bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid.
+            If None, the order is taken from self.bk_latt
+        """
+        assert (bk_reorder is not None) != (bk_latt_new is not None), \
+            "Either bk_reorder or bk_latt_new should be provided, but not both."
+        if bk_reorder is None:
+            bk_latt_new = np.array(bk_latt_new, dtype=int)
+            assert bk_latt_new.shape == (self.NNB, 3), \
+                f"bk_latt_new should have shape (NNB, 3), got {bk_latt_new.shape}"
+            bk_reorder = [np.where((self.bk_latt == b).all(axis=1))[0][0] for b in bk_latt_new]
+        print(f"Reordering bk vectors with {bk_reorder} ")
+        self.bk_latt = self.bk_latt[bk_reorder]
+        if bk_latt_new is not None:
+            assert np.all(self.bk_latt == bk_latt_new), \
+                f"Reordered bk_latt {self.bk_latt} does not match the provided bk_latt_new {bk_latt_new}"
+        self.bk_cart = self.bk_cart[bk_reorder]
+        self.wk = self.wk[bk_reorder]
 
+        for ik, d in self.data.items():
+            self.data[ik] = d[bk_reorder, :]
+        for ik, g in self.G.items():
+            self.G[ik] = g[bk_reorder]
+        for ik, n in self.neighbours.items():
+            self.neighbours[ik] = n[bk_reorder]
+        for ik in self.bk_reorder.keys():
+            self.bk_reorder[ik] = self.bk_reorder[ik][bk_reorder]
 
-    def from_bandstructure(self, bandstructure,
+    def equals(self, other, tolerance=1e-8, check_reorder=True):
+        iseq, message =  super().equals(other, tolerance)
+        if not iseq:
+            return iseq, message
+        if self.NNB != other.NNB:
+            return False, f"the number of neighbouring bands is not equal: {self.NNB} and {other.NNB} correspondingly"
+        if not np.all(self.bk_latt == other.bk_latt):
+            return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"  
+        if not np.allclose(self.bk_cart, other.bk_cart):
+            return False, f"the bk_cart vectors are not equal: {self.bk_cart} and {other.bk_cart} correspondingly"
+        if not np.allclose(self.wk, other.wk):
+            return False, f"the wk valuesare not equal: {self.wk} and {other.wk} correspondingly"
+        if check_reorder:
+            for ik in self.bk_reorder.keys():
+                if not np.all(self.bk_reorder[ik] == other.bk_reorder[ik]):
+                    return False, f"the bk_reorder vectors are not equal for k-point {ik}: {self.bk_reorder[ik]} and {other.bk_reorder[ik]} correspondingly"
+        return True, ""
+        
+
+    @classmethod
+    def from_bandstructure(cls, bandstructure,
                            normalize=True,
                            verbose=False,
-                           param_search_bk={}):
+                           param_search_bk={},
+                           selected_kpoints=None,):
         """
         Create an AMN object from a BandStructure object
         So far only delta-localised s-orbitals are implemented
@@ -187,45 +286,48 @@ class MMN(W90_file):
         kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
         NK = kpt_latt.shape[0]
         mp_grid = np.array(grid_from_kpoints(kpt_latt))
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(NK)
 
-        self.wk, self.bk_cart, self.bk_latt = find_bk_vectors(
+        wk, bk_cart, bk_latt = find_bk_vectors(
             recip_lattice=bandstructure.RecLattice,
             mp_grid=mp_grid,
             **param_search_bk
         )
 
 
-        NNB = len(self.wk)
+        NNB = len(wk)
         NB = bandstructure.num_bands
 
         k_latt_int = np.rint(kpt_latt * mp_grid[None, :]).astype(int)
 
-        self.G = np.zeros((NK, NNB, 3), dtype=int)
-        self.neighbours = np.zeros((NK, NNB), dtype=int)
-        for ik in range(NK):
+        G = {ik: np.zeros((NNB, 3), dtype=int) for ik in selected_kpoints}
+        neighbours = {ik: np.zeros(NNB, dtype=int) for ik in selected_kpoints}
+        for ik in selected_kpoints:
             for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[ik] + self.bk_latt[ib]
+                k_latt_int_nb = k_latt_int[ik] + bk_latt[ib]
                 for ik2 in range(NK):
                     g = k_latt_int_nb - k_latt_int[ik2]
                     if np.all(g % mp_grid == 0):
-                        self.neighbours[ik, ib] = ik2
-                        self.G[ik, ib] = g // mp_grid
+                        neighbours[ik][ib] = ik2
+                        G[ik][ib] = g // mp_grid
                         break
                 else:
                     raise RuntimeError(
                         f"Could not find a neighbour for k-point {ik} with k-lattice {k_latt_int[ik]} and "
-                        f"bk-lattice {self.bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
+                        f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
-
-
+                
         igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
         igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
 
         print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
-        igmin_glob = igmin_k.min(axis=0) - self.G.max(axis=(0, 1))
-        igmax_glob = igmax_k.max(axis=0) - self.G.min(axis=(0, 1))
+        Gloc = np.array([g for g in G.values()])
+
+        igmin_glob = igmin_k.min(axis=0) - Gloc.max(axis=(0, 1))
+        igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         ig_grid = igmax_glob - igmin_glob + 1
         print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
@@ -234,7 +336,7 @@ class MMN(W90_file):
         bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
         ket = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
 
-        self.data = np.zeros((NK, NNB, NB, NB), dtype=complex)
+        data = np.zeros((NK, NNB, NB, NB), dtype=complex)
 
         if normalize:
             norm = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
@@ -242,7 +344,8 @@ class MMN(W90_file):
             norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in bandstructure.kpoints]
 
         einsum_path = None
-        for ik1, kp1 in enumerate(bandstructure.kpoints):
+        for ik1 in selected_kpoints:
+            kp1 = bandstructure.kpoints[ik1]
             for ig, g in enumerate(kp1.ig.T):
                 g_loc = g[:3] - igmin_glob
                 assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
@@ -251,10 +354,10 @@ class MMN(W90_file):
                     bra[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp1.WF[:, ig + kp1.NG * ispinor].conj()
             if normalize:
                 bra[:] = bra / norm[ik1][:, None, None, None, None]
-            for ib, ik2 in enumerate(self.neighbours[ik1]):
+            for ib, ik2 in enumerate(neighbours[ik1]):
                 kp2 = bandstructure.kpoints[ik2]
                 for ig, g in enumerate(kp2.ig.T):
-                    g_loc = g[:3] - igmin_glob - self.G[ik1, ib]
+                    g_loc = g[:3] - igmin_glob - G[ik1][ib]
                     assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
                         f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ib}, ik2={ik2}"
                     for ispinor in range(nspinor):
@@ -264,10 +367,17 @@ class MMN(W90_file):
                 if einsum_path is None:
                     path_info = np.einsum_path('asijk,bsijk->ab', bra, ket, optimize='greedy')
                     einsum_path = path_info[0]  # The actual path
-                self.data[ik1, ib] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
+                data[ik1, ib] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
 
-        self.bk_reorder = None
-        return self
+        return MMN(
+            data=data,
+            neighbours=neighbours,
+            G=G,
+            bk_latt=bk_latt,
+            bk_cart=bk_cart,
+            wk=wk,
+            bk_reorder=None
+        )
 
 
 

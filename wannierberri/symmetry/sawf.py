@@ -68,12 +68,13 @@ class SymmetrizerSAWF(SavableNPZ):
         weather the symmetry operation includes time reversal or not
     """
 
-    def __init__(self):
-        self.npz_tags = ['D_wann_block_indices', '_NB',
+    npz_tags = ['D_wann_block_indices', '_NB',
                     'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
                    '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
-        self.npz_tags_optional = ["eig_irr", "kpoints_all"]
-        self.default_tags = {}
+    npz_tags_optional = ['eig_irr', 'kpoints_all']
+                
+
+    def __init__(self):
         self._NB = 0
         self.num_wann = 0
         self.D_wann_block_indices = np.zeros((0, 2), dtype=int)

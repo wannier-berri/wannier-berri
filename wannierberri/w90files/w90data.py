@@ -97,7 +97,8 @@ class Wannier90data:
     def from_bandstructure(self, bandstructure,
                           seedname="wannier90",
                           files=("mmn", "eig", "amn", "symmetrizer"),
-                          write_npz_list=(),
+                          read_npz_list=None,
+                          write_npz_list=None,
                           projections=None,
                           unk_grid=None,
                           normalize=True):
@@ -107,7 +108,7 @@ class Wannier90data:
         Parameters
         ----------
         bandstructure : `irrep.bandstructure.BandStructure`
-            the bandstructure object containing the kpoints, lattice, and number of bands
+            the bandstructure object contself.data = np.array(data)aining the kpoints, lattice, and number of bands
         seedname : str
             the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc) to save the npz files (if write_npz_list is not empty)
         files : tuple(str)
@@ -129,8 +130,11 @@ class Wannier90data:
         """
         if "amn" in files or "symmetrizer" in files:
             assert projections is not None, "projections should be provided if amn or symmetrizer are requested"
-        self.read_npz = False
-        self.write_npz_list = set([s.lower() for s in write_npz_list])
+        if read_npz_list is None:
+            read_npz_list = files
+        if write_npz_list is None:
+            write_npz_list = files
+        write_npz_list = set([s.lower() for s in write_npz_list])
         self.seedname = copy(seedname)
         kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
         mp_grid = grid_from_kpoints(kpt_latt)
@@ -141,31 +145,40 @@ class Wannier90data:
                       mp_grid=mp_grid,)
         self.set_file('chk', chk)
         if "eig" in files:
-            eig = EIG().from_bandstructure(bandstructure)
+            eig = EIG.autoread(seedname=seedname, read_npz=("eig" in read_npz_list), 
+                               read_w90=False,
+                               write_npz = "eig" in write_npz_list,
+                               bandstructure=bandstructure)
             self.set_file('eig', eig)
-            if "eig" in self.write_npz_list:
-                eig.to_npz(seedname + ".eig.npz")
         if "amn" in files:
-            amn = AMN().from_bandstructure(bandstructure, projections, normalize=normalize)
+            amn = AMN.autoread(seedname=seedname, read_npz=("amn" in read_npz_list), 
+                               read_w90=False,
+                               write_npz = "amn" in write_npz_list,
+                               bandstructure=bandstructure, 
+                               kwargs_bandstructure={"normalize": normalize, "projections": projections})
             self.set_file('amn', amn)
-            if "amn" in self.write_npz_list:
-                amn.to_npz(seedname + ".amn.npz")
         if "mmn" in files:
-            mmn = MMN().from_bandstructure(bandstructure, normalize=normalize)
-            if "mmn" in self.write_npz_list:
-                mmn.to_npz(seedname + ".mmn.npz")
+            mmn = MMN.autoread(seedname=seedname, read_npz=("mmn" in read_npz_list), 
+                               read_w90=False,
+                               write_npz = "mmn" in write_npz_list,
+                               bandstructure=bandstructure, 
+                               kwargs_bandstructure={"normalize": normalize})
             self.set_file('mmn', mmn)
         if "spn" in files:
-            spn = SPN().from_bandstructure(bandstructure, normalize=normalize)
+            spn = SPN.autoread(seedname=seedname, read_npz=("spn" in read_npz_list),
+                               read_w90=False,
+                               write_npz = "spn" in write_npz_list,
+                               bandstructure=bandstructure, 
+                               kwargs_bandstructure={"normalize": normalize})
             self.set_file('spn', spn)
-            if "spn" in self.write_npz_list:
-                spn.to_npz(seedname + ".spn.npz")
         # TODO : use a cutoff ~100eV for symmetrizer
         if "unk" in files:
-            unk = UNK().from_bandstructure(bandstructure, grid_size=unk_grid, normalize=normalize)
+            unk = UNK.autoread(seedname=seedname, read_npz=("unk" in read_npz_list),
+                               read_w90=False,
+                               write_npz = "unk" in write_npz_list,
+                               bandstructure=bandstructure, 
+                               kwargs_bandstructure={"normalize": normalize, "grid_size": unk_grid})
             self.set_file('unk', unk)
-            if "unk" in self.write_npz_list:
-                unk.to_npz(seedname + ".unk.npz")
         if "symmetrizer" in files:
             symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
             symmetrizer.set_D_wann_from_projections(projections)

@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 import scipy.io
 import fortio
-
+from copy import copy
 
 class FortranFileR(fortio.FortranFile):
 
@@ -29,13 +29,13 @@ class SavableNPZ(abc.ABC):
     A class that can be saved to a npz file and loaded from it.
     """
 
+    npz_tags = []
+    npz_tags_optional = []
+    npz_keys_dict_int = [] # dictionary with int-valued keys
+    
+    @abc.abstractmethod
     def __init__(self):
-        if not hasattr(self, "npz_tags_optional"):
-            self.npz_tags_optional = []
-        if not hasattr(self, "default_tags"):
-            self.default_tags = {}
-        if not hasattr(self, "npz_tags"):
-            self.npz_tags = []
+        pass
 
 
     def to_npz(self, f_npz):
@@ -44,33 +44,83 @@ class SavableNPZ(abc.ABC):
         np.savez_compressed(f_npz, **dic)
         return self
 
-    def from_npz(self, f_npz):
+    @classmethod
+    def from_npz(cls, f_npz):
         dic = np.load(f_npz)
-        self.from_dict(dic)
-        return self
-
+        return cls.from_dict(dic)
+        
     def as_dict(self):
-        dic = {k: self.__getattribute__(k) for k in self.npz_tags}
-        for k in self.npz_tags_optional:
+        dic = {k: self.__getattribute__(k) for k in self.__class__.npz_tags}
+        for k in self.__class__.npz_tags_optional:
             if hasattr(self, k):
                 dic[k] = self.__getattribute__(k)
+        for tag in self.__class__.npz_keys_dict_int:
+            dic.update( dic_to_keydic(self.__getattribute__(tag), tag) ) 
         return dic
 
-    def from_dict(self, dic=None, **kwargs):
-        if dic is None:
-            dic = {}
-        else:
-            dic = dict(dic)
+    @classmethod
+    def from_dict(cls, dic=None, return_obj=True, **kwargs):
+        dic_loc = {}
+        for k in cls.npz_tags:
+            dic_loc[k] = dic[k]
 
-        dic.update(kwargs)
-        for k in self.npz_tags:
+        for tag in cls.npz_keys_dict_int:
+            dic_loc[tag] =  keydic_to_dic(dic, tag)
+
+        for k in cls.npz_tags_optional:
             if k in dic:
-                self.__setattr__(k, dic[k])
-            else:
-                self.__setattr__(k, self.default_tags[k])
-        for k in self.npz_tags_optional:
-            if k in dic:
-                self.__setattr__(k, dic[k])
-            elif k in self.default_tags:
-                self.__setattr__(k, self.default_tags[k])
-        return self
+                dic_loc[k] = dic[k]
+        
+        if return_obj:
+            return cls(**dic_loc)
+        else:
+            return dic_loc
+
+def dic_to_keydic(dic, name="data"):
+    """
+    Converts a dictionary into a new dictionary with keys prefixed by a given name.
+
+    Parameters:
+    dic (dict): The input dictionary to be transformed.
+    name (str): The prefix to be added to each key in the dictionary. Defaults to "data".
+
+    Returns:
+    dict: A new dictionary with keys prefixed by the specified name.
+    """
+
+    keydic = {}
+    for k,v in dic.items():
+        keydic[name+f"_{k}"] = v
+    return keydic
+        
+def keydic_to_dic(keydic, name="data"):
+    """
+    Converts a dictionary with prefixed keys into a new dictionary without the prefix.
+    the items whith keys that do not start with the prefix are ignored.
+
+    Parameters:
+    keydic (dict): The input dictionary with prefixed keys.
+    name (str): The prefix to be removed from each key in the dictionary. Defaults to "data".
+
+    Returns:
+    dict: A new dictionary with keys without the specified prefix.
+    """ 
+    dic = {}
+    for k,v in keydic.items():
+        if k.startswith(name+"_"):
+            dic[int(k[len(name)+1:])] = v
+    return dic
+
+def sparselist_to_dict(slist):
+    """
+    Converts a sparse list (list with None values) to a dictionary with non-None values.
+
+    Parameters:
+    slist (list): The input sparse list.
+
+    Returns:
+    dict: A dictionary with indices as keys and non-None values as values.
+    """
+    if isinstance(slist, dict):
+        return slist
+    return {i: v for i, v in enumerate(slist) if v is not None}
