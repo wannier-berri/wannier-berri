@@ -135,8 +135,7 @@ class MMN(W90_file):
         f_mmn_out.close()
 
     def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self.data = self.data[:, :, selected_bands, :][:, :, :, selected_bands]
+        return super().select_bands(selected_bands, dimensions=(1,2))
 
     # TODO : combine with find_bk_vectors
     @staticmethod

@@ -211,7 +211,8 @@ class Wannier90data:
         _read_files_loc = [f.lower() for f in readfiles]
         assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
         if 'win' in _read_files_loc:
-            self.set_file('win')
+            win = WIN(seedname=seedname, autoread=True)
+            self.set_file('win', win)
             _read_files_loc.remove('win')
         if 'chk' in _read_files_loc:
             self.set_chk(read=True)
@@ -608,7 +609,7 @@ class Wannier90data:
                 selected_bands_bool[:band_start] = False
             if win_min > -np.inf or win_max < np.inf:
                 assert self.has_file('eig'), "eig file is not set - needed to apply window"
-                select_energy = (self.eig.data < win_max) * (self.eig.data > win_min)
+                select_energy = [(E< win_max) * (E > win_min) for E in self.eig.data.values()]
                 select_energy = np.any(select_energy, axis=0)
                 selected_bands_bool = selected_bands_bool * select_energy
             selected_bands = np.where(selected_bands_bool)[0]
@@ -636,7 +637,7 @@ class Wannier90data:
             if key != 'win' and key != 'chk':
                 print(f"key = {key} ,number of bands = {val.NB}")
                 if hasattr(val, 'data') and key != 'unk':
-                    print(f"key = {key} ,shape of data= {val.data.shape}")
+                    print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
             if key == 'chk':
                 print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
@@ -745,9 +746,9 @@ class Wannier90data:
         sc_origin = sc_min_vec @ real_lattice
         sc_basis = sc_size_vec[:, None] * real_lattice
 
-        for ik, U in enumerate(self.unk.data):
-            if U is None:
-                raise NotImplementedError("plotWF from irreducible kpoints is not implemented yet")
+        for ik in range(self.chk.num_kpts):
+            assert ik in self.unk.data, "plotWF from irreducible kpoints is not implemented yet"
+            U = self.unk.data[ik].copy()
             U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
             U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
             k_int = kpoints_int[ik]

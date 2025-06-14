@@ -57,9 +57,7 @@ class UXU(W90_file):
         return CLS(data=data) 
 
     def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self.data = self.data[:, :, :, selected_bands, :][:, :, :, :, selected_bands]
-
+        return super().select_bands(selected_bands, dimensions=(2, 3))
 
 class UHU(UXU):
     """
@@ -94,7 +92,7 @@ class SXU(W90_file):
         assert shape[3] == 3, "S_ipol must have 3 components"
 
     @classmethod
-    def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix='sHu', bk_reorder=None,
+    def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix=None, bk_reorder=None,
                       **kwargs):
         """	
         Read the sHu or sIu file
@@ -125,6 +123,9 @@ class SXU(W90_file):
 
         suffix = CLS.extension if suffix is None else suffix
         print(f"----------\n  {suffix}   \n---------")
+        file_name = seedname + "." + suffix
+
+        print (f"reading object of class {CLS.__name__} from file {file_name} with formatted={formatted} bk_reorder={bk_reorder}")
 
         if formatted:
             f_sXu_in = open(seedname + "." + suffix, 'r')
@@ -159,9 +160,7 @@ class SXU(W90_file):
         return CLS(data=data)
 
     def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self.data = self.data[:, :, :, selected_bands, :][:, :, :, :, selected_bands]
-
+        return super().select_bands(selected_bands, dimensions=(1, 2))
 
 class SIU(SXU):
     """

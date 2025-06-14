@@ -35,6 +35,8 @@ class W90_file(SavableNPZ):
         print (f"setting NK = {NK}")
         self.NK = NK
         
+
+
     @classmethod
     def autoread(cls, seedname="wannier90", ext=None, 
                   read_npz=True, 
@@ -52,8 +54,11 @@ class W90_file(SavableNPZ):
         if os.path.exists(f_npz) and read_npz:
             obj = cls.from_npz(f_npz)
             write_npz = False  # do not write npz again if it was read
-        elif read_w90 and os.path.exists(f"{seedname}.{ext}"):
-            obj = cls.from_w90_file(seedname, **kwargs_w90)
+        elif read_w90:
+            try:
+                obj = cls.from_w90_file(seedname, **kwargs_w90)
+            except FileNotFoundError:
+                pass
         elif bandstructure is not None:
             if kwargs_bandstructure is None:
                 kwargs_bandstructure = {}
@@ -86,8 +91,7 @@ class W90_file(SavableNPZ):
         """
         raise NotImplementedError("{cls.__name__}.from_bandstructure method is not implemented ")
 
-    @abc.abstractmethod
-    def select_bands(self, selected_bands):
+    def select_bands(self, selected_bands, dimensions=(0,)):
         """
         abstract method to select the bands from the data
 
@@ -98,7 +102,18 @@ class W90_file(SavableNPZ):
         selected_bands : list of int
             the list of bands to be used in the calculation
         """
-        pass
+        if selected_bands is not None:
+            for ik in self.data.keys():
+                data = self.data[ik]
+                for d in dimensions:
+                    data = data.swapaxes(d, 0)
+                    data = data[selected_bands]
+                    data = data.swapaxes(0, d)
+                self.data[ik] = data
+            self.NB = len(selected_bands)
+        return self    
+                    
+                
 
     def equals(self, other, tolerance=1e-8):
         """

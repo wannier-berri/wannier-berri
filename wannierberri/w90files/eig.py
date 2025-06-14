@@ -31,16 +31,6 @@ class EIG(W90_file):
             for ib in range(self.NB):
                 file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
 
-    def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self.data = self.data[:, selected_bands]
-        return self
-
-
-    # def get_disentangled(self, v_left, v_right):
-    #     data = np.einsum("klm,km...,kml->kl", v_left, self.data, v_right).real
-    #     return self.__class__(data=data)
-
 
     @classmethod
     def from_bandstructure(cls, bandstructure, selected_kpoints=None,

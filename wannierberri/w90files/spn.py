@@ -86,5 +86,4 @@ class SPN(W90_file):
         return SPN(data=np.array(data))
 
     def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self.data = self.data[:, selected_bands, :, :][:, :, selected_bands, :]
+        return super().select_bands(selected_bands, dimensions=(0, 1))

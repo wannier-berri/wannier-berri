@@ -36,24 +36,12 @@ class AMN(W90_file):
         the data projections
     """
 
+    extension = "amn"
+
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
-
     
-    def select_bands(self, selected_bands):
-        """
-        Select the bands to be used in the calculation, the rest are excluded
-
-        Parameters
-        ----------
-        selected_bands : list of int or bool
-            the indices of the bands to be used, or a boolean mask
-        """
-        # print(f"selecting bands {selected_bands} in amn")
-        if selected_bands is not None:
-            self.data = self.data[:, selected_bands, :]
-
     @property
     def num_wann(self):
         return self.NW

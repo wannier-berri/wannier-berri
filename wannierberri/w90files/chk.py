@@ -565,3 +565,4 @@ class CheckPoint:
             selected_bands_bool[selected_bands] = True
             assert np.any(selected_bands_bool), "No bands selected"
             self.num_bands = sum(selected_bands_bool)
+        return self

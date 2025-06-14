@@ -7,6 +7,7 @@ import numpy as np
 
 from ..utility import clear_cached
 from ..io import SavableNPZ
+from ..w90files.amn import AMN
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 
@@ -546,9 +547,15 @@ class SymmetrizerSAWF(SavableNPZ):
         -------
         float
             the maximum error
+
+        Note:
+        -----
+        Works only when ALL k-points are included in the amn.
         """
-        if not isinstance(amn, np.ndarray):
+        if isinstance(amn, AMN):
             amn = amn.data
+        if isinstance(amn, dict):
+            amn = np.array([amn[ik] for ik in range(self.NK)])
         maxerr = 0
         assert amn.shape == (self.NK, self.NB, self.num_wann), f"amn.shape = {amn.shape} != (NK={self.NK}, NB={self.NB}, num_wann={self.num_wann}) "
         if ignore_lower_bands is not None:

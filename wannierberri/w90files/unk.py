@@ -32,6 +32,8 @@ class UNK(W90_file):
         and nspinor is 2 if spinor is True, otherwise 1.
 
     """
+
+    extension = 'unk'
     
     def __init__(self, data, NK=None):
         super().__init__(data=data, NK=NK)
@@ -144,12 +146,4 @@ class UNK(W90_file):
                 print(f"skipping k-point {ik} not in selected_kpoints {selected_kpoints}")
                 data.append(None)
         return UNK(data=data)
-
-
-    def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self._NB = len(selected_bands)
-            for i, u in enumerate(self.data):
-                if u is not None:
-                    self.data[i] = u[selected_bands]
     
