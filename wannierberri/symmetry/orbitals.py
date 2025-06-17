@@ -251,10 +251,9 @@ class Projector:
         self.gk = gk
         self.projectors = {}
         gk_abs = np.linalg.norm(gk, axis=1)
-        # print("gk_abs", gk_abs)
+        select = gk_abs < 1e-8
+        gk_abs[select] = 1e-8  # to avoid division by zero
         self.gka_abs = gk_abs * a0
-        select = self.gka_abs < 1e-8
-        self.gka_abs[select] = 1e-8
         g_costheta = gk[:, 2] / gk_abs
         g_costheta[select] = 0
         g_phi = np.arctan2(gk[:, 1], gk[:, 0])
