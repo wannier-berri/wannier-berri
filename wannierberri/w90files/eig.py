@@ -1,21 +1,29 @@
-from .w90file import W90_file
+from .w90file import W90_file, check_shape
 import numpy as np
 
 
 class EIG(W90_file):
 
-    def __init__(self, seedname="wannier90", **kwargs):
-        self.npz_tags = ["data"]
-        super().__init__(seedname=seedname, ext="eig", **kwargs)
+    extension = "eig"
 
-    def from_w90_file(self, seedname):
+    def __init__(self, data, NK=None):
+        super().__init__(data=data, NK=NK)
+        self.NB = check_shape(self.data)[0]
+
+
+    @classmethod
+    def from_w90_file(cls, seedname, selected_kpoints=None):
         data = np.loadtxt(seedname + ".eig")
         NB = int(round(data[:, 0].max()))
         NK = int(round(data[:, 1].max()))
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(NK)
         data = data.reshape(NK, NB, 3)
         assert np.linalg.norm(data[:, :, 0] - 1 - np.arange(NB)[None, :]) < 1e-15
         assert np.linalg.norm(data[:, :, 1] - 1 - np.arange(NK)[:, None]) < 1e-15
-        self.data = data[:, :, 2]
+        data = data[:, :, 2]
+        data = {ik: data[ik] for ik in selected_kpoints}
+        return EIG(data=data, NK=NK)
 
     def to_w90_file(self, seedname):
         file = open(seedname + ".eig", "w")
@@ -23,11 +31,26 @@ class EIG(W90_file):
             for ib in range(self.NB):
                 file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
 
-    def select_bands(self, selected_bands):
-        if selected_bands is not None:
-            self.data = self.data[:, selected_bands]
 
+    @classmethod
+    def from_bandstructure(cls, bandstructure, selected_kpoints=None,
+                           verbose=False):
+        """
+        Create an EIG object from a BandStructure object
 
-    # def get_disentangled(self, v_left, v_right):
-    #     data = np.einsum("klm,km...,kml->kl", v_left, self.data, v_right).real
-    #     return self.__class__(data=data)
+        Parameters
+        ----------
+        bandstructure : bandstructure : irrep.bandstructure.BandStructure
+
+            the band structure object
+        """
+        NK = len(bandstructure.kpoints)
+        if selected_kpoints is None:
+            selected_kpoints = np.arange(NK)
+
+        if verbose:
+            print("Creating eig.")
+        data = {}
+        for ik in selected_kpoints:
+            data[ik] = bandstructure.kpoints[ik].Energy_raw
+        return EIG(data=data, NK=NK)

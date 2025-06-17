@@ -24,6 +24,8 @@ class WIN:
         the parsed data
     """
 
+    extension = "win"
+
     def __init__(self, seedname='wannier90', data=None, autoread=False):
         if not autoread:
             return

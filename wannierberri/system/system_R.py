@@ -7,8 +7,8 @@ from collections import defaultdict
 import glob
 
 from ..fourier.rvectors import Rvectors
-from .system import System, pauli_xyz
-from ..utility import clear_cached, one2three
+from .system import System
+from ..utility import clear_cached, one2three, pauli_xyz
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from ..symmetry.wyckoff_position import split_into_orbits
 
@@ -666,6 +666,17 @@ class System_R(System):
             raise AttributeError("set_structure must be called before get_spglib_cell")
 
     def set_symmetry_from_structure(self):
+        """
+        a wrapper for set_pointgroup_from_structure
+        This method is deprecated and will be removed in future versions.
+        """
+        warnings.warn(
+            "set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.",
+            DeprecationWarning
+        )
+        self.set_pointgroup_from_structure()
+
+    def set_pointgroup_from_structure(self):
         """
         Set the symmetry group of the :class:`System`. Requires spglib to be installed.
         :meth:`System.set_structure` must be called in advance.

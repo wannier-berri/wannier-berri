@@ -153,11 +153,13 @@ def check_system():
             else:
                 check_property(key, prec_loc, XX=False)
         for key in matrices:
+            print(f"checking matrix {key}", end="")
             if key in extra_precision:
                 prec_loc = extra_precision[key]
             else:
                 prec_loc = precision_matrix_elements
             check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
+            print(f"check matrix {key} - Ok!")
 
     return _inner
 
@@ -165,7 +167,7 @@ def check_system():
 def test_system_Fe_W90(check_system, system_Fe_W90):
     check_system(
         system_Fe_W90, "Fe_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SA', 'SHA'],
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR', 'SHA', 'SA'],
         legacy=True,
     )
 
