@@ -403,11 +403,7 @@ def test_create_amn_diamond_p_bond():
     expected_spread = 1.4
     expected_a = -lattice[0, 0] / 2
     assert a == approx(expected_a, abs=1e-6)
-<<<<<<< eig-mmn
     assert wannier_spreads == approx(expected_spread, abs=0.5)
-=======
-    assert wannier_spreads == approx(expected_spread, abs=1e-1)
->>>>>>> master
 
 
 def test_create_amn_diamond_sp3():
