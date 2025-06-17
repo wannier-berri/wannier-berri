@@ -11,6 +11,7 @@ from .system import System, pauli_xyz
 from ..utility import clear_cached, one2three
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 from ..symmetry.wyckoff_position import split_into_orbits
+from packaging import version
 
 
 class System_R(System):
@@ -342,6 +343,7 @@ class System_R(System):
         * Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
         Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
         """
+        from irrep import __version__ as irrep_version
         from irrep.spacegroup import SpaceGroup
         from ..symmetry.sawf import SymmetrizerSAWF
         from ..symmetry.projections import Projection
@@ -349,7 +351,12 @@ class System_R(System):
         index = {key: i for i, key in enumerate(set(atom_name))}
         atom_num = np.array([index[key] for key in atom_name])
 
-        spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
+        if version.parse(irrep_version) < version.parse("2.2.0"):
+            spacegroup = SpaceGroup(cell=(self.real_lattice, positions, atom_num),
+                                magmom=magmom, include_TR=True,
+                                spinor=soc,)
+        else:
+            spacegroup = SpaceGroup.from_cell(cell=(self.real_lattice, positions, atom_num),
                                 magmom=magmom, include_TR=True,
                                 spinor=soc,)
         spacegroup.show()
