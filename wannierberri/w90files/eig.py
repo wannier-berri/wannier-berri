@@ -1,4 +1,4 @@
-from .w90file import W90_file, check_shape
+from .w90file import W90_file, check_shape, auto_kptirr
 import numpy as np
 
 
@@ -34,7 +34,9 @@ class EIG(W90_file):
 
     @classmethod
     def from_bandstructure(cls, bandstructure, selected_kpoints=None,
-                           verbose=False):
+                           kptirr=None,
+                           verbose=False,
+                           NK=None):
         """
         Create an EIG object from a BandStructure object
 
@@ -44,13 +46,12 @@ class EIG(W90_file):
 
             the band structure object
         """
-        NK = len(bandstructure.kpoints)
-        if selected_kpoints is None:
-            selected_kpoints = np.arange(NK)
+        NK, selected_kpoints, kptirr = auto_kptirr(
+            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
         if verbose:
             print("Creating eig.")
         data = {}
-        for ik in selected_kpoints:
-            data[ik] = bandstructure.kpoints[ik].Energy_raw
+        for ikirr in kptirr:
+            data[ikirr] = bandstructure.kpoints[selected_kpoints[ikirr]].Energy_raw
         return EIG(data=data, NK=NK)

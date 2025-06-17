@@ -1,9 +1,10 @@
+from collections import defaultdict
 from itertools import islice
 import multiprocessing
 from time import time
 import numpy as np
 from .utility import convert, grid_from_kpoints
-from .w90file import W90_file, check_shape
+from .w90file import W90_file, auto_kptirr, check_shape
 from ..io import sparselist_to_dict
 
 
@@ -256,7 +257,11 @@ class MMN(W90_file):
                            normalize=True,
                            verbose=False,
                            param_search_bk={},
-                           selected_kpoints=None,):
+                           selected_kpoints=None,
+                           kptirr=None,
+                           NK=None,
+                           kpt_latt=None
+                           ):
         """
         Create an AMN object from a BandStructure object
         So far only delta-localised s-orbitals are implemented
@@ -277,15 +282,23 @@ class MMN(W90_file):
         MMN or np.ndarray
             the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
         """
+        if kpt_latt is None:
+            kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
+        mp_grid = np.array(grid_from_kpoints(kpt_latt))
+
+        NK, selected_kpoints, kptirr = auto_kptirr(
+            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+
+        NK = kpt_latt.shape[0]
+
+        kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
+
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
 
         if verbose:
             print("Creating mmn. ")
 
-        kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
-        NK = kpt_latt.shape[0]
-        mp_grid = np.array(grid_from_kpoints(kpt_latt))
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
 
@@ -301,26 +314,26 @@ class MMN(W90_file):
 
         k_latt_int = np.rint(kpt_latt * mp_grid[None, :]).astype(int)
 
-        G = {ik: np.zeros((NNB, 3), dtype=int) for ik in selected_kpoints}
+        G = {ikirr: np.zeros((NNB, 3), dtype=int) for ikirr in kptirr}
         neighbours = {ik: np.zeros(NNB, dtype=int) for ik in selected_kpoints}
-        for ik in selected_kpoints:
+        for ikirr in kptirr:
             for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[ik] + bk_latt[ib]
+                k_latt_int_nb = k_latt_int[ikirr] + bk_latt[ib]
                 for ik2 in range(NK):
                     g = k_latt_int_nb - k_latt_int[ik2]
                     if np.all(g % mp_grid == 0):
-                        neighbours[ik][ib] = ik2
-                        G[ik][ib] = g // mp_grid
+                        neighbours[ikirr][ib] = ik2
+                        G[ikirr][ib] = g // mp_grid
                         break
                 else:
                     raise RuntimeError(
-                        f"Could not find a neighbour for k-point {ik} with k-lattice {k_latt_int[ik]} and "
+                        f"Could not find a neighbour for k-point {ikirr} with k-lattice {k_latt_int[ikirr]} and "
                         f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
 
-        igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
-        igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
+        igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in kpoints_sel])
+        igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in kpoints_sel])
 
         print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
@@ -336,16 +349,16 @@ class MMN(W90_file):
         bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
         ket = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
 
-        data = np.zeros((NK, NNB, NB, NB), dtype=complex)
+        data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
 
         if normalize:
-            norm = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
+            norm = [np.linalg.norm(kp.WF, axis=1) for kp in kpoints_sel]
         else:
-            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in bandstructure.kpoints]
+            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
 
         einsum_path = None
-        for ik1 in selected_kpoints:
-            kp1 = bandstructure.kpoints[ik1]
+        for ik1 in kptirr:
+            kp1 = kpoints_sel[ik1]
             for ig, g in enumerate(kp1.ig.T):
                 g_loc = g[:3] - igmin_glob
                 assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
@@ -355,7 +368,7 @@ class MMN(W90_file):
             if normalize:
                 bra[:] = bra / norm[ik1][:, None, None, None, None]
             for ib, ik2 in enumerate(neighbours[ik1]):
-                kp2 = bandstructure.kpoints[ik2]
+                kp2 = kpoints_sel[ik2]
                 for ig, g in enumerate(kp2.ig.T):
                     g_loc = g[:3] - igmin_glob - G[ik1][ib]
                     assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
@@ -367,10 +380,11 @@ class MMN(W90_file):
                 if einsum_path is None:
                     path_info = np.einsum_path('asijk,bsijk->ab', bra, ket, optimize='greedy')
                     einsum_path = path_info[0]  # The actual path
-                data[ik1, ib] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
+                data[ik1][ib] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
 
         return MMN(
             data=data,
+            NK=NK,
             neighbours=neighbours,
             G=G,
             bk_latt=bk_latt,

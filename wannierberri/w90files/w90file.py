@@ -45,7 +45,8 @@ class W90_file(SavableNPZ):
                  write_npz=True,
                  selected_bands=None,
                  kwargs_w90=None,
-                 kwargs_bandstructure=None):
+                 kwargs_bandstructure=None,
+                 ):
         """First try to read  npz file, then read the w90 file if npz does not exist, 
         otherwise generate from bandstructure if provided.
         """
@@ -227,3 +228,28 @@ def check_shape(data, shape=None):
     if shape is None:
         raise ValueError("all elements of data are None, cannot determine shape")
     return shape
+
+
+def auto_kptirr(bandstructure, selected_kpoints=None, kptirr=None, NK=None):
+    """
+    Automatically determine the kptirr from the bandstructure and selected_kpoints.
+
+    Parameters
+    ----------
+    bandstructure : irrep.bandstructure.BandStructure
+        The band structure object.
+    selected_kpoints : list of int, optional
+        The list of selected k-points. If None, all k-points are used.
+    kptirr : list of int, optional
+        The list of kptirr to be used. If None, it is determined from the bandstructure.
+    NK: int, optional
+        The number of k-points. If None, it is determined from the selected_kpoints.
+
+    """
+    if selected_kpoints is None:
+        selected_kpoints = np.arange(bandstructure.num_k)
+    if NK is None:
+        NK = len(selected_kpoints)
+    if kptirr is None:
+        kptirr = np.arange(NK)
+    return NK, selected_kpoints, kptirr

@@ -5,7 +5,7 @@ from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
-from .w90file import W90_file, check_shape
+from .w90file import W90_file, auto_kptirr, check_shape
 
 
 class AMN(W90_file):
@@ -136,7 +136,10 @@ class AMN(W90_file):
 
     @classmethod
     def from_bandstructure(cls, bandstructure, projections: ProjectionsSet,
-                           normalize=True, verbose=False):
+                           normalize=True, verbose=False,
+                           selected_kpoints=None,
+                           kptirr=None,
+                           NK=None):
         """
         Create an AMN object from a BandStructure object
         So far only delta-localised s-orbitals are implemented
@@ -150,6 +153,10 @@ class AMN(W90_file):
         normalize : bool
             if True, the wavefunctions are normalised
         """
+
+        NK, selected_kpoints, kptirr = auto_kptirr(
+            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+
         positions = []
         orbitals = []
         basis_list = []
@@ -166,11 +173,12 @@ class AMN(W90_file):
 
         if verbose:
             print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
-        data = []
+        data = {}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
         bessel = Bessel_j_exp_int()
-        for kp in bandstructure.kpoints:
+        for i, ikirr in enumerate(kptirr):
+            kp = bandstructure.kpoints[selected_kpoints[i]]
             igk = kp.ig[:3, :] + kp.k[:, None]
             expgk = np.exp(-2j * np.pi * (pos @ igk))
             wf = kp.WF.conj()
@@ -193,10 +201,10 @@ class AMN(W90_file):
                 for u, d in zip(proj_up.T, proj_down.T):
                     datak.append(u)
                     datak.append(d)
-                data.append(np.array(datak).T)
+                data[ikirr] = np.array(datak).T
             else:
-                data.append(wf @ proj_gk.T)
-        return AMN(data=data)
+                data[ikirr] = wf @ proj_gk.T
+        return AMN(data=data, NK=NK)
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)
