@@ -243,7 +243,7 @@ class CheckPoint:
             the Hamiltonian matrix in the Wannier gauge
         """
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        HH_q = np.array([self.wannier_gauge(E, ik, ik) for ik, E in enumerate(eig.data)])
+        HH_q = np.array([self.wannier_gauge(eig.data[ik], ik, ik) for ik in range(self.num_kpts)])
         return 0.5 * (HH_q + HH_q.transpose(0, 2, 1).conj())
 
     def get_SS_q(self, spn):
@@ -262,7 +262,7 @@ class CheckPoint:
         """
 
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        SS_q = np.array([self.wannier_gauge(S, ik, ik) for ik, S in enumerate(spn.data)])
+        SS_q = np.array([self.wannier_gauge(spn.data[ik], ik, ik) for ik in range(self.num_kpts)])
         return 0.5 * (SS_q + SS_q.transpose(0, 2, 1, 3).conj())
 
     #########
@@ -306,25 +306,24 @@ class CheckPoint:
             AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                ib_unique = mmn.ib_unique_map[ik, ib]
+                iknb = mmn.neighbours[ik][ib]
                 # Matrix < u_k | u_k+b > (mmn)
-                data = mmn.data[ik, ib]                   # Hamiltonian gauge
+                data = mmn.data[ik][ib]                   # Hamiltonian gauge
                 if eig is not None:
-                    data = data * eig.data[ik, :, None]  # Hamiltonian gauge (add energies)
+                    data = data * eig.data[ik][:, None]  # Hamiltonian gauge (add energies)
                 AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
                 # Matrix for finite-difference schemes
-                AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :]
+                AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :]
                 # Marzari & Vanderbilt formula for band-diagonal matrix elements
                 if transl_inv:
                     AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
-                        AAW.diagonal()).imag[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, :]
+                        AAW.diagonal()).imag[:, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, :]
                 if phase is not None:
-                    AA_q_ik_ib *= phase[:, :, ib_unique, None]
+                    AA_q_ik_ib *= phase[:, :, ib, None]
                 if sum_b:
                     AA_qb[ik] += AA_q_ik_ib
                 else:
-                    AA_qb[ik, :, :, ib_unique, :] = AA_q_ik_ib
+                    AA_qb[ik, :, :, ib, :] = AA_q_ik_ib
         return AA_qb
 
 
@@ -373,9 +372,9 @@ class CheckPoint:
                 mmn_loc = self.wannier_gauge(mmn.data[ik, ib], ik, iknb)
                 mmn_loc = mmn_loc.diagonal()
                 log_loc = np.angle(mmn_loc)
-                wcc += -log_loc[:, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib]
+                wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib]
                 if spreads:
-                    r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * mmn.wk[ik, ib]
+                    r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * mmn.wk[ib]
         wcc /= mmn.NK
         if spreads:
             return wcc, r2 / mmn.NK - np.sum(wcc**2, axis=1)
@@ -425,34 +424,31 @@ class CheckPoint:
             phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik in range(self.num_kpts):
             for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik, ib1]
-                ib1_unique = mmn.ib_unique_map[ik, ib1]
+                iknb1 = mmn.neighbours[ik][ib1]
                 for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik, ib2]
-                    ib2_unique = mmn.ib_unique_map[ik, ib2]
-
+                    iknb2 = mmn.neighbours[ik][ib2]
                     # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
-                    data = uhu.data[ik, ib1, ib2]                 # Hamiltonian gauge
+                    data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
                     CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
 
                     if antisym:
                         # Matrix for finite-difference schemes (takes antisymmetric piece only)
                         CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                            mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                                mmn.bk_cart[ik, ib1, alpha_A] * mmn.bk_cart[ik, ib2, beta_A] -
-                                mmn.bk_cart[ik, ib1, beta_A] * mmn.bk_cart[ik, ib2, alpha_A]))[None, None, :]
+                            mmn.wk[ib1] * mmn.wk[ib2] * (
+                                mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
+                                mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
                     else:
                         # Matrix for finite-difference schemes (takes symmetric piece only)
                         CC_q_ik_ib = CCW[:, :, None, None] * (
-                            mmn.wk[ik, ib1] * mmn.wk[ik, ib2] * (
-                                mmn.bk_cart[ik, ib1, :, None] *
-                                mmn.bk_cart[ik, ib2, None, :]))[None, None, :, :]
+                            mmn.wk[ib1] * mmn.wk[ib2] * (
+                                mmn.bk_cart[ib1, :, None] *
+                                mmn.bk_cart[ib2, None, :]))[None, None, :, :]
                     if phase is not None:
-                        CC_q_ik_ib *= phase[:, :, ib1_unique, ib2_unique]
+                        CC_q_ik_ib *= phase[:, :, ib1, ib2]
                     if sum_b:
                         CC_qb[ik] += CC_q_ik_ib
                     else:
-                        CC_qb[ik, :, :, ib1_unique, ib2_unique] = CC_q_ik_ib
+                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib
         return CC_qb
 
     # --- C_a(q,b1,b2) matrix --- #
@@ -488,14 +484,13 @@ class CheckPoint:
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik in range(self.num_kpts):
-            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik, :, :, :] * eig.data[ik, None, :, None], ik, ik)
+            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik)
         return SH_q
 
     def get_SHA_q(self, shu, mmn, phase=None, sum_b=False):
         """
         SHA or SA (if siu is used instead of shu)
         """
-        mmn.set_bk_chk(self)
         if sum_b:
             SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         else:
@@ -503,17 +498,16 @@ class CheckPoint:
         assert shu.NNB == mmn.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={mmn.NNB} - mismatch"
         for ik in range(self.num_kpts):
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                ib_unique = mmn.ib_unique_map[ik, ib]
-                SHAW = self.wannier_gauge(shu.data[ik, ib], ik, iknb)
-                SHA_q_ik_ib = 1.j * SHAW[:, :, None, :] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
+                iknb = mmn.neighbours[ik][ib]
+                SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
+                SHA_q_ik_ib = 1.j * SHAW[:, :, None, :] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None]
 
                 if phase is not None:
-                    SHA_q_ik_ib *= phase[:, :, ib_unique, None, None]
+                    SHA_q_ik_ib *= phase[:, :, ib, None, None]
                 if sum_b:
                     SHA_qb[ik] += SHA_q_ik_ib
                 else:
-                    SHA_qb[ik, :, :, ib_unique, :, :] = SHA_q_ik_ib
+                    SHA_qb[ik, :, :, ib, :, :] = SHA_q_ik_ib
 
         return SHA_qb
 
@@ -523,24 +517,22 @@ class CheckPoint:
         """
         SHR or SR(if eig is None)
         """
-        mmn.set_bk_chk(self)
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (mmn.NK, mmn.NB) == (self.num_kpts, self.num_bands), f"mmn file has NK={mmn.NK}, NB={mmn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik in range(self.num_kpts):
-            SH = spn.data[ik, :, :, :]
+            SH = spn.data[ik][:, :, :]
             if eig is not None:
-                SH = SH * eig.data[ik, None, :, None]
+                SH = SH * eig.data[ik][None, :, None]
             SHW = self.wannier_gauge(SH, ik, ik)
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                ib_unique = mmn.ib_unique_map[ik, ib]
-                SHM = np.tensordot(SH, mmn.data[ik, ib], axes=((1,), (0,))).swapaxes(-1, -2)
+                iknb = mmn.neighbours[ik][ib]
+                SHM = np.tensordot(SH, mmn.data[ik][ib], axes=((1,), (0,))).swapaxes(-1, -2)
                 SHRW = self.wannier_gauge(SHM, ik, iknb)
                 if phase is not None:
-                    SHRW = SHRW * phase[:, :, ib_unique, None]
+                    SHRW = SHRW * phase[:, :, ib, None]
                 SHRW = SHRW - SHW
-                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ik, ib] * mmn.bk_cart[ik, ib, None, None, :, None]
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None]
         return SHR_q
 
 
@@ -573,3 +565,4 @@ class CheckPoint:
             selected_bands_bool[selected_bands] = True
             assert np.any(selected_bands_bool), "No bands selected"
             self.num_bands = sum(selected_bands_bool)
+        return self

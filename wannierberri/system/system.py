@@ -19,11 +19,6 @@ from functools import cached_property
 from ..symmetry.point_symmetry import PointGroup
 from ..utility import real_recip_lattice
 
-pauli_x = [[0, 1], [1, 0]]
-pauli_y = [[0, -1j], [1j, 0]]
-pauli_z = [[1, 0], [0, -1]]
-pauli_xyz = np.array([pauli_x, pauli_y, pauli_z]).transpose((1, 2, 0))
-
 
 def num_cart_dim(key):
     """

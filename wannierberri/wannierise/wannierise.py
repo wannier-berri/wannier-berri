@@ -113,7 +113,7 @@ def wannierise(w90data,
         symmetrizer = VoidSymmetrizer(NK=NK)
         include_k = np.ones(NK, dtype=bool)
 
-    frozen = vectorize(select_window_degen, w90data.eig.data[kptirr], to_array=True,
+    frozen = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
     free = vectorize(np.logical_not, frozen, to_array=True)
 
@@ -135,21 +135,20 @@ def wannierise(w90data,
     else:
         raise ValueError("init should be 'amn' or 'random'")
 
-    neighbours_all = w90data.mmn.neighbours_unique
-    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ik] for ik in neigh]
-                                       for neigh in w90data.mmn.neighbours_unique[kptirr]])
+    neighbours_all = w90data.mmn.neighbours
+    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ikb] for ikb in w90data.mmn.neighbours[ik]]
+                                       for ik in kptirr])
 
     # wk = w90data.mmn.wk_unique
-    bk_cart = w90data.mmn.bk_cart_unique
-    mmn_data_ordered = np.array([data[order] for data, order in zip(w90data.mmn.data, w90data.mmn.ib_unique_map_inverse)])
+    bk_cart = w90data.mmn.bk_cart
     t1 = time()
     wannierizer = Wannierizer(parallel=parallel, symmetrizer=symmetrizer)
     for ik, kpt in enumerate(kptirr):
-        wannierizer.add_kpoint(Mmn=mmn_data_ordered[kpt],
+        wannierizer.add_kpoint(Mmn=w90data.mmn.data[kpt],
                             frozen=frozen[ik],
                             frozen_nb=frozen[neighbours_irreducible[ik]],
-                            wb=w90data.mmn.wk_unique,
-                            bk=w90data.mmn.bk_cart_unique,
+                            wb=w90data.mmn.wk,
+                            bk=w90data.mmn.bk_cart,
                             symmetrizer_Zirr=get_symmetrizer_Zirr(symmetrizer, ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),
                             symmetrizer_Uirr=get_symmetrizer_Uirr(symmetrizer, ik),
                             ikirr=ik,
