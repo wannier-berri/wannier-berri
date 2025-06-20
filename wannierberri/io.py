@@ -116,7 +116,7 @@ def keydic_to_dic(keydic, name="data"):
         if isinstance(val, dict):
             return val
         elif isinstance(val, np.ndarray):
-            return {i: v for i, v in enumerate(val) if v is not None}
+            return {i: v for i, v in enumerate(val)}
         else:
             raise ValueError(f"Expected a dict or an array for key '{name}', got {type(val)}")
     for k, v in keydic.items():

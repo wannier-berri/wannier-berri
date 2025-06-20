@@ -223,7 +223,7 @@ def test_create_w90files_Fe():
 
     norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
     if norms.ndim == 3:
-        norms = norms.sum(axis=2)  # sum over spinor components in irrep>1.2
+        norms = norms.sum(axis=2)  # sum over spinor components in irrep>=2.2
 
     assert abs(1 - np.array(norms)).max() < 1e-7, "norms of wavefunctions are not 1, check the bandstructure"
 

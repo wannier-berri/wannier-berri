@@ -143,6 +143,7 @@ class UNK(W90_file):
             if ik in selected_kpoints:
                 WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
                 g = ig_list[ik][:, :3] 
+                ng = g.shape[0]
                 WF_loc = kp.WF if irrep_new_version else kp.WF.reshape((NB, ng, nspinor), order='F')
                 if normalize:
                     norm = np.linalg.norm(WF_loc, axis=(1,2))
