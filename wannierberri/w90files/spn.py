@@ -72,6 +72,10 @@ class SPN(W90_file):
         """
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+        from ..import IRREP_IRREDUCIBLE_VERSION
+        from packaging import version
+        from irrep import __version__ as irrep__version__
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
 
         assert bandstructure.spinor, "SPN only works for spinor bandstructures"
 
@@ -82,11 +86,11 @@ class SPN(W90_file):
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             print(f"setting spn for k={kp.k}")
             ng = kp.ig.shape[1]
-            wf = kp.WF
+            wf = kp.WF if irrep_new_version else kp.WF.reshape((bandstructure.num_bands, ng, 2), order='F')
             if normalize:
-                wf /= np.linalg.norm(wf, axis=1)[:, None]
-            wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
-            data_k = np.einsum('mri,nsi,rst->mnt', wf.conj(), wf, pauli_xyz)
+                wf /= np.linalg.norm(wf, axis=(1, 2))[:, None, None]
+            # wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
+            data_k = np.einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
             data[ikirr] = data_k
 
         print(f"length of data = {len(data)}")

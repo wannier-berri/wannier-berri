@@ -295,6 +295,10 @@ class MMN(W90_file):
         NK = kpt_latt.shape[0]
 
         kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
+        from ..import IRREP_IRREDUCIBLE_VERSION
+        from packaging import version
+        from irrep import __version__ as irrep__version__
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
 
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
@@ -334,9 +338,13 @@ class MMN(W90_file):
                         f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
+        if irrep_new_version:
+            ig_list = [kp.ig for kp in kpoints_sel]
+        else:
+            ig_list = [kp.ig.T for kp in kpoints_sel]
 
-        igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in kpoints_sel])
-        igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in kpoints_sel])
+        igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
+        igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
 
         print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
@@ -364,12 +372,14 @@ class MMN(W90_file):
         einsum_path = None
         for ik1 in kptirr:
             kp1 = kpoints_sel[ik1]
-            for ig, g in enumerate(kp1.ig.T):
-                g_loc = g[:3] - igmin_glob
-                assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
-                    f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, ig={ig}"
+            ig_loc = kp1.ig if irrep_new_version else kp1.ig.T
+            WF_loc = kp1.WF if irrep_new_version else kp1.WF.reshape((kp1.WF.shape[0], -1, nspinor), order='F')
+            for ig, g in enumerate(ig_loc):
+                g = g[:3] - igmin_glob
+                assert np.all(_g >= 0) and np.all(_g < ig_grid), \
+                    f"g {_g} out of bounds for ig_grid {ig_grid} at ik1={ik1}, ig={ig}"
                 for ispinor in range(nspinor):
-                    bra[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp1.WF[:, ig + kp1.NG * ispinor].conj()
+                    bra[:, ispinor, _g[0], _g[1], _g[2]] = WF_loc[:, ig, ispinor].conj()
             if normalize:
                 bra[:] = bra / norm[ik1][:, None, None, None, None]
             for ib, ik2 in enumerate(neighbours[ik1]):
@@ -380,12 +390,15 @@ class MMN(W90_file):
                     if ik2 not in kpoints_extra:
                         kp2 = bandstructure.kpoints.get_transformed_copy()
                     kp2 = kpoints_extra[ik2] 
-                for ig, g in enumerate(kp2.ig.T):
-                    g_loc = g[:3] - igmin_glob - G[ik1][ib]
-                    assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
-                        f"g_loc {g_loc} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ib}, ik2={ik2}"
+                WF2_loc = kp2.WF if irrep_new_version else kp2.WF.reshape((kp2.WF.shape[0], -1, nspinor), order='F')
+                ig2_loc = kp2.ig if irrep_new_version else kp2.ig.T
+
+                for ig, g in enumerate(ig2_loc):
+                    _g = g[:3] - igmin_glob - G[ik1][ib]
+                    assert np.all(_g >= 0) and np.all(_g < ig_grid), \
+                        f"g_loc {_g} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ib}, ik2={ik2}"
                     for ispinor in range(nspinor):
-                        ket[:, ispinor, g_loc[0], g_loc[1], g_loc[2]] = kp2.WF[:, ig + kp2.NG * ispinor]
+                        ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig, ispinor]
                 if normalize:
                     ket[:] = ket / norm[ik2][:, None, None, None, None]
                 if einsum_path is None:

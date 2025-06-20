@@ -1,5 +1,8 @@
 """test auxilary functions"""
 
+from irrep import __version__ as irrep__version__
+from packaging import version
+from wannierberri import IRREP_IRREDUCIBLE_VERSION
 import glob
 import os
 import shutil
@@ -16,6 +19,8 @@ from irrep.spacegroup import SpaceGroup
 
 from wannierberri.w90files.eig import EIG
 sq2 = np.sqrt(2)
+
+irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
 
 
 def test_perpedicular_coplanar():
@@ -107,7 +112,10 @@ def test_projection_basis_Telike_gen():
     x = 0.2
     positions = np.array([[x, 0, 0], [0, x, 1 / 3], [-x, -x, 2 / 3]])
     numbers = [1, 1, 1]
-    spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
+    if irrep_new_version:
+        spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
+    else:
+        spacegroup = SpaceGroup(cell=(lattice, positions, numbers), spinor=False)
     spacegroup.show()
     for i, s in enumerate(spacegroup.symmetries):
         print(i + 1, "\n", s.rotation_cart)
@@ -158,7 +166,10 @@ def test_projection_basis_Telike_onatom():
     x = 0.2
     positions = np.array([[x, 0, 0], [0, x, 1 / 3], [-x, -x, 2 / 3]])
     numbers = [1, 1, 1]
-    spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
+    if irrep_new_version:
+        spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
+    else:
+        spacegroup = SpaceGroup(cell=(lattice, positions, numbers), spinor=False)
     spacegroup.show()
     for i, s in enumerate(spacegroup.symmetries):
         print(i + 1, "\n", s.rotation_cart)

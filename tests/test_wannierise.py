@@ -122,7 +122,6 @@ def test_wannierise(outer_window):
         d, acc = np.max(diff), 0.0005
         if check_results:
             assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
-
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
     os.chdir(cwd)
 

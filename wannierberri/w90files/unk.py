@@ -112,12 +112,23 @@ class UNK(W90_file):
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
+        from ..import IRREP_IRREDUCIBLE_VERSION
+        from packaging import version
+        from irrep import __version__ as irrep__version__
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+
+        # NK = len(bandstructure.kpoints)
         NB = bandstructure.num_bands
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
+        if irrep_new_version:
+            ig_list = [kp.ig for kp in bandstructure.kpoints]
+        else:
+            ig_list = [kp.ig.T for kp in bandstructure.kpoints]
+        ig_list = [ig_list[ik] for ik in selected_kpoints]
         if grid_size is None:
-            igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
-            igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
+            igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
+            igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
             igmin_glob = igmin_k.min(axis=0)
             igmax_glob = igmax_k.max(axis=0)
             ig_grid = igmax_glob - igmin_glob + 1
@@ -133,13 +144,15 @@ class UNK(W90_file):
         for ikirr in kptirr:
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
-            g = kp.ig[:3, :]
+            g_loc = ig_list[ikirr][:, :3]
+            ng = g_loc.shape[0]
+            WF_loc = kp.WF if irrep_new_version else kp.WF.reshape((NB, ng, nspinor), order='F')
             if normalize:
-                kp.WF /= np.linalg.norm(kp.WF, axis=1)[:, None]
-            ng = g.shape[1]
-            for ig, g in enumerate(g.T):
+                norm = np.linalg.norm(WF_loc, axis=(1, 2))
+                WF_loc = WF_loc / norm[:, None, None]
+            for ig, g in enumerate(g_loc):
                 for j in range(nspinor):
                     WF_grid[:, g[0], g[1], g[2], j] = kp.WF[:, ig + j * ng]
             WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
             data[ikirr] = WF_grid
-        return UNK(data=data, NK=NK)
+        return UNK(data=data)
