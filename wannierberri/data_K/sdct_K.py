@@ -9,7 +9,7 @@
 from functools import cached_property
 
 import numpy as np
-from ..utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A, cached_einsum
 
 
 class SDCT_K:
@@ -77,35 +77,35 @@ class SDCT_K:
         Aa_int = self.kron * A_int  # Energy diagonal piece
         A_int = A_int - Aa_int           # Energy non-diagonal piece
 
-        Cbc_int = 1.j * np.einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
+        Cbc_int = 1.j * cached_einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
         C_int = Cbc_int[:, :, :, alpha_A, beta_A] - Cbc_int[:, :, :, beta_A, alpha_A]
 
-        Obc_int = 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        Obc_int = 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_int)
         O_int = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
 
         # _____ 2. External terms _____ #
         Aa_ext = self.kron * A  # Energy diagonal piece
         A_ext = A - Aa_ext           # Energy non-diagonal piece
 
-        Cbc_ext = -1.j * Eln_plus[:, :, :, None, None] * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
-        Cbc_ext += -1.j * np.einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
-        Cbc_ext += -1.j * np.einsum('kn,klpa,kpnb->klnab', En, A_ext, Aa_ext)
+        Cbc_ext = -1.j * Eln_plus[:, :, :, None, None] * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Cbc_ext += -1.j * cached_einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
+        Cbc_ext += -1.j * cached_einsum('kn,klpa,kpnb->klnab', En, A_ext, Aa_ext)
         C_ext = C + Cbc_ext[:, :, :, alpha_A, beta_A] - Cbc_ext[:, :, :, beta_A, alpha_A]
 
-        Obc_ext = -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
-        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
-        Obc_ext += -1.j * np.einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+        Obc_ext = -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+        Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
         O_ext = O + Obc_ext[:, :, :, alpha_A, beta_A] - Obc_ext[:, :, :, beta_A, alpha_A]
 
         # _____ 3. Cross terms _____ #
-        Cbc_cross = np.einsum('klpa,kpnb->klnab', A_int, B)
+        Cbc_cross = cached_einsum('klpa,kpnb->klnab', A_int, B)
         Cbc_cross = 1.j * (Cbc_cross - Cbc_cross.swapaxes(1, 2).conj())
-        Cbc_cross += -1.j * np.einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_int)
-        Cbc_cross += -1.j * np.einsum('kn,klpa,kpnb->klnab', En, A_int, Aa_ext)
+        Cbc_cross += -1.j * cached_einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_int)
+        Cbc_cross += -1.j * cached_einsum('kn,klpa,kpnb->klnab', En, A_int, Aa_ext)
         C_cross = Cbc_cross[:, :, :, alpha_A, beta_A] - Cbc_cross[:, :, :, beta_A, alpha_A]
 
-        Obc_cross = 1.j * np.einsum('klpa,kpnb->klnab', A_ext, A_int)
-        Obc_cross += 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_ext)
+        Obc_cross = 1.j * cached_einsum('klpa,kpnb->klnab', A_ext, A_int)
+        Obc_cross += 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_ext)
         O_cross = Obc_cross[:, :, :, alpha_A, beta_A] - Obc_cross[:, :, :, beta_A, alpha_A]
 
 
@@ -129,10 +129,10 @@ class SDCT_K:
         Aa_int = self.kron * A_int  # Energy diagonal piece
         A_int = A_int - Aa_int           # Energy non-diagonal piece
 
-        Cbc_int = 1.j * np.einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
+        Cbc_int = 1.j * cached_einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
         C_int = Cbc_int[:, :, :, alpha_A, beta_A] - Cbc_int[:, :, :, beta_A, alpha_A]
 
-        Obc_int = 1.j * np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        Obc_int = 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_int)
         O_int = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
 
         # Final formula
@@ -153,7 +153,7 @@ class SDCT_K:
         Aa_int = self.kron * A_int  # Energy diagonal piece
         A_int = A_int - Aa_int           # Energy non-diagonal piece
 
-        Gbc_int = np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        Gbc_int = cached_einsum('klpa,kpnb->klnab', A_int, A_int)
         G_int = 0.5 * (Gbc_int + Gbc_int.swapaxes(3, 4))
 
         # _____ 2. External terms _____ #
@@ -161,15 +161,15 @@ class SDCT_K:
         Aa_ext = self.kron * A  # Energy diagonal piece
         A_ext = A - Aa_ext           # Energy non-diagonal piece
 
-        Gbc_ext = -np.einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
-        Gbc_ext += -np.einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
-        Gbc_ext += -np.einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+        Gbc_ext = -cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+        Gbc_ext += -cached_einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+        Gbc_ext += -cached_einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
         G_ext = G + 0.5 * (Gbc_ext + Gbc_ext.swapaxes(3, 4))
 
         # _____ 3. Cross terms _____ #
 
-        Gbc_cross = np.einsum('klpa,kpnb->klnab', A_ext, A_int)
-        Gbc_cross += np.einsum('klpa,kpnb->klnab', A_int, A_ext)
+        Gbc_cross = cached_einsum('klpa,kpnb->klnab', A_ext, A_int)
+        Gbc_cross += cached_einsum('klpa,kpnb->klnab', A_int, A_ext)
         G_cross = 0.5 * (Gbc_cross + Gbc_cross.swapaxes(3, 4))
 
         # Final formula
@@ -185,7 +185,7 @@ class SDCT_K:
         Aa_int = self.kron * A_int  # Energy diagonal piece
         A_int = A_int - Aa_int           # Energy non-diagonal piece
 
-        Gbc_int = np.einsum('klpa,kpnb->klnab', A_int, A_int)
+        Gbc_int = cached_einsum('klpa,kpnb->klnab', A_int, A_int)
         G_int = 0.5 * (Gbc_int + Gbc_int.swapaxes(3, 4))
 
         # Final formula

@@ -1,7 +1,7 @@
 import numpy as np
 import abc
 import functools
-from ..utility import Gaussian, Lorentzian, FermiDirac
+from ..utility import Gaussian, Lorentzian, FermiDirac, cached_einsum
 from ..result import EnergyResult
 from .calculator import Calculator
 from ..formula.covariant import SpinVelocity
@@ -266,16 +266,16 @@ class ShiftCurrentFormula(Formula):
         # commutators
         # ** the spatial index of D_H_Pval corresponds to generalized derivative direction
         # ** --> stored in the fourth column of output variables
-        sum_HD = (np.einsum('knlc,klma->knmca', V_H, D_H_Pval) -
-                  np.einsum('knnc,knma->knmca', V_H, D_H_Pval) -
-                  np.einsum('knla,klmc->knmca', D_H_Pval, V_H) +
-                  np.einsum('knma,kmmc->knmca', D_H_Pval, V_H))
+        sum_HD = (cached_einsum('knlc,klma->knmca', V_H, D_H_Pval) -
+                  cached_einsum('knnc,knma->knmca', V_H, D_H_Pval) -
+                  cached_einsum('knla,klmc->knmca', D_H_Pval, V_H) +
+                  cached_einsum('knma,kmmc->knmca', D_H_Pval, V_H))
 
         # ** this one is invariant under a<-->c
-        DV_bit = (np.einsum('knmc,knna->knmca', D_H, V_H) -
-                  np.einsum('knmc,kmma->knmca', D_H, V_H) +
-                  np.einsum('knma,knnc->knmca', D_H, V_H) -
-                  np.einsum('knma,kmmc->knmca', D_H, V_H))
+        DV_bit = (cached_einsum('knmc,knna->knmca', D_H, V_H) -
+                  cached_einsum('knmc,kmma->knmca', D_H, V_H) +
+                  cached_einsum('knma,knnc->knmca', D_H, V_H) -
+                  cached_einsum('knma,kmmc->knmca', D_H, V_H))
 
         # generalized derivative
         A_gen_der = (+ 1j * (del2E_H + sum_HD + DV_bit) * dEig_inv[:, :, :, np.newaxis, np.newaxis])
@@ -284,16 +284,16 @@ class ShiftCurrentFormula(Formula):
             # ** --> stored in the fourth column of output variables
             A_Hbar = data_K.Xbar('AA')
             A_Hbar_der = data_K.Xbar('AA', 1)
-            sum_AD = (np.einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
-                      np.einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
-                      np.einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
-                      np.einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
-            AD_bit = (np.einsum('knnc,knma->knmac', A_Hbar, D_H) -
-                      np.einsum('kmmc,knma->knmac', A_Hbar, D_H) +
-                      np.einsum('knna,knmc->knmac', A_Hbar, D_H) -
-                      np.einsum('kmma,knmc->knmac', A_Hbar, D_H))
-            AA_bit = (np.einsum('knnb,knma->knmab', A_Hbar, A_Hbar) -
-                      np.einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
+            sum_AD = (cached_einsum('knlc,klma->knmca', A_Hbar, D_H_Pval) -
+                      cached_einsum('knnc,knma->knmca', A_Hbar, D_H_Pval) -
+                      cached_einsum('knla,klmc->knmca', D_H_Pval, A_Hbar) +
+                      cached_einsum('knma,kmmc->knmca', D_H_Pval, A_Hbar))
+            AD_bit = (cached_einsum('knnc,knma->knmac', A_Hbar, D_H) -
+                      cached_einsum('kmmc,knma->knmac', A_Hbar, D_H) +
+                      cached_einsum('knna,knmc->knmac', A_Hbar, D_H) -
+                      cached_einsum('kmma,knmc->knmac', A_Hbar, D_H))
+            AA_bit = (cached_einsum('knnb,knma->knmab', A_Hbar, A_Hbar) -
+                      cached_einsum('kmmb,knma->knmab', A_Hbar, A_Hbar))
 
             A_gen_der += A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
 
@@ -304,7 +304,7 @@ class ShiftCurrentFormula(Formula):
             A_H = data_K.A_H_internal
 
         # here we take the -real part to eliminate the 1j factor in the final factor
-        Imn = - np.einsum('knmca,kmnb->knmabc', A_gen_der, A_H).imag
+        Imn = - cached_einsum('knmca,kmnb->knmabc', A_gen_der, A_H).imag
         Imn += Imn.swapaxes(4, 5)  # symmetrize b and c
 
         self.Imn = Imn
@@ -353,7 +353,7 @@ class InjectionCurrentFormula(Formula):
         # compute delta_V[k, m, n, a] = V_H[k, m, m, a] - V_H[k, n, n, a]
         delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :]  # (k, m, n, a)
 
-        Imn = np.einsum('kmna,kmnb,knmc->kmnabc', delta_V, A_H, A_H)
+        Imn = cached_einsum('kmna,kmnb,knmc->kmnabc', delta_V, A_H, A_H)
 
         self.Imn = Imn
         self.ndim = 3

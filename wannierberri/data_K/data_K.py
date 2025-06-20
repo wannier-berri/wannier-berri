@@ -14,6 +14,8 @@
 import numpy as np
 import abc
 from functools import cached_property
+
+from wannierberri.utility import cached_einsum
 from ..parallel import pool
 from ..system.system import System
 from ..grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
@@ -240,7 +242,7 @@ class Data_K(System, abc.ABC):
 
     @cached_property
     def delE_K(self):
-        delE_K = np.einsum("klla->kla", self.Xbar('Ham', 1))
+        delE_K = cached_einsum("klla->kla", self.Xbar('Ham', 1))
         check = np.abs(delE_K).imag.max()
         if check > 1e-10:
             raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")

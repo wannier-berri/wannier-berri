@@ -5,7 +5,7 @@ from irrep.spacegroup import SpaceGroupBare
 import numpy as np
 
 
-from ..utility import clear_cached
+from ..utility import cached_einsum, clear_cached
 from ..w90files.amn import AMN
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
@@ -300,7 +300,7 @@ class SymmetrizerSAWF:
                     XX_L = wcc_red_in[start_a:start_a + norb]
                     if ncart > 0:
                         XX_L = symop.transform_r(XX_L) + T[atom_a]
-                    transformed = np.einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym].T, XX_L, self.rot_orb_list[block][atom_a, isym].T).real
+                    transformed = cached_einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym].T, XX_L, self.rot_orb_list[block][atom_a, isym].T).real
                     WCC_red_out[start_b:start_b + norb] += transformed
         if ncart > 0:
             WCC_red_out = WCC_red_out @ self.spacegroup.lattice

@@ -18,6 +18,8 @@ from copy import copy
 import os
 import warnings
 import numpy as np
+
+from wannierberri.utility import cached_einsum
 from ..wannierise import wannierise
 from ..symmetry.sawf import SymmetrizerSAWF
 from .utility import grid_from_kpoints
@@ -817,7 +819,7 @@ class Wannier90data:
             assert ik in self.unk.data, "plotWF from irreducible kpoints is not implemented yet"
             U = self.unk.data[ik].copy()
             U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
-            U = np.einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
+            U = cached_einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
             k_int = kpoints_int[ik]
             k_latt = kpoints[ik]
             exp_loc = [exp_grid[i]**k_int[i] for i in range(3)]
