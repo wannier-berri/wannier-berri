@@ -1,5 +1,5 @@
 import numpy as np
-from ..utility import alpha_A, beta_A, delta_f
+from ..utility import alpha_A, beta_A, cached_einsum, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry.point_symmetry import transform_ident, transform_odd
 
@@ -58,9 +58,9 @@ class DerDcov(Dcov):
 
     def ln(self, ik, inn, out):
         summ = self.W.ln(ik, inn, out)
-        tmp = np.einsum("lpb,pnd->lnbd", self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
+        tmp = cached_einsum("lpb,pnd->lnbd", self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
         summ += tmp + tmp.swapaxes(2, 3)
-        tmp = -np.einsum("lmb,mnd->lnbd", self.D.ln(ik, inn, out), self.V.nn(ik, inn, out))
+        tmp = -cached_einsum("lmb,mnd->lnbd", self.D.ln(ik, inn, out), self.V.nn(ik, inn, out))
         summ += tmp + tmp.swapaxes(2, 3)
         summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None]
         return summ
@@ -78,16 +78,16 @@ class Der2Dcov(Formula_ln):
 
     def ln(self, ik, inn, out):
         summ = self.WV.ln(ik, inn, out)
-        summ += np.einsum("lpbe,pnd->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += np.einsum("lpde,pnb->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += np.einsum("lpe,pnbd->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("lpd,pnbe->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("lpb,pnde->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += -np.einsum("lmde,mnb->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -np.einsum("lmbd,mne->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -np.einsum("lmbe,mnd->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -np.einsum("lmb,mnde->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-        summ += -np.einsum("lmd,mnbe->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
+        summ += cached_einsum("lpbe,pnd->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
+        summ += cached_einsum("lpde,pnb->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
+        summ += cached_einsum("lpe,pnbd->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("lpd,pnbe->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("lpb,pnde->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += -cached_einsum("lmde,mnb->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
+        summ += -cached_einsum("lmbd,mne->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
+        summ += -cached_einsum("lmbe,mnd->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
+        summ += -cached_einsum("lmb,mnde->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
+        summ += -cached_einsum("lmd,mnbe->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
 
         summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None, None]
         return summ
@@ -109,18 +109,18 @@ class Der2A(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = self.Abar_de.nn(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.A.ln(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dA.ln(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.A.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dA.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.A.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dA.ln(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.A.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dA.nl(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
     def ln(self, ik, inn, out):
         summ = self.Abar_de.ln(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.ln(ik, inn, out), self.A.nn(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.ln(ik, inn, out), self.dA.nn(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.A.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dA.ll(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.ln(ik, inn, out), self.A.nn(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.ln(ik, inn, out), self.dA.nn(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.A.ll(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dA.ll(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
 
@@ -135,18 +135,18 @@ class Der2B(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = self.Bbar_de.nn(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.B.ln(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dB.ln(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.B.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dB.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.B.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dB.ln(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.B.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dB.nl(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
     def ln(self, ik, inn, out):
         summ = self.Bbar_de.ln(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.ln(ik, inn, out), self.B.nn(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.ln(ik, inn, out), self.dB.nn(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.B.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dB.ll(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.ln(ik, inn, out), self.B.nn(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.ln(ik, inn, out), self.dB.nn(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.B.ll(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dB.ll(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
 
@@ -161,10 +161,10 @@ class Der2O(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = self.Obar_de.nn(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.O.ln(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dO.ln(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.O.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dO.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.O.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dO.ln(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.O.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dO.nl(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
     def ln(self, ik, inn, out):
@@ -182,10 +182,10 @@ class Der2H(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = self.Hbar_de.nn(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.H.ln(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dH.ln(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.H.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dH.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.H.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dH.ln(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.H.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dH.nl(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
     def ln(self, ik, inn, out):
@@ -232,10 +232,10 @@ class Der3E(Formula_ln):
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
         summ += 1 * self.dW.nn(ik, inn, out)
-        summ += 1 * np.einsum("mlac,lnb->mnabc", self.dV.nl(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += 1 * np.einsum("mla,lnbc->mnabc", self.V.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += -1 * np.einsum("mlbc,lna->mnabc", self.dD.nl(ik, inn, out), self.V.ln(ik, inn, out))
-        summ += -1 * np.einsum("mlb,lnac->mnabc", self.D.nl(ik, inn, out), self.dV.ln(ik, inn, out))
+        summ += 1 * cached_einsum("mlac,lnb->mnabc", self.dV.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ += 1 * cached_einsum("mla,lnbc->mnabc", self.V.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += -1 * cached_einsum("mlbc,lna->mnabc", self.dD.nl(ik, inn, out), self.V.ln(ik, inn, out))
+        summ += -1 * cached_einsum("mlb,lnac->mnabc", self.D.nl(ik, inn, out), self.dV.ln(ik, inn, out))
 
         # TODO: alternatively: add factor 0.5 to first term, remove 4th and 5th, and ad line below.
         # Should give the same, I think, but needs to be tested
@@ -269,22 +269,22 @@ class Omega(Formula_ln):
         summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
 
         if self.internal_terms:
-            summ += -1j * np.einsum(
+            summ += -1j * cached_einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, alpha_A],
                 self.D.ln(ik, inn, out)[:, :, beta_A])
 
         if self.external_terms:
             summ += 0.5 * self.O.nn(ik, inn, out)
-            summ += -1 * np.einsum(
+            summ += -1 * cached_einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, alpha_A],
                 self.A.ln(ik, inn, out)[:, :, beta_A])
-            summ += +1 * np.einsum(
+            summ += +1 * cached_einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, beta_A],
                 self.A.ln(ik, inn, out)[:, :, alpha_A])
-            summ += -1j * np.einsum(
+            summ += -1j * cached_einsum(
                 "mlc,lnc->mnc",
                 self.A.nn(ik, inn, out)[:, :, alpha_A],
                 self.A.nn(ik, inn, out)[:, :, beta_A])
@@ -324,22 +324,22 @@ class DerOmega(Formula_ln):
 
         for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
             if self.internal_terms:
-                summ += -1j * s * np.einsum(
+                summ += -1j * s * cached_einsum(
                     "mlc,lncd->mncd",
                     self.D.nl(ik, inn, out)[:, :, a],
                     self.dD.ln(ik, inn, out)[:, :, b])
                 pass
 
             if self.external_terms:
-                summ += -1 * s * np.einsum(
+                summ += -1 * s * cached_einsum(
                     "mlc,lncd->mncd",
                     self.D.nl(ik, inn, out)[:, :, a],
                     self.dA.ln(ik, inn, out)[:, :, b, :])
-                summ += -1 * s * np.einsum(
+                summ += -1 * s * cached_einsum(
                     "mlcd,lnc->mncd",
                     self.dD.nl(ik, inn, out)[:, :, a, :],
                     self.A.ln(ik, inn, out)[:, :, b])
-                summ += -1j * s * np.einsum(
+                summ += -1j * s * cached_einsum(
                     "mlc,lncd->mncd",
                     self.A.nn(ik, inn, out)[:, :, a],
                     self.dA.nn(ik, inn, out)[:, :, b, :])
@@ -381,19 +381,19 @@ class Der2Omega(Formula_ln):
 
         for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
             if self.internal_terms:
-                summ += -1j * s * np.einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a], self.dD.ln(ik, inn, out)[:, :, b])
-                summ += -1j * s * np.einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a], self.ddD.ln(ik, inn, out)[:, :, b])
+                summ += -1j * s * cached_einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a], self.dD.ln(ik, inn, out)[:, :, b])
+                summ += -1j * s * cached_einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a], self.ddD.ln(ik, inn, out)[:, :, b])
                 pass
 
             if self.external_terms:
-                summ += -1 * s * np.einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a], self.dA.ln(ik, inn, out)[:, :, b, :])
-                summ += -1 * s * np.einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a], self.ddA.ln(ik, inn, out)[:, :, b, :])
-                summ += -1 * s * np.einsum("mlcde,lnc->mncde", self.ddD.nl(ik, inn, out)[:, :, a, :],
+                summ += -1 * s * cached_einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a], self.dA.ln(ik, inn, out)[:, :, b, :])
+                summ += -1 * s * cached_einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a], self.ddA.ln(ik, inn, out)[:, :, b, :])
+                summ += -1 * s * cached_einsum("mlcde,lnc->mncde", self.ddD.nl(ik, inn, out)[:, :, a, :],
                         self.A.ln(ik, inn, out)[:, :, b])
-                summ += -1 * s * np.einsum("mlcd,lnce->mncde", self.dD.nl(ik, inn, out)[:, :, a, :],
+                summ += -1 * s * cached_einsum("mlcd,lnce->mncde", self.dD.nl(ik, inn, out)[:, :, a, :],
                         self.dA.ln(ik, inn, out)[:, :, b])
-                summ += -1j * s * np.einsum("mlce,lncd->mncde", self.dA.nn(ik, inn, out)[:, :, a], self.dA.nn(ik, inn, out)[:, :, b, :])
-                summ += -1j * s * np.einsum("mlc,lncde->mncde", self.A.nn(ik, inn, out)[:, :, a], self.ddA.nn(ik, inn, out)[:, :, b, :])
+                summ += -1j * s * cached_einsum("mlce,lncd->mncde", self.dA.nn(ik, inn, out)[:, :, a], self.dA.nn(ik, inn, out)[:, :, b, :])
+                summ += -1j * s * cached_einsum("mlc,lncde->mncde", self.A.nn(ik, inn, out)[:, :, a], self.ddA.nn(ik, inn, out)[:, :, b, :])
                 pass
 
         summ += summ.swapaxes(0, 1).conj()
@@ -449,10 +449,10 @@ class Der2Spin(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = self.Sbar_de.nn(ik, inn, out)
-        summ -= np.einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.S.ln(ik, inn, out))
-        summ -= np.einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dS.ln(ik, inn, out))
-        summ += np.einsum("mlb...,lnde->mnb...de", self.S.nl(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += np.einsum("mlb...e,lnd->mnb...de", self.dS.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mlde,lnb...->mnb...de", self.dD.nl(ik, inn, out), self.S.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...e->mnb...de", self.D.nl(ik, inn, out), self.dS.ln(ik, inn, out))
+        summ += cached_einsum("mlb...,lnde->mnb...de", self.S.nl(ik, inn, out), self.dD.ln(ik, inn, out))
+        summ += cached_einsum("mlb...e,lnd->mnb...de", self.dS.nl(ik, inn, out), self.D.ln(ik, inn, out))
 
         return summ
 
@@ -484,22 +484,22 @@ class Morb_H(Formula_ln):
         summ = np.zeros((len(inn), len(inn), 3), dtype=complex)
 
         if self.internal_terms:
-            summ += -1j * np.einsum(
+            summ += -1j * cached_einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, alpha_A] * self.E[ik][out][None, :, None],
                 self.D.ln(ik, inn, out)[:, :, beta_A])
 
         if self.external_terms:
             summ += 0.5 * self.C.nn(ik, inn, out)
-            summ += -1 * np.einsum(
+            summ += -1 * cached_einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, alpha_A],
                 self.B.ln(ik, inn, out)[:, :, beta_A])
-            summ += +1 * np.einsum(
+            summ += +1 * cached_einsum(
                 "mlc,lnc->mnc",
                 self.D.nl(ik, inn, out)[:, :, beta_A],
                 self.B.ln(ik, inn, out)[:, :, alpha_A])
-            summ += -1j * np.einsum(
+            summ += -1j * cached_einsum(
                 "mlc,lnc->mnc",
                 self.A.nn(ik, inn, out)[:, :, alpha_A] * self.E[ik][inn][None, :, None],
                 self.A.nn(ik, inn, out)[:, :, beta_A])
@@ -574,31 +574,31 @@ class DerMorb_H(Formula_ln):
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
         if self.internal_terms:
-            summ += -2j * np.einsum(
+            summ += -2j * cached_einsum(
                 "mpc,pld,lnc->mncd",
                 self.D.nl(ik, inn, out)[:, :, alpha_A], self.V.ll(ik, inn, out),
                 self.D.ln(ik, inn, out)[:, :, beta_A])
             for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -2j * s * np.einsum(
+                summ += -2j * s * cached_einsum(
                     "mlc,lncd->mncd",
                     self.D.nl(ik, inn, out)[:, :, a],
                     self.E[ik][out][:, None, None, None] * self.dD.ln(ik, inn, out)[:, :, b])
         if self.external_terms:
             summ += 1 * self.dH.nn(ik, inn, out)
-            summ += -2j * np.einsum(
+            summ += -2j * cached_einsum(
                 "mpc,pld,lnc->mncd",
                 self.A.nn(ik, inn, out)[:, :, alpha_A], self.V.nn(ik, inn, out),
                 self.A.nn(ik, inn, out)[:, :, beta_A])
             for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -2j * s * np.einsum(
+                summ += -2j * s * cached_einsum(
                     "mlc,lncd->mncd",
                     self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None],
                     self.dA.nn(ik, inn, out)[:, :, b, :])
-                summ += -2 * s * np.einsum(
+                summ += -2 * s * cached_einsum(
                     "mlc,lncd->mncd",
                     self.D.nl(ik, inn, out)[:, :, a],
                     self.dB.ln(ik, inn, out)[:, :, b, :])
-                summ += -2 * s * np.einsum(
+                summ += -2 * s * cached_einsum(
                     "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                     self.dD.ln(ik, inn, out)[:, :, b, :])
 
@@ -630,7 +630,7 @@ class DerMorb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.dermorb_H.nn(ik, inn, out)
         if self.sign != 0:
-            res += self.sign * np.einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            res += self.sign * cached_einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
             res += self.sign * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
         return res
 
@@ -679,41 +679,41 @@ class Der2Morb_H(Formula_ln):
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
         if self.internal_terms:
-            summ += -2j * np.einsum("mpc,plde,lnc->mncde", self.D.nl(ik, inn, out)[:, :, alpha_A],
+            summ += -2j * cached_einsum("mpc,plde,lnc->mncde", self.D.nl(ik, inn, out)[:, :, alpha_A],
                     self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out)[:, :, beta_A])
             for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -1j * s * np.einsum("mpce,pld,lnc->mncde", self.dD.nl(ik, inn, out)[:, :, a, :],
+                summ += -1j * s * cached_einsum("mpce,pld,lnc->mncde", self.dD.nl(ik, inn, out)[:, :, a, :],
                         self.V.ll(ik, inn, out), self.D.ln(ik, inn, out)[:, :, b])
-                summ += -1j * s * np.einsum("mpc,pld,lnce->mncde", self.D.nl(ik, inn, out)[:, :, a],
+                summ += -1j * s * cached_einsum("mpc,pld,lnce->mncde", self.D.nl(ik, inn, out)[:, :, a],
                         self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out)[:, :, b, :])
-                summ += -2j * s * np.einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a, :],
+                summ += -2j * s * cached_einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a, :],
                     self.E[ik][out][:, None, None, None] * self.dD.ln(ik, inn, out)[:, :, b])
-                summ += -2j * s * np.einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a],
+                summ += -2j * s * cached_einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a],
                     self.E[ik][out][:, None, None, None, None] * self.ddD.ln(ik, inn, out)[:, :, b])
-                summ += -2j * s * np.einsum("mpc,ple,lncd->mncde", self.D.nl(ik, inn, out)[:, :, a],
+                summ += -2j * s * cached_einsum("mpc,ple,lncd->mncde", self.D.nl(ik, inn, out)[:, :, a],
                     self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out)[:, :, b])
         if self.external_terms:
             summ += 1 * self.ddH.nn(ik, inn, out)
-            summ += -2j * np.einsum("mpc,plde,lnc->mncde", self.A.nn(ik, inn, out)[:, :, alpha_A],
+            summ += -2j * cached_einsum("mpc,plde,lnc->mncde", self.A.nn(ik, inn, out)[:, :, alpha_A],
                     self.dV.nn(ik, inn, out), self.A.nn(ik, inn, out)[:, :, beta_A])
             for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -1j * np.einsum("mpce,pld,lnc->mncde", self.dA.nn(ik, inn, out)[:, :, a],
+                summ += -1j * cached_einsum("mpce,pld,lnc->mncde", self.dA.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)[:, :, b])
-                summ += -1j * np.einsum("mpc,pld,lnce->mncde", self.A.nn(ik, inn, out)[:, :, a],
+                summ += -1j * cached_einsum("mpc,pld,lnce->mncde", self.A.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.dA.nn(ik, inn, out)[:, :, b])
-                summ += -2j * s * np.einsum("mlce,lncd->mncde",
+                summ += -2j * s * cached_einsum("mlce,lncd->mncde",
                         self.dA.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None, None], self.dA.nn(ik, inn, out)[:, :, b])
-                summ += -2j * s * np.einsum("mlc,lncde->mncde",
+                summ += -2j * s * cached_einsum("mlc,lncde->mncde",
                         self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None], self.ddA.nn(ik, inn, out)[:, :, b])
-                summ += -2j * s * np.einsum("mlc,ple,lncd->mncde", self.A.nn(ik, inn, out)[:, :, a],
+                summ += -2j * s * cached_einsum("mlc,ple,lncd->mncde", self.A.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.dA.nn(ik, inn, out)[:, :, b])
-                summ += -2 * s * np.einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a],
+                summ += -2 * s * cached_einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a],
                         self.dB.ln(ik, inn, out)[:, :, b, :])
-                summ += -2 * s * np.einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a],
+                summ += -2 * s * cached_einsum("mlc,lncde->mncde", self.D.nl(ik, inn, out)[:, :, a],
                         self.ddB.ln(ik, inn, out)[:, :, b, :])
-                summ += -2 * s * np.einsum("mlce,lncd->mncde", (self.dB.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2, 3).conj(),
+                summ += -2 * s * cached_einsum("mlce,lncd->mncde", (self.dB.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2, 3).conj(),
                         self.dD.ln(ik, inn, out)[:, :, b])
-                summ += -2 * s * np.einsum("mlc,lncde->mncde", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
+                summ += -2 * s * cached_einsum("mlc,lncde->mncde", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                         self.ddD.ln(ik, inn, out)[:, :, b])
 
         return summ
@@ -750,9 +750,9 @@ class Der2Morb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.der2morb_H.nn(ik, inn, out)
         if self.sign != 0:
-            res += self.sign * np.einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            res += self.sign * np.einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
-            res += self.sign * np.einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            res += self.sign * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            res += self.sign * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
+            res += self.sign * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
             res += self.sign * self.E[ik][inn][:, None, None, None, None] * self.ddO.nn(ik, inn, out)
         return res
 
@@ -771,11 +771,11 @@ class Der2morb(Der2Morb):
 ########################
 
 def _spin_velocity_einsum_opt(C, A, B):
-    # Optimized version of C += np.einsum('knls,klma->knmas', A, B). Used in shc_B_H.
+    # Optimized version of C += cached_einsum('knls,klma->knmas', A, B). Used in shc_B_H.
     nk = C.shape[0]
     nw = C.shape[1]
     for ik in range(nk):
-        # Performing C[ik] += np.einsum('nls,lma->nmas', A[ik], B[ik])
+        # Performing C[ik] += cached_einsum('nls,lma->nmas', A[ik], B[ik])
         tmp_a = np.swapaxes(A[ik], 1, 2)  # nls -> nsl
         tmp_a = np.reshape(tmp_a, (nw * 3, nw))  # nsl -> (ns)l
         tmp_b = np.reshape(B[ik], (nw, nw * 3))  # lma -> l(ma)
@@ -807,7 +807,7 @@ class SpinVelocity(Matrix_ln):
         # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         S = data_K.Xbar('SS')
         V = Velocity(data_K, external_terms=external_terms).matrix
-        J = np.einsum("klms,kmna->klnas", S, V)
+        J = cached_einsum("klms,kmna->klnas", S, V)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
     def _J_H_qiao(self, data_K, external_terms=True):
@@ -865,7 +865,7 @@ class SpinOmega(Formula_ln):
         # j_over_de[m,l,a,s] = j[m,l,a,s] / (e[m] - e[l])
         j_over_de = self.J.nl(ik, inn, out) * self.dEinv.nl(ik, inn, out)[:, :, None, None]
 
-        summ += -2 * np.einsum("mlas,lnb->mnabs", j_over_de, v_over_de).imag
+        summ += -2 * cached_einsum("mlas,lnb->mnabs", j_over_de, v_over_de).imag
 
         return summ
 

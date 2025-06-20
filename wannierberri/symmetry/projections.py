@@ -2,6 +2,8 @@ import copy
 from functools import cached_property
 import itertools
 import numpy as np
+
+from wannierberri.utility import cached_einsum
 from ..symmetry.orbitals import orbitals_sets_dic
 
 try:
@@ -823,7 +825,7 @@ def find_distance_periodic(positions, real_lattice, max_shift=2):
     shifts = get_shifts(max_shift)
     diff = positions[:, None, None, :] - positions[None, :, None, :] + shifts[None, None, :, :]
     metric = real_lattice @ real_lattice.T
-    prod = np.einsum('ijla,ab,ijlb->ijl', diff, metric, diff)
+    prod = cached_einsum('ijla,ab,ijlb->ijl', diff, metric, diff)
 
     rng = np.arange(len(positions))
     prod[rng, rng, 0] = np.inf  # distance to itself is not interesting, so the distance to its nearest image is counted

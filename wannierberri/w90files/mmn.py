@@ -2,6 +2,8 @@ from itertools import islice
 import multiprocessing
 from time import time
 import numpy as np
+
+from wannierberri.utility import cached_einsum
 from .utility import convert, grid_from_kpoints
 from .w90file import W90_file, check_shape
 from ..io import sparselist_to_dict
@@ -352,7 +354,6 @@ class MMN(W90_file):
         else:
             norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in bandstructure.kpoints]
 
-        einsum_path = None
         for ik1 in selected_kpoints:
             kp1 = bandstructure.kpoints[ik1]
             ig_loc = kp1.ig if irrep_new_version else kp1.ig.T
@@ -377,10 +378,7 @@ class MMN(W90_file):
                         ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig, ispinor]
                 if normalize:
                     ket[:] = ket / norm[ik2][:, None, None, None, None]
-                if einsum_path is None:
-                    path_info = np.einsum_path('asijk,bsijk->ab', bra, ket, optimize='greedy')
-                    einsum_path = path_info[0]  # The actual path
-                data[ik1, ib] = np.einsum('asijk,bsijk->ab', bra, ket, optimize=einsum_path)
+                data[ik1, ib] = cached_einsum('asijk,bsijk->ab', bra, ket)
 
         return MMN(
             data=data,

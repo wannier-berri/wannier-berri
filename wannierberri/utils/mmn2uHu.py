@@ -52,7 +52,7 @@
 import numpy as np
 import os
 from ..io import FortranFileR, FortranFileW
-from ..utility import time_now_iso
+from ..utility import cached_einsum, time_now_iso
 
 
 def hlp():
@@ -230,7 +230,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                     A = np.zeros((NNB, NNB, NB_out, NB_out), dtype=complex)
                     for ib2 in range(NNB):
                         for ib1 in range(ib2 + 1):
-                            A[ib2, ib1] = np.einsum(
+                            A[ib2, ib1] = cached_einsum(
                                 'ml,nl,l->mn', MMN[ik][ib1][IBstart:IBstart + NB_out,
                                                IBstartSum:NB_sum + IBstartSum].conj(),
                                 MMN[ik][ib2][IBstart:NB_out + IBstart, IBstartSum:NB_sum + IBstartSum], eig_dum)
@@ -288,7 +288,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
             else:
                 tmp = f_spn_in.read_record(dtype=np.complex128)
             A[:, indn, indm] = tmp.reshape(3, nbnd * (nbnd + 1) // 2, order='F')
-            check = np.einsum('ijj->', np.abs(A.imag))
+            check = cached_einsum('ijj->', np.abs(A.imag))
             A[:, indm, indn] = A[:, indn, indm].conj()
             if check > 1e-10:
                 raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
@@ -347,7 +347,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                     A = np.zeros((NNB, 3, NB_out, NB_out), dtype=complex)
                     for ib2 in range(NNB):
                         for ipol in range(3):
-                            A[ib2, ipol, :, :] = np.einsum(
+                            A[ib2, ipol, :, :] = cached_einsum(
                                 'nl,ml,l->mn', MMN[ik][ib2][IBstart:IBstart + NB_out, IBstartSum:NB_sum + IBstartSum],
                                 SPN[ik][ipol][IBstart:IBstart + NB_out, IBstartSum:IBstartSum + NB_sum], eig_dum)
                     if (formatted):

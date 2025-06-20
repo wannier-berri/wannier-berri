@@ -1,7 +1,7 @@
 import numpy as np
 from .w90file import W90_file, check_shape
 from ..io import FortranFileR
-from ..utility import pauli_xyz
+from ..utility import cached_einsum, pauli_xyz
 
 
 class SPN(W90_file):
@@ -44,7 +44,7 @@ class SPN(W90_file):
             else:
                 tmp = f_spn_in.read_record(dtype=np.complex128)
             A[:, indn, indm] = tmp.reshape(3, nbnd * (nbnd + 1) // 2, order='F')
-            check = np.einsum('ijj->', np.abs(A.imag))
+            check = cached_einsum('ijj->', np.abs(A.imag))
             A[:, indm, indn] = A[:, indn, indm].conj()
             if check > 1e-10:
                 raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
@@ -83,7 +83,7 @@ class SPN(W90_file):
             if normalize:
                 wf /= np.linalg.norm(wf, axis=(1, 2))[:, None, None]
             # wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
-            data_k = np.einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
+            data_k = cached_einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
             data.append(data_k)
 
         print(f"length of data = {len(data)}")

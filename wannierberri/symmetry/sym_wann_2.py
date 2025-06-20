@@ -5,7 +5,7 @@ import numpy as np
 from ..system.system import num_cart_dim
 from collections import defaultdict
 import copy
-
+from ..utility import cached_einsum
 
 class SymWann:
     """
@@ -420,7 +420,7 @@ def test_rotate_matrix():
             X = np.random.rand(*shape_X) + 1j * np.random.rand(*shape_X)
             Y = _rotate_matrix(X, L, R)
             assert Y.shape == X.shape
-            Z = np.einsum("ij,jk...,kl->il...", L, X, R)
+            Z = cached_einsum("ij,jk...,kl->il...", L, X, R)
             assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y - Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
 
 

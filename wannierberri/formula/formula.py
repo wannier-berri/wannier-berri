@@ -1,5 +1,7 @@
 import numpy as np
 import abc
+
+from wannierberri.utility import cached_einsum
 """some basic classes to construct formulae for evaluation"""
 from ..symmetry.point_symmetry import TransformProduct
 
@@ -67,7 +69,7 @@ class Formula_ln(Formula):
 
     def trace(self, ik, inn, out):
         "Returns a trace over the `inn` states"
-        return np.einsum("nn...->...", self.nn(ik, inn, out)).real
+        return cached_einsum("nn...->...", self.nn(ik, inn, out)).real
 
 
 class Matrix_ln(Formula_ln):
@@ -99,14 +101,14 @@ class Matrix_GenDer_ln(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = self.dA.nn(ik, inn, out)
-        summ -= np.einsum("mld,lnb...->mnb...d", self.D.nl(ik, inn, out), self.A.ln(ik, inn, out))
-        summ += np.einsum("mlb...,lnd->mnb...d", self.A.nl(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...->mnb...d", self.D.nl(ik, inn, out), self.A.ln(ik, inn, out))
+        summ += cached_einsum("mlb...,lnd->mnb...d", self.A.nl(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
     def ln(self, ik, inn, out):
         summ = self.dA.ln(ik, inn, out)
-        summ -= np.einsum("mld,lnb...->mnb...d", self.D.ln(ik, inn, out), self.A.nn(ik, inn, out))
-        summ += np.einsum("mlb...,lnd->mnb...d", self.A.ll(ik, inn, out), self.D.ln(ik, inn, out))
+        summ -= cached_einsum("mld,lnb...->mnb...d", self.D.ln(ik, inn, out), self.A.nn(ik, inn, out))
+        summ += cached_einsum("mlb...,lnd->mnb...d", self.A.ll(ik, inn, out), self.D.ln(ik, inn, out))
         return summ
 
 
@@ -134,7 +136,7 @@ class FormulaProduct(Formula_ln):
         matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
         res = matrices[0]
         for mat, line in zip(matrices[1:], self.einsumlines):
-            res = np.einsum(line, res, mat)
+            res = cached_einsum(line, res, mat)
         if self.hermitian:
             res = 0.5 * (res + res.swapaxes(0, 1).conj())
         return np.array(res, dtype=complex)
@@ -179,7 +181,7 @@ class FormulaSum(Formula_ln):
         matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
         res = self.sign[0] * matrices[0]
         for mat, sign, index in zip(matrices[1:], self.sign[1:], self.index[1:]):
-            res += sign * np.einsum('MN' + index + '->MN' + self.index[0], mat)
+            res += sign * cached_einsum('MN' + index + '->MN' + self.index[0], mat)
         return np.array(res, dtype=complex)
 
     def ln(self, ik, inn, out):
@@ -202,7 +204,7 @@ class DeltaProduct(Formula_ln):
 
     def nn(self, ik, inn, out):
         matrix = self.formula.nn(ik, inn, out)
-        res = np.einsum(self.einsumstr, self.delta_f, matrix)
+        res = cached_einsum(self.einsumstr, self.delta_f, matrix)
         return np.array(res, dtype=complex)
 
     def ln(self, ik, inn, out):
