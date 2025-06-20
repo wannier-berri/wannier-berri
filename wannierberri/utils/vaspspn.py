@@ -10,7 +10,7 @@
 import warnings
 import numpy as np
 from ..io import FortranFileW
-from ..utility import time_now_iso
+from ..utility import cached_einsum, time_now_iso
 
 PAW_warning = """vaspspn uses pseudo-wavefunction instead of the full PAW
 (`Blöchl 1994 <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.50.17953>`__) wavefunction
@@ -147,7 +147,7 @@ def main(argv):
         SIGMA = np.array(
             [
                 [
-                    np.einsum("ki,kj->ij",
+                    cached_einsum("ki,kj->ij",
                               WF.conj()[npw12 * i:npw12 * (i + 1), :], WF[npw12 * j:npw12 * (j + 1), :])
                     for j in (0, 1)
                 ] for i in (0, 1)

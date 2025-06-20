@@ -3,7 +3,7 @@
 import numpy as np
 from pytest import approx
 from wannierberri.formula.covariant import _spin_velocity_einsum_opt
-from wannierberri.utility import vectorize
+from wannierberri.utility import cached_einsum, vectorize
 
 
 def test_spin_velocity_einsum_opt():
@@ -17,7 +17,7 @@ def test_spin_velocity_einsum_opt():
         C1 = np.copy(C)
         _spin_velocity_einsum_opt(C, A, B)
         # Optimized version of C += np.einsum('knls,klma->knmas', A, B). Used in shc_B_H.
-        C1 += np.einsum('knls,klma->knmas', A, B)
+        C1 += cached_einsum('knls,klma->knmas', A, B)
         assert C1 == approx(C)
 
 

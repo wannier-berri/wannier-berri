@@ -19,7 +19,7 @@ import multiprocessing
 import warnings
 
 from ..fourier.rvectors import Rvectors
-from ..utility import real_recip_lattice, alpha_A, beta_A
+from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
 from ..w90files import Wannier90data
 
@@ -213,7 +213,7 @@ class System_w90(System_R):
                 _r0 = centers[None, :, :]
                 sum_b = True
 
-            expjphase1 = np.exp(1j * np.einsum('ba,ija->ijb', bk_cart, _r0))
+            expjphase1 = np.exp(1j * cached_einsum('ba,ija->ijb', bk_cart, _r0))
             print(f"expjphase1 {expjphase1.shape}")
             expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
 
@@ -312,7 +312,7 @@ class System_w90(System_R):
         # elements.
 
         # Optimal center in Jae-Mo's implementation
-        phase = np.einsum('ba,Ra->Rb', bk_cart, - 0.5 * self.rvec.cRvec)
+        phase = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * self.rvec.cRvec)
         expiphase1 = np.exp(1j * phase)[:, None, None, :]
         expiphase2 = expiphase1[:, :, :, :, None] * expiphase1[:, :, :, None, :]
 

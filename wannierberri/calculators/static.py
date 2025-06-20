@@ -14,7 +14,7 @@ from ..formula import covariant_basic as frml_basic
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
-from ..utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A, cached_einsum
 
 
 # The base class for Static Calculators
@@ -116,7 +116,7 @@ class StaticCalculator(Calculator):
             for ik, weights in enumerate(weights):
                 valuesik = values[ik]
                 for n, w in weights.items():
-                    restot[ik_to_result(ik)] += np.einsum("e,...->e...", w, valuesik[n])
+                    restot[ik_to_result(ik)] += cached_einsum("e,...->e...", w, valuesik[n])
         else:
             # no tetrahedron
             restot = np.zeros((nk_result, self.nEF_extra,) + shape)
