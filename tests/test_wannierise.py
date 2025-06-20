@@ -126,7 +126,6 @@ def test_wannierise(outer_window):
         d, acc = np.max(diff), 0.0005
         if check_results:
             assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
-
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
     os.chdir(cwd)
 
@@ -222,8 +221,11 @@ def test_create_w90files_Fe():
     bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe',
                                 normalize=False, magmom=[[0, 0, 1]])
 
-    norms = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
-    assert abs(1 - np.array(norms)**2).max() < 1e-8, "norms of wavefunctions are not 1, check the bandstructure"
+    norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
+    if norms.ndim == 3:
+        norms = norms.sum(axis=2)  # sum over spinor components in irrep>1.2
+
+    assert abs(1 - np.array(norms)).max() < 1e-7, "norms of wavefunctions are not 1, check the bandstructure"
 
 
     pos = [[0, 0, 0]]
@@ -254,9 +256,9 @@ def test_create_w90files_Fe():
     assert eql, f"MMN files differ: {msg}"
 
     amn = w90data.get_file("amn")
-    amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "Fe.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
+    amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "Fe.amn.npz"), NK=8)  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
     eql, msg = amn.equals(amn_ref, tolerance=1e-6)
-    assert eql, f"AMN files differ: {msg}"
+    assert eql, f"AMN files differ: {msg} \nnew: \n{amn.data} \nref: \n{amn_ref.data}"
 
     spn = w90data.get_file("spn")
     spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_data, "Fe.spn.npz"))

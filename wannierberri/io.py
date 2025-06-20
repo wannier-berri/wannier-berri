@@ -45,9 +45,9 @@ class SavableNPZ(abc.ABC):
         return self
 
     @classmethod
-    def from_npz(cls, f_npz):
+    def from_npz(cls, f_npz, **kwargs):
         dic = np.load(f_npz)
-        return cls.from_dict(dic)
+        return cls.from_dict(dic, **kwargs)
 
     def as_dict(self):
         dic = {k: self.__getattribute__(k) for k in self.__class__.npz_tags}
@@ -62,7 +62,10 @@ class SavableNPZ(abc.ABC):
     def from_dict(cls, dic=None, return_obj=True, **kwargs):
         dic_loc = {}
         for k in cls.npz_tags:
-            dic_loc[k] = dic[k]
+            if k in kwargs:
+                dic_loc[k] = kwargs[k]
+            else:
+                dic_loc[k] = dic[k]
 
         for tag in cls.npz_keys_dict_int:
             dic_loc[tag] = keydic_to_dic(dic, tag)
@@ -108,6 +111,14 @@ def keydic_to_dic(keydic, name="data"):
     dict: A new dictionary with keys without the specified prefix.
     """
     dic = {}
+    if name in keydic:
+        val = keydic[name]
+        if isinstance(val, dict):
+            return val
+        elif isinstance(val, np.ndarray):
+            return {i: v for i, v in enumerate(val) if v is not None}
+        else:
+            raise ValueError(f"Expected a dict or an array for key '{name}', got {type(val)}")
     for k, v in keydic.items():
         if k.startswith(name + "_"):
             dic[int(k[len(name) + 1:])] = v

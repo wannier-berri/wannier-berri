@@ -106,13 +106,22 @@ class UNK(W90_file):
         Initialize UNK from a bandstructure object.
         This is useful for reading UNK files from a bandstructure calculation.
         """
+        from ..import IRREP_IRREDUCIBLE_VERSION
+        from packaging import version
+        from irrep import __version__ as irrep__version__
+        irrep_new_version =  (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+        
         # NK = len(bandstructure.kpoints)
         NB = bandstructure.num_bands
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
+        if irrep_new_version:
+            ig_list = [kp.ig for kp in bandstructure.kpoints]
+        else:
+            ig_list = [kp.ig.T for kp in bandstructure.kpoints]
         if grid_size is None:
-            igmin_k = np.array([kp.ig[:3, :].min(axis=1) for kp in bandstructure.kpoints])
-            igmax_k = np.array([kp.ig[:3, :].max(axis=1) for kp in bandstructure.kpoints])
+            igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
+            igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
             igmin_glob = igmin_k.min(axis=0)
             igmax_glob = igmax_k.max(axis=0)
             ig_grid = igmax_glob - igmin_glob + 1
@@ -130,16 +139,17 @@ class UNK(W90_file):
             print(f"selected_kpoints is not provided, using all {len(bandstructure.kpoints)} k-points")
         selected_kpoints = [int(k) for k in selected_kpoints]
 
-        for ik, k in enumerate(bandstructure.kpoints):
+        for ik, kp in enumerate(bandstructure.kpoints):
             if ik in selected_kpoints:
                 WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
-                g = k.ig[:3, :]
+                g = ig_list[ik][:, :3] 
+                WF_loc = kp.WF if irrep_new_version else kp.WF.reshape((NB, ng, nspinor), order='F')
                 if normalize:
-                    k.WF /= np.linalg.norm(k.WF, axis=1)[:, None]
+                    norm = np.linalg.norm(WF_loc, axis=(1,2))
+                    WF_loc = WF_loc/ norm[:, None, None]
                 ng = g.shape[1]
-                for ig, g in enumerate(g.T):
-                    for j in range(nspinor):
-                        WF_grid[:, g[0], g[1], g[2], j] = k.WF[:, ig + j * ng]
+                for ig, g in enumerate(g):
+                    WF_grid[:, g[0], g[1], g[2], :] = WF_loc[:, ig , :]
                 WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
                 data.append(WF_grid)
             else:
