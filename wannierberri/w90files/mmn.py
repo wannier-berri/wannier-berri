@@ -280,8 +280,8 @@ class MMN(W90_file):
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
-        irrep_new_version =  (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
-        
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
 
@@ -362,7 +362,7 @@ class MMN(W90_file):
                 assert np.all(_g >= 0) and np.all(_g < ig_grid), \
                     f"g {_g} out of bounds for ig_grid {ig_grid} at ik1={ik1}, ig={ig}"
                 for ispinor in range(nspinor):
-                    bra[:, ispinor, _g[0], _g[1], _g[2]] = WF_loc[:, ig , ispinor].conj()
+                    bra[:, ispinor, _g[0], _g[1], _g[2]] = WF_loc[:, ig, ispinor].conj()
             if normalize:
                 bra[:] = bra / norm[ik1][:, None, None, None, None]
             for ib, ik2 in enumerate(neighbours[ik1]):
@@ -374,7 +374,7 @@ class MMN(W90_file):
                     assert np.all(_g >= 0) and np.all(_g < ig_grid), \
                         f"g_loc {_g} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ib}, ik2={ik2}"
                     for ispinor in range(nspinor):
-                        ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig , ispinor]
+                        ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig, ispinor]
                 if normalize:
                     ket[:] = ket / norm[ik2][:, None, None, None, None]
                 if einsum_path is None:

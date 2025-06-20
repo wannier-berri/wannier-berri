@@ -109,8 +109,8 @@ class UNK(W90_file):
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
-        irrep_new_version =  (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
-        
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+
         # NK = len(bandstructure.kpoints)
         NB = bandstructure.num_bands
         spinor = bandstructure.spinor
@@ -142,15 +142,15 @@ class UNK(W90_file):
         for ik, kp in enumerate(bandstructure.kpoints):
             if ik in selected_kpoints:
                 WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
-                g = ig_list[ik][:, :3] 
+                g = ig_list[ik][:, :3]
                 ng = g.shape[0]
                 WF_loc = kp.WF if irrep_new_version else kp.WF.reshape((NB, ng, nspinor), order='F')
                 if normalize:
-                    norm = np.linalg.norm(WF_loc, axis=(1,2))
-                    WF_loc = WF_loc/ norm[:, None, None]
+                    norm = np.linalg.norm(WF_loc, axis=(1, 2))
+                    WF_loc = WF_loc / norm[:, None, None]
                 ng = g.shape[1]
                 for ig, g in enumerate(g):
-                    WF_grid[:, g[0], g[1], g[2], :] = WF_loc[:, ig , :]
+                    WF_grid[:, g[0], g[1], g[2], :] = WF_loc[:, ig, :]
                 WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
                 data.append(WF_grid)
             else:

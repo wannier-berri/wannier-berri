@@ -69,8 +69,8 @@ class SPN(W90_file):
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
-        irrep_new_version =  (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
-        
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+
         assert bandstructure.spinor, "SPN only works for spinor bandstructures"
 
         if verbose:
@@ -81,7 +81,7 @@ class SPN(W90_file):
             ng = kp.ig.shape[1]
             wf = kp.WF if irrep_new_version else kp.WF.reshape((bandstructure.num_bands, ng, 2), order='F')
             if normalize:
-                wf /= np.linalg.norm(wf, axis=(1,2))[:, None, None]
+                wf /= np.linalg.norm(wf, axis=(1, 2))[:, None, None]
             # wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
             data_k = np.einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
             data.append(data_k)

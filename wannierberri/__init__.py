@@ -42,6 +42,7 @@ from termcolor import cprint
 from packaging import version
 IRREP_IRREDUCIBLE_VERSION = version.parse("2.2.0")  # the version of irrep that supports irreducible band structure
 
+
 def welcome():
     # originally obtained by pyfiglet, font='cosmic'
     # with small modifications

@@ -134,6 +134,7 @@ class AMN(W90_file):
     #     self.data = np.array(data)
     #     return self
 
+
     @classmethod
     def from_bandstructure(cls, bandstructure, projections: ProjectionsSet,
                            normalize=True, verbose=False):
@@ -153,8 +154,8 @@ class AMN(W90_file):
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
-        irrep_new_version =  (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
-            
+        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+
         positions = []
         orbitals = []
         basis_list = []
@@ -176,7 +177,7 @@ class AMN(W90_file):
         rec_latt = bandstructure.RecLattice
         bessel = Bessel_j_exp_int()
 
-        
+
         for kp in bandstructure.kpoints:
             ig_loc = kp.ig if irrep_new_version else kp.ig.T
             igk = ig_loc[:, :3] + kp.k[None, :]
@@ -185,12 +186,12 @@ class AMN(W90_file):
             wf = kp.WF if irrep_new_version else kp.WF.reshape((kp.WF.shape[0], ng, -1), order='F')
             wf = wf.conj()
             if normalize:
-                norms = np.linalg.norm(wf, axis=(1,2))
-                wf = wf/norms[:, None, None]
+                norms = np.linalg.norm(wf, axis=(1, 2))
+                wf = wf / norms[:, None, None]
             if spinor:
-                wf_up = wf [:,:,0]
-                wf_down = wf[:,:,1]
-                
+                wf_up = wf[:, :, 0]
+                wf_down = wf[:, :, 1]
+
             gk = igk @ rec_latt
             projector = Projector(gk, bessel)
             prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
@@ -207,7 +208,7 @@ class AMN(W90_file):
                     datak.append(d)
                 data.append(np.array(datak).T)
             else:
-                data.append(wf[:,:,0] @ proj_gk.T)
+                data.append(wf[:, :, 0] @ proj_gk.T)
         return AMN(data=data)
 
     def equals(self, other, tolerance=1e-8):
@@ -217,8 +218,6 @@ class AMN(W90_file):
         if self.NW != other.NW:
             return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
         return True, ""
-
-
 
 
 # def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):

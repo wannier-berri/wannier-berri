@@ -1,5 +1,8 @@
 """test auxilary functions"""
 
+from irrep import __version__ as irrep__version__
+from packaging import version
+from wannierberri import IRREP_IRREDUCIBLE_VERSION
 import glob
 import os
 import shutil
@@ -17,10 +20,7 @@ from irrep.spacegroup import SpaceGroup
 from wannierberri.w90files.eig import EIG
 sq2 = np.sqrt(2)
 
-from wannierberri import IRREP_IRREDUCIBLE_VERSION
-from packaging import version
-from irrep import __version__ as irrep__version__
-irrep_new_version =  (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
+irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
 
 
 def test_perpedicular_coplanar():
