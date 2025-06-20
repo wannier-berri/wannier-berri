@@ -23,6 +23,7 @@ import datetime
 # Global cache to store einsum paths
 EINSUM_PATH_CACHE = {}
 
+
 def cached_einsum(subscripts, *operands,
                   optimize='greedy',
                   **kwargs):

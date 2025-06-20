@@ -7,6 +7,7 @@ from collections import defaultdict
 import copy
 from ..utility import cached_einsum
 
+
 class SymWann:
     """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
