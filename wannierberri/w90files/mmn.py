@@ -259,8 +259,9 @@ class MMN(W90_file):
                            param_search_bk={},
                            selected_kpoints=None,
                            kptirr=None,
+                           symmetrizer=None,
                            NK=None,
-                           kpt_latt=None
+                           kpt_latt=None,
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -282,6 +283,8 @@ class MMN(W90_file):
         MMN or np.ndarray
             the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
         """
+        if symmetrizer is None:
+            symmetrizer = bandstructure.symmetrizer
         if kpt_latt is None:
             kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
         mp_grid = np.array(grid_from_kpoints(kpt_latt))
@@ -356,6 +359,8 @@ class MMN(W90_file):
         else:
             norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
 
+        kpoints_extra = {} # a dictionary to store kpoints that are not in the original bandstructure
+                           # but are needed for the finite-difference scheme (obtained by symmetry)
         einsum_path = None
         for ik1 in kptirr:
             kp1 = kpoints_sel[ik1]
@@ -369,6 +374,12 @@ class MMN(W90_file):
                 bra[:] = bra / norm[ik1][:, None, None, None, None]
             for ib, ik2 in enumerate(neighbours[ik1]):
                 kp2 = kpoints_sel[ik2]
+                if ik2 in kptirr:
+                    kp2 = kpoints_sel[ik2]
+                else:
+                    if ik2 not in kpoints_extra:
+                        kp2 = bandstructure.kpoints.get_transformed_copy()
+                    kp2 = kpoints_extra[ik2] 
                 for ig, g in enumerate(kp2.ig.T):
                     g_loc = g[:3] - igmin_glob - G[ik1][ib]
                     assert np.all(g_loc >= 0) and np.all(g_loc < ig_grid), \
