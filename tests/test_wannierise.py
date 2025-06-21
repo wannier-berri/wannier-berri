@@ -127,6 +127,15 @@ def test_wannierise(outer_window):
 
 
 
+spreads_Fe_spd_444_win50 = np.array([1.48094878, 1.44313864, 1.65060907, 1.61414571, 1.65053543,
+            1.61438103, 1.65053543, 1.61438103, 0.4680118 , 0.43165047,
+            0.40912432, 0.39499786, 0.40912432, 0.39499786, 0.46803275,
+            0.43165531, 0.40912598, 0.39500838])
+
+spreads_Fe_spd_444_nowin = np.array([1.4903928 , 1.45260483, 1.62040443, 1.58683755, 1.62042416,
+       1.586817  , 1.62042416, 1.586817  , 0.4686682 , 0.4321233 ,
+       0.40920197, 0.39504559, 0.40920197, 0.39504559, 0.46868826,
+       0.43212589, 0.40920177, 0.39505669])
 
 
 @pytest.mark.parametrize("include_TR", [True, False])
@@ -152,12 +161,15 @@ def test_sitesym_Fe(include_TR, use_window):
                     )
     assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
     spreads = w90data.chk.wannier_spreads
+    print (f"spreads: {repr(spreads)}")
     assert np.all(spreads < 2)
     atol = 1e-8
     assert spreads[4] == approx(spreads[6], abs=atol)
     assert spreads[5] == approx(spreads[7], abs=atol)
     assert spreads[10] == approx(spreads[12], abs=atol)
     assert spreads[11] == approx(spreads[13], abs=atol)
+    spreads_ref = spreads_Fe_spd_444_win50 if use_window else spreads_Fe_spd_444_nowin
+    assert spreads == approx(spreads_ref, abs=0.01)
     system = wberri.system.System_w90(w90data=w90data, berry=True)
     tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
                 }

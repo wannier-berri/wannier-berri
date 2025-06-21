@@ -151,8 +151,7 @@ class UNK(W90_file):
                 norm = np.linalg.norm(WF_loc, axis=(1, 2))
                 WF_loc = WF_loc / norm[:, None, None]
             for ig, g in enumerate(g_loc):
-                for j in range(nspinor):
-                    WF_grid[:, g[0], g[1], g[2], j] = kp.WF[:, ig + j * ng]
+                WF_grid[:, g[0], g[1], g[2]] = kp.WF[:, ig, :]
             WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
             data[ikirr] = WF_grid
-        return UNK(data=data)
+        return UNK(data=data, NK=NK)

@@ -92,7 +92,7 @@ class SPN(W90_file):
             # wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
             data_k = cached_einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
             data[ikirr] = data_k
-            
+
         print(f"length of data = {len(data)}")
         print("NK={self.NK}")
         return SPN(data=data, NK=NK)

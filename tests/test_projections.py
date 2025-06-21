@@ -11,7 +11,7 @@ import numpy as np
 from pytest import approx
 
 from tests.common import OUTPUT_DIR, ROOT_DIR
-from wannierberri.w90files.amn import amn_from_bandstructure
+from wannierberri.w90files.amn import AMN, amn_from_bandstructure
 from wannierberri.symmetry.projections import Projection, ProjectionsSet, get_perpendicular_coplanar_vector, read_xzaxis
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 import wannierberri as wberri
@@ -283,8 +283,10 @@ def test_create_amn_diamond_s_bond():
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
-                           normalize=True, return_object=True)
+    amn = AMN.from_bandstructure(bandstructure=bandstructure,
+                                 projections=ProjectionsSet([projection]),
+                                normalize=True)
+    print(f"amn,data,keys : {amn.data.keys()}")
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
 

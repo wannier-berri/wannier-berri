@@ -106,6 +106,7 @@ class Wannier90data:
                           unk_grid=None,
                           normalize=True,
                           irreducible=False,
+                          ecut_sym=100,
                           mp_grid=None,):
         """
         Create a Wannier90data object from a bandstructure object
@@ -162,7 +163,8 @@ class Wannier90data:
             if not symmetrizer_read_ok:
                 symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure,
                                                            grid=mp_grid,
-                                                           irreducible=irreducible)
+                                                           irreducible=irreducible,
+                                                           ecut=ecut_sym)
                 if projections is not None:
                     symmetrizer.set_D_wann_from_projections(projections)
             self.set_symmetrizer(symmetrizer)
@@ -183,9 +185,13 @@ class Wannier90data:
             selected_kpoints = None
         if irreducible:
             kptirr = self.symmetrizer.kptirr
+            kpt_from_kptirr_isym = self.symmetrizer.kpt_from_kptirr_isym
+            kpt2kptirr = self.symmetrizer.kpt2kptirr
             NK = np.prod(mp_grid)
         else:
             kptirr = None
+            kpt_from_kptirr_isym = None
+            kpt2kptirr = None
             NK = None
         kwargs_bandstructure = {"selected_kpoints":
                                 selected_kpoints, "kptirr": kptirr,
@@ -217,12 +223,15 @@ class Wannier90data:
                                kwargs_bandstructure)
             self.set_file('amn', amn)
         if "mmn" in files:
+
             mmn = MMN.autoread(seedname=seedname, read_npz=("mmn" in read_npz_list),
                                read_w90=False,
                                write_npz="mmn" in write_npz_list,
                                bandstructure=bandstructure,
                                kwargs_bandstructure={"normalize": normalize,
-                                                     "kpt_latt": kpt_latt} |
+                                                     "kpt_latt_grid": kpt_latt,
+                                                     "kpt2kptirr": kpt2kptirr,
+                                                     "kpt_from_kptirr_isym": kpt_from_kptirr_isym} |
                                kwargs_bandstructure)
             self.set_file('mmn', mmn)
         if "spn" in files:

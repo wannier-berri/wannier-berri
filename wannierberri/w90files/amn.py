@@ -182,19 +182,9 @@ class AMN(W90_file):
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
         bessel = Bessel_j_exp_int()
+
         for i, ikirr in enumerate(kptirr):
             kp = bandstructure.kpoints[selected_kpoints[i]]
-            igk = kp.ig[:3, :] + kp.k[:, None]
-            expgk = np.exp(-2j * np.pi * (pos @ igk))
-            wf = kp.WF.conj()
-            if normalize:
-                wf /= np.linalg.norm(wf, axis=1)[:, None]
-            if spinor:
-                wf_up = wf[:, :wf.shape[1] // 2]
-                wf_down = wf[:, wf.shape[1] // 2:]
-
-
-        for kp in bandstructure.kpoints:
             ig_loc = kp.ig if irrep_new_version else kp.ig.T
             igk = ig_loc[:, :3] + kp.k[None, :]
             ng = igk.shape[0]
@@ -224,7 +214,7 @@ class AMN(W90_file):
                     datak.append(d)
                 data[ikirr] = np.array(datak).T
             else:
-                data[ikirr] = wf[:,:,0] @ proj_gk.T
+                data[ikirr] = wf[:, :, 0] @ proj_gk.T
         return AMN(data=data, NK=NK)
 
     def equals(self, other, tolerance=1e-8):
