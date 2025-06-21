@@ -397,9 +397,7 @@ class MMN(W90_file):
                         isym = kpt_from_kptirr_isym[ik2]
                         ik_origin = kpt2kptirr[ik2]
                         kp_origin = kpoints_sel[ik_origin]
-                        print(f"-transforming k-point {ikirr}={kp_origin.k} with symmetry {isym} to k-point {ik2} = {kpt_latt_grid[ik2]}")
-                        symop = bandstructure.spacegroup.symmetries[kpt_from_kptirr_isym[ik2]]
-                        symop.show()
+                        symop = bandstructure.spacegroup.symmetries[isym]
                         # TODO: in principle, here it is not needed to transform the k-point,
                         # For the first symmetry the transformation is the identity
                         # For the rest the transformations can be obtained from the
