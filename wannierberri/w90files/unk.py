@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from ..io import FortranFileR
-from .w90file import W90_file, check_shape
+from .w90file import W90_file, auto_kptirr, check_shape
 from glob import glob
 
 
@@ -101,11 +101,17 @@ class UNK(W90_file):
     def from_bandstructure(cls, bandstructure,
                            grid_size=None,
                            normalize=False,
-                           selected_kpoints=None):
+                           selected_kpoints=None,
+                           kptirr=None,
+                           NK=None
+                           ):
         """
         Initialize UNK from a bandstructure object.
         This is useful for reading UNK files from a bandstructure calculation.
         """
+        NK, selected_kpoints, kptirr = auto_kptirr(
+            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
@@ -119,6 +125,7 @@ class UNK(W90_file):
             ig_list = [kp.ig for kp in bandstructure.kpoints]
         else:
             ig_list = [kp.ig.T for kp in bandstructure.kpoints]
+        ig_list = [ig_list[ik] for ik in selected_kpoints]
         if grid_size is None:
             igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
             igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
@@ -132,28 +139,19 @@ class UNK(W90_file):
             grid_size = tuple(grid_size)
             print(f"using provided grid_size {grid_size}")
 
-        data = []
+        data = {}
 
-        if selected_kpoints is None:
-            selected_kpoints = np.arange(len(bandstructure.kpoints))
-            print(f"selected_kpoints is not provided, using all {len(bandstructure.kpoints)} k-points")
-        selected_kpoints = [int(k) for k in selected_kpoints]
-
-        for ik, kp in enumerate(bandstructure.kpoints):
-            if ik in selected_kpoints:
-                WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
-                g = ig_list[ik][:, :3]
-                ng = g.shape[0]
-                WF_loc = kp.WF if irrep_new_version else kp.WF.reshape((NB, ng, nspinor), order='F')
-                if normalize:
-                    norm = np.linalg.norm(WF_loc, axis=(1, 2))
-                    WF_loc = WF_loc / norm[:, None, None]
-                ng = g.shape[1]
-                for ig, g in enumerate(g):
-                    WF_grid[:, g[0], g[1], g[2], :] = WF_loc[:, ig, :]
-                WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
-                data.append(WF_grid)
-            else:
-                print(f"skipping k-point {ik} not in selected_kpoints {selected_kpoints}")
-                data.append(None)
-        return UNK(data=data)
+        for ikirr in kptirr:
+            kp = bandstructure.kpoints[selected_kpoints[ikirr]]
+            WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
+            g_loc = ig_list[ikirr][:, :3]
+            ng = g_loc.shape[0]
+            WF_loc = kp.WF if irrep_new_version else kp.WF.reshape((NB, ng, nspinor), order='F')
+            if normalize:
+                norm = np.linalg.norm(WF_loc, axis=(1, 2))
+                WF_loc = WF_loc / norm[:, None, None]
+            for ig, g in enumerate(g_loc):
+                WF_grid[:, g[0], g[1], g[2]] = kp.WF[:, ig, :]
+            WF_grid = np.fft.ifftn(WF_grid, axes=(1, 2, 3), norm='forward')
+            data[ikirr] = WF_grid
+        return UNK(data=data, NK=NK)

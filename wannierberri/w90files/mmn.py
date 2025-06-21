@@ -1,3 +1,4 @@
+from collections import defaultdict
 from itertools import islice
 import multiprocessing
 from time import time
@@ -5,7 +6,7 @@ import numpy as np
 
 from wannierberri.utility import cached_einsum
 from .utility import convert, grid_from_kpoints
-from .w90file import W90_file, check_shape
+from .w90file import W90_file, auto_kptirr, check_shape
 from ..io import sparselist_to_dict
 
 
@@ -258,7 +259,14 @@ class MMN(W90_file):
                            normalize=True,
                            verbose=False,
                            param_search_bk={},
-                           selected_kpoints=None,):
+                           selected_kpoints=None,
+                           kptirr=None,
+                           kpt_from_kptirr_isym=None,
+                           kpt2kptirr=None,
+                           NK=None,
+                           kpt_latt_grid=None,
+                           symmetrizer=None,
+                           ):
         """
         Create an AMN object from a BandStructure object
         So far only delta-localised s-orbitals are implemented
@@ -279,6 +287,22 @@ class MMN(W90_file):
         MMN or np.ndarray
             the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
         """
+        if symmetrizer is not None:
+            kptirr = symmetrizer.kptirr
+            kpt2kptirr = symmetrizer.kpt2kptirr
+            kpt_from_kptirr_isym = symmetrizer.kpt_from_kptirr_isym
+            kpt_latt_grid = symmetrizer.kpt_latt_grid
+        if kpt_latt_grid is None:
+            kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
+        mp_grid = np.array(grid_from_kpoints(kpt_latt_grid))
+
+        NK, selected_kpoints, kptirr = auto_kptirr(
+            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+        print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
+
+        NK = kpt_latt_grid.shape[0]
+
+        kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
@@ -290,9 +314,6 @@ class MMN(W90_file):
         if verbose:
             print("Creating mmn. ")
 
-        kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
-        NK = kpt_latt.shape[0]
-        mp_grid = np.array(grid_from_kpoints(kpt_latt))
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
 
@@ -306,34 +327,34 @@ class MMN(W90_file):
         NNB = len(wk)
         NB = bandstructure.num_bands
 
-        k_latt_int = np.rint(kpt_latt * mp_grid[None, :]).astype(int)
+        k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
 
-        G = {ik: np.zeros((NNB, 3), dtype=int) for ik in selected_kpoints}
-        neighbours = {ik: np.zeros(NNB, dtype=int) for ik in selected_kpoints}
-        for ik in selected_kpoints:
+        G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
+        neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
+        for ikirr in kptirr:
             for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[ik] + bk_latt[ib]
+                k_latt_int_nb = k_latt_int[ikirr] + bk_latt[ib]
                 for ik2 in range(NK):
                     g = k_latt_int_nb - k_latt_int[ik2]
                     if np.all(g % mp_grid == 0):
-                        neighbours[ik][ib] = ik2
-                        G[ik][ib] = g // mp_grid
+                        neighbours[ikirr][ib] = ik2
+                        G[ikirr][ib] = g // mp_grid
                         break
                 else:
                     raise RuntimeError(
-                        f"Could not find a neighbour for k-point {ik} with k-lattice {k_latt_int[ik]} and "
+                        f"Could not find a neighbour for k-point {ikirr} with k-lattice {k_latt_int[ikirr]} and "
                         f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
         if irrep_new_version:
-            ig_list = [kp.ig for kp in bandstructure.kpoints]
+            ig_list = [kp.ig for kp in kpoints_sel]
         else:
-            ig_list = [kp.ig.T for kp in bandstructure.kpoints]
+            ig_list = [kp.ig.T for kp in kpoints_sel]
 
         igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
         igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
 
-        print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
+        # print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
         Gloc = np.array([g for g in G.values()])
 
@@ -341,47 +362,68 @@ class MMN(W90_file):
         igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         ig_grid = igmax_glob - igmin_glob + 1
-        print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
 
 
         bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
         ket = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
 
-        data = np.zeros((NK, NNB, NB, NB), dtype=complex)
+        data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
 
         if normalize:
-            norm = [np.linalg.norm(kp.WF, axis=1) for kp in bandstructure.kpoints]
+            norm = [np.linalg.norm(kp.WF, axis=1) for kp in kpoints_sel]
         else:
-            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in bandstructure.kpoints]
+            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
 
-        for ik1 in selected_kpoints:
-            kp1 = bandstructure.kpoints[ik1]
+        extra_kpoints = {}  # a dictionary to store kpoints that are not in the original bandstructure
+        # but are needed for the finite-difference scheme (obtained by symmetry)
+        for ikirr in kptirr:
+            kp1 = kpoints_sel[ikirr]
             ig_loc = kp1.ig if irrep_new_version else kp1.ig.T
             WF_loc = kp1.WF if irrep_new_version else kp1.WF.reshape((kp1.WF.shape[0], -1, nspinor), order='F')
             for ig, g in enumerate(ig_loc):
                 _g = g[:3] - igmin_glob
                 assert np.all(_g >= 0) and np.all(_g < ig_grid), \
-                    f"g {_g} out of bounds for ig_grid {ig_grid} at ik1={ik1}, ig={ig}"
+                    f"g {_g} out of bounds for ig_grid {ig_grid} at ik1={ikirr}, ig={ig}"
                 for ispinor in range(nspinor):
                     bra[:, ispinor, _g[0], _g[1], _g[2]] = WF_loc[:, ig, ispinor].conj()
             if normalize:
-                bra[:] = bra / norm[ik1][:, None, None, None, None]
-            for ib, ik2 in enumerate(neighbours[ik1]):
-                kp2 = bandstructure.kpoints[ik2]
+                bra[:] = bra / norm[ikirr][:, None, None, None, None]
+            for ib, ik2 in enumerate(neighbours[ikirr]):
+                if ik2 in kptirr:
+                    kp2 = kpoints_sel[ik2]
+                else:
+                    if ik2 not in extra_kpoints:
+                        isym = kpt_from_kptirr_isym[ik2]
+                        ik_origin = kpt2kptirr[ik2]
+                        kp_origin = kpoints_sel[ik_origin]
+                        symop = bandstructure.spacegroup.symmetries[isym]
+                        # TODO: in principle, here it is not needed to transform the k-point,
+                        # For the first symmetry the transformation is the identity
+                        # For the rest the transformations can be obtained from the
+                        # little group of the irreducible k-point. But we do it
+                        # here explicitly, further it will be checked, and recoded
+                        kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
+                                                     k_new=kpt_latt_grid[ik2])
+                        extra_kpoints[ik2] = kp2
+                        print("extra_kpoints", extra_kpoints.keys())
+                    kp2 = extra_kpoints[ik2]
                 WF2_loc = kp2.WF if irrep_new_version else kp2.WF.reshape((kp2.WF.shape[0], -1, nspinor), order='F')
                 ig2_loc = kp2.ig if irrep_new_version else kp2.ig.T
+
                 for ig, g in enumerate(ig2_loc):
-                    _g = g[:3] - igmin_glob - G[ik1][ib]
+                    _g = g[:3] - igmin_glob - G[ikirr][ib]
                     assert np.all(_g >= 0) and np.all(_g < ig_grid), \
-                        f"g_loc {_g} out of bounds for ig_grid {ig_grid} at ik1={ik1}, inb={ib}, ik2={ik2}"
+                        f"g_loc {_g} out of bounds for ig_grid {ig_grid} at ik1={ikirr}, inb={ib}, ik2={ik2}"
                     for ispinor in range(nspinor):
                         ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig, ispinor]
                 if normalize:
                     ket[:] = ket / norm[ik2][:, None, None, None, None]
-                data[ik1, ib] = cached_einsum('asijk,bsijk->ab', bra, ket)
+                data[ikirr][ib, :, :] = cached_einsum('asijk,bsijk->ab', bra, ket)
 
         return MMN(
             data=data,
+            NK=NK,
             neighbours=neighbours,
             G=G,
             bk_latt=bk_latt,

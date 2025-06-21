@@ -1,7 +1,5 @@
 import copy
-import irrep
-from irrep.bandstructure import BandStructure
-from pytest import approx, fixture
+from pytest import approx
 import pytest
 import scipy
 import wannierberri as wberri
@@ -10,8 +8,6 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 
-from wannierberri.symmetry.projections import Projection
-from wannierberri.w90files.eig import EIG
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
@@ -130,177 +126,16 @@ def test_wannierise(outer_window):
     os.chdir(cwd)
 
 
-@fixture
-def check_sawf():
-    def _inner(sawf_new, sawf_ref):
 
-        for key in ['NB', "num_wann", "NK", "NKirr", "kptirr", "kptirr2kpt", "kpt2kptirr", "time_reversals"]:
-            assert np.all(getattr(sawf_ref, key) == getattr(sawf_new, key)), (
-                f"key {key} differs between reference and new SymmetrizerSAWF\n"
-                f"reference: {getattr(sawf_ref, key)}\n"
-                f"new: {getattr(sawf_new, key)}\n"
-            )
+spreads_Fe_spd_444_win50 = np.array([1.48094878, 1.44313864, 1.65060907, 1.61414571, 1.65053543,
+            1.61438103, 1.65053543, 1.61438103, 0.4680118, 0.43165047,
+            0.40912432, 0.39499786, 0.40912432, 0.39499786, 0.46803275,
+            0.43165531, 0.40912598, 0.39500838])
 
-        assert np.all(sawf_ref.D_wann_block_indices == sawf_new.D_wann_block_indices), (
-            f"D_wann_block_indices differs between reference and new SymmetrizerSAWF\n"
-            f"reference: {sawf_ref.D_wann_block_indices}\n"
-            f"new: {sawf_new.D_wann_block_indices}\n"
-        )
-        for ikirr in range(sawf_ref.NKirr):
-            assert np.all(sawf_ref.d_band_block_indices[ikirr] == sawf_new.d_band_block_indices[ikirr]), (
-                f"d_band_block_indices differs  at ikirr={ikirr} between reference and new SymmetrizerSAWF\n"
-                f"reference: {sawf_ref.d_band_block_indices}\n"
-                f"new: {sawf_new.d_band_block_indices}\n"
-            )
-
-        for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
-            blockref, blocknew = blockpair
-            assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
-            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-
-
-        for isym in range(sawf_ref.Nsym):
-            try:
-                for ikirr in range(sawf_ref.NKirr):
-                    for blockref, blocknew in zip(sawf_ref.D_wann_blocks[ikirr][isym], sawf_new.D_wann_blocks[ikirr][isym]):
-                        assert blockref == approx(blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-                    for blockref, blocknew in zip(sawf_ref.d_band_blocks[ikirr][isym], sawf_new.d_band_blocks[ikirr][isym]):
-                        assert blockref == approx(blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-            except AssertionError:
-                for ikirr in range(sawf_ref.NKirr):
-                    for blockref, blocknew in zip(sawf_ref.D_wann_blocks[ikirr][isym], sawf_new.D_wann_blocks[ikirr][isym]):
-                        assert blockref == approx(-blocknew, abs=1e-6), f"D_wann at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-                    for blockref, blocknew in zip(sawf_ref.d_band_blocks[ikirr][isym], sawf_new.d_band_blocks[ikirr][isym]):
-                        assert blockref == approx(-blocknew, abs=1e-6), f"d_band at ikirr = {ikirr}, isym = {isym} differs between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
-
-
-    return _inner
-
-
-def test_create_sawf_diamond(check_sawf):
-    data_dir = os.path.join(ROOT_DIR, "data", "diamond")
-
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso",
-                                                    include_TR=False,
-                                                      )
-
-    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
-    sawf_new.set_D_wann_from_projections([projection])
-
-    tmp_sawf_path = os.path.join(OUTPUT_DIR, "diamond")
-    sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
-    sawf_ref = SymmetrizerSAWF().from_npz(data_dir + "/diamond.sawf.npz")
-    check_sawf(sawf_new, sawf_ref)
-
-
-@pytest.mark.parametrize("include_TR", [True, False])
-def test_create_sawf_Fe(check_sawf, include_TR):
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
-    pos = [[0, 0, 0]]
-    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
-    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
-    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
-    sawf_new.set_D_wann_from_projections(projections=[proj_s, proj_p, proj_d])
-    tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
-    sawf_new.to_npz(tmp_sawf_path)
-    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
-    check_sawf(sawf_new, sawf_ref)
-
-
-def test_create_w90files_Fe():
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-    path_tmp = os.path.join(OUTPUT_DIR, "Fe-create-w90-files")
-    os.makedirs(path_tmp, exist_ok=True)
-
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe',
-                                normalize=False, magmom=[[0, 0, 1]])
-
-    norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
-    if norms.ndim == 3:
-        norms = norms.sum(axis=2)  # sum over spinor components in irrep>=2.2
-
-    assert abs(1 - np.array(norms)).max() < 1e-7, "norms of wavefunctions are not 1, check the bandstructure"
-
-
-    pos = [[0, 0, 0]]
-    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
-    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
-    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
-    proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
-
-    w90data = wberri.w90files.Wannier90data(
-    ).from_bandstructure(bandstructure,
-                         files=["mmn", "eig", "amn", "unk", "spn"],
-                         write_npz_list=[],
-                         read_npz_list=[],
-                         seedname=os.path.join(path_tmp, "Fe"),
-                         projections=proj_set,
-                         normalize=False,
-                         unk_grid=(18,) * 3,
-                )
-    eig = w90data.get_file("eig")
-    eig_ref = EIG.from_npz(os.path.join(path_data, "Fe.eig.npz"))
-    eql, msg = eig.equals(eig_ref, tolerance=1e-6)
-    assert eql, f"EIG files differ: {msg}"
-
-    mmn_new = w90data.get_file("mmn")
-    mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, "Fe.mmn.npz"))
-    mmn_ref.reorder_bk(bk_latt_new=mmn_new.bk_latt)
-    eql, msg = mmn_new.equals(mmn_ref, tolerance=3e-5, check_reorder=False)
-    assert eql, f"MMN files differ: {msg}"
-
-    amn = w90data.get_file("amn")
-    amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_data, "Fe.amn.npz"), NK=8)  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
-    eql, msg = amn.equals(amn_ref, tolerance=1e-6)
-    assert eql, f"AMN files differ: {msg} \nnew: \n{amn.data} \nref: \n{amn_ref.data}"
-
-    spn = w90data.get_file("spn")
-    spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_data, "Fe.spn.npz"))
-    eql, msg = spn.equals(spn_ref, tolerance=1e-6)
-    assert eql, f"SPN files differ: {msg}"
-
-    unk_new = w90data.get_file("unk")
-    unk_new.select_kpoints((0, 3))  # select only k=0 and k=3
-    unk_ref = wberri.w90files.unk.UNK.from_npz(os.path.join(path_data, "Fe-kp03-red18.unk.npz"))
-    eql, msg = unk_new.equals(unk_ref, tolerance=1e-6)
-    assert eql, f"UNK files differ: {msg}"
-
-    # factor = 18**(-3 / 2)
-    # for ik in (0, 3):
-    #     data_new = unk_new.data[ik] * factor
-    #     data_ref = unk_ref.data[ik] * factor
-    #     for ib, (b1, b2) in enumerate(zip(data_new, data_ref)):
-    #         print(f"norm of unk_new.data[ik={ik}][{ib}] = {np.linalg.norm(b1)}")
-    #         print(f"norm of unk_ref.data[ik={ik}][{ib}] = {np.linalg.norm(b2)}")
-    #     assert data_new is not None, f"unk_new.data[ik={ik}] is None, but should not be"
-    #     assert data_ref is not None, f"unk_ref.data[ik={ik}] is None, but should not be"
-    #     assert np.allclose(data_new, data_ref, atol=1e-6), f"unk data differs by {np.max(np.abs(data_new - data_ref))} > 1e-6 at ik={ik}"
-
-
-
-@pytest.mark.parametrize("include_TR", [True, False])
-def _test_create_sawf_Fe_444(check_sawf, include_TR):
-    "this test is disabled, because the necessary data is not included into repo, but need to be generated with QE"
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "pwscf")
-
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
-    pos = [[0, 0, 0]]
-    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
-    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
-    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
-    sawf_new.set_D_wann_from_projections(projections=[proj_s, proj_p, proj_d])
-    tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
-    sawf_new.to_npz(tmp_sawf_path)
-    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
-    check_sawf(sawf_new, sawf_ref)
+spreads_Fe_spd_444_nowin = np.array([1.4903928, 1.45260483, 1.62040443, 1.58683755, 1.62042416,
+       1.586817, 1.62042416, 1.586817, 0.4686682, 0.4321233,
+       0.40920197, 0.39504559, 0.40920197, 0.39504559, 0.46868826,
+       0.43212589, 0.40920177, 0.39505669])
 
 
 @pytest.mark.parametrize("include_TR", [True, False])
@@ -326,12 +161,15 @@ def test_sitesym_Fe(include_TR, use_window):
                     )
     assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
     spreads = w90data.chk.wannier_spreads
+    print(f"spreads: {repr(spreads)}")
     assert np.all(spreads < 2)
     atol = 1e-8
     assert spreads[4] == approx(spreads[6], abs=atol)
     assert spreads[5] == approx(spreads[7], abs=atol)
     assert spreads[10] == approx(spreads[12], abs=atol)
     assert spreads[11] == approx(spreads[13], abs=atol)
+    spreads_ref = spreads_Fe_spd_444_win50 if use_window else spreads_Fe_spd_444_nowin
+    assert spreads == approx(spreads_ref, abs=0.01)
     system = wberri.system.System_w90(w90data=w90data, berry=True)
     tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
                 }

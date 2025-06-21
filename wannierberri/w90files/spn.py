@@ -1,5 +1,5 @@
 import numpy as np
-from .w90file import W90_file, check_shape
+from .w90file import W90_file, auto_kptirr, check_shape
 from ..io import FortranFileR
 from ..utility import cached_einsum, pauli_xyz
 
@@ -54,7 +54,11 @@ class SPN(W90_file):
 
     @classmethod
     def from_bandstructure(cls, bandstructure,
-                           normalize=True, verbose=False):
+                           normalize=True, verbose=False,
+                           selected_kpoints=None,
+                           kptirr=None,
+                           NK=None
+                           ):
         """
         Create an SPN object from a BandStructure object
         So far only delta-localised s-orbitals are implemented
@@ -66,6 +70,8 @@ class SPN(W90_file):
         normalize : bool
             if True, the wavefunctions are normalised
         """
+        NK, selected_kpoints, kptirr = auto_kptirr(
+            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
         from ..import IRREP_IRREDUCIBLE_VERSION
         from packaging import version
         from irrep import __version__ as irrep__version__
@@ -75,8 +81,9 @@ class SPN(W90_file):
 
         if verbose:
             print(f"Creating SPN from bandstructure with {bandstructure.num_bands} bands and {len(bandstructure.kpoints)} k-points")
-        data = []
-        for kp in bandstructure.kpoints:
+        data = {}
+        for ikirr in kptirr:
+            kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             print(f"setting spn for k={kp.k}")
             ng = kp.ig.shape[1]
             wf = kp.WF if irrep_new_version else kp.WF.reshape((bandstructure.num_bands, ng, 2), order='F')
@@ -84,11 +91,11 @@ class SPN(W90_file):
                 wf /= np.linalg.norm(wf, axis=(1, 2))[:, None, None]
             # wf = wf.reshape((bandstructure.num_bands, 2, ng), order='C')
             data_k = cached_einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
-            data.append(data_k)
+            data[ikirr] = data_k
 
         print(f"length of data = {len(data)}")
         print("NK={self.NK}")
-        return SPN(data=np.array(data))
+        return SPN(data=data, NK=NK)
 
     def select_bands(self, selected_bands):
         return super().select_bands(selected_bands, dimensions=(0, 1))
