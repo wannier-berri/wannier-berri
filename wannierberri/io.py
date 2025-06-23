@@ -62,6 +62,7 @@ class SavableNPZ(abc.ABC):
     def from_dict(cls, dic=None, return_obj=True, **kwargs):
         dic_loc = {}
         for k in cls.npz_tags:
+            print(f"reading {k} ")  # = {dic[k]}")
             if k in kwargs:
                 dic_loc[k] = kwargs[k]
             else:

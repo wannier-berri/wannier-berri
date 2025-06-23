@@ -1,12 +1,13 @@
 from functools import cached_property
 from time import time
+import warnings
 import numpy as np
 from .utility import readstr
-from ..io import FortranFileR
+from ..io import FortranFileR, SavableNPZ
 from ..utility import alpha_A, beta_A
 
 
-class CheckPoint:
+class CheckPoint(SavableNPZ):
     """
     A class to store the data about wannierisation, written by Wannier90
 
@@ -19,6 +20,12 @@ class CheckPoint:
     bk_complete_tol : float
         tolerance for the completeness relation for finite-difference scheme
     """
+
+    npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_latt", "mp_grid",
+                "wannier_centers_cart", "wannier_spreads"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads"]
+    npz_keys_dict_int = ["v_matrix"]
+
 
     def __init__(self,
                 real_lattice=None,
@@ -74,19 +81,23 @@ class CheckPoint:
         self.bk_complete_tol = bk_complete_tol
 
         if v_matrix is not None:
-            self.v_matrix = np.array(v_matrix, dtype=complex)
-            if num_kpts is None:
-                num_kpts = self.v_matrix.shape[0]
+            if isinstance(v_matrix, list) or isinstance(v_matrix, np.ndarray):
+                v_matrix = {ik: np.array(v, dtype=complex) for ik, v in enumerate(v_matrix) if v is not None}
+            assert isinstance(v_matrix, dict), f"v_matrix should be a dictionary with keys as integers and values as np.arrays, but got {type(v_matrix)}"
+            self.v_matrix = v_matrix
+            nkey_provided = len(v_matrix)
+            if nkey_provided == 0:
+                warnings.warn("v_matrix is empty, no matrix elements provided")
             else:
-                assert self.v_matrix.shape[0] == num_kpts, f"v_matrix should be of shape ({num_kpts}, num_bands, num_wann), but got {v_matrix.shape}"
+                V0 = list(v_matrix.values())[0]
             if num_bands is None:
-                num_bands = self.v_matrix.shape[1]
+                num_bands = V0.shape[0]
             else:
-                assert self.v_matrix.shape[1] == num_bands, f"v_matrix should be of shape (num_kpts, {num_bands}, num_wann), but got {v_matrix.shape}"
+                assert V0.shape[0] == num_bands, f"v_matrix[ik] should be of shape ( **{num_bands}**, num_wann), but got {V0.shape}"
             if num_wann is None:
-                num_wann = self.v_matrix.shape[2]
+                num_wann = V0.shape[1]
             else:
-                assert self.v_matrix.shape[2] == num_wann, f"v_matrix should be of shape (num_kpts, num_bands, {num_wann}), but got {v_matrix.shape}"
+                assert V0.shape[1] == num_wann, f"v_matrix[ik] should be of shape (num_bands, {num_wann}), but got {V0.shape}"
 
         self.num_wann = num_wann
         self.num_bands = num_bands

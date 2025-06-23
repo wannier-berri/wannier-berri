@@ -11,6 +11,7 @@ from .common_systems import (
     create_files_Si_W90,
     create_W90_files,
     system_Fe_W90,
+    system_Fe_WB_irreducible,
     system_Fe_W90_npz,
     system_Fe_W90_sparse,
     system_Fe_sym_W90,

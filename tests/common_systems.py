@@ -184,6 +184,19 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
     return system
 
 
+@pytest.fixture(scope="session")
+def system_Fe_WB_irreducible():
+    """Create system for Fe from WB wannierisation based on irreducible kpoints only"""
+    w90data = wberri.w90files.Wannier90data().from_npz(
+        seedname=os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "wann-irred", "Fe_wan"),
+        files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
+        irreducible=True,
+    )
+    return wberri.system.System_w90(
+        w90data=w90data, berry=True, spin=True, SHCqiao=True)
+
+
+
 def get_system_Fe_sym_W90(symmetrize=False,
                           **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""

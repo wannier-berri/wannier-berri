@@ -2,6 +2,7 @@ from wannierberri import Parallel
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as WB
+from wannierberri.w90files.chk import CheckPoint
 
 path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
@@ -18,43 +19,50 @@ spacegroup = bandstructure.spacegroup
 
 spacegroup.show()
 
-projection_sp3d2 = Projection(orbital='sp3d2',
-                              position_num=[0, 0, 0],
-                              spacegroup=spacegroup)
-projection_t2g = Projection(orbital='t2g',
-                            position_num=[0, 0, 0],
-                            spacegroup=spacegroup)
 
-projections_set = ProjectionsSet(projections=[projection_sp3d2,
-                                              projection_t2g])
+if True:
+
+    projection_sp3d2 = Projection(orbital='sp3d2',
+                                position_num=[0, 0, 0],
+                                spacegroup=spacegroup)
+    projection_t2g = Projection(orbital='t2g',
+                                position_num=[0, 0, 0],
+                                spacegroup=spacegroup)
+
+    projections_set = ProjectionsSet(projections=[projection_sp3d2,
+                                                projection_t2g])
 
 
-w90data = WB.w90files.Wannier90data(
-).from_bandstructure(bandstructure,
-                     seedname="./Fe",
-                     irreducible=True,
-                     files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
-                     projections=projections_set,
-                     # write_npz_list=[],
-                     normalize=False
-                                        )
+    w90data = WB.w90files.Wannier90data(
+    ).from_bandstructure(bandstructure,
+                        seedname="./Fe",
+                        irreducible=True,
+                        files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
+                        projections=projections_set,
+                        # write_npz_list=[],
+                        read_npz_list=["mmn", "amn"],
+                        normalize=False
+                        )
 
-w90data.select_bands(win_min=-8, win_max=50)
+    w90data.select_bands(win_min=-8, win_max=50)
 
-w90data.wannierise(init="amn",
-                   froz_min=-10,
-                   froz_max=20,
-                   print_progress_every=10,
-                   num_iter=11,
-                   conv_tol=1e-10,
-                   mix_ratio_z=1.0,
-                   sitesym=True,
-                   parallel=True
-                    )
-kpt_latt = w90data.chk.kpt_latt
+    w90data.wannierise(init="amn",
+                    froz_min=-10,
+                    froz_max=20,
+                    print_progress_every=10,
+                    num_iter=41,
+                    conv_tol=1e-10,
+                    mix_ratio_z=1.0,
+                    sitesym=True,
+                    parallel=True
+                        )
+    w90data.to_npz(seedname="./Fe_wan")
+    
+else:
+    # for further runs just load the data
+    w90data = WB.w90files.Wannier90data().from_npz(seedname="./Fe_wan",irreducible=True,
+                                                    files = ['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
-print(f"mp_grid = {w90data.chk.mp_grid}")
-print(f"kpt_latt = {len(kpt_latt)} k-points : \n{kpt_latt}")
 system = WB.system.System_w90(w90data=w90data, spin=True, berry=True)
 
 
