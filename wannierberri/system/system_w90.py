@@ -296,7 +296,7 @@ class System_w90(System_R):
                            f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
                                 set_zero=transl_inv_MV or transl_inv_JM,
                                 threshold=0.1 if transl_inv_JM else 1e5)
-        if symmetrize and hasattr(w90data, 'symmetrizer'):
+        if symmetrize and w90data.has_file('symmetrizer'):
             self.symmetrize2(w90data.symmetrizer)
 
     ###########################################################################

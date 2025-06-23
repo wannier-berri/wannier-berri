@@ -398,7 +398,7 @@ class Wannier90data:
         `~irrep.spacegroup.SpaceGroupBare`
             the spacegroup of the system
         """
-        if hasattr(self, "symmetrizer") and self.symmetrizer is not None:
+        if self.has_file('symmetrizer') and self.symmetrizer is not None:
             return self.symmetrizer.spacegroup
         else:
             return None
@@ -806,7 +806,7 @@ class Wannier90data:
                 else:
                     # print(f"applying window to {key} {val}")
                     self.get_file(key).select_bands(selected_bands)
-        if hasattr(self, 'symmetrizer'):
+        if self.has_file('symmetrizer'):
             self.symmetrizer.select_bands(selected_bands)
         print("after selecting bands")
         for key, val in self._files.items():
