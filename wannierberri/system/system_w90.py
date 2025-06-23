@@ -186,9 +186,9 @@ class System_w90(System_R):
 
 
         # H(R) matrix
-        
+
         kptirr, weights_k = w90data.kptirr_system
-        
+
         HHq = chk.get_HH_q(w90data.eig, kptirr=kptirr, weights_k=weights_k)
 
         self.set_R_mat('Ham', self.rvec.q_to_R(HHq))
@@ -226,51 +226,53 @@ class System_w90(System_R):
             # A_a(R,b) matrix
             if self.need_R_any('AA'):
                 AA_qb = chk.get_AA_qb(w90data.mmn, kptirr=kptirr, weights_k=weights_k,
-                                       transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
+                                      transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
                 AA_Rb = self.rvec.q_to_R(AA_qb)
                 self.set_R_mat('AA', AA_Rb, Hermitian=True)
 
             # B_a(R,b) matrix
             if 'BB' in self.needed_R_matrices:
                 BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, kptirr=kptirr, weights_k=weights_k,
-                                       sum_b=sum_b, phase=expjphase1)
+                                      sum_b=sum_b, phase=expjphase1)
                 BB_Rb = self.rvec.q_to_R(BB_qb)
                 self.set_R_mat('BB', BB_Rb)
 
             # C_a(R,b1,b2) matrix
             if 'CC' in self.needed_R_matrices:
                 CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, kptirr=kptirr, weights_k=weights_k,
-                                       sum_b=sum_b, phase=expjphase2)
+                                      sum_b=sum_b, phase=expjphase2)
                 CC_Rb = self.rvec.q_to_R(CC_qb)
                 self.set_R_mat('CC', CC_Rb, Hermitian=True)
 
             # O_a(R,b1,b2) matrix
             if 'OO' in self.needed_R_matrices:
                 OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
-                                       sum_b=sum_b, phase=expjphase2)
+                                      sum_b=sum_b, phase=expjphase2)
                 OO_Rb = self.rvec.q_to_R(OO_qb)
                 self.set_R_mat('OO', OO_Rb, Hermitian=True)
 
             # G_bc(R,b1,b2) matrix
             if 'GG' in self.needed_R_matrices:
                 GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
-                                       sum_b=sum_b, phase=expjphase2)
+                                      sum_b=sum_b, phase=expjphase2)
                 GG_Rb = self.rvec.q_to_R(GG_qb)
                 self.set_R_mat('GG', GG_Rb, Hermitian=True)
 
             #######################################################################
 
             if self.need_R_any('SR'):
-                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, 
+                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
                                                                     kptirr=kptirr, weights_k=weights_k,
                                        phase=expjphase1)))
             if self.need_R_any('SH'):
-                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig, 
+                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig,
                                                                    kptirr=kptirr, weights_k=weights_k,
                                        )))
             if self.need_R_any('SHR'):
                 self.set_R_mat('SHR', self.rvec.q_to_R(
-                    chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
+                    chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
+                                  kptirr=kptirr, weights_k=weights_k,
+                                  eig=w90data.eig, phase=expjphase1)))
 
             if 'SA' in self.needed_R_matrices:
                 self.set_R_mat('SA',

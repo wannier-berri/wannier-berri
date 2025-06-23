@@ -171,14 +171,14 @@ class SymmetrizerSAWF:
     @cached_property
     def kpt2kptirr_sym(self):
         return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
-    
+
     @cached_property
     def kptirr_weights(self):
         """
         Returns the weights of the irreducible kpoints in the full BZ
         """
         return np.array([len(set(self.kptirr2kpt[ikirr])) for ikirr in range(self.NKirr)])
-        
+
 
 
 

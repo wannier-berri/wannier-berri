@@ -19,7 +19,7 @@ import os
 import warnings
 import numpy as np
 
-from wannierberri.utility import cached_einsum, real_recip_lattice
+from wannierberri.utility import cached_einsum
 from ..wannierise import wannierise
 from ..symmetry.sawf import SymmetrizerSAWF
 from .utility import grid_from_kpoints
@@ -151,7 +151,7 @@ class Wannier90data:
             write_npz_list = files
         read_npz_list = set([s.lower() for s in read_npz_list])
         write_npz_list = set([s.lower() for s in write_npz_list])
-        
+
 
 
         if "symmetrizer" in files:
@@ -255,7 +255,14 @@ class Wannier90data:
                                kwargs_bandstructure)
             self.set_file('unk', unk)
         return self
-    
+
+    @property
+    def num_kpts(self):
+        """
+        Returns the number of k-points in the system
+        """
+        return self.chk.num_kpts
+
     @property
     def kptirr_system(self):
         """
@@ -311,24 +318,20 @@ class Wannier90data:
             self.set_file(f)
         return self
 
-    @property 
+    @property
     def num_wann(self):
         return self.chk.num_wann
-    
-    @property
-    def wannier_centers_cart(self):
-        return self.chk.wannier_centers_cart
-    
+
     @property
     def mp_grid(self):
         return self.chk.mp_grid
-    
+
     @property
     def kpt_latt(self):
         """ Returns the k-points or the grid in lattice coordinates
         """
         return self.chk.kpt_latt
-    
+
     @cached_property
     def atomic_positions_red(self):
         """
@@ -673,7 +676,7 @@ class Wannier90data:
         """
         wannierise(self,
                    irreducible=self.irreducible,
-                    **kwargs)
+                   **kwargs)
 
 
     def apply_window(self, *args, **kwargs):

@@ -233,7 +233,7 @@ def update_chk(w90data, U_opt_full_BZ,
         the optimized U matrix for the free bands and wannier functions
     """
 
-    w90data.chk.v_matrix = {ik : U for ik, U in enumerate(U_opt_full_BZ) if U is not None}
+    w90data.chk.v_matrix = {ik: U for ik, U in enumerate(U_opt_full_BZ) if U is not None}
     if (wcc is None) or (spreads is None):
         wcc_new, spreads_new = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
         if wcc is None:

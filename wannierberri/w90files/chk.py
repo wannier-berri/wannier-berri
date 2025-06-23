@@ -228,9 +228,9 @@ class CheckPoint:
         return np.tensordot(np.tensordot(v1, mat, axes=(1, 0)), v2, axes=(1, 0)).transpose(
             (0, -1) + tuple(range(1, mat.ndim - 1)))
 
-    def get_HH_q(self, eig, 
+    def get_HH_q(self, eig,
                  kptirr,
-                 weights_k, 
+                 weights_k,
                  ):
         """
         Returns the Hamiltonian matrix in the Wannier gauge
@@ -248,13 +248,13 @@ class CheckPoint:
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         HH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann), dtype=complex)
         for ik, w in zip(kptirr, weights_k):
-            HH_q[ik] = self.wannier_gauge(eig.data[ik], ik, ik)*w  # Hamiltonian gauge
+            HH_q[ik] = self.wannier_gauge(eig.data[ik], ik, ik) * w  # Hamiltonian gauge
         # HH_q = np.array([self.wannier_gauge(eig.data[ik], ik, ik) for ik in range(self.num_kpts)])
         return 0.5 * (HH_q + HH_q.transpose(0, 2, 1).conj())
 
-    def get_SS_q(self, spn, 
+    def get_SS_q(self, spn,
                  kptirr,
-                 weights_k, 
+                 weights_k,
                  ):
         """
         Returns the spin matrix in the Wannier gauge
@@ -335,7 +335,7 @@ class CheckPoint:
                 if sum_b:
                     AA_qb[ik] += AA_q_ik_ib * w
                 else:
-                    AA_qb[ik, :, :, ib, :] = AA_q_ik_ib *w
+                    AA_qb[ik, :, :, ib, :] = AA_q_ik_ib * w
         return AA_qb
 
 
@@ -462,9 +462,9 @@ class CheckPoint:
                     if phase is not None:
                         CC_q_ik_ib *= phase[:, :, ib1, ib2]
                     if sum_b:
-                        CC_qb[ik] += CC_q_ik_ib* weight
+                        CC_qb[ik] += CC_q_ik_ib * weight
                     else:
-                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib*weight
+                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib * weight
         return CC_qb
 
     # --- C_a(q,b1,b2) matrix --- #
@@ -497,8 +497,8 @@ class CheckPoint:
 
     def get_SH_q(self, spn, eig, kptirr, weights_k):
         SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands),\
-              f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), \
+            f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), \
             f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         for ik, weight in zip(kptirr, weights_k):
@@ -524,9 +524,9 @@ class CheckPoint:
                 if phase is not None:
                     SHA_q_ik_ib *= phase[:, :, ib, None, None]
                 if sum_b:
-                    SHA_qb[ik] += SHA_q_ik_ib* weight
+                    SHA_qb[ik] += SHA_q_ik_ib * weight
                 else:
-                    SHA_qb[ik, :, :, ib, :, :] = SHA_q_ik_ib* weight
+                    SHA_qb[ik, :, :, ib, :, :] = SHA_q_ik_ib * weight
 
         return SHA_qb
 
