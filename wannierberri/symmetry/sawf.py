@@ -171,6 +171,14 @@ class SymmetrizerSAWF:
     @cached_property
     def kpt2kptirr_sym(self):
         return np.array([np.where(self.kptirr2kpt[self.kpt2kptirr[ik], :] == ik)[0][0] for ik in range(self.NK)])
+    
+    @cached_property
+    def kptirr_weights(self):
+        """
+        Returns the weights of the irreducible kpoints in the full BZ
+        """
+        return np.array([len(set(self.kptirr2kpt[ikirr])) for ikirr in range(self.NKirr)])
+        
 
 
 
@@ -423,10 +431,8 @@ class SymmetrizerSAWF:
         ----------
         U : list of NKirr np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The input matrix to be expanded
-        all_k : bool
-            If True, the U matrices are expanded at all reducible kpoints (self.include_k is ignored)
-            if False, the U matrices are expanded only at the irreducible kpoints and their neighbours,
-            for the rest of the kpoints, the U matrices are set to None
+        include_k : array(NK, bool)
+            indicates which k-points to include
 
         Returns
         -------

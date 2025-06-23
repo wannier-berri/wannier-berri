@@ -52,6 +52,7 @@ class W90_file(SavableNPZ):
         """
         ext = cls.extension if ext is None else ext
         f_npz = f"{seedname}.{ext}.npz"
+        print (f"calling autoread for {cls.__name__} with seedname={seedname}, ext={ext}, read_npz={read_npz}, read_w90={read_w90}, bandstructure={bandstructure is not None} write_npz={write_npz}, selected_bands={selected_bands}, kwargs_w90={kwargs_w90}, kwargs_bandstructure={kwargs_bandstructure}")
         if os.path.exists(f_npz) and read_npz:
             obj = cls.from_npz(f_npz)
             write_npz = False  # do not write npz again if it was read

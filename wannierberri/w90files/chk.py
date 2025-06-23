@@ -228,7 +228,10 @@ class CheckPoint:
         return np.tensordot(np.tensordot(v1, mat, axes=(1, 0)), v2, axes=(1, 0)).transpose(
             (0, -1) + tuple(range(1, mat.ndim - 1)))
 
-    def get_HH_q(self, eig):
+    def get_HH_q(self, eig, 
+                 kptirr,
+                 weights_k, 
+                 ):
         """
         Returns the Hamiltonian matrix in the Wannier gauge
 
@@ -243,10 +246,16 @@ class CheckPoint:
             the Hamiltonian matrix in the Wannier gauge
         """
         assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        HH_q = np.array([self.wannier_gauge(eig.data[ik], ik, ik) for ik in range(self.num_kpts)])
+        HH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann), dtype=complex)
+        for ik, w in zip(kptirr, weights_k):
+            HH_q[ik] = self.wannier_gauge(eig.data[ik], ik, ik)*w  # Hamiltonian gauge
+        # HH_q = np.array([self.wannier_gauge(eig.data[ik], ik, ik) for ik in range(self.num_kpts)])
         return 0.5 * (HH_q + HH_q.transpose(0, 2, 1).conj())
 
-    def get_SS_q(self, spn):
+    def get_SS_q(self, spn, 
+                 kptirr,
+                 weights_k, 
+                 ):
         """
         Returns the spin matrix in the Wannier gauge
 
@@ -262,7 +271,9 @@ class CheckPoint:
         """
 
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        SS_q = np.array([self.wannier_gauge(spn.data[ik], ik, ik) for ik in range(self.num_kpts)])
+        SS_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
+        for ik, w in zip(kptirr, weights_k):
+            SS_q[ik] = self.wannier_gauge(spn.data[ik], ik, ik) * w
         return 0.5 * (SS_q + SS_q.transpose(0, 2, 1, 3).conj())
 
     #########
@@ -275,7 +286,8 @@ class CheckPoint:
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    def get_AABB_qb(self, mmn, transl_inv=False, eig=None, phase=None, sum_b=False):
+    def get_AABB_qb(self, mmn, kptirr, weights_k,
+                    transl_inv=False, eig=None, phase=None, sum_b=False):
         """
         Returns the matrix elements AA or BB(if eig is not Flase) in the Wannier gauge
 
@@ -304,7 +316,7 @@ class CheckPoint:
             AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         else:
             AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
-        for ik in range(self.num_kpts):
+        for ik, w in zip(kptirr, weights_k):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik][ib]
                 # Matrix < u_k | u_k+b > (mmn)
@@ -321,28 +333,31 @@ class CheckPoint:
                 if phase is not None:
                     AA_q_ik_ib *= phase[:, :, ib, None]
                 if sum_b:
-                    AA_qb[ik] += AA_q_ik_ib
+                    AA_qb[ik] += AA_q_ik_ib * w
                 else:
-                    AA_qb[ik, :, :, ib, :] = AA_q_ik_ib
+                    AA_qb[ik, :, :, ib, :] = AA_q_ik_ib *w
         return AA_qb
 
 
     # --- A_a(q,b) matrix --- #
 
 
-    def get_AA_qb(self, mmn, transl_inv=False, phase=None, sum_b=False):
+    def get_AA_qb(self, mmn, kptirr, weights_k,
+                  transl_inv=False, phase=None, sum_b=False):
         """	
          A wrapper for get_AABB_qb with eig=None
          see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details  
          """
-        return self.get_AABB_qb(mmn, transl_inv=transl_inv, phase=phase, sum_b=sum_b)
+        return self.get_AABB_qb(mmn, kptirr=kptirr, weights_k=weights_k,
+                                transl_inv=transl_inv, phase=phase, sum_b=sum_b)
 
-    def get_AA_q(self, mmn, transl_inv=False):
+    def get_AA_q(self, mmn, kptirr, weights_k, transl_inv=False):
         """
         A wrapper for get_AA_qb with sum_b=True
         see :meth:`~wannierberri.w90files.CheckPoint.get_AA_qb` for more details
         """
-        return self.get_AA_qb(mmn=mmn, transl_inv=transl_inv, sum_b=True).sum(axis=3)
+        return self.get_AA_qb(mmn=mmn, kptirr=kptirr, weights_k=weights_k,
+                              transl_inv=transl_inv, sum_b=True).sum(axis=3)
 
     def get_wannier_centers(self, mmn, spreads=False):
         """
@@ -385,15 +400,16 @@ class CheckPoint:
     # --- B_a(q,b) matrix --- #
 
 
-    def get_BB_qb(self, mmn, eig, phase=None, sum_b=False):
+    def get_BB_qb(self, mmn, eig, kptirr, weights_k, phase=None, sum_b=False):
         """	
         a wrapper for get_AABB_qb to evaluate BB matrix elements. (transl_inv is disabled)
         see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details
         """
-        return self.get_AABB_qb(mmn, eig=eig, phase=phase, sum_b=sum_b)
+        return self.get_AABB_qb(mmn, kptirr=kptirr, weights_k=weights_k,
+                                eig=eig, phase=phase, sum_b=sum_b)
 
 
-    def get_CCOOGG_qb(self, mmn, uhu, antisym=True, phase=None, sum_b=False):
+    def get_CCOOGG_qb(self, mmn, uhu, kptirr, weights_k, antisym=True, phase=None, sum_b=False):
         """
         Returns the matrix elements CC, OO or GG in the Wannier gauge
 
@@ -422,7 +438,7 @@ class CheckPoint:
         CC_qb = np.zeros(shape, dtype=complex)
         if phase is not None:
             phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
-        for ik in range(self.num_kpts):
+        for ik, weight in zip(kptirr, weights_k):
             for ib1 in range(mmn.NNB):
                 iknb1 = mmn.neighbours[ik][ib1]
                 for ib2 in range(mmn.NNB):
@@ -446,48 +462,51 @@ class CheckPoint:
                     if phase is not None:
                         CC_q_ik_ib *= phase[:, :, ib1, ib2]
                     if sum_b:
-                        CC_qb[ik] += CC_q_ik_ib
+                        CC_qb[ik] += CC_q_ik_ib* weight
                     else:
-                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib
+                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib*weight
         return CC_qb
 
     # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu, phase=None, sum_b=False):
+    def get_CC_qb(self, mmn, uhu, kptirr, weights_k, phase=None, sum_b=False):
         """
         A wrapper for get_CCOOGG_qb with antisym=True
         see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
         """
-        return self.get_CCOOGG_qb(mmn, uhu, phase=phase, sum_b=sum_b)
+        return self.get_CCOOGG_qb(mmn, uhu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
 
     # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu, phase=None, sum_b=False):
+    def get_OO_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
         """
         A wrapper for get_CCOOGG_qb with antisym=False
         see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
         (actually, the same as :meth:`~wannierberri.w90files.CheckPoint.get_CC_qb`)
         """
-        return self.get_CCOOGG_qb(mmn, uiu, phase=phase, sum_b=sum_b)
+        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
 
     # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu, phase=None, sum_b=False):
+    def get_GG_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
         """
         A wrapper for get_CCOOGG_qb with antisym=False 
         see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
         """
-        return self.get_CCOOGG_qb(mmn, uiu, antisym=False, phase=phase, sum_b=sum_b)
+        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
 
 
-    def get_SH_q(self, spn, eig):
+    def get_SH_q(self, spn, eig, kptirr, weights_k):
         SH_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        for ik in range(self.num_kpts):
-            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik)
+        assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands),\
+              f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
+        assert (eig.NK, eig.NB) == (self.num_kpts, self.num_bands), \
+            f"eig file has NK={eig.NK}, NB={eig.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
+        for ik, weight in zip(kptirr, weights_k):
+            SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik) * weight
         return SH_q
 
-    def get_SHA_q(self, shu, mmn, phase=None, sum_b=False):
+    def get_SHA_q(self, shu, mmn, kptirr, weights_k,
+                  phase=None, sum_b=False):
         """
         SHA or SA (if siu is used instead of shu)
         """
@@ -496,7 +515,7 @@ class CheckPoint:
         else:
             SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={mmn.NNB} - mismatch"
-        for ik in range(self.num_kpts):
+        for ik, weight in zip(kptirr, weights_k):
             for ib in range(mmn.NNB):
                 iknb = mmn.neighbours[ik][ib]
                 SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
@@ -505,22 +524,23 @@ class CheckPoint:
                 if phase is not None:
                     SHA_q_ik_ib *= phase[:, :, ib, None, None]
                 if sum_b:
-                    SHA_qb[ik] += SHA_q_ik_ib
+                    SHA_qb[ik] += SHA_q_ik_ib* weight
                 else:
-                    SHA_qb[ik, :, :, ib, :, :] = SHA_q_ik_ib
+                    SHA_qb[ik, :, :, ib, :, :] = SHA_q_ik_ib* weight
 
         return SHA_qb
 
 
 
-    def get_SHR_q(self, spn, mmn, eig=None, phase=None):
+    def get_SHR_q(self, spn, mmn, kptirr, weights_k,
+                  eig=None, phase=None):
         """
         SHR or SR(if eig is None)
         """
         SHR_q = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert (spn.NK, spn.NB) == (self.num_kpts, self.num_bands), f"spn file has NK={spn.NK}, NB={spn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
         assert (mmn.NK, mmn.NB) == (self.num_kpts, self.num_bands), f"mmn file has NK={mmn.NK}, NB={mmn.NB}, while the checkpoint has NK={self.num_kpts}, NB={self.num_bands}"
-        for ik in range(self.num_kpts):
+        for ik, weight in zip(kptirr, weights_k):
             SH = spn.data[ik][:, :, :]
             if eig is not None:
                 SH = SH * eig.data[ik][None, :, None]
@@ -532,7 +552,7 @@ class CheckPoint:
                 if phase is not None:
                     SHRW = SHRW * phase[:, :, ib, None]
                 SHRW = SHRW - SHW
-                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None]
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None] * weight
         return SHR_q
 
 

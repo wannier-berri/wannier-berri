@@ -161,14 +161,14 @@ class System_w90(System_R):
         self.set_pointgroup(spacegroup=w90data.get_spacegroup())
         self.wannier_centers_cart = chk.wannier_centers_cart
 
-        mp_grid = chk.mp_grid
+        mp_grid = w90data.mp_grid
         self._NKFFT_recommended = mp_grid
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=self.ws_dist_tol)
-        self.num_wann = chk.num_wann
+        self.num_wann = w90data.num_wann
 
         self.rvec.set_fft_q_to_R(
-            kpt_red=chk.kpt_latt,
+            kpt_red=w90data.kpt_latt,
             numthreads=npar,
             fftlib=fftlib,
         )
@@ -186,17 +186,22 @@ class System_w90(System_R):
 
 
         # H(R) matrix
-        HHq = chk.get_HH_q(w90data.eig)
+        
+        kptirr, weights_k = w90data.kptirr_system
+        
+        HHq = chk.get_HH_q(w90data.eig, kptirr=kptirr, weights_k=weights_k)
+
         self.set_R_mat('Ham', self.rvec.q_to_R(HHq))
 
         if self.need_R_any('SS'):
-            self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn)))
+            self.set_R_mat('SS', self.rvec.q_to_R(chk.get_SS_q(w90data.spn, kptirr=kptirr, weights_k=weights_k)))
 
         if wannier_centers_from_chk:
-            self.wannier_centers_cart = chk.wannier_centers_cart
+            self.wannier_centers_cart = w90data.wannier_centers_cart
         else:
             assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
-            AA_q = chk.get_AA_qb(w90data.mmn, transl_inv=True, sum_b=True, phase=None)
+            AA_q = chk.get_AA_qb(w90data.mmn, kptirr=kptirr, weights_k=weights_k,
+                                 transl_inv=True, sum_b=True, phase=None)
             AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
             self.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
 
@@ -220,50 +225,63 @@ class System_w90(System_R):
 
             # A_a(R,b) matrix
             if self.need_R_any('AA'):
-                AA_qb = chk.get_AA_qb(w90data.mmn, transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
+                AA_qb = chk.get_AA_qb(w90data.mmn, kptirr=kptirr, weights_k=weights_k,
+                                       transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
                 AA_Rb = self.rvec.q_to_R(AA_qb)
                 self.set_R_mat('AA', AA_Rb, Hermitian=True)
 
             # B_a(R,b) matrix
             if 'BB' in self.needed_R_matrices:
-                BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, sum_b=sum_b, phase=expjphase1)
+                BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, kptirr=kptirr, weights_k=weights_k,
+                                       sum_b=sum_b, phase=expjphase1)
                 BB_Rb = self.rvec.q_to_R(BB_qb)
                 self.set_R_mat('BB', BB_Rb)
 
             # C_a(R,b1,b2) matrix
             if 'CC' in self.needed_R_matrices:
-                CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, sum_b=sum_b, phase=expjphase2)
+                CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, kptirr=kptirr, weights_k=weights_k,
+                                       sum_b=sum_b, phase=expjphase2)
                 CC_Rb = self.rvec.q_to_R(CC_qb)
                 self.set_R_mat('CC', CC_Rb, Hermitian=True)
 
             # O_a(R,b1,b2) matrix
             if 'OO' in self.needed_R_matrices:
-                OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
+                OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
+                                       sum_b=sum_b, phase=expjphase2)
                 OO_Rb = self.rvec.q_to_R(OO_qb)
                 self.set_R_mat('OO', OO_Rb, Hermitian=True)
 
             # G_bc(R,b1,b2) matrix
             if 'GG' in self.needed_R_matrices:
-                GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, sum_b=sum_b, phase=expjphase2)
+                GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
+                                       sum_b=sum_b, phase=expjphase2)
                 GG_Rb = self.rvec.q_to_R(GG_qb)
                 self.set_R_mat('GG', GG_Rb, Hermitian=True)
 
             #######################################################################
 
             if self.need_R_any('SR'):
-                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, phase=expjphase1)))
+                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, 
+                                                                    kptirr=kptirr, weights_k=weights_k,
+                                       phase=expjphase1)))
             if self.need_R_any('SH'):
-                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig)))
+                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig, 
+                                                                   kptirr=kptirr, weights_k=weights_k,
+                                       )))
             if self.need_R_any('SHR'):
                 self.set_R_mat('SHR', self.rvec.q_to_R(
                     chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn, eig=w90data.eig, phase=expjphase1)))
 
             if 'SA' in self.needed_R_matrices:
                 self.set_R_mat('SA',
-                            self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+                            self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn,
+                                                           kptirr=kptirr, weights_k=weights_k,
+                                        sum_b=sum_b, phase=expjphase1)))
             if 'SHA' in self.needed_R_matrices:
                 self.set_R_mat('SHA',
-                            self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn, sum_b=sum_b, phase=expjphase1)))
+                            self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn,
+                                                           kptirr=kptirr, weights_k=weights_k,
+                                        sum_b=sum_b, phase=expjphase1)))
 
             del expjphase1, expjphase2
 

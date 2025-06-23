@@ -19,7 +19,7 @@ import os
 import warnings
 import numpy as np
 
-from wannierberri.utility import cached_einsum
+from wannierberri.utility import cached_einsum, real_recip_lattice
 from ..wannierise import wannierise
 from ..symmetry.sawf import SymmetrizerSAWF
 from .utility import grid_from_kpoints
@@ -95,6 +95,7 @@ class Wannier90data:
 
     def __init__(self, ):
         self.bands_were_selected = False
+        self.irreducible = False
         self._files = {}
 
     def from_bandstructure(self, bandstructure,
@@ -139,16 +140,18 @@ class Wannier90data:
         self.seedname = copy(seedname)
 
         if irreducible:
+            self.irreducible = True
             if "symmetrizer" not in files:
                 warnings.warn("irreducible=True, but symmetrizer is not requested. Adding it automatically")
                 files = list(files) + ["symmetrizer"]
 
         if read_npz_list is None:
             read_npz_list = files
-        write_npz_list = set([s.lower() for s in write_npz_list])
         if write_npz_list is None:
             write_npz_list = files
-
+        read_npz_list = set([s.lower() for s in read_npz_list])
+        write_npz_list = set([s.lower() for s in write_npz_list])
+        
 
 
         if "symmetrizer" in files:
@@ -252,8 +255,24 @@ class Wannier90data:
                                kwargs_bandstructure)
             self.set_file('unk', unk)
         return self
+    
+    @property
+    def kptirr_system(self):
+        """
+        Returns the list of kptirr to iterate for construction of the system, nad the weight for each kptirr
 
-
+        Returns
+        -------
+        kptirr : list of int
+            the list of kptirr to iterate for construction of the system
+        weight : list of float
+            the weight for each kptirr
+        """
+        if not self.irreducible:
+            return np.arange(self.num_kpts), np.ones(self.num_kpts)
+        kptirr = self.symmetrizer.kptirr
+        weight = self.symmetrizer.kptirr_weights
+        return kptirr, weight
 
 
     def from_w90_files(self, seedname="wannier90",
@@ -292,7 +311,24 @@ class Wannier90data:
             self.set_file(f)
         return self
 
-
+    @property 
+    def num_wann(self):
+        return self.chk.num_wann
+    
+    @property
+    def wannier_centers_cart(self):
+        return self.chk.wannier_centers_cart
+    
+    @property
+    def mp_grid(self):
+        return self.chk.mp_grid
+    
+    @property
+    def kpt_latt(self):
+        """ Returns the k-points or the grid in lattice coordinates
+        """
+        return self.chk.kpt_latt
+    
     @cached_property
     def atomic_positions_red(self):
         """
@@ -635,7 +671,9 @@ class Wannier90data:
         kwargs : dict
             the keyword arguments to be passed to `~wannierberri.wannierise.wannierise`
         """
-        wannierise(self, **kwargs)
+        wannierise(self,
+                   irreducible=self.irreducible,
+                    **kwargs)
 
 
     def apply_window(self, *args, **kwargs):
@@ -741,6 +779,8 @@ class Wannier90data:
         """
         self.set_file("amn", self.symmetrizer.get_random_amn(), overwrite=True)
 
+
+
     def calc_WF_real_space(self,
                            sc_min=-1, sc_max=1,
                            select_WF=None,
@@ -777,7 +817,7 @@ class Wannier90data:
 
         the norm is such that sum_r |WF|^2 = 1
         """
-        assert self.wannierised, "system was not wannierised"
+        assert self.check_wannierised("cannot calculate Wannier functions in the real space ")
         assert self.has_file("unk"), "UNK files are not set"
 
         def to_3array(x: int):

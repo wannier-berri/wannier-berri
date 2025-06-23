@@ -390,6 +390,7 @@ class MMN(W90_file):
             if normalize:
                 bra[:] = bra / norm[ikirr][:, None, None, None, None]
             for ib, ik2 in enumerate(neighbours[ikirr]):
+                ik2 = int(ik2)
                 if ik2 in kptirr:
                     kp2 = kpoints_sel[ik2]
                 else:
