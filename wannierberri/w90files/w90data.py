@@ -820,7 +820,7 @@ class Wannier90data:
 
         the norm is such that sum_r |WF|^2 = 1
         """
-        assert self.check_wannierised("cannot calculate Wannier functions in the real space ")
+        self.check_wannierised("cannot calculate Wannier functions in the real space ")
         assert self.has_file("unk"), "UNK files are not set"
 
         def to_3array(x: int):
