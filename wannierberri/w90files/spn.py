@@ -84,7 +84,7 @@ class SPN(W90_file):
         data = {}
         for ikirr in kptirr:
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
-            print(f"setting spn for k={kp.k}")
+            # print(f"setting spn for k={kp.k}")
             ng = kp.ig.shape[1]
             wf = kp.WF if irrep_new_version else kp.WF.reshape((bandstructure.num_bands, ng, 2), order='F')
             if normalize:

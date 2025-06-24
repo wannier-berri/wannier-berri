@@ -190,7 +190,6 @@ def system_Fe_WB_irreducible():
     w90data = wberri.w90files.Wannier90data().from_npz(
         seedname=os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "wann-irred", "Fe_wan"),
         files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
-        irreducible=True,
     )
     return wberri.system.System_w90(
         w90data=w90data, berry=True, spin=True, SHCqiao=True)

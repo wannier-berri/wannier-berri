@@ -106,7 +106,7 @@ class Wannier90data:
                           projections=None,
                           unk_grid=None,
                           normalize=True,
-                          irreducible=False,
+                          irreducible=None,
                           ecut_sym=100,
                           mp_grid=None,):
         """
@@ -135,11 +135,21 @@ class Wannier90data:
             the Wannier90data object containing the files specified in `files`
 
         """
+        if irreducible is None:
+            from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
+            kpt_latt_grid = np.array([KP.K  for KP in bandstructure.kpoints])
+            grid, selected_kpoints = grid_from_kpoints_irrep(kpt_latt_grid, grid=None, allow_missing=True)
+            if len(selected_kpoints < np.prod(grid)):
+                warnings.warn(f"detected frid {grid} od {np.prod(grid)} kpoints, "
+                              f"but only {len(selected_kpoints)} kpoints are available."
+                              "assuming that only irreducible kpoints are needed.")
+                irreducible = True
+
 
         self.seedname = copy(seedname)
 
-        if irreducible:
-            self.irreducible = True
+        self.irreducible = irreducible
+        if self.irreducible:
             if "symmetrizer" not in files:
                 warnings.warn("irreducible=True, but symmetrizer is not requested. Adding it automatically")
                 files = list(files) + ["symmetrizer"]
@@ -173,41 +183,30 @@ class Wannier90data:
             if "symmetrizer" in write_npz_list and not symmetrizer_read_ok:
                 symmetrizer.to_npz(seedname + ".symmetrizer.npz")
 
-        if bandstructure is not None:
-            if self.has_symmetrizer:
-                kpt_latt = self.symmetrizer.kpoints_all
-                mp_grid = self.symmetrizer.grid
-                if hasattr(self.symmetrizer, "selected_kpoints"):
-                    selected_kpoints = self.symmetrizer.selected_kpoints
-                else:
-                    selected_kpoints = np.arange(bandstructure.num_kpts)
+        if self.has_symmetrizer:
+            kpt_latt = self.symmetrizer.kpoints_all
+            mp_grid = self.symmetrizer.grid
+            if hasattr(self.symmetrizer, "selected_kpoints"):
+                selected_kpoints = self.symmetrizer.selected_kpoints
             else:
-                kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
-                mp_grid = grid_from_kpoints(kpt_latt)
-                selected_kpoints = None
-            if irreducible:
-                kptirr = self.symmetrizer.kptirr
-                kpt_from_kptirr_isym = self.symmetrizer.kpt_from_kptirr_isym
-                kpt2kptirr = self.symmetrizer.kpt2kptirr
-                NK = np.prod(mp_grid)
-            else:
-                kptirr = None
-                kpt_from_kptirr_isym = None
-                kpt2kptirr = None
-                NK = None
-            kwargs_bandstructure = {"selected_kpoints":
-                            selected_kpoints, "kptirr": kptirr,
-                            "NK": NK}
-
+                selected_kpoints = np.arange(bandstructure.num_kpts)
         else:
-            # dummy variables which will not be used anyway, because all files
-            # will be read from npz
-            kwargs_bandstructure = {}
+            kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
+            mp_grid = grid_from_kpoints(kpt_latt)
+            selected_kpoints = None
+        if irreducible:
+            kptirr = self.symmetrizer.kptirr
+            kpt_from_kptirr_isym = self.symmetrizer.kpt_from_kptirr_isym
+            kpt2kptirr = self.symmetrizer.kpt2kptirr
+            NK = np.prod(mp_grid)
+        else:
             kptirr = None
             kpt_from_kptirr_isym = None
-            kpt_latt = None
             kpt2kptirr = None
-
+            NK = None
+        kwargs_bandstructure = {"selected_kpoints":
+                        selected_kpoints, "kptirr": kptirr,
+                        "NK": NK}
 
 
 
@@ -271,15 +270,40 @@ class Wannier90data:
 
     def from_npz(self,
                 seedname="wannier90",
-                files=("mmn", "eig", "amn", "symmetrizer"),
+                files=("mmn", "eig", "amn"),
                 irreducible=False):
-        self.from_bandstructure(bandstructure=None,
-                          seedname=seedname,
-                          files=files,
-                          read_npz_list=files,
-                          write_npz_list=[],
-                          irreducible=irreducible)
+        for f in files:
+            try:
+                if f == "symmetrizer":
+                    val = SymmetrizerSAWF().from_npz(seedname + ".symmetrizer.npz")
+                elif f in FILES_CLASSES:
+                    val = FILES_CLASSES[f].from_npz(seedname + "." + f + ".npz")
+                else:
+                    raise ValueError(f"file {f} is not a valid w90 file")
+                self.set_file(f, val=val)
+            except FileNotFoundError as e:
+                warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+        for f in self._files:
+            ff = self.get_file(f)
+            if f == "symmetrizer":
+                continue
+            if f == "chk":
+                if hasattr(ff, "v_matrix") and ff.v_matrix is not None:
+                    nkeys = len(ff.v_matrix.keys())
+                    NK = ff.num_kpts
+                else:
+                    continue
+            else:
+                nkeys = len(ff.data.keys())
+                NK = ff.NK
+            if nkeys < NK:
+                warnings.warn(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
+                              "so we assume the files contain only on irreducible k-points")
+                irreducible = True
+        self.irreducible = irreducible
         return self
+
+
 
     def to_npz(self,
                seedname="wannier90",
@@ -743,7 +767,8 @@ class Wannier90data:
                      win_min=-np.inf, win_max=np.inf,
                      band_start=None, band_end=None,
                      selected_bands=None,
-                     allow_again=False):
+                     allow_again=False,
+                     verbose=False):
         """
         exclude some bands from the data
 
@@ -791,12 +816,13 @@ class Wannier90data:
             selected_bands = np.where(selected_bands_bool)[0]
 
         print(f"selected_bands = {selected_bands}")
-        print("before selecting bands")
-        for key, val in self._files.items():
-            if key != 'win' and key != 'chk':
-                print(f"key = {key} ,number of bands = {val.NB}")
-            if key == 'chk':
-                print(f"key = {key} ,number of bands = {val.num_bands}")
+        if verbose:
+            print("before selecting bands")
+            for key, val in self._files.items():
+                if key != 'win' and key != 'chk':
+                    print(f"key = {key} ,number of bands = {val.NB}")
+                if key == 'chk':
+                    print(f"key = {key} ,number of bands = {val.num_bands}")
         for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
@@ -808,14 +834,15 @@ class Wannier90data:
                     self.get_file(key).select_bands(selected_bands)
         if self.has_file('symmetrizer'):
             self.symmetrizer.select_bands(selected_bands)
-        print("after selecting bands")
-        for key, val in self._files.items():
-            if key != 'win' and key != 'chk':
-                print(f"key = {key} ,number of bands = {val.NB}")
-                if hasattr(val, 'data') and key != 'unk':
-                    print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
-            if key == 'chk':
-                print(f"key = {key} ,number of bands = {val.num_bands}")
+        if verbose:
+            print("after selecting bands")
+            for key, val in self._files.items():
+                if key != 'win' and key != 'chk':
+                    print(f"key = {key} ,number of bands = {val.NB}")
+                    if hasattr(val, 'data') and key != 'unk':
+                        print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
+                if key == 'chk':
+                    print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
         return selected_bands
 

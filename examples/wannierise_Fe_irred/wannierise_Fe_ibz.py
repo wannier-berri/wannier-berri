@@ -1,11 +1,12 @@
-from wannierberri import Parallel
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as WB
-from wannierberri.w90files.chk import CheckPoint
 
 path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
+parallel = None
+# for parallel execution, uncomment the following lines
+# from wannierberri import Parallel
 # parallel = Parallel(num_cpus=4)
 
 bandstructure = BandStructure(code='espresso',
@@ -36,11 +37,9 @@ if True:
     w90data = WB.w90files.Wannier90data(
     ).from_bandstructure(bandstructure,
                         seedname="./Fe",
-                        irreducible=True,
                         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
                         projections=projections_set,
-                        # write_npz_list=[],
-                        read_npz_list=["mmn", "amn"],
+                        read_npz_list=["mmn", "amn", "spn", "eig", ],
                         normalize=False
                         )
 
@@ -57,11 +56,11 @@ if True:
                     parallel=True
                         )
     w90data.to_npz(seedname="./Fe_wan")
-    
+
 else:
     # for further runs just load the data
-    w90data = WB.w90files.Wannier90data().from_npz(seedname="./Fe_wan",irreducible=True,
-                                                    files = ['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
+    w90data = WB.w90files.Wannier90data().from_npz(seedname="./Fe_wan",
+                                                   files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
 system = WB.system.System_w90(w90data=w90data, spin=True, berry=True)
 
@@ -79,7 +78,9 @@ path = WB.Path(system,
 
 
 bands = WB.evaluate_k_path(system=system,
-                           path=path)
+                           path=path,
+                            parallel=parallel
+                           )
 
 bands.plot_path_fat(path,
               quantity=None,
@@ -89,5 +90,5 @@ bands.plot_path_fat(path,
               mode="fatband",
               fatfactor=20,
               cut_k=False,
-              label="WB"
+              label="WB",
               )

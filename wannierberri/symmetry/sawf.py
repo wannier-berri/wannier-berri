@@ -76,7 +76,7 @@ class SymmetrizerSAWF:
     """
 
     npz_tags = ['D_wann_block_indices', '_NB',
-                'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym', 
+                'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
                 '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
     npz_tags_optional = ['eig_irr', 'kpoints_all', 'kpt_from_kptirr_isym', 'grid']
 
