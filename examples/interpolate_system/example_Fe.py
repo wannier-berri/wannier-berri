@@ -10,6 +10,8 @@ import numpy as np
 seedname = "../../tests/data/Fe_sym_Wannier90/Fe_sym"
 system0 = wberri.system.System_w90(seedname, berry=True, spin=True, )
 
+system_raw = copy.deepcopy(system0)
+
 system0.symmetrize(
     proj=['Fe:sp3d2;t2g'],
     atom_name=['Fe'],
@@ -52,11 +54,20 @@ path = wberri.Path(system0,
     length=200)   # length [ Ang] ~= 2*pi/dk
 
 
-n_alpha = 11
+# all_alpha =  np.arange(-0.5, 2.01, 0.5)
+all_alpha = np.arange(0, 2.01, 0.5)
+n_alpha = len(all_alpha)
 fig_spin, axes_spin = pyplot.subplots(1, n_alpha, figsize=(4 * n_alpha, 5))
 fig_berry, axes_berry = pyplot.subplots(1, n_alpha, figsize=(4 * n_alpha, 5))
-for i, alpha in enumerate(np.linspace(0, 1, n_alpha)):
-    new_system = interpolator.interpolate(alpha)
+for i, alpha in enumerate(all_alpha):
+    if alpha < 0:
+        new_system = system0
+    elif alpha > 1.6:
+        new_system = system_raw
+    elif alpha > 1:
+        new_system = system1
+    else:
+        new_system = interpolator.interpolate(alpha)
     result = wberri.run(new_system,
                   grid=path,
                   calculators={"tab": tab_all_path},
