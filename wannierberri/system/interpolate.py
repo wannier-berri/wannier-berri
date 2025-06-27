@@ -45,8 +45,9 @@ class SystemInterpolator:
         matrix_keys0 = set(self.system0._XX_R.keys())
         matrix_keys1 = set(self.system1._XX_R.keys())
         # set of keys that are present in only one of the systems
-        matrix_keys_common = matrix_keys0.intersection(matrix_keys1)
-        matrix_keys_exclude = matrix_keys_common - matrix_keys0.intersection(matrix_keys1)
+        # matrix_keys_common = matrix_keys0.intersection(matrix_keys1)
+        matrix_keys_all = matrix_keys0.union(matrix_keys1)
+        matrix_keys_exclude = matrix_keys_all - matrix_keys0.intersection(matrix_keys1)
         if len(matrix_keys_exclude) > 0:
             warnings.warn(f"The following matrix elements are present in only one of the systems: {matrix_keys_exclude} , they will be excluded from the interpolation")
         for sys, iRmap  in zip([self.system0, self.system1], [iRvec_map_0, iRvec_map_1]):
@@ -58,7 +59,7 @@ class SystemInterpolator:
                     new_matrix = np.zeros((len(iRvec_new_list),) + shape[1:], dtype=complex)
                     new_matrix[iRmap] = sys._XX_R[key]
                     sys._XX_R[key] = new_matrix
-            sys.rvectors = Rvectors(lattice=sys.rvec.lattice, iRvec=iRvec_array, shifts_left_red=sys.rvec.shifts_left_red, shifts_right_red=sys.rvec.shifts_right_red)
+            sys.rvec = Rvectors(lattice=sys.rvec.lattice, iRvec=iRvec_array, shifts_left_red=sys.rvec.shifts_left_red, shifts_right_red=sys.rvec.shifts_right_red)
             sys.clear_cached_R()
 
 
