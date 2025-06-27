@@ -74,7 +74,8 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
-            # print("sort = ", sort)
+            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape}", end="")
+            print("sort = ", sort)
             if sort is not None:
                 data_ref = data_ref[sort]
             if data.dtype == bool:
@@ -123,8 +124,7 @@ def check_system():
             print(" - Ok!")
 
         if sort_iR:
-            iRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True)[
-                'arr_0'].tolist()
+            iRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True)['arr_0'].tolist()
             iRvec_new = system.rvec.iRvec.tolist()
             try:
                 assert len(iRvec_ref) == len(iRvec_new), f"iRvec_ref and iRvec_new have different lengths {len(iRvec_ref)} {len(iRvec_new)}"
@@ -199,6 +199,15 @@ def test_system_Fe_sym_W90(check_system, system_Fe_sym_W90):
     )
 
 
+def test_system_Fe_sym_W90_TR(check_system, system_Fe_sym_W90_TR):
+    check_system(
+        system_Fe_sym_W90_TR, "Fe_sym_W90_TR",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        sort_iR=True,
+        legacy=False,
+    )
+
+
 def test_system_Fe_W90_proj_set_spin(check_system, system_Fe_W90_proj_set_spin):
     check_system(
         system_Fe_W90_proj_set_spin, "Fe_W90_proj_set_spin",
@@ -214,6 +223,21 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
         legacy=True,
     )
 
+
+
+def test_system_Fe_sym_W90_interpolate(check_system, system_Fe_sym_W90,
+                                       system_Fe_sym_W90_TR):
+    interpolator = wberri.system.interpolate.SystemInterpolator(system0=system_Fe_sym_W90,
+                                                                system1=system_Fe_sym_W90_TR)
+    system_Fe_sym_W90_interpolate = interpolator.interpolate(0.4)
+
+
+    check_system(
+        system_Fe_sym_W90_interpolate, "Fe_sym_W90_interpolate_04",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
+        sort_iR=True,
+        legacy=False,
+    )
 
 
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
