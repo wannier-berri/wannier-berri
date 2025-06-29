@@ -197,6 +197,7 @@ def system_Fe_WB_irreducible():
 
 
 def get_system_Fe_sym_W90(symmetrize=False,
+                          TR=False,
                           **kwargs):
     """Create system for Fe symmetrization using Wannier90 data"""
 
@@ -216,7 +217,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
             proj=['Fe:sp3d2;t2g'],
             atom_name=['Fe'],
             positions=np.array([[0, 0, 0]]),
-            magmom=[[0., 0., -2.31]],
+            magmom=[[0, 0, 0]] if TR else [[0., 0., -2.31]],
             soc=True,)
     return system
 
@@ -224,6 +225,11 @@ def get_system_Fe_sym_W90(symmetrize=False,
 @pytest.fixture(scope="session")
 def system_Fe_sym_W90():
     return get_system_Fe_sym_W90(symmetrize=True)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_sym_W90_TR():
+    return get_system_Fe_sym_W90(symmetrize=True, TR=False)
 
 
 @pytest.fixture(scope="session")

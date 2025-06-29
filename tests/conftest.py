@@ -15,6 +15,7 @@ from .common_systems import (
     system_Fe_W90_npz,
     system_Fe_W90_sparse,
     system_Fe_sym_W90,
+    system_Fe_sym_W90_TR,
     system_Fe_W90_proj_set_spin,
     system_Fe_W90_proj,
     system_Fe_FPLO,
