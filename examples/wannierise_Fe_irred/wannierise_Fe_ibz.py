@@ -1,6 +1,6 @@
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
-import wannierberri as WB
+import wannierberri as wberri
 
 path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
@@ -29,12 +29,16 @@ if True:
     projection_t2g = Projection(orbital='t2g',
                                 position_num=[0, 0, 0],
                                 spacegroup=spacegroup)
+    projections_spd = [Projection(orbital=orb, position_num=[0, 0, 0], spacegroup=spacegroup)
+                       for orb in ['s', 'p', 'd']]
 
-    projections_set = ProjectionsSet(projections=[projection_sp3d2,
-                                                projection_t2g])
+
+    projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
+
+    # projections_set = ProjectionsSet(projections=projections_spd)
 
 
-    w90data = WB.w90files.Wannier90data(
+    w90data = wberri.w90files.Wannier90data(
     ).from_bandstructure(bandstructure,
                         seedname="./Fe",
                         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
@@ -59,25 +63,25 @@ if True:
 
 else:
     # for further runs just load the data
-    w90data = WB.w90files.Wannier90data().from_npz(seedname="./Fe_wan",
+    w90data = wberri.w90files.Wannier90data().from_npz(seedname="./Fe_wan",
                                                    files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
-system = WB.system.System_w90(w90data=w90data, spin=True, berry=True)
+system = wberri.system.System_w90(w90data=w90data, spin=True, berry=True)
 
 
 # all kpoints given in reduced coordinates
-path = WB.Path(system,
+path = wberri.Path(system,
              nodes=[
                  [0.0000, 0.0000, 0.0000],  # G
                  [0.500, -0.5000, -0.5000],  # H
                  [0.7500, 0.2500, -0.2500],  # P
                  [0.5000, 0.0000, -0.5000],  # N
                  [0.0000, 0.0000, 0.000]],  # G
-               labels=["G", "H", "P", "N", "G"],
+    labels=["G", "H", "P", "N", "G"],
     length=200)   # length [ Ang] ~= 2*pi/dk
 
 
-bands = WB.evaluate_k_path(system=system,
+bands = wberri.evaluate_k_path(system=system,
                            path=path,
                             parallel=parallel
                            )

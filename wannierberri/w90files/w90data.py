@@ -135,20 +135,26 @@ class Wannier90data:
             the Wannier90data object containing the files specified in `files`
 
         """
+        print(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files}, read_npz_list={read_npz_list}, write_npz_list={write_npz_list}, projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
             kpt_latt_grid = np.array([KP.K  for KP in bandstructure.kpoints])
+            print(f"kpt_latt_grid={kpt_latt_grid}")
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_latt_grid, grid=None, allow_missing=True)
-            if len(selected_kpoints < np.prod(grid)):
-                warnings.warn(f"detected frid {grid} od {np.prod(grid)} kpoints, "
+            print(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
+            if len(selected_kpoints) < np.prod(grid):
+                warnings.warn(f"detected grid {grid} od {np.prod(grid)} kpoints, "
                               f"but only {len(selected_kpoints)} kpoints are available."
                               "assuming that only irreducible kpoints are needed.")
                 irreducible = True
+            else:
+                irreducible = False
+        self.irreducible = irreducible
+        print(f"self.irreducible={self.irreducible}")
 
 
         self.seedname = copy(seedname)
 
-        self.irreducible = irreducible
         if self.irreducible:
             if "symmetrizer" not in files:
                 warnings.warn("irreducible=True, but symmetrizer is not requested. Adding it automatically")
