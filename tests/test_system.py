@@ -181,6 +181,14 @@ def test_system_Fe_W90_npz(check_system, system_Fe_W90_npz):
     )
 
 
+def test_system_Fe_WB_irreducible(check_system, system_Fe_WB_irreducible):
+    check_system(
+        system_Fe_WB_irreducible, "Fe_WB_irreducible",
+        matrices=['Ham', 'AA', 'SS', 'SR', 'SH', 'SHR'],
+        legacy=False,
+    )
+
+
 def test_system_Fe_W90_sparse(check_system, system_Fe_W90_sparse):
     check_system(
         system_Fe_W90_sparse, "Fe_W90_sparse",

@@ -7,7 +7,7 @@ import wannierberri as wberri
 import numpy as np
 import os
 
-from wannierberri.symmetry.projections import Projection
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from wannierberri.w90files.eig import EIG
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
@@ -179,6 +179,117 @@ def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
     check_sawf(sawf_new, sawf_ref)
 
 
+def test_irreducible_vs_full_Fe():
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
+    kwargs_bs = dict(code='espresso',
+                  prefix=path_data + '/Fe',
+                normalize=False,
+                  magmom=[[0, 0, 1]],
+                  include_TR=True,)
+
+    bandstructure_full = BandStructure(**kwargs_bs, irreducible=False)
+    print(f"kpoints in full bz: {[KP.k for KP in bandstructure_full.kpoints]}")
+    bandstructure_irr = BandStructure(**kwargs_bs, irreducible=True)
+    print(f"kpoints in irreducible bz: {[KP.k for KP in bandstructure_irr.kpoints]}")
+
+    nkp_full = len(bandstructure_full.kpoints)
+    nkp_irr = len(bandstructure_irr.kpoints)
+    assert nkp_full == 8, f"Expected 8 k-points in full bandstructure, got {nkp_full}"
+    assert nkp_irr == 4, f"Expected 4 k-points in irreducible bandstructure, got {nkp_irr}"
+    # return
+    sg = bandstructure_full.spacegroup
+    projection_sp3d2 = Projection(orbital='sp3d2', position_num=[0, 0, 0], spacegroup=sg)
+    projection_t2g = Projection(orbital='t2g', position_num=[0, 0, 0], spacegroup=sg)
+    projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
+
+    kwargs_w90file = dict(
+        files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
+        seedname="./Fe",
+        projections=projections_set,
+        read_npz_list=[],
+        normalize=False)
+
+    w90data_full = wberri.w90files.Wannier90data().from_bandstructure(bandstructure_full, **kwargs_w90file)
+    w90data_irr = wberri.w90files.Wannier90data().from_bandstructure(bandstructure_irr, **kwargs_w90file)
+    assert w90data_full.irreducible is False, "w90data_full should not be irreducible"
+    assert w90data_irr.irreducible is True, "w90data_irr should be irreducible"
+    nkp_full = len(w90data_full.mmn.data)
+    nkp_irr = len(w90data_irr.mmn.data)
+    assert nkp_full == 8, f"Expected 8 k-points in full w90data, got {nkp_full}"
+    assert nkp_irr == 4, f"Expected 4 k-points in irreducible w90data, got {nkp_irr}"
+
+
+    w90data_full.select_bands(win_min=-8, win_max=50)
+    w90data_irr.select_bands(win_min=-8, win_max=50)
+
+    kwargs_wannierise = dict(
+        init="amn",
+        froz_min=-10,
+        froz_max=20,
+        print_progress_every=10,
+        num_iter=101,
+        conv_tol=1e-10,
+        mix_ratio_z=1.0,
+        sitesym=True)
+
+    w90data_full.wannierise(**kwargs_wannierise)
+    w90data_irr.wannierise(**kwargs_wannierise)
+
+    assert w90data_full.chk.wannier_spreads == approx(
+        w90data_irr.chk.wannier_spreads, abs=0.01), (
+        f"Wannier spreads differ between full and irreducible bandstructure: "
+        f"{w90data_full.chk.wannier_spreads} != {w90data_irr.chk.wannier_spreads}"
+    )
+
+    assert w90data_full.chk.wannier_centers_cart == approx(
+        w90data_irr.chk.wannier_centers_cart, abs=0.01), (
+        f"Wannier centers differ between full and irreducible bandstructure: "
+        f"{w90data_full.chk.wannier_centers_cart} != {w90data_irr.chk.wannier_centers_cart}"
+    )
+    kwargs_system = dict(spin=True, berry=True)
+    system_irr = wberri.system.System_w90(w90data=w90data_irr, **kwargs_system)
+    system_full = wberri.system.System_w90(w90data=w90data_full, **kwargs_system)
+
+
+    Efermi = np.linspace(12, 13, 1001)
+    calculators = {
+        "dos":
+        wberri.calculators.static.DOS(Efermi=Efermi, tetra=True),
+        "spin":
+        wberri.calculators.static.Spin(Efermi=Efermi, tetra=True),
+        # "ahc_internal" :
+        #     wberri.calculators.static.AHC(Efermi=Efermi, tetra=True,
+        #                                   kwargs_formula={"external_terms": False}),
+        "ahc_external":
+        wberri.calculators.static.AHC(Efermi=Efermi, tetra=True,
+                                      kwargs_formula={"internal_terms": False}),
+        # "ahc_full" : wberri.calculators.static.AHC(Efermi=Efermi, tetra=False)
+
+    }
+
+
+    grid = wberri.Grid(system=system_irr, NKdiv=4, NKFFT=4)
+
+
+    kwargs_run = dict(
+        grid=grid,
+        adpt_num_iter=0,
+        calculators=calculators,
+    )
+
+    results_irr = wberri.run(system=system_irr, suffix="irr",
+                            **kwargs_run)
+
+    results_full = wberri.run(system=system_full, suffix="full",
+                            **kwargs_run)
+
+    assert results_irr.results["dos"].data == approx(results_full.results["dos"].data, abs=1e-3)
+    assert results_irr.results["spin"].data == approx(results_full.results["spin"].data, abs=1e-5)
+    assert results_irr.results["ahc_external"].data == approx(results_full.results["ahc_external"].data, abs=1.0)
+
+
+
+
 def check_create_w90files_Fe(path_data, path_ref=None,
                              irreducible=False, irr_bs=False,
                              select_grid=None,
@@ -223,7 +334,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                            froz_min=-8,
                            froz_max=30,
                            print_progress_every=20,
-                           num_iter=40,
+                           num_iter=100,
                            conv_tol=1e-6,
                            mix_ratio_z=1.0,
                            localise=True,
