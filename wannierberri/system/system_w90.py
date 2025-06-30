@@ -107,7 +107,7 @@ class System_w90(System_R):
             write_npz_formatted=True,
             overwrite_npz=False,
             formatted=tuple(),
-            symmetrize=False, # temporary set to False, because there is a bug when the basis at different atoms is rotated # TODO FIXME
+            symmetrize=False,  # temporary set to False, because there is a bug when the basis at different atoms is rotated # TODO FIXME
             **parameters
     ):
 
@@ -151,7 +151,7 @@ class System_w90(System_R):
             # w90data.set_chk(kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol, read=True)
         w90data.check_wannierised(msg="creation of System_w90")
         if w90data.irreducible:
-            symmetrize=True
+            symmetrize = True
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         self.set_pointgroup(spacegroup=w90data.get_spacegroup())

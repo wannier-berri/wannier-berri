@@ -246,7 +246,7 @@ def test_irreducible_vs_full_Fe():
         f"Wannier centers differ between full and irreducible bandstructure: "
         f"{w90data_full.chk.wannier_centers_cart} != {w90data_irr.chk.wannier_centers_cart}"
     )
-    kwargs_system = dict(spin=True, berry=True)
+    kwargs_system = dict(spin=True, berry=True, symmetrize=True)
     system_irr = wberri.system.System_w90(w90data=w90data_irr, **kwargs_system)
     system_full = wberri.system.System_w90(w90data=w90data_full, **kwargs_system)
 
