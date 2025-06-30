@@ -33,7 +33,7 @@ class System_fplo(System_R):
     hamdata : str
         name (and path) of the "+hamdata" file to be read
     mp_grid : [nk1,nk2,nk3]
-        size of Monkhorst-Pack frid used in ab initio calculation. Needed for MDRS
+        size of Monkhorst-Pack grid used in ab initio calculation. Needed for MDRS
 
 
     Notes

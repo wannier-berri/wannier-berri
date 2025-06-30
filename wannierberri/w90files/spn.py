@@ -84,7 +84,7 @@ class SPN(W90_file):
         data = {}
         for ikirr in kptirr:
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
-            print(f"setting spn for k={kp.k}")
+            # print(f"setting spn for k={kp.k}")
             ng = kp.ig.shape[1]
             wf = kp.WF if irrep_new_version else kp.WF.reshape((bandstructure.num_bands, ng, 2), order='F')
             if normalize:
@@ -93,8 +93,6 @@ class SPN(W90_file):
             data_k = cached_einsum('mir,nis,rst->mnt', wf.conj(), wf, pauli_xyz)
             data[ikirr] = data_k
 
-        print(f"length of data = {len(data)}")
-        print("NK={self.NK}")
         return SPN(data=data, NK=NK)
 
     def select_bands(self, selected_bands):

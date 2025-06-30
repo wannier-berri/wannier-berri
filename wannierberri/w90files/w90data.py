@@ -95,6 +95,7 @@ class Wannier90data:
 
     def __init__(self, ):
         self.bands_were_selected = False
+        self.irreducible = False
         self._files = {}
 
     def from_bandstructure(self, bandstructure,
@@ -105,7 +106,7 @@ class Wannier90data:
                           projections=None,
                           unk_grid=None,
                           normalize=True,
-                          irreducible=False,
+                          irreducible=None,
                           ecut_sym=100,
                           mp_grid=None,):
         """
@@ -134,27 +135,44 @@ class Wannier90data:
             the Wannier90data object containing the files specified in `files`
 
         """
-        if "amn" in files or "symmetrizer" in files:
-            assert projections is not None, "projections should be provided if amn or symmetrizer are requested"
+        print(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files}, read_npz_list={read_npz_list}, write_npz_list={write_npz_list}, projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
+        if irreducible is None:
+            from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
+            kpt_latt_grid = np.array([KP.K  for KP in bandstructure.kpoints])
+            print(f"kpt_latt_grid={kpt_latt_grid}")
+            grid, selected_kpoints = grid_from_kpoints_irrep(kpt_latt_grid, grid=None, allow_missing=True)
+            print(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
+            if len(selected_kpoints) < np.prod(grid):
+                warnings.warn(f"detected grid {grid} od {np.prod(grid)} kpoints, "
+                              f"but only {len(selected_kpoints)} kpoints are available."
+                              "assuming that only irreducible kpoints are needed.")
+                irreducible = True
+            else:
+                irreducible = False
+        self.irreducible = irreducible
+        print(f"self.irreducible={self.irreducible}")
+
+
         self.seedname = copy(seedname)
 
-        if irreducible:
+        if self.irreducible:
             if "symmetrizer" not in files:
                 warnings.warn("irreducible=True, but symmetrizer is not requested. Adding it automatically")
                 files = list(files) + ["symmetrizer"]
 
         if read_npz_list is None:
             read_npz_list = files
-        write_npz_list = set([s.lower() for s in write_npz_list])
         if write_npz_list is None:
             write_npz_list = files
+        read_npz_list = set([s.lower() for s in read_npz_list])
+        write_npz_list = set([s.lower() for s in write_npz_list])
 
 
 
         if "symmetrizer" in files:
-            fname = seedname + ".sawf.npz"
+            fname = seedname + ".symmetrizer.npz"
             symmetrizer_read_ok = False
-            if "symmetrizer" in read_npz_list and os.path.exists(fname):
+            if "symmetrizer" in read_npz_list:
                 try:
                     symmetrizer = SymmetrizerSAWF().from_npz(fname)
                     symmetrizer_read_ok = True
@@ -170,7 +188,6 @@ class Wannier90data:
             self.set_symmetrizer(symmetrizer)
             if "symmetrizer" in write_npz_list and not symmetrizer_read_ok:
                 symmetrizer.to_npz(seedname + ".symmetrizer.npz")
-
 
         if self.has_symmetrizer:
             kpt_latt = self.symmetrizer.kpoints_all
@@ -194,15 +211,19 @@ class Wannier90data:
             kpt2kptirr = None
             NK = None
         kwargs_bandstructure = {"selected_kpoints":
-                                selected_kpoints, "kptirr": kptirr,
-                                "NK": NK}
+                        selected_kpoints, "kptirr": kptirr,
+                        "NK": NK}
 
 
-        chk = CheckPoint(real_lattice=bandstructure.lattice,
-                      num_wann=projections.num_wann,
-                      num_bands=bandstructure.num_bands,
-                      kpt_latt=kpt_latt,
-                      mp_grid=mp_grid,)
+
+        if "chk" in read_npz_list and os.path.exists(seedname + ".chk.npz"):
+            chk = CheckPoint.from_npz(seedname + ".chk.npz")
+        else:
+            chk = CheckPoint(real_lattice=bandstructure.lattice,
+                             num_wann=projections.num_wann,
+                             num_bands=bandstructure.num_bands,
+                             kpt_latt=kpt_latt,
+                             mp_grid=mp_grid,)
 
         self.set_file('chk', chk)
         if "eig" in files:
@@ -253,7 +274,81 @@ class Wannier90data:
             self.set_file('unk', unk)
         return self
 
+    def from_npz(self,
+                seedname="wannier90",
+                files=("mmn", "eig", "amn"),
+                irreducible=False):
+        for f in files:
+            try:
+                if f == "symmetrizer":
+                    val = SymmetrizerSAWF().from_npz(seedname + ".symmetrizer.npz")
+                elif f in FILES_CLASSES:
+                    val = FILES_CLASSES[f].from_npz(seedname + "." + f + ".npz")
+                else:
+                    raise ValueError(f"file {f} is not a valid w90 file")
+                self.set_file(f, val=val)
+            except FileNotFoundError as e:
+                warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+        for f in self._files:
+            ff = self.get_file(f)
+            if f == "symmetrizer":
+                continue
+            if f == "chk":
+                if hasattr(ff, "v_matrix") and ff.v_matrix is not None:
+                    nkeys = len(ff.v_matrix.keys())
+                    NK = ff.num_kpts
+                else:
+                    continue
+            else:
+                nkeys = len(ff.data.keys())
+                NK = ff.NK
+            if nkeys < NK:
+                warnings.warn(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
+                              "so we assume the files contain only on irreducible k-points")
+                irreducible = True
+        self.irreducible = irreducible
+        return self
 
+
+
+    def to_npz(self,
+               seedname="wannier90",
+               files=None
+               ):
+        if files is None:
+            files = self._files.keys()
+        for f in files:
+            if f in self._files:
+                self.get_file(f).to_npz(seedname + "." + f + ".npz")
+            else:
+                warnings.warn(f"file {f} is not set, cannot write to npz")
+
+
+
+    @property
+    def num_kpts(self):
+        """
+        Returns the number of k-points in the system
+        """
+        return self.chk.num_kpts
+
+    @property
+    def kptirr_system(self):
+        """
+        Returns the list of kptirr to iterate for construction of the system, nad the weight for each kptirr
+
+        Returns
+        -------
+        kptirr : list of int
+            the list of kptirr to iterate for construction of the system
+        weight : list of float
+            the weight for each kptirr
+        """
+        if not self.irreducible:
+            return np.arange(self.num_kpts), np.ones(self.num_kpts)
+        kptirr = self.symmetrizer.kptirr
+        weight = self.symmetrizer.kptirr_weights
+        return kptirr, weight
 
 
     def from_w90_files(self, seedname="wannier90",
@@ -266,7 +361,7 @@ class Wannier90data:
                      ):
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
-        self.read_npz = read_npz
+        # self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
         formatted = [s.lower() for s in formatted]
         if write_npz_formatted:
@@ -278,7 +373,7 @@ class Wannier90data:
         assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
         if 'win' in _read_files_loc:
             win = WIN(seedname=seedname, autoread=True)
-            self.set_file('win', win)
+            self.set_file('win', win, read_npz=read_npz)
             _read_files_loc.remove('win')
         if 'chk' in _read_files_loc:
             self.set_chk(read=True)
@@ -286,12 +381,25 @@ class Wannier90data:
         else:
             self.set_chk(read=False)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice))
+            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice), read_npz=read_npz)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
-            self.set_file(f)
+            self.set_file(f, read_npz=read_npz)
         return self
 
+    @property
+    def num_wann(self):
+        return self.chk.num_wann
+
+    @property
+    def mp_grid(self):
+        return self.chk.mp_grid
+
+    @property
+    def kpt_latt(self):
+        """ Returns the k-points or the grid in lattice coordinates
+        """
+        return self.chk.kpt_latt
 
     @cached_property
     def atomic_positions_red(self):
@@ -320,12 +428,15 @@ class Wannier90data:
         `~irrep.spacegroup.SpaceGroupBare`
             the spacegroup of the system
         """
-        if hasattr(self, "symmetrizer") and self.symmetrizer is not None:
+        if self.has_file('symmetrizer') and self.symmetrizer is not None:
             return self.symmetrizer.spacegroup
         else:
             return None
 
-    def set_symmetrizer(self, symmetrizer):
+    def set_symmetrizer(self, symmetrizer=None,
+                        overwrite=True,
+                        allow_selected_bands=False,
+                        read_npz=False):
         """
         Set the symmetrizer of the system
 
@@ -334,7 +445,22 @@ class Wannier90data:
         symmetrizer : `~wanierberri.symmetry.symmetrizer_sawf.SymmetrizerSAWF`
             the symmetrizer object
         """
-        self.symmetrizer = symmetrizer
+        self.set_file("symmetrizer", val=symmetrizer,
+                      overwrite=overwrite,
+                      allow_selected_bands=allow_selected_bands,
+                      read_npz=read_npz,)
+
+    @property
+    def symmetrizer(self):
+        """
+        Returns the symmetrizer object of the system
+
+        Returns
+        -------
+        `~wannierberri.symmetry.symmetrizer_sawf.SymmetrizerSAWF`
+            the symmetrizer object
+        """
+        return self.get_file("symmetrizer")
 
     @property
     def has_symmetrizer(self):
@@ -346,7 +472,7 @@ class Wannier90data:
         bool
             True if the symmetrizer is set, False otherwise
         """
-        return hasattr(self, "symmetrizer") and self.symmetrizer is not None
+        return self.has_file("symmetrizer")
 
     def set_file(self, key, val=None, overwrite=False, allow_selected_bands=False,
                  read_npz=True,
@@ -375,7 +501,7 @@ class Wannier90data:
             if allow_selected_bands:
                 warnings.warn("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
             else:
-                raise RuntimeError("window was applied, so new added files may be inconsistent with the window. To allow it, set allow_applied_window=True (on your own risk)")
+                raise RuntimeError("window was applied, so new added files may be inconsistent with the window. To allow it, set allow_selected_bands=True (on your own risk)")
         if key == "chk":
             self.set_chk(val=val, read=True, overwrite=overwrite, **kwargs)
             return
@@ -635,7 +761,9 @@ class Wannier90data:
         kwargs : dict
             the keyword arguments to be passed to `~wannierberri.wannierise.wannierise`
         """
-        wannierise(self, **kwargs)
+        wannierise(self,
+                   irreducible=self.irreducible,
+                   **kwargs)
 
 
     def apply_window(self, *args, **kwargs):
@@ -645,7 +773,8 @@ class Wannier90data:
                      win_min=-np.inf, win_max=np.inf,
                      band_start=None, band_end=None,
                      selected_bands=None,
-                     allow_again=False):
+                     allow_again=False,
+                     verbose=False):
         """
         exclude some bands from the data
 
@@ -693,12 +822,13 @@ class Wannier90data:
             selected_bands = np.where(selected_bands_bool)[0]
 
         print(f"selected_bands = {selected_bands}")
-        print("before selecting bands")
-        for key, val in self._files.items():
-            if key != 'win' and key != 'chk':
-                print(f"key = {key} ,number of bands = {val.NB}")
-            if key == 'chk':
-                print(f"key = {key} ,number of bands = {val.num_bands}")
+        if verbose:
+            print("before selecting bands")
+            for key, val in self._files.items():
+                if key != 'win' and key != 'chk':
+                    print(f"key = {key} ,number of bands = {val.NB}")
+                if key == 'chk':
+                    print(f"key = {key} ,number of bands = {val.num_bands}")
         for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
@@ -708,16 +838,17 @@ class Wannier90data:
                 else:
                     # print(f"applying window to {key} {val}")
                     self.get_file(key).select_bands(selected_bands)
-        if hasattr(self, 'symmetrizer'):
+        if self.has_file('symmetrizer'):
             self.symmetrizer.select_bands(selected_bands)
-        print("after selecting bands")
-        for key, val in self._files.items():
-            if key != 'win' and key != 'chk':
-                print(f"key = {key} ,number of bands = {val.NB}")
-                if hasattr(val, 'data') and key != 'unk':
-                    print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
-            if key == 'chk':
-                print(f"key = {key} ,number of bands = {val.num_bands}")
+        if verbose:
+            print("after selecting bands")
+            for key, val in self._files.items():
+                if key != 'win' and key != 'chk':
+                    print(f"key = {key} ,number of bands = {val.NB}")
+                    if hasattr(val, 'data') and key != 'unk':
+                        print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
+                if key == 'chk':
+                    print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
         return selected_bands
 
@@ -740,6 +871,8 @@ class Wannier90data:
         according to the symmetrizer object
         """
         self.set_file("amn", self.symmetrizer.get_random_amn(), overwrite=True)
+
+
 
     def calc_WF_real_space(self,
                            sc_min=-1, sc_max=1,
@@ -770,14 +903,14 @@ class Wannier90data:
         WF : array((nWF, nr0, nr1, nr2, nspinor))
             the Wannier functions on the real space grid
         rho : array((nWF,nr0, nr1, nr2))
-            the density of the Wannier functions on the real space grid (rho = |WF|^2)
+            the density of the Wannier functions on the real space grid (rho = |WF|^2fl)
 
         Note
         ----
 
         the norm is such that sum_r |WF|^2 = 1
         """
-        assert self.wannierised, "system was not wannierised"
+        self.check_wannierised("cannot calculate Wannier functions in the real space ")
         assert self.has_file("unk"), "UNK files are not set"
 
         def to_3array(x: int):

@@ -256,7 +256,7 @@ class MMN(W90_file):
 
     @classmethod
     def from_bandstructure(cls, bandstructure,
-                           normalize=True,
+                           normalize=False,
                            verbose=False,
                            param_search_bk={},
                            selected_kpoints=None,
@@ -324,6 +324,7 @@ class MMN(W90_file):
         )
 
 
+
         NNB = len(wk)
         NB = bandstructure.num_bands
 
@@ -346,13 +347,39 @@ class MMN(W90_file):
                         f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
+
+        # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
+        extra_kpoints = {}  # a dictionary to store kpoints that are not in the original bandstructure
+        for ikirr in kptirr:
+            for ib, ik2 in enumerate(neighbours[ikirr]):
+                ik2 = int(ik2)
+                if ik2 in kptirr:
+                    continue
+                elif ik2 not in extra_kpoints:
+                    isym = kpt_from_kptirr_isym[ik2]
+                    ik_origin = kpt2kptirr[ik2]
+                    kp_origin = kpoints_sel[ik_origin]
+                    symop = bandstructure.spacegroup.symmetries[isym]
+                    # TODO: in principle, here it is not needed to transform the k-point,
+                    # For the first symmetry the transformation is the identity
+                    # For the rest the transformations can be obtained from the
+                    # little group of the irreducible k-point. But we do it
+                    # here explicitly, further it will be checked, and recoded
+                    kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
+                                                    k_new=kpt_latt_grid[ik2])
+                    extra_kpoints[ik2] = kp2
+                    # print("extra_kpoints", extra_kpoints.keys())
+
+
         if irrep_new_version:
-            ig_list = [kp.ig for kp in kpoints_sel]
+            ig_list = [kp.ig for kp in kpoints_sel] + [kp.ig for kp in extra_kpoints.values()]
         else:
-            ig_list = [kp.ig.T for kp in kpoints_sel]
+            ig_list = [kp.ig.T for kp in kpoints_sel] + [kp.ig.T for kp in extra_kpoints.values()]
 
         igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
         igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
+
+        del ig_list
 
         # print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
@@ -371,11 +398,18 @@ class MMN(W90_file):
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
 
         if normalize:
-            norm = [np.linalg.norm(kp.WF, axis=1) for kp in kpoints_sel]
-        else:
-            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
+            norm = [np.linalg.norm(kp.WF.reshape(NB, -1), axis=1) for kp in kpoints_sel]
+            norm_extra = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)
+                          for ik2, kp in extra_kpoints.items()}
+        # else:
+        #     norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
+        #     norm_extra = {ik2: np.ones(kp.WF.shape[0], dtype=float)
+        #                   for ik2, kp in extra_kpoints.items()}
 
-        extra_kpoints = {}  # a dictionary to store kpoints that are not in the original bandstructure
+
+
+
+
         # but are needed for the finite-difference scheme (obtained by symmetry)
         for ikirr in kptirr:
             kp1 = kpoints_sel[ikirr]
@@ -390,23 +424,10 @@ class MMN(W90_file):
             if normalize:
                 bra[:] = bra / norm[ikirr][:, None, None, None, None]
             for ib, ik2 in enumerate(neighbours[ikirr]):
+                ik2 = int(ik2)
                 if ik2 in kptirr:
                     kp2 = kpoints_sel[ik2]
                 else:
-                    if ik2 not in extra_kpoints:
-                        isym = kpt_from_kptirr_isym[ik2]
-                        ik_origin = kpt2kptirr[ik2]
-                        kp_origin = kpoints_sel[ik_origin]
-                        symop = bandstructure.spacegroup.symmetries[isym]
-                        # TODO: in principle, here it is not needed to transform the k-point,
-                        # For the first symmetry the transformation is the identity
-                        # For the rest the transformations can be obtained from the
-                        # little group of the irreducible k-point. But we do it
-                        # here explicitly, further it will be checked, and recoded
-                        kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
-                                                     k_new=kpt_latt_grid[ik2])
-                        extra_kpoints[ik2] = kp2
-                        print("extra_kpoints", extra_kpoints.keys())
                     kp2 = extra_kpoints[ik2]
                 WF2_loc = kp2.WF if irrep_new_version else kp2.WF.reshape((kp2.WF.shape[0], -1, nspinor), order='F')
                 ig2_loc = kp2.ig if irrep_new_version else kp2.ig.T
@@ -418,7 +439,11 @@ class MMN(W90_file):
                     for ispinor in range(nspinor):
                         ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig, ispinor]
                 if normalize:
-                    ket[:] = ket / norm[ik2][:, None, None, None, None]
+                    if ik2 in kptirr:
+                        _norm = norm[ik2]
+                    else:
+                        _norm = norm_extra[ik2]
+                    ket[:] = ket / _norm[:, None, None, None, None]
                 data[ikirr][ib, :, :] = cached_einsum('asijk,bsijk->ab', bra, ket)
 
         return MMN(

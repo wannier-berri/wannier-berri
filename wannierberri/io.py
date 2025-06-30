@@ -64,7 +64,7 @@ class SavableNPZ(abc.ABC):
         for k in cls.npz_tags:
             if k in kwargs:
                 dic_loc[k] = kwargs[k]
-            else:
+            elif k in dic:
                 dic_loc[k] = dic[k]
 
         for tag in cls.npz_keys_dict_int:

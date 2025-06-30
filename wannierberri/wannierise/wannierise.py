@@ -22,6 +22,7 @@ def wannierise(w90data,
                num_wann=None,
                parallel=True,
                symmetrize_Z=True,
+               irreducible=False
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -198,7 +199,7 @@ def wannierise(w90data,
 
     t02 = time()
 
-    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR)
+    U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k if irreducible else None)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
     update_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads)
     #    comment="Final state (from chk)")
@@ -232,7 +233,7 @@ def update_chk(w90data, U_opt_full_BZ,
         the optimized U matrix for the free bands and wannier functions
     """
 
-    w90data.chk.v_matrix = np.array(U_opt_full_BZ)
+    w90data.chk.v_matrix = {ik: U for ik, U in enumerate(U_opt_full_BZ) if U is not None}
     if (wcc is None) or (spreads is None):
         wcc_new, spreads_new = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
         if wcc is None:

@@ -205,7 +205,7 @@ class AMN(W90_file):
             # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
             proj_gk = np.array(prj) * expgk
             if spinor:
-                print(f"shapes proj_gk:{proj_gk.shape}, wf_up : {wf_up.shape}, wf_down : {wf_down.shape}, ")
+                # print(f"shapes proj_gk:{proj_gk.shape}, wf_up : {wf_up.shape}, wf_down : {wf_down.shape}, ")
                 proj_up = wf_up @ proj_gk.T
                 proj_down = wf_down @ proj_gk.T
                 datak = []
