@@ -361,7 +361,7 @@ class Wannier90data:
                      ):
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
-        self.read_npz = read_npz
+        # self.read_npz = read_npz
         self.write_npz_list = set([s.lower() for s in write_npz_list])
         formatted = [s.lower() for s in formatted]
         if write_npz_formatted:
@@ -373,7 +373,7 @@ class Wannier90data:
         assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
         if 'win' in _read_files_loc:
             win = WIN(seedname=seedname, autoread=True)
-            self.set_file('win', win)
+            self.set_file('win', win, read_npz=read_npz)
             _read_files_loc.remove('win')
         if 'chk' in _read_files_loc:
             self.set_chk(read=True)
@@ -381,10 +381,10 @@ class Wannier90data:
         else:
             self.set_chk(read=False)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice))
+            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice), read_npz=read_npz)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
-            self.set_file(f)
+            self.set_file(f, read_npz=read_npz)
         return self
 
     @property

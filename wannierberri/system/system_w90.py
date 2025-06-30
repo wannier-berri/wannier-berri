@@ -58,10 +58,6 @@ class System_w90(System_R):
     fft : str
         library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
         anyway mostly time of the constructor is consumed by reading the input files)
-    kmesh_tol : float
-        tolerance to consider the b_k vectors (connecting to neighbouring k-points on the grid) belonging to the same shell
-    bk_complete_tol : float
-        tolerance to consider the set of b_k shells as complete.
     read_npz : bool
     write_npz_list : tuple(str)
     write_npz_formatted : bool
@@ -105,15 +101,13 @@ class System_w90(System_R):
             transl_inv_JM=False,
             fftlib='fftw',
             npar=None,
-            kmesh_tol=1e-7,
-            bk_complete_tol=1e-5,
             wannier_centers_from_chk=True,
             read_npz=True,
             write_npz_list=("eig", "mmn"),
             write_npz_formatted=True,
             overwrite_npz=False,
             formatted=tuple(),
-            symmetrize=True,
+            symmetrize=False, # temporary set to False, because there is a bug when the basis at different atoms is rotated # TODO FIXME
             **parameters
     ):
 
@@ -156,6 +150,8 @@ class System_w90(System_R):
                 formatted=formatted)
             # w90data.set_chk(kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol, read=True)
         w90data.check_wannierised(msg="creation of System_w90")
+        if w90data.irreducible:
+            symmetrize=True
         chk = w90data.chk
         self.real_lattice, self.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
         self.set_pointgroup(spacegroup=w90data.get_spacegroup())

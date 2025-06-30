@@ -16,7 +16,7 @@ from wannierberri.w90files.amn import amn_from_bandstructure
 systems = {}
 
 # for data_dir in ['diamond', 'diamond-444']:
-for data_dir in ['diamond-444']:
+for data_dir in ['diamond']:
     from irrep.bandstructure import BandStructure
     bandstructure = BandStructure(code='espresso',
                                 prefix=os.path.join("../../tests/data", data_dir, "di"),
@@ -71,20 +71,20 @@ for data_dir in ['diamond-444']:
 
         w90data = wberri.w90files.Wannier90data().from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond', readfiles=['mmn', 'eig', 'win'], read_npz=False)
         w90data.set_file("amn", amn)
-        # w90data.set_symmetrizer(symmetrizer)
-        # w90data.select_bands(win_min=win_min, win_max=win_max)
+        w90data.set_symmetrizer(symmetrizer)
+        w90data.select_bands(win_min=win_min, win_max=win_max)
 
         w90data.wannierise(
             froz_min=froz_min,
             froz_max=froz_max,
-            num_iter=1000,
+            num_iter=100,
             conv_tol=1e-10,
             print_progress_every=20,
-            sitesym=False,
+            sitesym=True,
             localise=True,
         )
 
-        systems[data_dir + "-" + projname] = wberri.system.System_w90(w90data=w90data)
+        systems[data_dir + "-" + projname] = wberri.system.System_w90(w90data=w90data, symmetrize=False)
 
 system = list(systems.values())[0]
 # Now calculate bandstructure

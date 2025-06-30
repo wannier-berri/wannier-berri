@@ -256,7 +256,7 @@ class MMN(W90_file):
 
     @classmethod
     def from_bandstructure(cls, bandstructure,
-                           normalize=True,
+                           normalize=False,
                            verbose=False,
                            param_search_bk={},
                            selected_kpoints=None,
@@ -398,9 +398,13 @@ class MMN(W90_file):
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
 
         if normalize:
-            norm = [np.linalg.norm(kp.WF, axis=1) for kp in kpoints_sel]
-        else:
-            norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
+            norm = [np.linalg.norm(kp.WF.reshape(NB, -1), axis=1) for kp in kpoints_sel]
+            norm_extra = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)
+                          for ik2, kp in extra_kpoints.items()}
+        # else:
+        #     norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
+        #     norm_extra = {ik2: np.ones(kp.WF.shape[0], dtype=float)
+        #                   for ik2, kp in extra_kpoints.items()}
 
 
 
@@ -435,7 +439,11 @@ class MMN(W90_file):
                     for ispinor in range(nspinor):
                         ket[:, ispinor, _g[0], _g[1], _g[2]] = WF2_loc[:, ig, ispinor]
                 if normalize:
-                    ket[:] = ket / norm[ik2][:, None, None, None, None]
+                    if ik2 in kptirr:
+                        _norm = norm[ik2]
+                    else:
+                        _norm = norm_extra[ik2]
+                    ket[:] = ket / _norm[:, None, None, None, None]
                 data[ikirr][ib, :, :] = cached_einsum('asijk,bsijk->ab', bra, ket)
 
         return MMN(
