@@ -394,8 +394,8 @@ class CheckPoint(SavableNPZ):
             r2 = np.zeros(self.num_wann, dtype=float)
         for ik in range(mmn.NK):
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                mmn_loc = self.wannier_gauge(mmn.data[ik, ib], ik, iknb)
+                iknb = mmn.neighbours[ik][ib]
+                mmn_loc = self.wannier_gauge(mmn.data[ik][ib], ik, iknb)
                 mmn_loc = mmn_loc.diagonal()
                 log_loc = np.angle(mmn_loc)
                 wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib]
