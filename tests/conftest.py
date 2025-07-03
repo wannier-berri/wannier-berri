@@ -32,6 +32,8 @@ from .common_systems import (
     system_Si_W90,
     system_Si_W90_JM_sym,
     system_Si_W90_sym,
+    system_Si_W90_double,
+    system_Si_W90_sym_double,
     system_Haldane_PythTB,
     system_KaneMele_odd_PythTB,
     system_Chiral_OSD,

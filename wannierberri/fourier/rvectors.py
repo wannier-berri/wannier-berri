@@ -235,6 +235,20 @@ class Rvectors:
         assert np.unique(self.iRvec % NKFFTrec, axis=0).shape[0] == self.iRvec.shape[0]
         return NKFFTrec
 
+    def double_spin(self):
+        """
+        Double the Rvectors to account for spinor case.
+        """
+        shifts_left_red_new = np.zeros((self.nshifts_left * 2, 3), dtype=float)
+        shifts_right_red_new = np.zeros((self.nshifts_right * 2, 3), dtype=float)
+        for i in range(2):
+            shifts_left_red_new[i::2] = self.shifts_left_red
+            shifts_right_red_new[i::2] = self.shifts_right_red
+        self.shifts_left_red = shifts_left_red_new
+        self.shifts_right_red = shifts_right_red_new
+        self.clear_cached()
+
+
     def reorder(self, order_left=None, order_right=None):
         """
         Reorder the Rvectors according to the given order.
