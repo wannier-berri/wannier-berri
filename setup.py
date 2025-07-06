@@ -36,7 +36,8 @@ setuptools.setup(
                         'numba>=0.55.2',
                         'packaging>=20.8',
                         'fortio>=0.4',
-                        'wannier90io'
+                        'wannier90io',
+                        'methodtools'
                       ],
      extras_require=extras_require,
      url="https://wannier-berri.org",

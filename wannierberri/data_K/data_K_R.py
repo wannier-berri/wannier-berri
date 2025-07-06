@@ -1,7 +1,9 @@
+from copy import deepcopy
 import numpy as np
 from ..utility import alpha_A, beta_A
 from .data_K import Data_K
 from ..system.system_R import System_R
+
 
 
 class Data_K_R(Data_K, System_R):
@@ -14,12 +16,13 @@ class Data_K_R(Data_K, System_R):
         super().__init__(system, dK, grid, **parameters)
         self._FF_antisym = _FF_antisym
         self._CCab_antisym = _CCab_antisym
+        self.parameters_init = deepcopy(parameters)
 
         self.rvec = system.rvec.copy()
         self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
-                          numthreads=self.npar_k if self.npar_k > 0 else 1,
-                            fftlib=self.fftlib,
-                            dK=dK)
+                        numthreads=self.npar_k if self.npar_k > 0 else 1,
+                        fftlib=self.fftlib,
+                        dK=dK)
 
         self.dK = dK
         self._bar_quantities = {}

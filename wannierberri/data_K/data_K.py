@@ -15,7 +15,7 @@ import numpy as np
 import abc
 from functools import cached_property
 
-from wannierberri.utility import cached_einsum
+from ..utility import cached_einsum
 from ..parallel import pool
 from ..system.system import System
 from ..grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
@@ -23,6 +23,7 @@ from .. import formula
 from ..grid import KpointBZparallel, KpointBZtetra
 from ..symmetry.point_symmetry import transform_ident, transform_odd
 from .sdct_K import SDCT_K
+from ..system.__finite_differences import FiniteDifferencesScheme
 
 
 def _rotate_matrix(X):
@@ -127,6 +128,45 @@ class Data_K(System, abc.ABC):
         self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
+        cached_prec = 10
+        self.cached_prec_factor = 10**cached_prec
+        self.cached_copies_dK = {}
+        self.cached_findiff = {}
+
+    def get_copy_dK(self, dK, cache=True):
+        """ returns a copy of the Data_K_R with a different dK"""
+        dK_int = tuple(np.round(np.array(dK) * self.cached_prec_factor).astype(int))
+        if dK_int in self.cached_copies_dK:
+            data_K_new = self.cached_copies_dK[dK_int]
+        else:
+            data_K_new = self.__class__(system=self,
+                       dK=dK,
+                        grid=self.grid,
+                        **self.parameters_init)
+            if cache:
+                self.cached_copies_dK[dK_int] = data_K_new
+        return data_K_new
+
+    def get_projector(self, ik, occ, der=0, dk=1e-3):
+        assert der >= 0
+        if der == 0:
+            U = self.UU_K[ik][:, occ]
+            return U @ U.T.conj()
+        else:
+            # for der>0, we use the finite-difference scheme
+            fin_diff = self.get_fin_diff(dk=dk)
+            projectors = np.array([self.get_copy_dK(dK=bkr).get_projector(ik, occ, der=der - 1, dk=dk)
+                                   for bkr in fin_diff.bk_red])
+            return cached_einsum('ij...,ba,b->ij...a', projectors, fin_diff.bk_cart, fin_diff.wk)
+
+
+    def get_fin_diff(self, dk=1e-3):
+        """ returns a finite-difference scheme for the derivatives of the Hamiltonian"""
+        dk_int = np.round(dk * self.cached_prec_factor).astype(int)
+        if dk_int not in self.cached_findiff:
+            self.cached_findiff[dk_int] = FiniteDifferencesScheme(self.recip_lattice, dk=dk)
+        return self.cached_findiff[dk_int]
+
 
     ###########################################
     #   Now the **_R objects are evaluated only on demand
@@ -134,6 +174,7 @@ class Data_K(System, abc.ABC):
     #   as property   - iif used only once
     #   let's write them explicitly, for better code readability
     ###########################
+
 
     @property
     def is_phonon(self):

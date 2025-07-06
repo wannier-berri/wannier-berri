@@ -45,3 +45,25 @@ def test_fourier(system_Fe_W90):
                 f"numpy does not match fftw for {field}_bar_der{der} "
 
     # TODO: Allow gauge degree of freedom
+
+
+def test_projector(system_Fe_W90):
+    system = system_Fe_W90
+
+    k = np.array([0.1, 0.2, -0.3])
+
+    grid = wberri.Grid(system, NKFFT=[4, 3, 2], NKdiv=1, use_symmetry=False)
+
+    dK = 1. / grid.div
+    NKFFT = grid.FFT
+    factor = 1. / np.prod(grid.div)
+
+    kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
+
+    assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
+
+    data_k = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='fftw')
+    occ = np.arange(system.num_wann // 2)
+    data_k.get_projector(ik=0, occ=occ, der=0, dk=1e-3)
+    data_k.get_projector(ik=0, occ=occ, der=1, dk=1e-3)
+    data_k.get_projector(ik=0, occ=occ, der=2, dk=1e-3)

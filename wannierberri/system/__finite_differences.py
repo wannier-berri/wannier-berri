@@ -1,20 +1,23 @@
 from ..utility import find_degen
 
 import numpy as np
-from functools import cached_property
 
 
-class FiniteDifferences():
+class FiniteDifferencesScheme():
 
-    def __init__(self, recip_lattice, FFT):
-        self.FFT = FFT
+    def __init__(self, recip_lattice, dk=0.001):
+        """
+
+        """
+        assert dk > 0, f"dk must be positive, found {dk=}"
         self.recip_lattice = recip_lattice
-        self.wk, self.bki, self.neighbours = get_neighbours_FFT(self.recip_lattice, self.FFT)
-        self.bk_cart = self.bki.dot(self.basis)
-
-    @cached_property
-    def basis(self):
-        return np.array(self.recip_lattice) / np.array(self.FFT)
+        wk, bki = find_shells(np.array(recip_lattice))
+        bk_cart = bki @ recip_lattice
+        bk_length_mean = np.linalg.norm(bk_cart, axis=1).mean()
+        factor = dk / bk_length_mean
+        self.bk_cart = bk_cart * factor
+        self.bk_red = bki * factor
+        self.wk = wk / factor**2
 
 
 def find_shells(basis, isearch=3, isearchmax=6):
@@ -110,7 +113,7 @@ def get_neighbours_FFT(recip_lattice, FFT):
     return wk, bki, neighbours
 
 
-if __name__ == "__main__":
-    from sys import argv
-    c = float(argv[1])
-    FD = FiniteDifferences(recip_lattice=[[1, 0, 0], [-1 / 2, np.sqrt(3) / 2, 0], [0, 0, c]], FFT=[4, 4, 5])
+# if __name__ == "__main__":
+#     from sys import argv
+#     c = float(argv[1])
+#     FD = FiniteDifferences(recip_lattice=[[1, 0, 0], [-1 / 2, np.sqrt(3) / 2, 0], [0, 0, c]], FFT=[4, 4, 5])
