@@ -56,6 +56,9 @@ class System:
         name that will be used by default in names of output files
     silent : bool
         if ``True``, the code will not print any information about the system
+    spinor : bool or None
+        if ``True``, the system is spifull, if ``False``, the system is spinless. 
+        ''Non'' if it is unknow
 
     Notes
     -----
@@ -73,6 +76,7 @@ class System:
                  force_internal_terms_only=False,
                  name='wberri',
                  silent=False,
+                 spinor=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -80,6 +84,7 @@ class System:
         self.periodic = periodic
         self.name = name
         self.silent = silent
+        self.spinor = spinor
 
 
         if NKFFT is not None:
