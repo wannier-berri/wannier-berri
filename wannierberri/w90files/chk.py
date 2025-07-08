@@ -420,7 +420,7 @@ class CheckPoint(SavableNPZ):
                                 eig=eig, phase=phase, sum_b=sum_b)
 
 
-    def get_CCOOGG_qb(self, mmn, uhu, kptirr, weights_k, antisym=True, phase=None, sum_b=False):
+    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True, phase=None):
         """
         Returns the matrix elements CC, OO or GG in the Wannier gauge
 
@@ -444,33 +444,11 @@ class CheckPoint(SavableNPZ):
             the q-resolved matrix elements CC, OO or GG in the Wannier gauge
         """
         nd_cart = 1 if antisym else 2
-        shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
-        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
-        CC_qb = np.zeros(shape, dtype=complex)
-        for ib1 in range(mmn.NNB):
-            for ib2 in range(mmn.NNB):
-                if phase is None:
-                    phase_loc = None
-                else:
-                    phase_loc = phase[:, :, ib1, ib2]
-                CC_bb = self.get_CCOOGG_ib(mmn, uhu, kptirr, weights_k, ib1=ib1, ib2=ib2, antisym=antisym, phase=phase_loc)
-                if sum_b:
-                    CC_qb[:] += CC_bb
-                else:
-                    CC_qb[:, :, :, ib1, ib2] = CC_bb
-        print("done")
-        return CC_qb
-
-
-    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True, phase=None):
-        nd_cart = 1 if antisym else 2
         shape = (self.num_kpts, self.num_wann, self.num_wann) + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
         if phase is not None:
-            phase = np.reshape(phase, np.shape(phase)[:2] + (1,) * nd_cart)
-        nk = len(kptirr)
+            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik, weight in zip(kptirr, weights_k):
-            print(f"CCOOGG, {ik=} of {nk}")
             iknb1 = mmn.neighbours[ik][ib1]
             iknb2 = mmn.neighbours[ik][ib2]
             # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
@@ -490,35 +468,10 @@ class CheckPoint(SavableNPZ):
                         mmn.bk_cart[ib1, :, None] *
                         mmn.bk_cart[ib2, None, :]))[None, None, :, :]
             if phase is not None:
-                CC_q_ik_ib *= phase
+                CC_q_ik_ib *= phase[:,:,ib1, ib2]
             CC_qb[ik] += CC_q_ik_ib * weight
-        print("done")
         return CC_qb
 
-    # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=True
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        """
-        return self.get_CCOOGG_qb(mmn, uhu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
-
-    # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=False
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        (actually, the same as :meth:`~wannierberri.w90files.CheckPoint.get_CC_qb`)
-        """
-        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
-
-    # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=False 
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        """
-        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
 
