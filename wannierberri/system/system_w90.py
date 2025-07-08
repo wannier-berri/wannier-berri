@@ -212,7 +212,7 @@ class System_w90(System_R):
             def sum_b_phase(XX_Rb, phase, axis):
                 phase = np.reshape(phase, np.shape(phase) + (1,) * (XX_Rb.ndim - np.ndim(phase)))
                 return np.sum(XX_Rb * phase, axis=axis)
-            
+
             def get_matrix_2b(getter_from_chk, nd_cart):
                 shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
                 phase_loc = expiRphase2
@@ -220,11 +220,11 @@ class System_w90(System_R):
                 shape_R = (self.rvec.nRvec,) + shape[1:]
                 XX_R = np.zeros(shape_R, dtype=complex)
                 for ib1 in range(NNB):
-                    print (f"{ib1=} of {NNB}")
+                    print(f"{ib1=} of {NNB}")
                     for ib2 in range(NNB):
-                        print (f"{ib2=} of {NNB}")
+                        print(f"{ib2=} of {NNB}")
                         XX_R[:] += self.rvec.q_to_R(getter_from_chk(ib1=ib1, ib2=ib2)
-                                                    ) * phase_loc[:,:,:,ib1,ib2]
+                                                    ) * phase_loc[:, :, :, ib1, ib2]
                 return XX_R
         else:
             def get_matrix_2b(getter_from_chk, nd_cart):
@@ -281,13 +281,13 @@ class System_w90(System_R):
             if 'CC' in self.needed_R_matrices:
                 print("setting CC..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                        mmn=w90data.mmn,
-                                                        uhu=w90data.uhu, 
-                                                        kptirr=kptirr, 
-                                                        weights_k=weights_k,
-                                                        antisym=True,
-                                                        phase=expjphase2)
-                self.set_R_mat('CC', 
+                                                    mmn=w90data.mmn,
+                                                    uhu=w90data.uhu,
+                                                    kptirr=kptirr,
+                                                    weights_k=weights_k,
+                                                    antisym=True,
+                                                    phase=expjphase2)
+                self.set_R_mat('CC',
                                get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=1),
                                Hermitian=True)
                 print("setting CC - OK")
@@ -297,14 +297,14 @@ class System_w90(System_R):
             if 'OO' in self.needed_R_matrices:
                 print("setting OO..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                        mmn=w90data.mmn,
-                                                        uhu=w90data.uiu, 
-                                                        kptirr=kptirr, 
-                                                        weights_k=weights_k,
-                                                        antisym=True,
-                                                        phase=expjphase2)
+                                                    mmn=w90data.mmn,
+                                                    uhu=w90data.uiu,
+                                                    kptirr=kptirr,
+                                                    weights_k=weights_k,
+                                                    antisym=True,
+                                                    phase=expjphase2)
                 self.set_R_mat('OO',
-                               get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=1), 
+                               get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=1),
                                Hermitian=True)
                 print("setting OO - ok")
 
@@ -313,15 +313,15 @@ class System_w90(System_R):
             if 'GG' in self.needed_R_matrices:
                 print("setting GG..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                        mmn=w90data.mmn,
-                                                        uhu=w90data.uiu, 
-                                                        kptirr=kptirr, 
-                                                        weights_k=weights_k,
-                                                        antisym=False,
-                                                        phase=expjphase2)
+                                                    mmn=w90data.mmn,
+                                                    uhu=w90data.uiu,
+                                                    kptirr=kptirr,
+                                                    weights_k=weights_k,
+                                                    antisym=False,
+                                                    phase=expjphase2)
                 self.set_R_mat('GG',
                                get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=2),
-                                Hermitian=True)
+                               Hermitian=True)
                 print("setting GG - OK")
 
             #######################################################################

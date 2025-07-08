@@ -468,7 +468,7 @@ class CheckPoint(SavableNPZ):
                         mmn.bk_cart[ib1, :, None] *
                         mmn.bk_cart[ib2, None, :]))[None, None, :, :]
             if phase is not None:
-                CC_q_ik_ib *= phase[:,:,ib1, ib2]
+                CC_q_ik_ib *= phase[:, :, ib1, ib2]
             CC_qb[ik] += CC_q_ik_ib * weight
         return CC_qb
 
