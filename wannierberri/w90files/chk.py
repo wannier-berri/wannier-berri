@@ -447,35 +447,52 @@ class CheckPoint(SavableNPZ):
         shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
         shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
-        if phase is not None:
-            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
-        for ik, weight in zip(kptirr, weights_k):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik][ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik][ib2]
-                    # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
-                    data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
-                    CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+        for ib1 in range(mmn.NNB):
+            for ib2 in range(mmn.NNB):
+                if phase is None:
+                    phase_loc = None
+                else:
+                    phase_loc = phase[:, :, ib1, ib2]
+                CC_bb = self.get_CCOOGG_ib(mmn, uhu, kptirr, weights_k, ib1=ib1, ib2=ib2, antisym=antisym, phase=phase_loc)
+                if sum_b:
+                    CC_qb[:] += CC_bb
+                else:
+                    CC_qb[:, :, :, ib1, ib2] = CC_bb
+        print("done")
+        return CC_qb
 
-                    if antisym:
-                        # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                        CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                            mmn.wk[ib1] * mmn.wk[ib2] * (
-                                mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
-                                mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
-                    else:
-                        # Matrix for finite-difference schemes (takes symmetric piece only)
-                        CC_q_ik_ib = CCW[:, :, None, None] * (
-                            mmn.wk[ib1] * mmn.wk[ib2] * (
-                                mmn.bk_cart[ib1, :, None] *
-                                mmn.bk_cart[ib2, None, :]))[None, None, :, :]
-                    if phase is not None:
-                        CC_q_ik_ib *= phase[:, :, ib1, ib2]
-                    if sum_b:
-                        CC_qb[ik] += CC_q_ik_ib * weight
-                    else:
-                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib * weight
+
+    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True, phase=None):
+        nd_cart = 1 if antisym else 2
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + (3,) * nd_cart
+        CC_qb = np.zeros(shape, dtype=complex)
+        if phase is not None:
+            phase = np.reshape(phase, np.shape(phase)[:2] + (1,) * nd_cart)
+        nk = len(kptirr)
+        for ik, weight in zip(kptirr, weights_k):
+            print(f"CCOOGG, {ik=} of {nk}")
+            iknb1 = mmn.neighbours[ik][ib1]
+            iknb2 = mmn.neighbours[ik][ib2]
+            # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
+            data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
+            CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+
+            if antisym:
+                # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                    mmn.wk[ib1] * mmn.wk[ib2] * (
+                        mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
+                        mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
+            else:
+                # Matrix for finite-difference schemes (takes symmetric piece only)
+                CC_q_ik_ib = CCW[:, :, None, None] * (
+                    mmn.wk[ib1] * mmn.wk[ib2] * (
+                        mmn.bk_cart[ib1, :, None] *
+                        mmn.bk_cart[ib2, None, :]))[None, None, :, :]
+            if phase is not None:
+                CC_q_ik_ib *= phase
+            CC_qb[ik] += CC_q_ik_ib * weight
+        print("done")
         return CC_qb
 
     # --- C_a(q,b1,b2) matrix --- #

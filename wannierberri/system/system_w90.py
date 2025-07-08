@@ -284,8 +284,10 @@ class System_w90(System_R):
                 print("setting GG..")
                 GG = chk.get_GG_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
                                    sum_b=sum_b, phase=expjphase2)
+                print("converting q to R")
                 GG = self.rvec.q_to_R(GG)
                 if transl_inv_JM:
+                    print("summing b")
                     GG = sum_b_phase(GG, expiRphase2, (3, 4))
                 self.set_R_mat('GG', GG, Hermitian=True)
                 print("setting GG - OK")
