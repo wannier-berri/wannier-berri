@@ -352,8 +352,13 @@ class Data_K(System, abc.ABC):
         # print (f'exition data_k {exc_type=}, {exc_value=}, {traceback=} ')
         self.clear_cached()
 
+    def __del__(self):
+        self.clear_cached()
+        
     def __enter__(self):
         return self
+    
+
 
     def clear_cached(self):
         clear_cached(self, ["SDCT", "A_H", "D_H", "UU_K", "E_K"])  # probably only SDCT is essential here, because it has a back reference to data_K, but others do not hurt
