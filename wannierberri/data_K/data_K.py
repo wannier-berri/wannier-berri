@@ -15,7 +15,7 @@ import numpy as np
 import abc
 from functools import cached_property
 
-from wannierberri.utility import cached_einsum
+from ..utility import cached_einsum, clear_cached
 from ..parallel import pool
 from ..system.system import System
 from ..grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
@@ -347,6 +347,16 @@ class Data_K(System, abc.ABC):
     def SDCT(self):
         """returns the SDC term"""
         return SDCT_K(self)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # print (f'exition data_k {exc_type=}, {exc_value=}, {traceback=} ')
+        self.clear_cached()
+
+    def __enter__(self):
+        return self
+
+    def clear_cached(self):
+        clear_cached(self, ["SDCT", "A_H", "D_H", "UU_K", "E_K"])  # probably only SDCT is essential here, because it has a back reference to data_K, but others do not hurt
 
 
 #########################################################################################################################################

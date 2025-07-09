@@ -33,7 +33,7 @@ def print_progress(count, total, t0, tprev, print_progress_step):
     else:
         t_rem_s = t / count * (total - count)
         t_remain = f"{t_rem_s:22.1f}"
-        t_est_tot = f"{t_rem_s+t:22.1f}"
+        t_est_tot = f"{t_rem_s + t:22.1f}"
     if t - tprev > print_progress_step:
         print(f"{count:20d}{t:17.1f}{t_remain:>22s}{t_est_tot:>22s}", flush=True)
         tprev = t
@@ -66,7 +66,7 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp, **remote_parameters))
             if (count + 1) % nstep_print == 0:
-                t_print_prev = print_progress(count=count + 1, total=numK, t0=t0, 
+                t_print_prev = print_progress(count=count + 1, total=numK, t0=t0,
                                               tprev=t_print_prev, print_progress_step=print_progress_step)
     elif parallel.method == 'ray':
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
@@ -80,7 +80,7 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
             num_remotes_calculated = len(remotes_calculated)
             if num_remotes_calculated >= num_remotes:
                 break
-            t_print_prev = print_progress(count=num_remotes_calculated, total=numK, t0=t0, 
+            t_print_prev = print_progress(count=num_remotes_calculated, total=numK, t0=t0,
                                           tprev=t_print_prev, print_progress_step=print_progress_step)
         res = parallel.ray.get(remotes)
     else:
@@ -232,13 +232,14 @@ def run(
             # import sys
             # print("Worker sys.path:", sys.path)
             # from wannierberri.system.rvectors import Rvectors
-            data = get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K)
-            return ResultDict({k: v(data) for k, v in _calculators.items()})
+            with get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
+                resultdic = {k: v(data) for k, v in _calculators.items()}
+            return ResultDict(resultdic)
     else:
-
         def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            data = get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K)
-            return ResultDict({k: v(data) for k, v in _calculators.items()})
+            with get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
+                resultdic = {k: v(data) for k, v in _calculators.items()}
+            return ResultDict(resultdic)
 
     if restart:
         try:
