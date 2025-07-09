@@ -511,16 +511,12 @@ class Rvectors:
 
     def q_to_R(self, AA_q):
         assert self.fft_q2R_set, "FFT_q_to_R is not set, please set it first using set_fft_q_to_R"
-        print("q_to_R\n to grid")
         shapeA = AA_q.shape[1:]  # remember the shapes after q
         AA_q_mp = np.zeros(tuple(self.mp_grid) + shapeA, dtype=complex)
         for i, k in enumerate(self.kpt_mp_grid):
             AA_q_mp[k] = AA_q[i]
-        print("executing fft")
         AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
-        print("remapping")
         AA_q_mp = self.remap_XX_from_grid_to_list_R(AA_q_mp)
-        print("done")
         return AA_q_mp
 
     def qq_to_RR(self, AA_qq):
