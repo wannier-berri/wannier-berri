@@ -96,7 +96,8 @@ class SymmetrizerSAWF:
     def from_irrep(self, bandstructure: BandStructure,
                  grid=None, degen_thresh=1e-2, store_eig=True,
                  ecut=None,  # not used, but kept for compatibility
-                 irreducible=False):
+                 irreducible=False,
+                 unitary_params=None):
         """
         Initialize the object from the BandStructure object
 
@@ -114,13 +115,22 @@ class SymmetrizerSAWF:
             if True, the symmetrizer will use only the irreducible kpoints, the rest will be ignored
 
         """
+        if unitary_params is None:
+            unitary_params = {}
         if irrep_version >= IRREP_IRREDUCIBLE_VERSION:
-            data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True,
-                                         irreducible=irreducible, Ecut=ecut)
+            data = bandstructure.get_dmn(grid=grid, 
+                                         Ecut=ecut,
+                                         irreducible=irreducible, 
+                                         degen_thresh=degen_thresh, 
+                                         unitary=True,
+                                         unitary_params=unitary_params)
         else:
             if irreducible:
                 raise ImportError("The irreducible option requires irrep version >= 2.2.0, please update irrep")
-            data = bandstructure.get_dmn(grid=grid, degen_thresh=degen_thresh, unitary=True)
+            data = bandstructure.get_dmn(grid=grid, 
+                                         degen_thresh=degen_thresh, 
+                                         unitary=True,
+                                         unitary_params=unitary_params)
         self.grid = data["grid"]
         self.kpoints_all = data["kpoints"]
         self.kpt2kptirr = data["kpt2kptirr"]
