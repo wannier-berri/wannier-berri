@@ -133,6 +133,43 @@ class Rvectors:
         assert np.allclose(XX_R_sum_tmp, XX_R_sum_old), f"XX_R_sum_T_tmp {XX_R_sum_tmp} != XX_R_sum_R_old {XX_R_sum_old}"
         return self.remap_XX_from_grid_to_list_R(XX_R_tmp)
 
+    @cached_property
+    def get_remapper_XX_from_grid_to_list_R(self):
+        """
+        remap the matrix from the grid to the list of R-vectors,
+        taking into account the wannier centers
+
+        Parameters
+        ----------
+        XX_R_grid : np.ndarray(shape=(mp_grid[0], mp_grid[1], mp_grid[2], num_wann_l, num_wann_r, ...))
+            The matrix in the grid representation.
+
+        Returns
+        -------
+        XX_R_new : np.ndarray(shape=(num_wann_l, num_wann_r, nRvec, ...))
+            The matrix in the list of R-vectors representation.
+        """
+        nl = self.nshifts_left
+        nr = self.nshifts_right
+        remapper = np.zeros((self.nRvec, nl, nr, 3), dtype=int)
+        weights = np.zeros((self.nRvec, nl, nr), dtype=float)
+        for ia in range(nl):
+            for ib in range(nr):
+                ishift = self.shift_index[ia, ib]
+                for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
+                                        self.iRvec_mod_list[ishift],
+                                        self.Ndegen_list[ishift]):
+                    remapper[iRi, ia, ib] = iRm
+                    weights[iRi, ia, ib] += 1. / nd
+        sum_expected = np.prod(self.mp_grid) * nl * nr
+        sum_calculated = np.sum(weights)
+        assert np.allclose(sum_calculated, sum_expected), f"found sum of weights {sum_calculated}, expected {sum_expected}"
+        mapx = remapper[:, :, :, 0]
+        mapy = remapper[:, :, :, 1]
+        mapz = remapper[:, :, :, 2]
+        return mapx, mapy, mapz, weights
+
+
     def remap_XX_from_grid_to_list_R(self, XX_R_grid):
         """
         remap the matrix from the grid to the list of R-vectors,
@@ -148,6 +185,7 @@ class Rvectors:
         XX_R_new : np.ndarray(shape=(num_wann_l, num_wann_r, nRvec, ...))
             The matrix in the list of R-vectors representation.
         """
+        mapx, mapy, mapz, weights = self.get_remapper_XX_from_grid_to_list_R
         assert XX_R_grid.shape[0:3] == tuple(self.mp_grid), f"XX_R_grid {XX_R_grid.shape} should be {self.mp_grid}"
         nl = self.nshifts_left
         nr = self.nshifts_right
@@ -155,24 +193,24 @@ class Rvectors:
         assert (nr == 1) or (XX_R_grid.shape[4] == nr), f"XX_R_grid {XX_R_grid.shape} should have {nr} rWFs"
         XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
         shape_new = (self.nRvec,) + XX_R_grid.shape[3:]
+        weights_new = weights.reshape(weights.shape + (1,) * (XX_R_grid.ndim - 5))
         num_wann_l = XX_R_grid.shape[3]
         num_wann_r = XX_R_grid.shape[4]
         XX_R_new = np.zeros(shape_new, dtype=XX_R_grid.dtype)
+
         for a in range(num_wann_l):
             ia = 0 if self.nshifts_left == 1 else a
             for b in range(num_wann_r):
                 ib = 0 if self.nshifts_right == 1 else b
-                ishift = self.shift_index[ia, ib]
-                for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
-                                        self.iRvec_mod_list[ishift],
-                                        self.Ndegen_list[ishift]):
-                    XX_R_new[iRi, a, b] += XX_R_grid[tuple(iRm) + (a, b)] / nd
+                XX_R_new[:, a, b] = XX_R_grid[mapx[:, ia, ib], mapy[:, ia, ib], mapz[:, ia, ib], a, b]
+                XX_R_new[:, a, b] *= weights_new[:, ia, ib]
         XX_R_sum_new = XX_R_new.sum(axis=0)
         assert np.allclose(XX_R_sum_new, XX_R_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_R_sum_grid}"
         return XX_R_new
 
 
     def remap_XX_from_grid_to_list_RR(self, XX_RR_grid):
+        # TODO : optimize this as for _R
         """
         remap the matrix from the double grid to the double list of R-vectors,
         taking into account the wannier centers (the "left" are used as the central, and the "right" are used asboth left and right, if you understand what I mean)
@@ -478,7 +516,8 @@ class Rvectors:
         for i, k in enumerate(self.kpt_mp_grid):
             AA_q_mp[k] = AA_q[i]
         AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
-        return self.remap_XX_from_grid_to_list_R(AA_q_mp)
+        AA_q_mp = self.remap_XX_from_grid_to_list_R(AA_q_mp)
+        return AA_q_mp
 
     def qq_to_RR(self, AA_qq):
         assert self.fft_q2R_set, "FFT_q_to_R is not set, please set it first using set_fft_q_to_R"

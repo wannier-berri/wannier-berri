@@ -420,7 +420,7 @@ class CheckPoint(SavableNPZ):
                                 eig=eig, phase=phase, sum_b=sum_b)
 
 
-    def get_CCOOGG_qb(self, mmn, uhu, kptirr, weights_k, antisym=True, phase=None, sum_b=False):
+    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True, phase=None):
         """
         Returns the matrix elements CC, OO or GG in the Wannier gauge
 
@@ -444,64 +444,34 @@ class CheckPoint(SavableNPZ):
             the q-resolved matrix elements CC, OO or GG in the Wannier gauge
         """
         nd_cart = 1 if antisym else 2
-        shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
-        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
         if phase is not None:
             phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik, weight in zip(kptirr, weights_k):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik][ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik][ib2]
-                    # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
-                    data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
-                    CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+            iknb1 = mmn.neighbours[ik][ib1]
+            iknb2 = mmn.neighbours[ik][ib2]
+            # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
+            data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
+            CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
 
-                    if antisym:
-                        # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                        CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                            mmn.wk[ib1] * mmn.wk[ib2] * (
-                                mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
-                                mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
-                    else:
-                        # Matrix for finite-difference schemes (takes symmetric piece only)
-                        CC_q_ik_ib = CCW[:, :, None, None] * (
-                            mmn.wk[ib1] * mmn.wk[ib2] * (
-                                mmn.bk_cart[ib1, :, None] *
-                                mmn.bk_cart[ib2, None, :]))[None, None, :, :]
-                    if phase is not None:
-                        CC_q_ik_ib *= phase[:, :, ib1, ib2]
-                    if sum_b:
-                        CC_qb[ik] += CC_q_ik_ib * weight
-                    else:
-                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib * weight
+            if antisym:
+                # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                    mmn.wk[ib1] * mmn.wk[ib2] * (
+                        mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
+                        mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
+            else:
+                # Matrix for finite-difference schemes (takes symmetric piece only)
+                CC_q_ik_ib = CCW[:, :, None, None] * (
+                    mmn.wk[ib1] * mmn.wk[ib2] * (
+                        mmn.bk_cart[ib1, :, None] *
+                        mmn.bk_cart[ib2, None, :]))[None, None, :, :]
+            if phase is not None:
+                CC_q_ik_ib *= phase[:, :, ib1, ib2]
+            CC_qb[ik] += CC_q_ik_ib * weight
         return CC_qb
 
-    # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=True
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        """
-        return self.get_CCOOGG_qb(mmn, uhu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
-
-    # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=False
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        (actually, the same as :meth:`~wannierberri.w90files.CheckPoint.get_CC_qb`)
-        """
-        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
-
-    # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=False 
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        """
-        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
 
