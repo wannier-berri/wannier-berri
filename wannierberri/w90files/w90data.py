@@ -195,7 +195,7 @@ class Wannier90data:
             if hasattr(self.symmetrizer, "selected_kpoints"):
                 selected_kpoints = self.symmetrizer.selected_kpoints
             else:
-                selected_kpoints = np.arange(bandstructure.num_kpts)
+                selected_kpoints = np.arange(bandstructure.num_k)
         else:
             kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
             mp_grid = grid_from_kpoints(kpt_latt)
@@ -517,8 +517,10 @@ class Wannier90data:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
                 kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
-
-            val = FILES_CLASSES[key].autoread(self.seedname, read_npz=read_npz, kwargs_w90=kwargs_w90)
+            elif key == "mmn":
+                kwargs_w90_loc = dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice)
+                kwargs_w90_loc.update(kwargs_w90)
+            val = FILES_CLASSES[key].autoread(self.seedname, read_npz=read_npz, kwargs_w90=kwargs_w90_loc)
         self.check_conform(key, val)
         if key == 'amn' and self.has_file('chk'):
             self.get_file('chk').num_wann = val.NW
@@ -1150,3 +1152,40 @@ PRIMVEC
                 f.write(xsf_str)
 
         return sc_origin, sc_basis, WF, rho
+    
+    @property
+    def spinor(self):
+        if "win" in self._files:
+            return self.win.spinor
+        elif "unk" in self._files:
+            return self.unk.spinor
+        else:
+            return None
+
+
+    def set_soc(self, eigenvalues=None, eigenvectors=None, soc_gpaw=None):
+        """
+        Turn the w90 data from non-spinor to spinor. The numebr of bands and WFs are doubled after this operation
+        Parameters
+        ----------
+        eigenvalues : np.ndarray (NK, 2*NB)
+            the eigenvalues of the bands with SOC
+        eigenvectors : np.ndarray (NK, 2*NB, 2*NB)
+            the egenstates of the SOC bands, expressed in the basis of the non-SOC bands (with spins ordered as [up,down,up,down,...] )
+            the eigenvectors are stored as column-vectors
+        soc_gpaw : `~gpaw.BZWaveFunctions' object covering the whole BZ.
+            the object returned by `gpaw.spinorbit.soc_eigenstates`
+        """
+        assert not self.spinor, "w90 data are already spinores, cannot set SOC again"
+        assert (eigenvalues is None) == (eigenvectors is None), "eigenvalues and eigenvectors should be set together"
+        assert (eigenvalues is None) != (soc_gpaw is None), "either eigenvalues and eigenvectors should be set or soc_gpaw, not both"
+        if soc_gpaw is not None:
+            eigenvalues = soc_gpaw.eigenvalues()
+            eigenvectors = soc_gpaw.eigenvectors().swapaxes(1, 2)  # gpaw stores iegenvectors as row-vectores, but later we assume column-vectors
+        eigenvalues = np.array(eigenvalues, dtype=float)
+        eigenvectors = np.array(eigenvectors, dtype=complex)
+        for key in self._files:
+            self.get_file(key).set_soc(eigenvalues, eigenvectors)
+        # if self.has_file("symmetrizer"):
+        #     self.symmetrizer.set_soc(eigenvalues=eigenvalues, eigenvectors=eigenvectors)
+

@@ -458,6 +458,38 @@ class MMN(W90_file):
         )
 
 
+    def set_soc(self, eigenvalues, eigenvectors):
+        eigenvalues = np.array(eigenvalues, dtype=float)
+        eigenvectors = np.array(eigenvectors, dtype=complex)
+        v_left = eigenvectors.conj().swapaxes(1, 2)
+        v_right = eigenvectors
+        assert eigenvalues.shape == (self.NK, 2 * self.NB), f"eigenvalues.shape = {eigenvalues.shape}, expected {(self.NK, 2*self.NB)}"
+        assert eigenvectors.shape == (self.NK, 2 * self.NB, 2 * self.NB), f"eigenvectors.shape = {eigenvectors.shape}, expected {(self.NK, 2*self.NB, 2*self.NB)}"
+
+        data_new = {}
+        for ik, val in self.data.items():
+            data = np.zeros((self.NNB, 2 * self.NB, 2 * self.NB), dtype=complex)
+            for i in range(2):
+                data[:, i::2, i::2] = val
+            # TOODO : write in one line
+            data = cached_einsum("lm,bmn->bln", v_left[ik], data)
+            data_new[ik] = cached_einsum("bmn,bnp->bmp", data, v_right[self.neighbours[ik]])
+        self.data = data_new
+        self.NB *=2
+
+
+
+        # new_data = np.zeros((self.NK, self.NNB, 2 * self.NB, 2 * self.NB), dtype=complex)
+        # for i in range(2):
+        #     new_data[:, :, i::2, i::2] = self.data
+        # new_data = np.einsum("klm,kbmn->kbln", v_left, new_data)
+        # for ik in range(self.NK):
+        #     v_right_loc = v_right[self.neighbours[ik]]
+        #     new_data[ik] = np.einsum("bmn,bnp->bmp", new_data[ik], v_right_loc)
+        # self.data = new_data
+
+ 
+
 
 def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5, search_supercell=2):
     """

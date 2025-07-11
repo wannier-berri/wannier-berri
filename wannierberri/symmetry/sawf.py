@@ -1,7 +1,8 @@
 from functools import cached_property, lru_cache
 import warnings
 from irrep.bandstructure import BandStructure
-from irrep.spacegroup import SpaceGroupBare
+from irrep.spacegroup import SpaceGroup
+from irrep.utility import get_block_indices
 import numpy as np
 
 
@@ -417,7 +418,7 @@ class SymmetrizerSAWF:
         l = len(prefix)
         dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
         if len(dic_spacegroup) > 0:
-            self.spacegroup = SpaceGroupBare(**dic_spacegroup)
+            self.spacegroup = SpaceGroup(**dic_spacegroup)
         for prefix in ["T", "atommap", "rot_orb"]:
             keys = sorted([k for k in dic.keys() if k.startswith(prefix)])
             lst = [dic[k] for k in keys]
@@ -499,6 +500,7 @@ class SymmetrizerSAWF:
             #     del self.d_band_blocks_inverse
         if D:
             clear_cached(self, 'D_wann_blocks_inverse')
+            
             # if hasattr(self, 'D_wann_blocks_inverse'):
             #     del self.D_wann_blocks_inverse
 
@@ -692,6 +694,106 @@ class SymmetrizerSAWF:
     def from_npz(self, f_npz):
         dic = np.load(f_npz)
         return self.from_dict(dic)
+
+    def to_full_and_back(self, eigenvalues):
+        d_band_full = self.d_band_full_matrix()
+        self.d_band_block_indices, self.d_band_blocks = self.to_blocks(d_band_full, eigenvalues=eigenvalues)
+        self.clear_inverse(d=True, D=False)
+
+    def set_soc_d_band(self, eigenvalues, eigenvectors):
+        """
+        convert the scalar d-band blocks to spinor blocks
+        Note:
+        eigenvalues are not used here. 
+        TODO : (maybe) use them to separate further into smaller blocks - not sure if this is needed
+        """
+        d_band_full = self.d_band_full_matrix()
+        d_band_full_spinor = np.zeros((self.NKirr, self.Nsym, 2 * self._NB, 2 * self._NB), dtype=complex)
+        for ik in range(self.NKirr):
+            for isym, symop in enumerate(self.spacegroup.symmetries):
+                S = symop.spinor_rotation_TR
+                block_spinor = np.kron(d_band_full[ik][isym], S)
+                v_left = eigenvectors[ik].conj().T
+                v_right = eigenvectors[self.kptirr2kpt[ik, isym]]
+                block_spinor = v_left @ block_spinor @ v_right
+                # print("block_spinor.shape = ", block_spinor.shape)
+                d_band_full_spinor[ik, isym] = block_spinor
+        self.d_band_block_indices, self.d_band_blocks = self.to_blocks(d_band_full_spinor, eigenvalues=eigenvalues)
+        self._NB = 2 * self._NB
+        self.clear_inverse(d=True, D=False)
+
+    def d_band_full_matrix(self, ikirr=None, isym=None):
+        """
+        Returns the full matrix of the ab initio bands transformation matrix
+        """
+        if ikirr is None:
+            return np.array([self.d_band_full_matrix(ikirr, isym) for ikirr in range(self.NKirr)])
+        if isym is None:
+            return np.array([self.d_band_full_matrix(ikirr, isym) for isym in range(self.Nsym)])
+
+        result = np.zeros((self.NB, self.NB), dtype=complex)
+        for (start, end), block in zip(self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr][isym]):
+            result[start:end, start:end] = block
+        return result
+
+    
+    def to_blocks(self, d_band_full, eigenvalues=None, degen_threshold=1e-2):
+        # arranging d_band in the block form
+        if eigenvalues is not None:
+            # print("DMN: eigenvalues are used to determine the block structure")
+            # print (f"d_band_full.shape = {d_band_full.shape}, eigenvalues = {eigenvalues}")
+            d_band_block_indices = [get_block_indices(eigenvalues[ik], thresh=degen_threshold, cyclic=False) for ik in self.kptirr]
+            # print (f"d_band_block_indices = {d_band_block_indices}")
+        else:
+            # print("DMN: eigenvalues are NOT provided, the bands are considered as one block")
+            d_band_block_indices = [[(0, self.NB)] for _ in range(self.NKirr)]
+        # d_band_block_indices = [np.array(self.d_band_block_indices[ik]) for ik in range(self.NKirr)]
+        # np.ascontinousarray is used to speedup with Numba
+        d_band_blocks = [[[np.ascontiguousarray(d_band_full[ik, isym, start:end, start:end])
+                           for start, end in d_band_block_indices[ik]]
+                          for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+        # print (f"returning d_band_block_indices = {d_band_block_indices}")
+        return d_band_block_indices, d_band_blocks
+
+    def set_soc(self, eigenvalues, eigenvectors):
+        # print (f"symmetrizer : {self.spinor=}")
+        assert not self.spinor, "The object is already spinor, cannot set the SOC again"
+        self.spacegroup.to_spinor()
+        self.set_soc_d_band(eigenvalues=eigenvalues, eigenvectors=eigenvectors)
+        self.set_soc_D_wann()
+
+
+    @property
+    def spinor(self):
+        return self.spacegroup.spinor
+
+    def set_soc_D_wann(self):
+        """
+        set the D_wann matrix for SOC case
+        """
+        if not hasattr(self, 'D_wann_blocks'):
+            return
+        D_wann_block_indices_soc = [(2 * a, 2 * b) for a, b in self.D_wann_block_indices]
+        S_list = [symop.spinor_rotation_TR for symop in self.spacegroup.symmetries]
+        rot_orb_list_soc = []
+        for rot_orb in self.rot_orb_list:
+            rot_orb_list_soc.append(np.array([[np.kron(rot, S) for rot, S in zip(rot_orb_point, S_list)] 
+                                              for rot_orb_point in rot_orb]))
+
+        D_wann_blocks_soc = []
+        for block_list in self.D_wann_blocks:
+            D_wann_blocks_soc.append([])
+            for block_list_ik in block_list:
+                D_wann_blocks_soc[-1].append([np.kron(block, S) for block, S in zip(block_list_ik, S_list)])
+
+        self.D_wann_blocks = D_wann_blocks_soc
+        self.D_wann_block_indices = D_wann_block_indices_soc
+        self.rot_orb_list = rot_orb_list_soc
+        self.clear_inverse(D=True, d=False)
+        clear_cached(self, "rot_orb_dagger_list")
+        self.num_wann *= 2
+
+
 
 
     #
