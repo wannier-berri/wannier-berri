@@ -25,7 +25,8 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
     -------
     np.array(complex, shape=(M,N))
         the rotated matrix
-    """
+    """      
+    
     if result is None:
         result = np.zeros(Z.shape, dtype=Z.dtype)
     for (start, end), block in zip(lindices, lblocks):

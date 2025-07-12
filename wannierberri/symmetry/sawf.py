@@ -158,6 +158,7 @@ class SymmetrizerSAWF:
 
     @cached_property
     def d_band_blocks_inverse(self):
+        print("calculation d inverse")
         return get_inverse_block(self.d_band_blocks)
 
     @cached_property
@@ -494,12 +495,13 @@ class SymmetrizerSAWF:
         return Uloc
 
     def clear_inverse(self, d=True, D=True):
+        return
         if d:
-            clear_cached(self, 'd_band_blocks_inverse')
+            clear_cached(self, ['d_band_blocks_inverse'])
             # if hasattr(self, 'd_band_blocks_inverse'):
             #     del self.d_band_blocks_inverse
         if D:
-            clear_cached(self, 'D_wann_blocks_inverse')
+            clear_cached(self, ['D_wann_blocks_inverse'])
             
             # if hasattr(self, 'D_wann_blocks_inverse'):
             #     del self.D_wann_blocks_inverse
@@ -615,6 +617,7 @@ class SymmetrizerSAWF:
 
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
+                # print (f"{ikirr=}, {isym=}")
                 ik = self.kptirr2kpt[ikirr, isym]
                 a1 = amn[ik]
                 a2 = amn[self.kptirr[ikirr]]
@@ -737,7 +740,7 @@ class SymmetrizerSAWF:
         return result
 
     
-    def to_blocks(self, d_band_full, eigenvalues=None, degen_threshold=1e-2):
+    def to_blocks(self, d_band_full, eigenvalues=None, degen_threshold=1e-1):
         # arranging d_band in the block form
         if eigenvalues is not None:
             # print("DMN: eigenvalues are used to determine the block structure")
@@ -752,8 +755,15 @@ class SymmetrizerSAWF:
         d_band_blocks = [[[np.ascontiguousarray(d_band_full[ik, isym, start:end, start:end])
                            for start, end in d_band_block_indices[ik]]
                           for isym in range(self.Nsym)] for ik in range(self.NKirr)]
+        # d_band_copy = np.copy(d_band_full)
+        # for ik in range(self.NKirr):
+        #     for isym in range(self.Nsym):
+        #         for start, end in d_band_block_indices[ik]:
+        #             d_band_copy[ik,isym, start:end, start:end] = 0 
+        # assert np.allclose(d_band_copy, 0, atol=1e-5)
         # print (f"returning d_band_block_indices = {d_band_block_indices}")
         return d_band_block_indices, d_band_blocks
+    
 
     def set_soc(self, eigenvalues, eigenvectors):
         # print (f"symmetrizer : {self.spinor=}")
@@ -781,16 +791,24 @@ class SymmetrizerSAWF:
                                               for rot_orb_point in rot_orb]))
 
         D_wann_blocks_soc = []
-        for block_list in self.D_wann_blocks:
-            D_wann_blocks_soc.append([])
-            for block_list_ik in block_list:
-                D_wann_blocks_soc[-1].append([np.kron(block, S) for block, S in zip(block_list_ik, S_list)])
+        for ik in range(self.NKirr):
+            D_wann_blocks_soc_ik = []
+            for isym in range(self.Nsym):
+                D_wann_blocks_soc_ik_isym = []
+                for B in self.D_wann_blocks[ik][isym]:
+                    D_wann_blocks_soc_ik_isym.append( np.kron(B,S_list[isym]) )
+                D_wann_blocks_soc_ik.append(D_wann_blocks_soc_ik_isym)
+            D_wann_blocks_soc.append(D_wann_blocks_soc_ik)
+        # for block_list in self.D_wann_blocks:
+        #     D_wann_blocks_soc.append([])
+        #     for block_list_ik in block_list:
+        #         D_wann_blocks_soc[-1].append([np.kron(block, S) for block, S in zip(block_list_ik, S_list)])
 
         self.D_wann_blocks = D_wann_blocks_soc
         self.D_wann_block_indices = D_wann_block_indices_soc
         self.rot_orb_list = rot_orb_list_soc
         self.clear_inverse(D=True, d=False)
-        clear_cached(self, "rot_orb_dagger_list")
+        clear_cached(self, ["rot_orb_dagger_list"])
         self.num_wann *= 2
 
 
