@@ -172,3 +172,94 @@ def get_smoother(energy: np.ndarray, smear: float, mode: str = None):
         return GaussianSmoother(energy, smear)
     else:
         raise ValueError("Smoother mode not recognized.")
+
+
+def ceil_int_frac(x, y):
+    """return the integer part of x/y, rounded up"""
+    if x % y == 0:
+        return x // y
+    else:
+        return x // y + 1
+
+
+class Smear:
+
+    """ A class to provide the smeared delta function on a pre-defined grid of E-points
+
+    WARNING : not tested
+    Parameters
+    -----------
+    E : 1D array
+        The energies on which the data are calculated at.
+    smear : float
+        Smearing parameter in eV.
+    maxdE : int
+        in units of smear, Points distant from the center of the delta function to be included (further - treated as zero).
+    """
+
+    def __init__(self, E: np.ndarray, smear: numeric, maxdE: numeric, smr_type="gaussian", density_loc=10):
+        """initialize Smear parameters"""
+        self.smear = smear
+        self.E = np.copy(E)
+        self.maxdE = maxdE
+        self.dE = E[1] - E[0]
+        dE_loc = smear / density_loc
+        self.denser_E = int(np.ceil(self.dE / dE_loc))
+        self.dE_loc = self.dE / self.denser_E
+        self.iemax_loc = int(np.ceil(maxdE * smear / self.dE_loc))
+        self.E_loc = np.arange(-self.iemax_loc, self.iemax_loc + 1) * self.dE_loc
+        self.nEloc = len(self.E_loc)
+
+        self.Emin = E[0]
+        self.Emax = E[-1]
+        self.NE = E.shape[0]
+        self.NE_dense = (self.NE - 1) * self.denser_E + 1
+        if smr_type.lower() in ["gaussian", "gauss"]:
+            self.smr_loc = np.exp(-(self.E_loc / self.smear) ** 2) / self.smear / np.sqrt(np.pi)
+        else:
+            raise ValueError(f"Smearing type {smr_type} not recognized")
+
+    def __call__(self, e, arr=None):
+        """Apply smoother to ``e``
+        Parameters
+        ----------
+        e : float
+            the energy in eV
+        arr : 1D array
+            if provided, the value is added to the array. Otherwise a new array is created and returned.
+        Returns
+        -------
+        1D array
+            the smeared array (if arr is None) or arr (if arr is provided)
+        """
+        if arr is None:
+            arr = np.zeros(self.NE)
+        print(f"Emin = {self.Emin}, Emax = {self.Emax}, e = {e}, dE = {self.dE}, dE_loc = {self.dE_loc}, denser_E = {self.denser_E}, iemax_loc = {self.iemax_loc}, nEloc = {self.nEloc}")
+        i_center = int(np.round((e - self.Emin) / self.dE_loc))
+        i_center_shift = i_center % self.denser_E
+        # i_center_result = (i_center - i_center_shift)//self.denser_E
+        print(f"i_center = {i_center}, i_center_shift = {i_center_shift}")
+        i_start_loc = max((self.iemax_loc - i_center_shift) % self.denser_E, self.iemax_loc - i_center - 1)
+        i_end_loc = min(self.nEloc, self.NE_dense - i_center + self.iemax_loc)
+        i_start_res = max(0, ceil_int_frac(i_center - self.iemax_loc, self.denser_E))
+        i_end_res = min(self.NE, (i_center + self.iemax_loc) // self.denser_E + 1)
+        print(f"i_start_loc = {i_start_loc}, i_end_loc = {i_end_loc}, i_start_res = {i_start_res}, i_end_res = {i_end_res}")
+        index_loc = np.arange(i_start_loc, i_end_loc, self.denser_E)
+        index_res = np.arange(i_start_res, i_end_res)
+        print("index_loc = ", index_loc)
+        print("index_res = ", index_res)
+        assert (len(index_loc) == len(index_res)), f"len(index_loc) = {len(index_loc)}, len(index_res) = {len(index_res)}"
+        if len(index_loc) > 0:
+            arr[index_res] += self.smr_loc[index_loc]
+        return arr
+
+
+def test_smear():
+    E = np.linspace(-1, 1, 11)
+    smear = 0.1
+    smearer = Smear(E=E, smear=smear, maxdE=5, density_loc=1000)
+    for e in np.random.random((1000,)) * 4 - 2:
+        print(f"e={e}")
+        arr = smearer(e)
+        f = np.exp(-((e - E) / smear) ** 2) / smear / np.sqrt(np.pi)
+        assert np.allclose(arr, f, atol=1e-3), f"e={e}, \narr={arr} \n f={f}"

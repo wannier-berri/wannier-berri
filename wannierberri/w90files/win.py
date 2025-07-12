@@ -58,6 +58,17 @@ class WIN:
             if key in self.data:
                 self.data[key] = np.array(self.data[key], dtype=float)
 
+    def set_soc(self, eigenvalues, eigenvectors):
+        self["spinors"] = True
+
+    @property
+    def spinor(self):
+        try:
+            return self["spinors"]
+        except KeyError:
+            return None
+
+
 
 
     # @functools.lru_cache()

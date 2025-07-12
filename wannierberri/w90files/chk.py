@@ -104,6 +104,13 @@ class CheckPoint(SavableNPZ):
         self.num_kpts = num_kpts
 
 
+    def set_soc(self, eig, vec):
+        self.spinor = True
+        self.num_bands *= 2
+        self.num_wann *= 2
+        
+        assert not hasattr(self, "v_matrix"), "v_matrix already exists - cannot set SOC"
+        assert not hasattr(self, "u_matrix"), "u_matrix already exists - cannot set SOC"
 
 
     def from_w90_file(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):

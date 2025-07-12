@@ -1,5 +1,6 @@
 import abc
 import os
+import warnings
 
 import numpy as np
 from ..io import SavableNPZ
@@ -52,20 +53,27 @@ class W90_file(SavableNPZ):
         ext = cls.extension if ext is None else ext
         f_npz = f"{seedname}.{ext}.npz"
         # print(f"calling autoread for {cls.__name__} with seedname={seedname}, ext={ext}, read_npz={read_npz}, read_w90={read_w90}, bandstructure={bandstructure is not None} write_npz={write_npz}, selected_bands={selected_bands}, kwargs_w90={kwargs_w90}, kwargs_bandstructure={kwargs_bandstructure}")
-        if os.path.exists(f_npz) and read_npz:
-            obj = cls.from_npz(f_npz)
-            write_npz = False  # do not write npz again if it was read
-        elif read_w90:
+        obj = None
+        fails = []
+        print(f"autoread {cls.__class__}, {ext=}, {bandstructure=}, {(bandstructure is None)=} {read_npz=}, {read_w90=}")
+        if read_npz:
+            try:
+                obj = cls.from_npz(f_npz)
+                write_npz = False  # do not write npz again if it was read
+            except FileNotFoundError as err:
+                fails.append(err)
+        if read_w90 and obj is None:
             try:
                 obj = cls.from_w90_file(seedname, **kwargs_w90)
-            except FileNotFoundError:
-                pass
-        elif bandstructure is not None:
+            except FileNotFoundError as err:
+                fails.append(err)
+        if bandstructure is not None and obj is None:
             if kwargs_bandstructure is None:
                 kwargs_bandstructure = {}
             obj = cls.from_bandstructure(bandstructure, **kwargs_bandstructure)
-        else:
-            raise FileNotFoundError(f"Cannot find {f_npz} or {seedname}.{ext} and no bandstructure provided")
+        if obj is None:
+            raise FileNotFoundError(f"could not set {cls.__name__}. The errors were : \n  ---"+
+                                    "\n -- ".join(str(e) for e in fails))
         if write_npz:
             obj.to_npz(f_npz)
         # window is applied after, so that npz contains same data as original file
@@ -192,6 +200,11 @@ class W90_file(SavableNPZ):
     @property
     def nspinor(self):
         return 2 if self.spinor else 1
+
+
+    def set_soc(self, eigenvalues, eigenvectors):
+        warnings.warn("Setting soc for {self.__class__.__name__} is not implemented. If this file will be used further - an error will occur")
+
 
 
 

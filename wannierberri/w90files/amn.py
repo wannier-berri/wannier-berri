@@ -11,7 +11,7 @@ from .w90file import W90_file, auto_kptirr, check_shape
 class AMN(W90_file):
     """
     Class to store the projection of the wavefunctions on the initial Wannier functions
-    AMN.data[ik, ib, iw] = <u_{i,k}|w_{i,w}>
+    AMN.data[ik, ib, iw] = <u_{ik,ib}|w_{iw}>
 
     Parameters
     ----------
@@ -225,6 +225,20 @@ class AMN(W90_file):
             return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
         return True, ""
 
+    def set_soc(self, eigenvalues, eigenvectors):
+        assert eigenvalues.shape == (self.NK, 2 * self.NB), f"eigenvalues shape {eigenvalues.shape} should be {(self.NK, 2*self.NB)}"
+        assert eigenvectors.shape == (self.NK, 2 * self.NB, 2 * self.NB), f"eigenvectors shape {eigenvectors.shape} should be {(self.NK, 2*self.NB, 2*self.NB)}"
+        data_new = {}
+        ev = eigenvectors.swapaxes(1,2).conj()
+        for ik, val in self.data.items():
+            data = np.zeros((2 * self.NB, 2 * self.NW), dtype=complex)
+            for i in range(2):
+                data[i::2, i::2] = val
+            data_new[ik] = ev[ik] @ data
+        self.data = data_new
+        self.NB *=2
+        self.NW*=2
+
 
 # def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):
 #     """
@@ -249,6 +263,9 @@ class AMN(W90_file):
 #         return amn
 #     else:
 #         return amn.data
+
+
+
 
 
 def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,

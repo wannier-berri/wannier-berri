@@ -107,6 +107,7 @@ class Path(GridAbstract):
                         _nk = round(np.linalg.norm((start - end).dot(self.recip_lattice)) / dk) + 1
                         if _nk == 1:
                             _nk = 2
+                    print (f"using {_nk=}")
                     self.K_list = np.vstack(
                         (
                             self.K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None] *

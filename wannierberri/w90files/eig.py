@@ -55,3 +55,10 @@ class EIG(W90_file):
         for ikirr in kptirr:
             data[ikirr] = bandstructure.kpoints[selected_kpoints[ikirr]].Energy_raw
         return EIG(data=data, NK=NK)
+
+    def set_soc(self, eigenvalues, eigenvectors):
+        assert eigenvalues.shape == (self.NK, 2 * self.NB)
+        self.data = {ik:ev for ik, ev in enumerate(eigenvalues) }
+        self.NB = check_shape(self.data)[0]
+
+
