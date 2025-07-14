@@ -268,11 +268,13 @@ class System_R(System):
 
         self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
         self.clear_cached_wcc()
-        self.rvec = Rvectors(
+        rvec_new = Rvectors(
             lattice=self.real_lattice,
             iRvec=iRvec,
             shifts_left_red=self.wannier_centers_red,
         )
+        rvec_new.mp_grid = self.rvec.mp_grid,
+        self.rvec = rvec_new
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
 
         if not silent:

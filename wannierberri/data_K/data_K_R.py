@@ -1,3 +1,4 @@
+from functools import cached_property
 import numpy as np
 from ..utility import alpha_A, beta_A
 from .data_K import Data_K
@@ -26,7 +27,7 @@ class Data_K_R(Data_K, System_R):
         self._covariant_quantities = {}
         self._XX_R = {}
 
-    @property
+    @cached_property
     def HH_K(self):
         return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 

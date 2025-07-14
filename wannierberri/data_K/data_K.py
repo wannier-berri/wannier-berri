@@ -120,8 +120,7 @@ class Data_K(System, abc.ABC):
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
-        self.nkptot = self.NKFFT[0] * self.NKFFT[1] * self.NKFFT[2]
-
+        
         self.poolmap = pool(self.npar_k)[0]
 
         self.dK = dK
@@ -235,7 +234,7 @@ class Data_K(System, abc.ABC):
         else:
             return E
 
-    @property
+    @cached_property
     @abc.abstractmethod
     def HH_K(self):
         """returns Wannier Hamiltonian for all points of the FFT grid"""
