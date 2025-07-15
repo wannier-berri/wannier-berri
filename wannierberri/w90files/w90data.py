@@ -850,6 +850,7 @@ class Wannier90data:
                 if key == 'chk':
                     print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
+        self.selected_bands = selected_bands
         return selected_bands
 
 

@@ -118,17 +118,17 @@ class SymmetrizerSAWF:
         if unitary_params is None:
             unitary_params = {}
         if irrep_version >= IRREP_IRREDUCIBLE_VERSION:
-            data = bandstructure.get_dmn(grid=grid, 
+            data = bandstructure.get_dmn(grid=grid,
                                          Ecut=ecut,
-                                         irreducible=irreducible, 
-                                         degen_thresh=degen_thresh, 
+                                         irreducible=irreducible,
+                                         degen_thresh=degen_thresh,
                                          unitary=True,
                                          unitary_params=unitary_params)
         else:
             if irreducible:
                 raise ImportError("The irreducible option requires irrep version >= 2.2.0, please update irrep")
-            data = bandstructure.get_dmn(grid=grid, 
-                                         degen_thresh=degen_thresh, 
+            data = bandstructure.get_dmn(grid=grid,
+                                         degen_thresh=degen_thresh,
                                          unitary=True,
                                          unitary_params=unitary_params)
         self.grid = data["grid"]

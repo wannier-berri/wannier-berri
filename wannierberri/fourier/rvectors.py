@@ -33,7 +33,7 @@ class Rvectors:
         else:
             self.shifts_left_red = np.array(shifts_left_red)
             self.has_shifts_left = True
-        
+
 
 
         if shifts_right_red is None:
@@ -53,56 +53,6 @@ class Rvectors:
 
         # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
-
-    def double(self):
-        """
-        Double the shifts left and right to account for spinor case, assuming that the spin up and down Wannier functions are at the same positions
-        """
-        if self.has_shifts_left:
-            shifts_left_red = np.zeros((self.nshifts_left * 2, 3), dtype=float)
-            shifts_left_red[::2] = self.shifts_left_red
-            shifts_left_red[1::2] = self.shifts_right_red
-        else:
-            shifts_left_red = None
-
-        if self.has_shifts_right:
-            shifts_right_red = np.zeros((self.nshifts_right * 2, 3), dtype=float)
-            shifts_right_red[::2] = self.shifts_right_red
-            shifts_right_red[1::2] = self.shifts_left_red
-        else:
-            shifts_right_red = None
-        
-        result =  Rvectors(lattice=self.lattice, shifts_left_red=shifts_left_red,
-                        shifts_right_red=shifts_right_red, iRvec=self.iRvec.copy(), dim=self.dim)
-        result._NKFFTrec = self._NKFFTrec
-        result.mp_grid = self.mp_grid.copy()
-        result.shift_index = np.zeros((self.nshifts_left * 2, self.nshifts_right * 2), dtype=int)
-        result.iRvec_index_list = self.iRvec_index_list.copy()
-        result.iRvec_mod_list = self.iRvec_mod_list.copy()
-        result.Ndegen_list = self.Ndegen_list.copy()
-
-        return result
-
-
-    
-    def check_equals(self, other):
-        try:
-            assert np.allclose(self.lattice, other.lattice), f"lattice should be the same for both Rvectors {self.lattice} != {other.lattice}"
-            assert self.nshifts_left == other.nshifts_left, f"nshifts_left should be the same for both Rvectors {self.nshifts_left} != {other.nshifts_left}"
-            assert self.nshifts_right == other.nshifts_right, f"nshifts_right should be the same for both Rvectors {self.nshifts_right} != {other.nshifts_right}"
-            assert self.nRvec == other.nRvec, f"nRvec should be the same for both Rvectors {self.nRvec} != {other.nRvec}"
-            assert self.shifts_left_red.shape == other.shifts_left_red.shape, f"shifts_left_red should be the same for both Rvectors {self.shifts_left_red.shape} != {other.shifts_left_red.shape}"
-            assert self.shifts_right_red.shape == other.shifts_right_red.shape, f"shifts_right_red should be the same for both Rvectors {self.shifts_right_red.shape} != {other.shifts_right_red.shape}"
-            assert np.allclose(self.shifts_left_red, other.shifts_left_red), f"shifts_left_red should be the same for both Rvectors {self.shifts_left_red} != {other.shifts_left_red}"
-            assert np.allclose(self.shifts_right_red, other.shifts_right_red), f"shifts_right_red should be the same for both Rvectors {self.shifts_right_red} != {other.shifts_right_red}"
-            assert self.dim == other.dim, f"dim should be the same for both Rvectors {self.dim} != {other.dim}"
-            assert np.all(self.mp_grid == other.mp_grid), f"mp_grid should be the same for both Rvectors {self.mp_grid} != {other.mp_grid}"   
-            assert np.all(self.iRvec == other.iRvec), f"iRvec should be the same for both Rvectors {self.iRvec} != {other.iRvec}"
-            assert np.all(self.shift_index == other.shift_index), f"shift_index should be the same for both Rvectors {self.shift_index} != {other.shift_index}"
-        except AssertionError as e:
-            raise AssertionError(f"Rvectors are not equal: {e}")
-        return True
-        
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """
