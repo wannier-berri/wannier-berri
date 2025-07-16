@@ -273,7 +273,10 @@ class System_R(System):
             iRvec=iRvec,
             shifts_left_red=self.wannier_centers_red,
         )
-        rvec_new.mp_grid = self.rvec.mp_grid,
+        try:
+            rvec_new.mp_grid = self.rvec.mp_grid,
+        except AttributeError:
+            pass
         self.rvec = rvec_new
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
 
