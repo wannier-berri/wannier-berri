@@ -152,21 +152,15 @@ class SymmetrizerSAWF:
             self.selected_kpoints = data["selected_kpoints"]
             self.kpt_from_kptirr_isym = data["kpt_from_kptirr_isym"]
         else:
-            kpt_from_kptirr_isym = -np.ones(self.NK, dtype=int)
-            for ik, ikirr in enumerate(self.kpt2kptirr):
-                for isym in range(self.Nsym):
-                    if self.kptirr2kpt[ikirr, isym] == ik:
-                        kpt_from_kptirr_isym[ik] = isym
-                        break
-                else:
-                    raise RuntimeError(f"No Symmetry operation maps irreducible "
-                                    f"k-point {ikirr} to point {ik}, but kpt2kptirr[{ik}] = {ikirr}.")
+            self.kpt_from_kptirr_isym = get_kpt_from_kptirr_isym(kptirr2kpt=self.kptirr2kpt, 
+                                                                 kpt2kptirr=self.kpt2kptirr)
 
-    
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
-
+    
+    
+    
     @cached_property
     def d_band_blocks_inverse(self):
         return get_inverse_block(self.d_band_blocks)
@@ -403,9 +397,13 @@ class SymmetrizerSAWF:
             if k in dic:
                 dic_loc[k] = dic[k]
 
-
         for k, v in dic_loc.items():
             self.__setattr__(k, v)
+
+        if not hasattr(self,"kpt_from_kptirr_isym"):
+            self.kpt_from_kptirr_isym = get_kpt_from_kptirr_isym(kptirr2kpt=self.kptirr2kpt, 
+                                                        kpt2kptirr=self.kpt2kptirr)
+
 
         self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -460,16 +458,34 @@ class SymmetrizerSAWF:
         -------
         U : list of NK np.ndarray(dtype=complex, shape = (nBfree,nWfree,))
             The expanded matrix. if all_k is False, the U matrices at the kpoints not included in self.include_k are set to None
+        include_k : array(NK, bool)
+            True for the points that need to be included, for False - None will be added to the list. If None : all points are included
+
         """
-        all_k = include_k is None
+        if include_k is None:
+            include_k = np.ones(self.NK, dtype=bool)
         Ufull = [None for _ in range(self.NK)]
+        
+        # This code wioll be useful later, when working from irreducible k-points, 
+        # only_band matrices of the little group will be needed
+        # if include_k is None:
+        #     include_k = np.arange(self.NK)
+        # else:
+        #     include_k = np.where(include_k)[0]
+        # print(f"{self.kpt_from_kptirr_isym=}, {self.NK=}, {self.NKirr=}, {self.Nsym=}")
+        # for ik in include_k:
+        #     ikirr = self.kpt2kptirr[ik]
+        #     isym = self.kpt_from_kptirr_isym[ik]
+        #     print(f"{ik=}, {isym=}, {ikirr=}")
+        #     Ufull[ik] =  self.rotate_U(U[ikirr], ikirr, isym, forward=True)
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 iRk = self.kptirr2kpt[ikirr, isym]
-                if Ufull[iRk] is None and (all_k or include_k[iRk]):
+                if Ufull[iRk] is None and include_k[iRk]:
                     Ufull[iRk] = self.rotate_U(U[ikirr], ikirr, isym, forward=True)
         return Ufull
-
+        
+        
     def rotate_U(self, U, ikirr, isym, forward=True):
         """
         Rotates the umat matrix at the irreducible kpoint
@@ -480,6 +496,7 @@ class SymmetrizerSAWF:
         # forward = not forward
         U1 = np.zeros(U.shape, dtype=complex)
         Uloc = U.copy()
+        print (f"{isym=}")
         if forward:
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
@@ -784,3 +801,23 @@ class VoidSymmetrizer(SymmetrizerSAWF):
 
     def symmetrize_wannier_property(self, wannier_property):
         return wannier_property
+
+# copied from irrep for compatibility with its older versions
+try:
+    from irrep.utility import get_kpt_from_kptirr_isym
+except ImportError:
+    def get_kpt_from_kptirr_isym(kpt2kptirr, kptirr2kpt):
+        NKirr, Nsym = kptirr2kpt.shape
+        NK = kpt2kptirr.shape[0]
+        print(f"kpt_from_kptirr {NK=}, NKirr=, {Nsym=}")
+        kpt_from_kptirr_isym = -np.ones(NK, dtype=int)
+        for ik, ikirr in enumerate(kpt2kptirr):
+            for isym in range(Nsym):
+                if kptirr2kpt[ikirr, isym] == ik:
+                    kpt_from_kptirr_isym[ik] = isym
+                    break
+            else:
+                raise RuntimeError(f"No Symmetry operation maps irreducible "
+                                f"k-point {ikirr} to point {ik}, but kpt2kptirr[{ik}] = {ikirr}.")
+        print (f"returning {kpt_from_kptirr_isym}")
+        return kpt_from_kptirr_isym
