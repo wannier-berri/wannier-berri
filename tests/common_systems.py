@@ -235,7 +235,7 @@ def system_Fe_sym_W90_TR():
 @pytest.fixture(scope="session")
 def system_Fe_W90_proj_set_spin(create_files_Fe_W90):
     system = get_system_Fe_sym_W90()
-    system.set_spin_from_projections()
+    system.set_spin_interlaced()
     return system
 
 
@@ -470,7 +470,7 @@ def system_Chiral_left():
         delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
     system = wberri.system.System_PythTB(model_Chiral_left)
     system.set_pointgroup(["C3z"])
-    system.set_spin([1, -1])
+    system.set_spin_eigenstates([1, -1])
     return system
 
 
@@ -480,7 +480,7 @@ def system_Chiral_left_TR():
         delta=2, hop1=1, hop2=1. / 3, phi=-np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
     system = wberri.system.System_PythTB(model_Chiral_left_TR)
     system.set_pointgroup(["C3z"])
-    system.set_spin([-1, 1])
+    system.set_spin_eigenstates([-1, 1])
     return system
 
 
@@ -490,7 +490,7 @@ def system_Chiral_right():
         delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.0, hopz_right=0.2, hopz_vert=0)
     system = wberri.system.System_PythTB(model_Chiral_right)
     system.set_pointgroup(["C3z"])
-    system.set_spin([1, -1])
+    system.set_spin_eigenstates([1, -1])
     return system
 
 

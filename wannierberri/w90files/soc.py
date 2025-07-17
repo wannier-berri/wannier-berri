@@ -61,7 +61,7 @@ class SOC(W90_file):
             C_ss.T.conj() @ sy_ss @ C_ss,
             C_ss.T.conj() @ sz_ss @ C_ss,
         ]
-        return s_vss
+        return np.array(s_vss)
 
 
     @classmethod

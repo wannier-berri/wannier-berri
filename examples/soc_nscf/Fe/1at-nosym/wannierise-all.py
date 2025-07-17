@@ -21,7 +21,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                 Ecut=200,
                                 normalize=True,
                                 spinor=spinor,
-                                spin_channel=spin_channel - 1 if spin_channel is not None else None,
+                                spin_channel=spin_channel,
                                 magmom=[[0, 0, 1]] if spinor else None
                                 )
     sg = bandstructure.spacegroup
@@ -41,7 +41,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                                     'nbands_upper_skip': 8 * (2 if spinor else 1)})
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = Wannier90data().from_w90_files(prefix, readfiles=["win", "eig", "mmn"],
+    w90data = Wannier90data().from_w90_files(prefix, readfiles=["win", "eig", "mmn", "amn"],
                                              read_npz=False)
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)
@@ -57,10 +57,10 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=True).save_npz(save_name)
+    System_w90(w90data=w90data, symmetrize=False).save_npz(save_name)
     w90data.get_file('chk').to_npz(prefix + ".chk.npz")
 
 
-get_wannierised("Fe-spin-0", spin_channel=1, save_name="system_dw")
-get_wannierised("Fe-spin-1", spin_channel=2, save_name="system_up")
+get_wannierised("Fe-spin-0", spin_channel=0, save_name="system_dw")
+get_wannierised("Fe-spin-1", spin_channel=1, save_name="system_up")
 get_wannierised("Fe-spinors", spin_channel=None, spinor=True, save_name="system_spinor", )

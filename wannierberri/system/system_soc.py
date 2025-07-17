@@ -4,6 +4,8 @@ from ..fourier.rvectors import Rvectors
 
 from .system_R import System_R
 from ..w90files.w90file import W90_file
+from ..w90files.soc import SOC
+
 
 
 class SystemSOC(System_R):
@@ -12,7 +14,6 @@ class SystemSOC(System_R):
                  system_up,
                  system_down=None,
                  axis=(0, 0, 1),
-
                  ):
         assert isinstance(system_up, System_R), "system_up must be an instance of System_R"
         self.system_up = system_up
@@ -52,7 +53,8 @@ class SystemSOC(System_R):
 
 
     def set_soc_R(self, soc_q_H, chk_up, chk_down=None,
-                  kptirr=None, weights_k=None, ws_dist_tol=1e-5,):
+                  kptirr=None, weights_k=None, ws_dist_tol=1e-5,
+                  theta=0,phi=0):
         """
         Set the spin-orbit coupling matrix for a given k-point.
 
@@ -98,4 +100,6 @@ class SystemSOC(System_R):
                     soc_q_W[ik, i::2, j::2] = w * (vt[i] @ soc_q_H_loc @ v[j])
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         self.soc_R = self.rvec.q_to_R(soc_q_W)
+
+        self.S_ssa = SOC.get_s_vss(theta=theta, phi=phi).transpose(1,2,0)
         return self.soc_R

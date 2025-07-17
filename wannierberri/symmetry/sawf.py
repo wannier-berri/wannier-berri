@@ -496,7 +496,7 @@ class SymmetrizerSAWF:
         # forward = not forward
         U1 = np.zeros(U.shape, dtype=complex)
         Uloc = U.copy()
-        print (f"{isym=}")
+        # print (f"{isym=}")
         if forward:
             if self.time_reversals[isym]:
                 Uloc = Uloc.conj()
