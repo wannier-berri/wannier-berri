@@ -57,10 +57,10 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=False).save_npz(save_name)
-    w90data.get_file('chk').to_npz(prefix + ".chk.npz")
+    System_w90(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
+    w90data.get_file('chk').to_npz(save_name + ".chk.npz")
 
 
-get_wannierised("Fe-spin-0", spin_channel=0, save_name="system_dw")
-get_wannierised("Fe-spin-1", spin_channel=1, save_name="system_up")
+get_wannierised("Fe-spin-0", spin_channel=0, save_name="system_up")
+get_wannierised("Fe-spin-1", spin_channel=1, save_name="system_dw")
 get_wannierised("Fe-spinors", spin_channel=None, spinor=True, save_name="system_spinor", )

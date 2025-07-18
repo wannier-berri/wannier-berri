@@ -50,11 +50,12 @@ class SystemSOC(System_R):
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
         self.soc_R = None  # to be set later
         self.rvec = None
+        self._XX_R = dict()
 
 
     def set_soc_R(self, soc_q_H, chk_up, chk_down=None,
                   kptirr=None, weights_k=None, ws_dist_tol=1e-5,
-                  theta=0,phi=0):
+                  theta=0, phi=0):
         """
         Set the spin-orbit coupling matrix for a given k-point.
 
@@ -101,5 +102,5 @@ class SystemSOC(System_R):
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         self.soc_R = self.rvec.q_to_R(soc_q_W)
 
-        self.S_ssa = SOC.get_s_vss(theta=theta, phi=phi).transpose(1,2,0)
+        self.S_ssa = SOC.get_s_vss(theta=theta, phi=phi).transpose(1, 2, 0)
         return self.soc_R

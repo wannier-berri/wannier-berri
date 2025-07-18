@@ -11,14 +11,14 @@ from wannierberri.parallel import Parallel, Serial
 system_dw = System_R().load_npz("system_dw")
 system_up = System_R().load_npz("system_up")
 system_spinor = System_R().load_npz("system_spinor")
-system_spinor.set_spin_pairs([[2*i+1,2*i] for i in range(9)])
+system_spinor.set_spin_pairs([[2*i,2*i+1] for i in range(9)])
 
 parallel=Parallel(num_cpus=16)
 # _interlaced()
 
 
-phi_deg = 90
-theta_deg=90
+phi_deg = 0
+theta_deg=0
 
 soc = SOC.from_gpaw("Fe-nscf.gpw")
 chk_up = CHK.from_npz("Fe-spin-0.chk.npz")
@@ -57,9 +57,9 @@ fig, axes = plt.subplots(3, 1, sharey=True, sharex=True, figsize=(30,50))
 bands_soc.plot_path_fat(path=path,
                        Eshift=EF,
                        quantity="spin",
-                       component="y",
+                       component="z",
                        mode="color",
-                       label=f"soc_nscf, Sx, th={theta_deg}, phi={phi_deg}",                       axes=axes[2],
+                       label=f"soc_nscf, Sz, th={theta_deg}, phi={phi_deg}",                       axes=axes[2],
                        fatmax=4,
                         linecolor="orange",
                         close_fig=False,

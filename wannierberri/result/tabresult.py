@@ -311,7 +311,7 @@ class TABresult(Result):
                     e = E[:, ib]
                     selE = (e <= Emax) * (e >= Emin)
                     klineselE = kline[selE]
-                    y = data[selE][:, ib]*fatfactor
+                    y = data[selE][:, ib] * fatfactor
                     select = abs(y) > 2
                     y[select] = np.log2(abs(y[select])) * np.sign(y[select])
                     y[~select] *= 0.5
@@ -326,12 +326,12 @@ class TABresult(Result):
                     selE = (e <= Emax) * (e >= Emin)
                     klineselE = kline[selE]
                     y = data[selE][:, ib]
-                    print (f"y={y.min()}:{y.max()}")
+                    # print (f"y={y.min()}:{y.max()}")
                     # select = abs(y) > 2
                     # y[select] = np.log2(abs(y[select])) * np.sign(y[select])
                     # y[~select] *= 0.5
                     e1 = e[selE]
-                    sc=axes.scatter(klineselE, e1, c=y, s=fatmax, 
+                    axes.scatter(klineselE, e1, c=y, s=fatmax,
                                  cmap=cmap, vmin=-1, vmax=1)
             else:
                 raise ValueError("So far only 'fatband' and 'color' modes are implemented")
@@ -345,7 +345,7 @@ class TABresult(Result):
         axes.set_xticks(x_ticks_positions, x_ticks_labels)
         axes.set_ylim([Emin, Emax])
         axes.set_xlim([kmin, kmax])
-        
+
         if fig is None:
             fig = plt.gcf()
 
