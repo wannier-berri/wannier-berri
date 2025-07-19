@@ -102,5 +102,5 @@ class SystemSOC(System_R):
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         self.soc_R = self.rvec.q_to_R(soc_q_W)
 
-        self.S_ssa = SOC.get_s_vss(theta=theta, phi=phi).transpose(1, 2, 0)
+        self.S_ssa = SOC.get_S_vss(theta=theta, phi=phi).transpose(1, 2, 0)
         return self.soc_R

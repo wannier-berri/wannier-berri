@@ -41,14 +41,19 @@ class SOC(W90_file):
         """
         Get the spin rotation matrix C_ss for the given angles theta and phi.
         """
-        C_ss = np.array([[np.cos(theta / 2) * np.exp(-1.0j * phi / 2),
-                          -np.sin(theta / 2) * np.exp(-1.0j * phi / 2)],
-                        [np.sin(theta / 2) * np.exp(1.0j * phi / 2),
-                            np.cos(theta / 2) * np.exp(1.0j * phi / 2)]])
+        ct2 = np.cos(theta / 2)
+        st2 = np.sin(theta / 2)
+        ep2 = np.exp(-1.0j * phi / 2)
+        C_ss = np.array([[ct2 * ep2, -st2 * ep2],
+                         [st2 / ep2, ct2 / ep2]], complex)
+        # C_ss = np.array([[np.cos(theta / 2) * np.exp(-1.0j * phi / 2),
+        #                   -np.sin(theta / 2) * np.exp(-1.0j * phi / 2)],
+        #                 [np.sin(theta / 2) * np.exp(1.0j * phi / 2),
+        #                     np.cos(theta / 2) * np.exp(1.0j * phi / 2)]])
         return C_ss
 
     @classmethod
-    def get_s_vss(cls, theta=0, phi=0):
+    def get_S_vss(cls, theta=0, phi=0):
         """
         Get the spin Pauli matrices in the spinor basis defined by C_ss.
         """
