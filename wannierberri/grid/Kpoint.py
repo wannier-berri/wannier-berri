@@ -200,7 +200,7 @@ def exclude_equiv_points(K_list, new_points=None):
                         continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
-                            print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
+                            # print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
                             if i < n - new_points:
                                 if i not in weight_changed_old:

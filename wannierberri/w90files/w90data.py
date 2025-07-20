@@ -195,7 +195,7 @@ class Wannier90data:
             if hasattr(self.symmetrizer, "selected_kpoints"):
                 selected_kpoints = self.symmetrizer.selected_kpoints
             else:
-                selected_kpoints = np.arange(bandstructure.num_kpts)
+                selected_kpoints = np.arange(bandstructure.num_k)
         else:
             kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
             mp_grid = grid_from_kpoints(kpt_latt)

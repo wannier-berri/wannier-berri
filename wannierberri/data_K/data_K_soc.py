@@ -1,6 +1,7 @@
 from functools import cached_property
 import numpy as np
 from .data_K_R import Data_K_R
+from ..system.system import num_cart_dim
 
 
 class Data_K_soc(Data_K_R):
@@ -12,25 +13,15 @@ class Data_K_soc(Data_K_R):
         super().__init__(system, dK, grid, **parameters)
         self.num_wann_scalar = system.num_wann_scalar
         self.data_K_up = Data_K_R(system.system_up, dK, grid, **parameters)
-        self.rvec_up = system.system_up.rvec.copy()
-
-        self.rvec_up.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann_scalar,
-                          numthreads=self.npar_k if self.npar_k > 0 else 1,
-                            fftlib=self.fftlib,
-                            dK=dK)
 
         if system.up_down_same:
             self.data_K_down = self.data_K_up
-            self.rvec_down = self.rvec_up
         else:
             self.data_K_down = Data_K_R(system.system_down, dK, grid, **parameters)
-            self.rvec_down = system.system_down.rvec.copy()
-            self.rvec_down.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann_scalar,
-                          numthreads=self.npar_k if self.npar_k > 0 else 1,
-                            fftlib=self.fftlib,
-                            dK=dK)
-        soc_r_dk = self.rvec.apply_expdK(system.soc_R)
-        self.set_R_mat('soc', soc_r_dk)
+        self.has_soc = system.has_soc
+        if self.has_soc:
+            soc_r_dk = self.rvec.apply_expdK(system.soc_R)
+            self.set_R_mat('soc', soc_r_dk)
 
     @cached_property
     def HH_K(self):
@@ -40,30 +31,33 @@ class Data_K_soc(Data_K_R):
         H = np.zeros((self.nk, self.num_wann, self.num_wann), dtype=complex)
         H[:, ::2, ::2] = self.data_K_up.HH_K
         H[:, 1::2, 1::2] = self.data_K_down.HH_K
-        H += self.rvec.R_to_k(self.get_R_mat('soc'), hermitian=True)
+        if self.has_soc:
+            H += self.rvec.R_to_k(self.get_R_mat('soc'), hermitian=True)
         return H
 
     def Xbar(self, name, der=0):
         key = (name, der)
         if key not in self._bar_quantities:
+            need_rotate = True
             if key == ("SS", 0):
-                SS_K_W = np.array([self.SS_W] * self.nk)
-                Xbar = self._rotate(SS_K_W[self.select_K])
+                Xbar = np.array([self.SS_W] * self.nk)
             elif name == "SS":
-                Xbar = np.zeros((self.nk, self.num_wann, self.num_wann, 3))
+                Xbar = np.zeros((self.nk, self.num_wann, self.num_wann,) + (3,) * der, dtype=complex)
+                need_rotate = False
             elif name.startswith("S"):
                 raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
                                           "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
-            else:  # name in ["Ham", "AA", "OO"]:
-                Xbar_up = self.data_K_up.Xbar(name, der)
-                Xbar_down = self.data_K_down.Xbar(name, der)
-                shape = Xbar_up.shape
-                shape = (shape[0], self.num_wann, self.num_wann) + shape[3:]
+            else:  # other not spin-related operators
+                hermitian = (name in ['AA', 'SS', 'OO'])
+                shape = (self.nk, ) + (self.num_wann, ) * 2 + (3,) * (der + num_cart_dim(name))
                 Xbar = np.zeros(shape, dtype=complex)
-                Xbar[:, ::2, ::2] = Xbar_up
-                Xbar[:, 1::2, 1::2] = Xbar_down
-                if name == "Ham":
+                for i, datak in enumerate([self.data_K_up, self.data_K_down]):
+                    Xbar[:, i::2, i::2] = datak.rvec.R_to_k(datak.get_R_mat(name).copy(),
+                                                            hermitian=hermitian, der=der)
+                if name == "Ham" and self.has_soc:
                     Xbar += self.rvec.R_to_k(self.get_R_mat('soc'), der=der, hermitian=True)
+            if need_rotate:
+                Xbar = self._rotate(Xbar)
             self._bar_quantities[key] = Xbar
 
         return self._bar_quantities[key]
@@ -103,7 +97,8 @@ class Data_K_soc(Data_K_R):
     def E_K_corners_parallel(self):
         expdK_up = self.data_K_up.expdK_corners_parallel
         expdK_down = self.data_K_up.expdK_corners_parallel
-        expdK = self.expdK_corners_parallel
+        if self.has_soc:
+            expdK = self.expdK_corners_parallel
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:
             for iy in 0, 1:
@@ -118,10 +113,10 @@ class Data_K_soc(Data_K_R):
                     _Ham_R = self.data_K_down.Ham_R[:, :, :] * _expdK[:, None, None]
                     _HH_K_full[:, 1::2, 1::2] = self.data_K_down.rvec.R_to_k(_Ham_R, hermitian=True)
                     # block from SOC
-                    _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
-                    _Ham_R = self.get_R_mat('soc') * _expdK[:, None, None]
-                    _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
-
+                    if self.has_soc:
+                        _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
+                        _Ham_R = self.get_R_mat('soc') * _expdK[:, None, None]
+                        _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
                     # calculate eigenvalues
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K_full))
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]

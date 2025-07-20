@@ -16,11 +16,12 @@ class Data_K_R(Data_K, System_R):
         self._FF_antisym = _FF_antisym
         self._CCab_antisym = _CCab_antisym
 
-        self.rvec = system.rvec.copy()
-        self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
-                          numthreads=self.npar_k if self.npar_k > 0 else 1,
-                            fftlib=self.fftlib,
-                            dK=dK)
+        if system.rvec is not None:
+            self.rvec = system.rvec.copy()
+            self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
+                            numthreads=self.npar_k if self.npar_k > 0 else 1,
+                                fftlib=self.fftlib,
+                                dK=dK)
 
         self.dK = dK
         self._bar_quantities = {}

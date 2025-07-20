@@ -51,11 +51,12 @@ class SystemSOC(System_R):
         self.soc_R = None  # to be set later
         self.rvec = None
         self._XX_R = dict()
+        self.has_soc = False
 
 
     def set_soc_R(self, soc_q_H, chk_up, chk_down=None,
                   kptirr=None, weights_k=None, ws_dist_tol=1e-5,
-                  theta=0, phi=0):
+                  theta=0, phi=0, alpha_soc=1.0):
         """
         Set the spin-orbit coupling matrix for a given k-point.
 
@@ -67,6 +68,18 @@ class SystemSOC(System_R):
             Flag to check if the up-spin system is valid.
         chk_down : bool
             Flag to check if the down-spin system is valid.
+        kptirr : np.array, optional
+            Irreducible k-points (only save data for these k-points).
+        weights_k : np.array, optional
+            Weights for the k-points (if kptirr is provided).
+        ws_dist_tol : float, optional
+            Tolerance for the Wiggins-Seitz distance for the R-vectors.
+        theta : float, optional
+            Polar angle for the spin-orbit coupling.
+        phi : float, optional
+            Azimuthal angle for the spin-orbit coupling.
+        alpha_soc : float, optional
+            Scaling factor for the spin-orbit coupling matrix.
         """
         if chk_down is None:
             chk_down = chk_up
@@ -100,7 +113,8 @@ class SystemSOC(System_R):
                     soc_q_H_loc = soc_q_H[ik][i, j, selected_bands_list[i], :][:, selected_bands_list[j]]
                     soc_q_W[ik, i::2, j::2] = w * (vt[i] @ soc_q_H_loc @ v[j])
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
-        self.soc_R = self.rvec.q_to_R(soc_q_W)
+        self.soc_R = self.rvec.q_to_R(soc_q_W) * alpha_soc
 
         self.S_ssa = SOC.get_S_vss(theta=theta, phi=phi).transpose(1, 2, 0)
+        self.has_soc = True
         return self.soc_R
