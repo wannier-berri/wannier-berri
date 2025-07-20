@@ -350,13 +350,13 @@ class Data_K(System, abc.ABC):
 
     def __exit__(self, exc_type, exc_value, traceback):
         # print (f'exition data_k {exc_type=}, {exc_value=}, {traceback=} ')
-        clear_cached(self, ["SDCT"])  
+        clear_cached(self, ["SDCT"])
 
     def __del__(self):
-        clear_cached(self, ["SDCT"])  
-        
+        clear_cached(self, ["SDCT"])
+
     def __enter__(self):
         return self
-    
+
 
 #########################################################################################################################################
