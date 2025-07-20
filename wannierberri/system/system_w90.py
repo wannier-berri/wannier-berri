@@ -208,49 +208,41 @@ class System_w90(System_R):
             expiRphase1 = np.exp(1j * phaseR)[:, None, None, :]
             expiRphase2 = expiRphase1[:, :, :, :, None] * expiRphase1[:, :, :, None, :]
 
-            # def sum_b_phase(XX_Rb, phase, axis):
-            #     phase = np.reshape(phase, np.shape(phase) + (1,) * (XX_Rb.ndim - np.ndim(phase)))
-            #     return np.sum(XX_Rb * phase, axis=axis)
-
-            def get_matrix_1b(getter_from_chk, nd_cart):
-                shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
-                phase_loc = expiRphase1
+        index_b  = {1:[(ib,) for ib in range(NNB)] ,
+                        2:[(ib1, ib2) for ib1 in range(NNB) for ib2 in range(NNB)]}
+        dict_ib = {1: [{'ib': ib[0]} for ib in index_b[1]],
+                   2: [{'ib1': ib[0], 'ib2': ib[1]} for ib in index_b[2]]}
+        
+        def sum_matrix_b(getter_from_chk, nd_cart, nb=2):
+            """loop over nearest-neighbor vectors and sum the matrix elements
+            possibly adding phase factors depending on the lattice vectors R
+            and the scheme used
+            
+            Parameters
+            ----------
+            getter_from_chk : callable
+                function that returns the matrix elements for a given nearest-neighbor vector(s)
+            nd_cart : int
+                number of cartesian dimensions of the matrix elements
+            nb : int
+                number of loops over nearest-neighbor vectors (1 or 2)
+            Returns
+            -------
+            XX_R : np.ndarray
+                the matrix elements in real space, shape=(nRvec, num_wann, num_wann) + (3,) * nd_cart
+                """
+            assert nb in [1, 2], "nb should be 1 or 2"
+            shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
+            if transl_inv_JM:
+                phase_loc = expiRphase1 if nb ==1 else expiRphase2
                 phase_loc = np.reshape(phase_loc, phase_loc.shape + (1,) * nd_cart)
-                shape_R = (self.rvec.nRvec,) + shape[1:]
-                XX_R = np.zeros(shape_R, dtype=complex)
-                for ib in range(NNB):
-                    print(f"{ib=} of {NNB}")
-                    XX_R[:] += self.rvec.q_to_R(getter_from_chk(ib=ib)) * phase_loc[:, :, :, ib]
-                return XX_R
-
-            def get_matrix_2b(getter_from_chk, nd_cart):
-                shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
-                phase_loc = expiRphase2
-                phase_loc = np.reshape(phase_loc, phase_loc.shape + (1,) * nd_cart)
-                shape_R = (self.rvec.nRvec,) + shape[1:]
-                XX_R = np.zeros(shape_R, dtype=complex)
-                for ib1 in range(NNB):
-                    print(f"{ib1=} of {NNB}")
-                    for ib2 in range(NNB):
-                        print(f"{ib2=} of {NNB}")
-                        XX_R[:] += self.rvec.q_to_R(getter_from_chk(ib1=ib1, ib2=ib2)
-                                                    ) * phase_loc[:, :, :, ib1, ib2]
-                return XX_R
-        else:
-            def get_matrix_1b(getter_from_chk, nd_cart):
-                shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
-                XX_q = np.zeros(shape, dtype=complex)
-                for ib in range(NNB):
-                    XX_q += getter_from_chk(ib=ib)
-                return self.rvec.q_to_R(XX_q)
-
-            def get_matrix_2b(getter_from_chk, nd_cart):
-                shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
-                XX_q = np.zeros(shape, dtype=complex)
-                for ib1 in range(NNB):
-                    for ib2 in range(NNB):
-                        XX_q += getter_from_chk(ib1=ib1, ib2=ib2)
-                return self.rvec.q_to_R(XX_q)
+            else:
+                phase_loc = np.ones((1, 1, 1,) + (NNB,)*nb + (1,) * nd_cart)
+            shape_R = (self.rvec.nRvec,) + shape[1:]
+            XX_R = np.zeros(shape_R, dtype=complex)
+            for ib, db in zip (index_b[nb], dict_ib[nb]):
+                XX_R[:] += self.rvec.q_to_R(getter_from_chk(**db)) * phase_loc[:, :, :, *ib]
+            return XX_R
 
 
         # Wannier centers
@@ -265,7 +257,6 @@ class System_w90(System_R):
                 _r0 = centers[None, :, :]
 
             expjphase1 = np.exp(1j * cached_einsum('ba,ija->ijb', bk_cart, _r0))
-            print(f"expjphase1 {expjphase1.shape}")
             expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
 
 
@@ -279,7 +270,7 @@ class System_w90(System_R):
                                                     transl_inv=transl_inv_MV,
                                                     phase=expjphase1)
                 self.set_R_mat('AA',
-                               get_matrix_1b(getter_from_chk=getter_from_chk, nd_cart=1),
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1),
                                Hermitian=True)
 
                 print("setting AA - OK")
@@ -294,8 +285,7 @@ class System_w90(System_R):
                                                     kptirr=kptirr,
                                                     weights_k=weights_k,
                                                     phase=expjphase1)
-                self.set_R_mat('BB',
-                               get_matrix_1b(getter_from_chk=getter_from_chk, nd_cart=1),)
+                self.set_R_mat('BB', sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1))
                 print("setting BB - OK")
 
 
@@ -310,7 +300,7 @@ class System_w90(System_R):
                                                     antisym=True,
                                                     phase=expjphase2)
                 self.set_R_mat('CC',
-                               get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=1),
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2),
                                Hermitian=True)
                 print("setting CC - OK")
 
@@ -326,8 +316,8 @@ class System_w90(System_R):
                                                     antisym=True,
                                                     phase=expjphase2)
                 self.set_R_mat('OO',
-                               get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=1),
-                               Hermitian=True)
+                                sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2),
+                                Hermitian=True)
                 print("setting OO - ok")
 
 
@@ -342,7 +332,7 @@ class System_w90(System_R):
                                                     antisym=False,
                                                     phase=expjphase2)
                 self.set_R_mat('GG',
-                               get_matrix_2b(getter_from_chk=getter_from_chk, nd_cart=2),
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=2),
                                Hermitian=True)
                 print("setting GG - OK")
 
@@ -375,7 +365,7 @@ class System_w90(System_R):
                                                     weights_k=weights_k,  # ib is not used here
                                                     phase=expjphase1)
                 self.set_R_mat('SA',
-                               get_matrix_1b(getter_from_chk=getter_from_chk, nd_cart=2))
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
                 print("setting SA - OK")
 
             if 'SHA' in self.needed_R_matrices:
@@ -387,7 +377,7 @@ class System_w90(System_R):
                                                     weights_k=weights_k,  # ib is not used here
                                                     phase=expjphase1)
                 self.set_R_mat('SHA',
-                               get_matrix_1b(getter_from_chk=getter_from_chk, nd_cart=2))
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
                 print("setting SHA - OK")
 
             del expjphase1, expjphase2
