@@ -297,8 +297,8 @@ class CheckPoint(SavableNPZ):
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    def get_AABB_qb(self, mmn, kptirr, weights_k,
-                    transl_inv=False, eig=None, phase=None, sum_b=False):
+    def get_AABB_q_ib(self, mmn, kptirr, weights_k, ib,
+                    transl_inv=False, eig=None, phase=None):
         """
         Returns the matrix elements AA or BB(if eig is not Flase) in the Wannier gauge
 
@@ -323,52 +323,36 @@ class CheckPoint(SavableNPZ):
             the q-resolved matrix elements AA or BB in the Wannier gauge
         """
         assert (not transl_inv) or eig is None, "transl_inv cannot be used for BB matrix elements"
-        if sum_b:
-            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
-        else:
-            AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3), dtype=complex)
+        AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         for ik, w in zip(kptirr, weights_k):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik][ib]
-                # Matrix < u_k | u_k+b > (mmn)
-                data = mmn.data[ik][ib]                   # Hamiltonian gauge
-                if eig is not None:
-                    data = data * eig.data[ik][:, None]  # Hamiltonian gauge (add energies)
-                AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
-                # Matrix for finite-difference schemes
-                AA_q_ik_ib = 1.j * AAW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :]
-                # Marzari & Vanderbilt formula for band-diagonal matrix elements
-                if transl_inv:
-                    AA_q_ik_ib[range(self.num_wann), range(self.num_wann)] = -np.log(
-                        AAW.diagonal()).imag[:, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, :]
-                if phase is not None:
-                    AA_q_ik_ib *= phase[:, :, ib, None]
-                if sum_b:
-                    AA_qb[ik] += AA_q_ik_ib * w
-                else:
-                    AA_qb[ik, :, :, ib, :] = AA_q_ik_ib * w
+            iknb = mmn.neighbours[ik][ib]
+            # Matrix < u_k | u_k+b > (mmn)
+            data = mmn.data[ik][ib]                   # Hamiltonian gauge
+            if eig is not None:
+                data = data * eig.data[ik][:, None]  # Hamiltonian gauge (add energies)
+            AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
+            # Matrix for finite-difference schemes
+            AA_qb[ik] = 1.j * AAW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :] * w
+            # Marzari & Vanderbilt formula for band-diagonal matrix elements
+            if transl_inv:
+                AA_qb[ik][range(self.num_wann), range(self.num_wann)] = -np.log(
+                    AAW.diagonal()).imag[:, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, :]
+            if phase is not None:
+                AA_qb[ik] *= phase[:, :, ib, None]
         return AA_qb
 
 
     # --- A_a(q,b) matrix --- #
 
 
-    def get_AA_qb(self, mmn, kptirr, weights_k,
-                  transl_inv=False, phase=None, sum_b=False):
+    def get_AA_q(self, mmn, kptirr, weights_k,):
         """	
          A wrapper for get_AABB_qb with eig=None
          see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details  
          """
-        return self.get_AABB_qb(mmn, kptirr=kptirr, weights_k=weights_k,
-                                transl_inv=transl_inv, phase=phase, sum_b=sum_b)
+        return sum(self.get_AABB_q_ib(mmn, kptirr=kptirr, weights_k=weights_k, ib=ib, transl_inv=True, eig=None, phase=None)
+                   for ib in range(mmn.NNB))
 
-    def get_AA_q(self, mmn, kptirr, weights_k, transl_inv=False):
-        """
-        A wrapper for get_AA_qb with sum_b=True
-        see :meth:`~wannierberri.w90files.CheckPoint.get_AA_qb` for more details
-        """
-        return self.get_AA_qb(mmn=mmn, kptirr=kptirr, weights_k=weights_k,
-                              transl_inv=transl_inv, sum_b=True).sum(axis=3)
 
     def get_wannier_centers(self, mmn, spreads=False):
         """
@@ -408,19 +392,7 @@ class CheckPoint(SavableNPZ):
             return wcc
 
 
-    # --- B_a(q,b) matrix --- #
-
-
-    def get_BB_qb(self, mmn, eig, kptirr, weights_k, phase=None, sum_b=False):
-        """	
-        a wrapper for get_AABB_qb to evaluate BB matrix elements. (transl_inv is disabled)
-        see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details
-        """
-        return self.get_AABB_qb(mmn, kptirr=kptirr, weights_k=weights_k,
-                                eig=eig, phase=phase, sum_b=sum_b)
-
-
-    def get_CCOOGG_qb(self, mmn, uhu, kptirr, weights_k, antisym=True, phase=None, sum_b=False):
+    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True):
         """
         Returns the matrix elements CC, OO or GG in the Wannier gauge
 
@@ -444,64 +416,30 @@ class CheckPoint(SavableNPZ):
             the q-resolved matrix elements CC, OO or GG in the Wannier gauge
         """
         nd_cart = 1 if antisym else 2
-        shape_NNB = () if sum_b else (mmn.NNB, mmn.NNB)
-        shape = (self.num_kpts, self.num_wann, self.num_wann) + shape_NNB + (3,) * nd_cart
+        shape = (self.num_kpts, self.num_wann, self.num_wann) + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
-        if phase is not None:
-            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik, weight in zip(kptirr, weights_k):
-            for ib1 in range(mmn.NNB):
-                iknb1 = mmn.neighbours[ik][ib1]
-                for ib2 in range(mmn.NNB):
-                    iknb2 = mmn.neighbours[ik][ib2]
-                    # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
-                    data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
-                    CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
+            iknb1 = mmn.neighbours[ik][ib1]
+            iknb2 = mmn.neighbours[ik][ib2]
+            # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
+            data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
+            CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
 
-                    if antisym:
-                        # Matrix for finite-difference schemes (takes antisymmetric piece only)
-                        CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                            mmn.wk[ib1] * mmn.wk[ib2] * (
-                                mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
-                                mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
-                    else:
-                        # Matrix for finite-difference schemes (takes symmetric piece only)
-                        CC_q_ik_ib = CCW[:, :, None, None] * (
-                            mmn.wk[ib1] * mmn.wk[ib2] * (
-                                mmn.bk_cart[ib1, :, None] *
-                                mmn.bk_cart[ib2, None, :]))[None, None, :, :]
-                    if phase is not None:
-                        CC_q_ik_ib *= phase[:, :, ib1, ib2]
-                    if sum_b:
-                        CC_qb[ik] += CC_q_ik_ib * weight
-                    else:
-                        CC_qb[ik, :, :, ib1, ib2] = CC_q_ik_ib * weight
+            if antisym:
+                # Matrix for finite-difference schemes (takes antisymmetric piece only)
+                CC_q_ik_ib = 1.j * CCW[:, :, None] * (
+                    mmn.wk[ib1] * mmn.wk[ib2] * (
+                        mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
+                        mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
+            else:
+                # Matrix for finite-difference schemes (takes symmetric piece only)
+                CC_q_ik_ib = CCW[:, :, None, None] * (
+                    mmn.wk[ib1] * mmn.wk[ib2] * (
+                        mmn.bk_cart[ib1, :, None] *
+                        mmn.bk_cart[ib2, None, :]))[None, None, :, :]
+            CC_qb[ik] = CC_q_ik_ib * weight
         return CC_qb
 
-    # --- C_a(q,b1,b2) matrix --- #
-    def get_CC_qb(self, mmn, uhu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=True
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        """
-        return self.get_CCOOGG_qb(mmn, uhu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
-
-    # --- O_a(q,b1,b2) matrix --- #
-    def get_OO_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=False
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        (actually, the same as :meth:`~wannierberri.w90files.CheckPoint.get_CC_qb`)
-        """
-        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, phase=phase, sum_b=sum_b)
-
-    # Symmetric G_bc(q,b1,b2) matrix
-    def get_GG_qb(self, mmn, uiu, kptirr, weights_k, phase=None, sum_b=False):
-        """
-        A wrapper for get_CCOOGG_qb with antisym=False 
-        see :meth:`~wannierberri.w90files.CheckPoint.get_CCOOGG_qb` for more details
-        """
-        return self.get_CCOOGG_qb(mmn, uiu, kptirr=kptirr, weights_k=weights_k, antisym=False, phase=phase, sum_b=sum_b)
     ###########################################################################
 
 
@@ -516,29 +454,16 @@ class CheckPoint(SavableNPZ):
             SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik) * weight
         return SH_q
 
-    def get_SHA_q(self, shu, mmn, kptirr, weights_k,
-                  phase=None, sum_b=False):
+    def get_SHA_q(self, shu, mmn, kptirr, weights_k, ib):
         """
         SHA or SA (if siu is used instead of shu)
         """
-        if sum_b:
-            SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        else:
-            SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, mmn.NNB, 3, 3), dtype=complex)
+        SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         assert shu.NNB == mmn.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={mmn.NNB} - mismatch"
         for ik, weight in zip(kptirr, weights_k):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik][ib]
-                SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
-                SHA_q_ik_ib = 1.j * SHAW[:, :, None, :] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None]
-
-                if phase is not None:
-                    SHA_q_ik_ib *= phase[:, :, ib, None, None]
-                if sum_b:
-                    SHA_qb[ik] += SHA_q_ik_ib * weight
-                else:
-                    SHA_qb[ik, :, :, ib, :, :] = SHA_q_ik_ib * weight
-
+            iknb = mmn.neighbours[ik][ib]
+            SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
+            SHA_qb[ik] = 1.j * SHAW[:, :, None, :] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None] * weight
         return SHA_qb
 
 
