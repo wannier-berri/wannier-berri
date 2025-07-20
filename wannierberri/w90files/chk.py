@@ -392,7 +392,7 @@ class CheckPoint(SavableNPZ):
             return wcc
 
 
-    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True, phase=None):
+    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True):
         """
         Returns the matrix elements CC, OO or GG in the Wannier gauge
 
@@ -418,8 +418,6 @@ class CheckPoint(SavableNPZ):
         nd_cart = 1 if antisym else 2
         shape = (self.num_kpts, self.num_wann, self.num_wann) + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
-        if phase is not None:
-            phase = np.reshape(phase, np.shape(phase)[:4] + (1,) * nd_cart)
         for ik, weight in zip(kptirr, weights_k):
             iknb1 = mmn.neighbours[ik][ib1]
             iknb2 = mmn.neighbours[ik][ib2]
@@ -439,9 +437,7 @@ class CheckPoint(SavableNPZ):
                     mmn.wk[ib1] * mmn.wk[ib2] * (
                         mmn.bk_cart[ib1, :, None] *
                         mmn.bk_cart[ib2, None, :]))[None, None, :, :]
-            if phase is not None:
-                CC_q_ik_ib *= phase[:, :, ib1, ib2]
-            CC_qb[ik] += CC_q_ik_ib * weight
+            CC_qb[ik] = CC_q_ik_ib * weight
         return CC_qb
 
     ###########################################################################
@@ -458,8 +454,7 @@ class CheckPoint(SavableNPZ):
             SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik) * weight
         return SH_q
 
-    def get_SHA_q(self, shu, mmn, kptirr, weights_k, ib,
-                  phase=None):
+    def get_SHA_q(self, shu, mmn, kptirr, weights_k, ib):
         """
         SHA or SA (if siu is used instead of shu)
         """
@@ -469,8 +464,6 @@ class CheckPoint(SavableNPZ):
             iknb = mmn.neighbours[ik][ib]
             SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
             SHA_qb[ik] = 1.j * SHAW[:, :, None, :] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None] * weight
-            if phase is not None:
-                SHA_qb[ik] *= phase[:, :, ib, None, None]
         return SHA_qb
 
 
