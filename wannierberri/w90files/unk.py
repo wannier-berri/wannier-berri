@@ -48,8 +48,11 @@ class UNK(W90_file):
                       NK=None, NKmax=10000, spinor=False,
                       spin_channel=1,
                       reduce_grid=(1, 1, 1),
-                      selected_kpoints=None):
+                      selected_kpoints=None,
+                      formatted=False):
 
+        if formatted:
+            raise NotImplementedError("Formatted UNK files are not supported yet")
         assert (path is None) != (seedname is None), "either path or seedname should be provided, and not both"
         if path is None:
             path = os.path.dirname(seedname)
