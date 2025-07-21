@@ -13,6 +13,7 @@
 # ------------------------------------------------------------#
 
 from collections import defaultdict
+import functools
 import numpy as np
 import os
 import multiprocessing
@@ -197,90 +198,178 @@ class System_w90(System_R):
             self.wannier_centers_cart = w90data.wannier_centers_cart
         else:
             assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
-            AA_q = chk.get_AA_qb(w90data.mmn, kptirr=kptirr, weights_k=weights_k,
-                                 transl_inv=True, sum_b=True, phase=None)
+            AA_q = chk.get_AA_q(w90data.mmn, kptirr=kptirr, weights_k=weights_k)
             AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
             self.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
+
 
         # Wannier centers
         centers = self.wannier_centers_cart
         # Unique set of nearest-neighbor vectors (cartesian)
         if w90data.has_file('mmn'):
+            NNB = w90data.mmn.NNB
+            if transl_inv_JM:
+                bk_cart = w90data.mmn.bk_cart
+                phaseR = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * self.rvec.cRvec)
+                expiRphase1 = np.exp(1j * phaseR)[:, None, None, :]
+                expiRphase2 = expiRphase1[:, :, :, :, None] * expiRphase1[:, :, :, None, :]
+
+            index_b = {1: [(ib,) for ib in range(NNB)],
+                       2: [(ib1, ib2) for ib1 in range(NNB) for ib2 in range(NNB)]}
+            dict_ib = {1: [{'ib': ib[0]} for ib in index_b[1]],
+                    2: [{'ib1': ib[0], 'ib2': ib[1]} for ib in index_b[2]]}
+
+            def sum_matrix_b(getter_from_chk, nd_cart, nb=2):
+                """loop over nearest-neighbor vectors and sum the matrix elements
+                possibly adding phase factors depending on the lattice vectors R
+                and the scheme used
+
+                Parameters
+                ----------
+                getter_from_chk : callable
+                    function that returns the matrix elements for a given nearest-neighbor vector(s)
+                nd_cart : int
+                    number of cartesian dimensions of the matrix elements
+                nb : int
+                    number of loops over nearest-neighbor vectors (1 or 2)
+                Returns
+                -------
+                XX_R : np.ndarray
+                    the matrix elements in real space, shape=(nRvec, num_wann, num_wann) + (3,) * nd_cart
+                    """
+                assert nb in [1, 2], "nb should be 1 or 2"
+                shape = (chk.num_kpts, chk.num_wann, chk.num_wann) + (3,) * nd_cart
+                if transl_inv_JM:
+                    phase_loc_i = expiRphase1 if nb == 1 else expiRphase2
+                    phase_loc_i = np.reshape(phase_loc_i, phase_loc_i.shape + (1,) * nd_cart)
+                else:
+                    phase_loc_i = np.ones((1, 1, 1,) + (NNB,) * nb + (1,) * nd_cart)
+                phase_loc_j = expjphase1 if nb == 1 else expjphase2
+                phase_loc_j = np.reshape(phase_loc_j, (1,) + phase_loc_j.shape + (1,) * nd_cart)
+                shape_R = (self.rvec.nRvec,) + shape[1:]
+                XX_R = np.zeros(shape_R, dtype=complex)
+                for ib, db in zip(index_b[nb], dict_ib[nb]):
+                    XX_R[:] += self.rvec.q_to_R(getter_from_chk(**db) * phase_loc_j[:, :, :, *ib]) * phase_loc_i[:, :, :, *ib]
+                return XX_R
+
             bk_cart = w90data.mmn.bk_cart
 
             if transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
-                sum_b = False
             else:
                 _r0 = centers[None, :, :]
-                sum_b = True
 
             expjphase1 = np.exp(1j * cached_einsum('ba,ija->ijb', bk_cart, _r0))
-            print(f"expjphase1 {expjphase1.shape}")
             expjphase2 = expjphase1.swapaxes(0, 1).conj()[:, :, :, None] * expjphase1[:, :, None, :]
-
+            kwargs_kpt = {'kptirr': kptirr, 'weights_k': weights_k}
 
             # A_a(R,b) matrix
             if self.need_R_any('AA'):
-                AA_qb = chk.get_AA_qb(w90data.mmn, kptirr=kptirr, weights_k=weights_k,
-                                      transl_inv=transl_inv_MV, sum_b=sum_b, phase=expjphase1)
-                AA_Rb = self.rvec.q_to_R(AA_qb)
-                self.set_R_mat('AA', AA_Rb, Hermitian=True)
+                print("setting AA..")
+                getter_from_chk = functools.partial(chk.get_AABB_q_ib,
+                                                    mmn=w90data.mmn,
+                                                    transl_inv=transl_inv_MV,
+                                                    **kwargs_kpt)
+                self.set_R_mat('AA',
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1),
+                               Hermitian=True)
+
+                print("setting AA - OK")
+
 
             # B_a(R,b) matrix
             if 'BB' in self.needed_R_matrices:
-                BB_qb = chk.get_BB_qb(w90data.mmn, w90data.eig, kptirr=kptirr, weights_k=weights_k,
-                                      sum_b=sum_b, phase=expjphase1)
-                BB_Rb = self.rvec.q_to_R(BB_qb)
-                self.set_R_mat('BB', BB_Rb)
+                print("setting BB...")
+                getter_from_chk = functools.partial(chk.get_AABB_q_ib,
+                                                    mmn=w90data.mmn,
+                                                    eig=w90data.eig,
+                                                    **kwargs_kpt)
+                self.set_R_mat('BB', sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1))
+                print("setting BB - OK")
+
 
             # C_a(R,b1,b2) matrix
             if 'CC' in self.needed_R_matrices:
-                CC_qb = chk.get_CC_qb(w90data.mmn, w90data.uhu, kptirr=kptirr, weights_k=weights_k,
-                                      sum_b=sum_b, phase=expjphase2)
-                CC_Rb = self.rvec.q_to_R(CC_qb)
-                self.set_R_mat('CC', CC_Rb, Hermitian=True)
+                print("setting CC..")
+                getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
+                                                    mmn=w90data.mmn,
+                                                    uhu=w90data.uhu,
+                                                    antisym=True,
+                                                    **kwargs_kpt)
+                self.set_R_mat('CC',
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2),
+                               Hermitian=True)
+                print("setting CC - OK")
+
 
             # O_a(R,b1,b2) matrix
             if 'OO' in self.needed_R_matrices:
-                OO_qb = chk.get_OO_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
-                                      sum_b=sum_b, phase=expjphase2)
-                OO_Rb = self.rvec.q_to_R(OO_qb)
-                self.set_R_mat('OO', OO_Rb, Hermitian=True)
+                print("setting OO..")
+                getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
+                                                    mmn=w90data.mmn,
+                                                    uhu=w90data.uiu,
+                                                    antisym=True,
+                                                    **kwargs_kpt)
+                self.set_R_mat('OO',
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2),
+                               Hermitian=True)
+                print("setting OO - ok")
+
 
             # G_bc(R,b1,b2) matrix
             if 'GG' in self.needed_R_matrices:
-                GG_qb = chk.get_GG_qb(w90data.mmn, w90data.uiu, kptirr=kptirr, weights_k=weights_k,
-                                      sum_b=sum_b, phase=expjphase2)
-                GG_Rb = self.rvec.q_to_R(GG_qb)
-                self.set_R_mat('GG', GG_Rb, Hermitian=True)
+                print("setting GG..")
+                getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
+                                                    mmn=w90data.mmn,
+                                                    uhu=w90data.uiu,
+                                                    antisym=False,
+                                                    **kwargs_kpt)
+                self.set_R_mat('GG',
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=2),
+                               Hermitian=True)
+                print("setting GG - OK")
 
             #######################################################################
 
+            # by analogy, it looks weird that expiRphase is not applied for SR and SHR
+            # TODO : FIXME: check JaeMo's notes to see if it is intended, or overlooked
+
             if self.need_R_any('SR'):
+                print("setting SR..")
                 self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
-                                                                    kptirr=kptirr, weights_k=weights_k,
-                                       phase=expjphase1)))
+                                                                    **kwargs_kpt, phase=expjphase1)))
+                print("setting SR - Ok")
             if self.need_R_any('SH'):
-                self.set_R_mat('SH', self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig,
-                                                                   kptirr=kptirr, weights_k=weights_k,
-                                       )))
+                self.set_R_mat('SH',
+                               self.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig, **kwargs_kpt)))
+                print("setting SH - Ok")
             if self.need_R_any('SHR'):
+                print("setting SHR..")
                 self.set_R_mat('SHR', self.rvec.q_to_R(
                     chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
-                                  kptirr=kptirr, weights_k=weights_k,
+                                  **kwargs_kpt,
                                   eig=w90data.eig, phase=expjphase1)))
+                print("setting SHR - OK")
 
             if 'SA' in self.needed_R_matrices:
+                print("setting SA..")
+                getter_from_chk = functools.partial(chk.get_SHA_q,
+                                                    shu=w90data.siu,
+                                                    mmn=w90data.mmn,
+                                                    **kwargs_kpt)
                 self.set_R_mat('SA',
-                            self.rvec.q_to_R(chk.get_SHA_q(w90data.siu, w90data.mmn,
-                                                           kptirr=kptirr, weights_k=weights_k,
-                                        sum_b=sum_b, phase=expjphase1)))
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
+                print("setting SA - OK")
+
             if 'SHA' in self.needed_R_matrices:
+                print("setting SHA..")
+                getter_from_chk = functools.partial(chk.get_SHA_q,
+                                                    shu=w90data.shu,
+                                                    mmn=w90data.mmn,
+                                                    **kwargs_kpt)
                 self.set_R_mat('SHA',
-                            self.rvec.q_to_R(chk.get_SHA_q(w90data.shu, w90data.mmn,
-                                                           kptirr=kptirr, weights_k=weights_k,
-                                        sum_b=sum_b, phase=expjphase1)))
+                               sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
+                print("setting SHA - OK")
 
             del expjphase1, expjphase2
 
@@ -323,32 +412,6 @@ class System_w90(System_R):
         - SA_a(R) matrix: recentered by the S matrix
         - SHA_a(R) matrix: recentered by the S matrix
         """
-        #  Here we apply the phase factors associated with the
-        # JM scheme not accounted above, and perform the sum over
-        # nearest-neighbor vectors to finally obtain the real-space matrix
-        # elements.
-
-        # Optimal center in Jae-Mo's implementation
-        phase = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * self.rvec.cRvec)
-        expiphase1 = np.exp(1j * phase)[:, None, None, :]
-        expiphase2 = expiphase1[:, :, :, :, None] * expiphase1[:, :, :, None, :]
-
-        def _reset_mat(key, phase, axis, Hermitian=True):
-            if self.need_R_any(key):
-                XX_Rb = self.get_R_mat(key)
-                phase = np.reshape(phase, np.shape(phase) + (1,) * (XX_Rb.ndim - np.ndim(phase)))
-                XX_R = np.sum(XX_Rb * phase, axis=axis)
-                self.set_R_mat(key, XX_R, reset=True, Hermitian=Hermitian)
-
-        _reset_mat('AA', expiphase1, 3)
-        _reset_mat('BB', expiphase1, 3, Hermitian=False)
-        _reset_mat('CC', expiphase2, (3, 4))
-        _reset_mat('SA', expiphase1, 3, Hermitian=False)
-        _reset_mat('SHA', expiphase1, 3, Hermitian=False)
-        _reset_mat('OO', expiphase2, (3, 4))
-        _reset_mat('GG', expiphase2, (3, 4))
-
-        del expiphase1, expiphase2
         r0 = 0.5 * (centers[None, :, None, :] + centers[None, None, :, :] + self.rvec.cRvec[:, None, None, :])
 
         # --- A_a(R) matrix --- #
@@ -386,3 +449,4 @@ class System_w90(System_R):
         # --- G_bc(R) matrix --- #
         if self.need_R_any('GG'):
             pass
+        print("recentering JM - OK")
