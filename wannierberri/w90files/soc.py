@@ -113,8 +113,8 @@ class SOC(W90_file):
                             P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a]
                             P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a]
                         else:
-                            P1_mi = calc.wfs.kpt_qs[q].P_ani[a]
-                            P2_mi = calc.wfs.kpt_qs[q].P_ani[a]
+                            P1_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
+                            P2_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
                         h_soc[q, s1, s2] += np.dot(np.dot(P1_mi.conj(), h_ii), P2_mi.T)
         h_soc *= Hartree
         return cls(data=h_soc, NK=nk)
