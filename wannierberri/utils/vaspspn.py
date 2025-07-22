@@ -140,7 +140,7 @@ def main(argv):
             WF[:, ib] = record(3 + ik * (NBin + 1) + ib + IBstart, npw, np.complex64)
        
         if normalize == "norm":
-            WF = WF / np.sqrt(np.abs(overlap.diagonal()))
+            WF /= np.linalg.norm(WF, axis=0)[None, :]
 
         SIGMA = np.array(
             [
