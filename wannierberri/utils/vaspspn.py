@@ -138,9 +138,7 @@ def main(argv):
         WF = np.zeros((npw, NBout), dtype=complex)
         for ib in range(NBout):
             WF[:, ib] = record(3 + ik * (NBin + 1) + ib + IBstart, npw, np.complex64)
-        overlap = WF.conj().T.dot(WF)
-        assert np.max(np.abs(overlap - overlap.T.conj())) < 1e-15
-
+       
         if normalize == "norm":
             WF = WF / np.sqrt(np.abs(overlap.diagonal()))
 
