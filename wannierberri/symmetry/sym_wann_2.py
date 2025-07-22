@@ -87,7 +87,6 @@ class SymWann:
 
 
         # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
-        # TODO: change it
         self.parity_I = {
             'Ham': 1,
             'AA': -1,
