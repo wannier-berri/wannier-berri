@@ -30,3 +30,5 @@ tags
 
 # temporary test files
 tests/_output
+
+.DS_Store
