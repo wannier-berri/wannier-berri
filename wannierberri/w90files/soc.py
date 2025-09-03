@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from .w90file import W90_file, check_shape
 from ..utility import cached_einsum
@@ -7,21 +8,43 @@ class SOC(W90_file):
     """
     stores the SOC hamiltonian in the basis of Blochj states of the non-SOC calculation.
     the order of bands is up-down-up-down, i.e. the spin channels are interlaced
+
+    Parameters
+    ----------
+    data : np.ndarray
+        The SOC Hamiltonian data.
+    theta : float
+        The polar angle for the spin-orbit coupling.
+    phi : float
+        The azimuthal angle for the spin-orbit coupling.
+    overlap : np.ndarray, optional
+        The overlap matrix elements between the spin-up and spin-down states.  O_{ij} = < Psi^up_i | Psi^down_j >
     """
 
     extension = "soc"
-    npz_ags = ["data", "theta", "phi", ]
+    npz_tags = ["theta", "phi"]
+    npz_keys_dict_int = ["data", "overlap"]
+    npz_tags = ["NK"]
 
-    def __init__(self, data, NK=None):
+    def __init__(self, data, NK=None, overlap=None):
         super().__init__(data=data, NK=NK)
         shape = check_shape(self.data)
         self.NB = shape[2]
         assert shape == (2, 2, self.NB, self.NB), f"SOC data must have shape (NB, NB), got {shape}"
-
+        if isinstance(overlap, list) or isinstance(data, np.ndarray):
+            NK = len(data)
+            self.overlap = {i: d for i, d in enumerate(overlap) if d is not None}
+        elif isinstance(overlap, dict):
+            self.overlap = overlap
+        elif overlap is None:
+            warnings.warn("No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
+            self.overlap = {i: np.eye(self.NB, dtype=complex) for i in self.data}
+        else:
+            raise ValueError(f"Invalid overlap input: {overlap} of type {type(overlap)}. Should be a list or array or None")
 
     @classmethod
     def from_w90_file(cls, seedname='wannier90', formatted=False):
-        raise NotImplementedError("SOC.from_w90_file is not implemented")
+        raise NotImplementedError("SOC.from_w90_file is not implemented - there is no such w90 file")
 
     @classmethod
     def from_bandstructure(cls, bandstructure_soc,
@@ -117,7 +140,22 @@ class SOC(W90_file):
                             P2_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
                         h_soc[q, s1, s2] += np.dot(np.dot(P1_mi.conj(), h_ii), P2_mi.T)
         h_soc *= Hartree
-        return cls(data=h_soc, NK=nk)
+
+
+        alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
+
+        overlap = np.zeros((nk, m, m), complex)
+
+        for q in range(nk):
+            psi1 = calc.wfs.kpt_qs[q][s1].psit_nG[:]
+            psi2 = calc.wfs.kpt_qs[q][s2].psit_nG[:]
+            overlap[q] += alpha * psi1.conj() @ psi2.T
+            for a, setup in enumerate(calc.wfs.setups):
+                P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a]
+                P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a]
+                overlap_ii = setup.dO_ii
+                overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
+        return cls(data=h_soc, overlap=overlap, NK=nk)
 
 
     def select_bands(self, selected_bands):

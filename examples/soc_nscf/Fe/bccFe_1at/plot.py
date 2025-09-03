@@ -28,7 +28,6 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
                      theta=theta_deg/180*np.pi,
                      phi=phi_deg/180*np.pi)
 
-
 path = Path(system_dw,
             nodes=[
                 [0.0, 0.0, 0.0],
@@ -128,6 +127,6 @@ bands_spinor.plot_path_fat(path=path,
 
 
 
-plt.ylim(-0.6, 0.6)
-# plt.ylim(-1.7,1.7)
+# plt.ylim(-0.6, 0.6)
+plt.ylim(-1.7,1.7)
 plt.savefig("bands.png")

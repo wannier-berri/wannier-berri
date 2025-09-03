@@ -39,16 +39,13 @@ class Data_K_soc(Data_K_R):
         key = (name, der)
         if key not in self._bar_quantities:
             need_rotate = True
-            if key == ("SS", 0):
-                Xbar = np.array([self.SS_W] * self.nk)
-            elif name == "SS":
-                Xbar = np.zeros((self.nk, self.num_wann, self.num_wann,) + (3,) * der, dtype=complex)
-                need_rotate = False
+            if name =="SS":
+                Xbar = self.rvec.R_to_k(self.get_R_mat('SS'), der=der, hermitian=True)
             elif name.startswith("S"):
                 raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
-                                          "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
+                                           "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
             else:  # other not spin-related operators
-                hermitian = (name in ['AA', 'SS', 'OO'])
+                hermitian = (name in ['AA', 'OO'])
                 shape = (self.nk, ) + (self.num_wann, ) * 2 + (3,) * (der + num_cart_dim(name))
                 Xbar = np.zeros(shape, dtype=complex)
                 for i, datak in enumerate([self.data_K_up, self.data_K_down]):
@@ -61,16 +58,6 @@ class Data_K_soc(Data_K_R):
             self._bar_quantities[key] = Xbar
 
         return self._bar_quantities[key]
-
-    # TODO : move to system
-    @cached_property
-    def SS_W(self):
-        SS_W = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
-        for i in range(self.num_wann_scalar):
-            SS_W[2 * i:2 * i + 2, 2 * i:2 * i + 2, :] = self.system.S_ssa
-        return SS_W
-
-    # Additional methods specific to spin-orbit coupling can be added here.
 
     def E_K_corners_tetra(self):
         # raise NotImplementedError("E_K_corners_tetra is not implemented for Data_K_soc. ")
