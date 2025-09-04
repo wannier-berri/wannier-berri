@@ -18,12 +18,17 @@ parallel=Parallel(num_cpus=16)
 phi_deg = 90
 theta_deg=90
 
-soc = SOC.from_gpaw("mnte-nscf.gpw")
+soc = SOC.from_gpaw("mnte-nscf.gpw", calc_overlap=True)
+
+# print(soc.overlap)
+
+# exit()
 
 chk_up = CHK.from_npz("system_up.chk.npz")
 chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
 system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
+                    #  alpha_soc=0.3,
                      theta=theta_deg/180*np.pi,
                      phi=phi_deg/180*np.pi)
 
@@ -43,15 +48,21 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
 kz = 0.35/system_dw.recip_lattice[2,2]
 path = Path(system_dw,
             nodes=[
-                # [2/3, -1/3, 0],
-                # [0, 0, 0],
-                # [-2/3,1/3,0],
+                [2/3, -1/3, 0],
+                [0, 0, 0],
+                [-2/3,1/3,0],
+                None,
                 [-0.5, 0, kz],
                 [0, 0, kz],
                 [0.5, 0, kz],
                 ],
-            labels=["K", "G", "K'"],
-            length=1000)   # length [ Ang] ~= 2*pi/dk
+            labels=[r"${\rm K}\leftarrow$", 
+                    r"$\Gamma$", 
+                    r"$\rightarrow{\rm K}$",
+                    r"$\overline{\rm M}\leftarrow$", 
+                    r"$\overline{\Gamma}$", 
+                    r"$\rightarrow\overline{\rm M}$"],
+            length=200)   # length [ Ang] ~= 2*pi/dk
 
 
 print(system_dw.recip_lattice)
@@ -143,5 +154,5 @@ bands_soc.plot_path_fat(path=path,
 
 
 # plt.ylim(0,7)
-plt.ylim(-1.5,0)
+plt.ylim(-8,1)
 plt.savefig("bands.png")

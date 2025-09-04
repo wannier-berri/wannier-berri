@@ -19,7 +19,6 @@ array = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.uint64)
 print(f"{np.issubdtype(array.dtype, np.integer)=}")
 print(f"{(array.dtype == int)=}")
     
-exit()
 
 
 bandstructure = BandStructure(code="gpaw",calculator_gpaw="scf.gpw",onlysym=True)
@@ -27,6 +26,8 @@ sg = bandstructure.spacegroup
 sg.show()
 
 mg = SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions,typat=sg.typat,
-                            magmom=[[0,1,0],[0,-1,0],[0,0,0],[0,0,0]])
+                            magmom=[[0,1,0],[0,-1,0],[0,0,0],[0,0,0]]
+                            # magmom=[[1,0,0],[-1,0,0],[0,0,0],[0,0,0]]
+                            )
 
 mg.show()

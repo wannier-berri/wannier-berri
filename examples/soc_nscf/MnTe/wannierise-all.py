@@ -26,7 +26,7 @@ positions_Te = [ [1/3, 2/3, 1/4],
 
 def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
     bandstructure = BandStructure(code="gpaw",
-                              calculator_gpaw=calc_gpaw,
+                                calculator_gpaw=calc_gpaw,
                                 Ecut=200,
                                 normalize=True,
                                 spinor=spinor,
@@ -42,16 +42,17 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
     proj_Mn2_d = Projection(position_num=positions_Mn[1], orbital='d', spacegroup=sg)
     proj_Mn1_s = Projection(position_num=positions_Mn[0], orbital='s', spacegroup=sg)
     proj_Mn2_s = Projection(position_num=positions_Mn[1], orbital='s', spacegroup=sg)
+    proj_Te_s = Projection(position_num=positions_Te, orbital='s', spacegroup=sg)
     proj_Te_p = Projection(position_num=positions_Te, orbital='p', spacegroup=sg)
     
-    # if spin_channel == 0:
-    #     proj_set = ProjectionsSet([proj_Mn1_d, proj_Te_p])
-    # elif spin_channel == 1:
-    #     proj_set = ProjectionsSet([proj_Mn2_d, proj_Te_p])
-    # else:
-    #     raise ValueError("spin_channel must be 0 or 1")
+    if spin_channel == 0:
+        proj_set = ProjectionsSet([proj_Mn1_d, proj_Te_s, proj_Te_p])
+    elif spin_channel == 1:
+        proj_set = ProjectionsSet([proj_Mn2_d, proj_Te_s, proj_Te_p])
+    else:
+        raise ValueError("spin_channel must be 0 or 1")
 
-    proj_set = ProjectionsSet([proj_Te_p])
+    # proj_set = ProjectionsSet([proj_Te_p])
 
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     symmetrizer = SAWF().from_irrep(bandstructure,
@@ -64,11 +65,11 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                              read_npz=False)
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)
-    w90data.select_bands(win_min=0,
-                         win_max=50)
+    # w90data.select_bands(win_min=0,
+    #                      win_max=50)
 
     w90data.wannierise(
-        froz_min=3,
+        froz_min=-10,
         froz_max=7,
         num_iter=500,
         print_progress_every=10,

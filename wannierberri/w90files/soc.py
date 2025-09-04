@@ -31,7 +31,7 @@ class SOC(W90_file):
         shape = check_shape(self.data)
         self.NB = shape[2]
         assert shape == (2, 2, self.NB, self.NB), f"SOC data must have shape (NB, NB), got {shape}"
-        if isinstance(overlap, list) or isinstance(data, np.ndarray):
+        if isinstance(overlap, list) or isinstance(overlap, np.ndarray):
             NK = len(data)
             self.overlap = {i: d for i, d in enumerate(overlap) if d is not None}
         elif isinstance(overlap, dict):
@@ -93,7 +93,7 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_gpaw(cls, calc, magnetic=True, theta=0, phi=0):
+    def from_gpaw(cls, calc, magnetic=True, theta=0, phi=0, calc_overlap=False):
         """
         Create SOC from a GPAW magnetic calculation.
         """
@@ -138,11 +138,11 @@ class SOC(W90_file):
                         else:
                             P1_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
                             P2_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
-                        h_soc[q, s1, s2] += np.dot(np.dot(P1_mi.conj(), h_ii), P2_mi.T)
+                        h_soc[q, s1, s2] += P1_mi.conj() @ h_ii @ P2_mi.T
         h_soc *= Hartree
 
 
-        if magnetic:
+        if magnetic and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
             s1=0
