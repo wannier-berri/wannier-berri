@@ -97,7 +97,7 @@ class SystemSOC(System_R):
             if overlap_q_H is None:
                 overlap_q_H = soc_q_H.overlap
             soc_q_H = soc_q_H.data
-            
+
         if overlap_q_H is None:
             eye = np.eye(chk_up.num_bands, dtype=complex)
             overlap_q_H = {i: eye for i in range(chk_up.num_kpts)}
@@ -121,7 +121,7 @@ class SystemSOC(System_R):
         ss_q_W = np.zeros((NK, self.num_wann, self.num_wann, 3), dtype=complex)
         S_ssa = SOC.get_S_vss(theta=theta, phi=phi).transpose(1, 2, 0)
 
-        rng = np.arange(self.num_wann_scalar)*2
+        rng = np.arange(self.num_wann_scalar) * 2
         for ik, w in zip(kptirr, weights_k):
             v = [chk_up.v_matrix[ik], chk_down.v_matrix[ik]]
             vt = [v[i].T.conj() for i in range(2)]
@@ -131,14 +131,14 @@ class SystemSOC(System_R):
                     soc_q_H_loc = soc_q_H[ik][i, j, selected_bands_list[i], :][:, selected_bands_list[j]]
                     soc_q_W[ik, i::2, j::2] = w * (vt[i] @ soc_q_H_loc @ v[j])
                     # Spin operator
-                    if i==j:
-                        ss_q_W[ik, i+rng, i+rng] = w * S_ssa[i,j,None,:]
-                    elif i<j: # the (i=0,j=1) case
+                    if i == j:
+                        ss_q_W[ik, i + rng, i + rng] = w * S_ssa[i, j, None, :]
+                    elif i < j:  # the (i=0,j=1) case
                         overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
-                        ss_q_W[ik, ::2, 1::2, :] = 2*(vt[0] @ overlap_loc @ v[1]) [:,:,None] *(w* S_ssa[0,1,:])
+                        ss_q_W[ik, ::2, 1::2, :] = 2 * (vt[0] @ overlap_loc @ v[1])[:, :, None] * (w * S_ssa[0, 1, :])
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         ss_q_W = (ss_q_W + ss_q_W.transpose(0, 2, 1, 3).conj()) / 2.0
-        
+
         self.soc_R = self.rvec.q_to_R(soc_q_W) * alpha_soc
         self.set_R_mat('SS', self.rvec.q_to_R(ss_q_W))
 

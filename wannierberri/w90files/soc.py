@@ -145,8 +145,8 @@ class SOC(W90_file):
         if magnetic and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
-            s1=0
-            s2=1
+            s1 = 0
+            s2 = 1
             for q in range(nk):
                 psi1 = calc.wfs.kpt_qs[q][s1].psit_nG[:]
                 psi2 = calc.wfs.kpt_qs[q][s2].psit_nG[:]
@@ -158,7 +158,7 @@ class SOC(W90_file):
                     overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
         else:
             overlap = None
-            
+
         return cls(data=h_soc, overlap=overlap, NK=nk)
 
 
