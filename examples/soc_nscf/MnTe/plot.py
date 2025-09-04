@@ -15,10 +15,11 @@ parallel=Parallel(num_cpus=16)
 # _interlaced()
 
 
-phi_deg = 00
+phi_deg = 90
 theta_deg=90
 
 soc = SOC.from_gpaw("mnte-nscf.gpw")
+
 chk_up = CHK.from_npz("system_up.chk.npz")
 chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
@@ -39,14 +40,15 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
 #             labels=["K", "G", "A", "K", "H ", "M", "L"],
 #             length=1000)   # length [ Ang] ~= 2*pi/dk
 
+kz = 0.35/system_dw.recip_lattice[2,2]
 path = Path(system_dw,
             nodes=[
-                [2/3, -1/3, 0],
-                [0, 0, 0],
-                [-2/3,1/3,0],
-                # [-0.5, 0, 0],
+                # [2/3, -1/3, 0],
                 # [0, 0, 0],
-                # [0.5, 0, 0],
+                # [-2/3,1/3,0],
+                [-0.5, 0, kz],
+                [0, 0, kz],
+                [0.5, 0, kz],
                 ],
             labels=["K", "G", "K'"],
             length=1000)   # length [ Ang] ~= 2*pi/dk
@@ -120,7 +122,7 @@ bands_dw.plot_path_fat(path=path,
 
 
 bands_soc.plot_path_fat(path=path,
-                       label="spinor",
+                       label="soc",
                        Eshift=EF,
                        axes=axes[0],
                           linecolor="black",
@@ -141,5 +143,5 @@ bands_soc.plot_path_fat(path=path,
 
 
 # plt.ylim(0,7)
-plt.ylim(-4,0)
+plt.ylim(-1.5,0)
 plt.savefig("bands.png")

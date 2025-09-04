@@ -142,19 +142,23 @@ class SOC(W90_file):
         h_soc *= Hartree
 
 
-        alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
-
-        overlap = np.zeros((nk, m, m), complex)
-
-        for q in range(nk):
-            psi1 = calc.wfs.kpt_qs[q][s1].psit_nG[:]
-            psi2 = calc.wfs.kpt_qs[q][s2].psit_nG[:]
-            overlap[q] += alpha * psi1.conj() @ psi2.T
-            for a, setup in enumerate(calc.wfs.setups):
-                P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a]
-                P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a]
-                overlap_ii = setup.dO_ii
-                overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
+        if magnetic:
+            overlap = np.zeros((nk, m, m), complex)
+            alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
+            s1=0
+            s2=1
+            for q in range(nk):
+                psi1 = calc.wfs.kpt_qs[q][s1].psit_nG[:]
+                psi2 = calc.wfs.kpt_qs[q][s2].psit_nG[:]
+                overlap[q] += alpha * psi1.conj() @ psi2.T
+                for a, setup in enumerate(calc.wfs.setups):
+                    P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a]
+                    P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a]
+                    overlap_ii = setup.dO_ii
+                    overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
+        else:
+            overlap = None
+            
         return cls(data=h_soc, overlap=overlap, NK=nk)
 
 
