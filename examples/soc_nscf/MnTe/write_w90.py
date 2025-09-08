@@ -1,6 +1,4 @@
-import numpy as np
-from ase import Atoms
-from gpaw import GPAW, PW
+from gpaw import GPAW
 
 do_nscf = False
 do_write_w90 = True
