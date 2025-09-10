@@ -18,7 +18,10 @@ parallel=Parallel(num_cpus=16)
 phi_deg = 90
 theta_deg=90
 
-soc = SOC.from_gpaw("mnte-nscf.gpw", calc_overlap=True)
+theta_rad = theta_deg/180*np.pi
+phi_rad = phi_deg/180*np.pi
+
+soc = SOC.from_gpaw("mnte-nscf.gpw", calc_overlap=True, theta=theta_rad, phi=phi_rad)
 
 # print(soc.overlap)
 
@@ -28,9 +31,7 @@ chk_up = CHK.from_npz("system_up.chk.npz")
 chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
 system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
-                    #  alpha_soc=0.3,
-                     theta=theta_deg/180*np.pi,
-                     phi=phi_deg/180*np.pi)
+                     theta=theta_rad, phi=phi_rad,)
 
 
 # path = Path(system_dw,
