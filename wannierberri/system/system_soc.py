@@ -20,7 +20,7 @@ class SystemSOC(System_R):
                  system_down=None,
                  axis=(0, 0, 1),
                  ):
-        assert isinstance(system_up, System_R), "system_up must be an instance of System_R"
+        assert isinstance(system_up, System_R), f"system_up must be an instance of System_R, got {type(system_up)}"
         self.system_up = system_up
         assert not system_up.is_phonon, "SystemSOC does not support phonons"
         if system_down is None:

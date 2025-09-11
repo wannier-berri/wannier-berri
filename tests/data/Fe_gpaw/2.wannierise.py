@@ -1,4 +1,3 @@
-from gpaw import GPAW
 import numpy as np
 import ray
 from wannierberri.system.system_w90 import System_w90
@@ -25,9 +24,9 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                 magmom=[[0, 0, 1]] if spinor else None
                                 )
     sg = bandstructure.spacegroup
-    proj_s = Projection(position_num=[[0, 0, 0]], orbital='s', spacegroup=sg)
-    proj_p = Projection(position_num=[[0, 0, 0]], orbital='p', spacegroup=sg)
-    proj_d = Projection(position_num=[[0, 0, 0]], orbital='d', spacegroup=sg)
+    # proj_s = Projection(position_num=[[0, 0, 0]], orbital='s', spacegroup=sg)
+    # proj_p = Projection(position_num=[[0, 0, 0]], orbital='p', spacegroup=sg)
+    # proj_d = Projection(position_num=[[0, 0, 0]], orbital='d', spacegroup=sg)
     proj_sp3d2 = Projection(position_num=[[0, 0, 0]], orbital='sp3d2', spacegroup=sg)
     proj_t2g = Projection(position_num=[[0, 0, 0]], orbital='t2g', spacegroup=sg)
 

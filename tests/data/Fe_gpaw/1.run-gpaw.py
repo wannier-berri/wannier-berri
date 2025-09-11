@@ -22,7 +22,7 @@ fe = Atoms('Fe',
 
 if do_scf:
     calc = GPAW(mode=PW(400),
-                kpts={'size': (4,4,4), },
+                kpts={'size': (4, 4, 4), },
                 txt=f'{seed}.txt')
 
     fe.calc = calc
@@ -46,8 +46,8 @@ else:
 if do_write_w90:
     import os
     from gpaw.wannier90 import Wannier90
-    for ispin in 0,1, :
-        spin_name = f'spin-{ispin}' 
+    for ispin in 0, 1, :
+        spin_name = f'spin-{ispin}'
         seed_wan = f"{seed}-{spin_name}"
         w90 = Wannier90(calc_nscf,
                         seed=seed_wan,
