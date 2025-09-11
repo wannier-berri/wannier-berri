@@ -1,10 +1,10 @@
 import numpy as np
 
+from ..utility import cached_einsum
 from ..fourier.rvectors import Rvectors
+from ..w90files.soc import SOC
 
 from .system_R import System_R
-from ..w90files.w90file import W90_file
-from ..w90files.soc import SOC
 
 
 
@@ -59,17 +59,16 @@ class SystemSOC(System_R):
         self.has_soc = False
 
 
-    def set_soc_R(self, soc_q_H, chk_up, chk_down=None,
-                  overlap_q_H=None,
+    def set_soc_R(self, soc, 
+                  chk_up, chk_down=None,
                   kptirr=None, weights_k=None, ws_dist_tol=1e-5,
                   theta=0, phi=0, alpha_soc=1.0):
         """
         Set the spin-orbit coupling matrix for a given k-point.
 
         Parameters:
-        soc_q_H : np.array(num_k, 2* num_bands, 2 * num_bands)
-            The spin-orbit coupling matrix in the basis of the bands of the non-spin-orbit coupled system.
-            the ordering of bands id up-down-up-down... (interlaced)
+        soc : wannierberri.w90files.soc.SOC
+            the object containing the SOC Hamiltonian and overlap (between up and down) matrices.
         chk_up : bool
             Flag to check if the up-spin system is valid.
         chk_down : bool
@@ -81,9 +80,9 @@ class SystemSOC(System_R):
         ws_dist_tol : float, optional
             Tolerance for the Wiggins-Seitz distance for the R-vectors.
         theta : float, optional
-            Polar angle for the spin-orbit coupling.
+            Polar angle for the spin-orbit coupling. (radians)
         phi : float, optional
-            Azimuthal angle for the spin-orbit coupling.
+            Azimuthal angle for the spin-orbit coupling. (radians)
         alpha_soc : float, optional
             Scaling factor for the spin-orbit coupling matrix.
         """
@@ -93,10 +92,10 @@ class SystemSOC(System_R):
         assert np.all(chk_up.mp_grid == chk_down.mp_grid)
         assert np.allclose(chk_up.kpt_latt, chk_down.kpt_latt), f"k-point grids should match for up and down systems ({chk_up.kpt_latt} != {chk_down.kpt_latt})"
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
-        if isinstance(soc_q_H, W90_file):
-            if overlap_q_H is None:
-                overlap_q_H = soc_q_H.overlap
-            soc_q_H = soc_q_H.data
+        assert isinstance(soc, SOC), "soc must be an instance of wannierberri.w90files.soc.SOC"
+        overlap_q_H = soc.overlap
+        h_soc = soc.data
+        nspin = soc.nspin
 
         if overlap_q_H is None:
             eye = np.eye(chk_up.num_bands, dtype=complex)
@@ -119,17 +118,33 @@ class SystemSOC(System_R):
             raise NotImplementedError("kptirr and weights_k are not implemented yet")
         soc_q_W = np.zeros((NK, self.num_wann, self.num_wann), dtype=complex)
         ss_q_W = np.zeros((NK, self.num_wann, self.num_wann, 3), dtype=complex)
-        S_ssa = SOC.get_S_vss(theta=theta, phi=phi).transpose(1, 2, 0)
 
+        S_ssa = SOC.get_S_vss(theta=theta, phi=phi).transpose(1, 2, 0)
+        C_ss = SOC.get_C_ss(theta=theta, phi=phi)
+
+        print (f"nspin in SOC: {nspin}")
+        if nspin == 1:
+            def index_spin(s):
+                return 0
+        elif nspin == 2:
+            def index_spin(s):
+                return s
+        # h_ssii = cached_einsum("ab,bcij,cd->adij", C_ss.T.conj(), H_ssii, C_ss, optimize=True)
+        # h_soc[q, s1, s2, t1, t2] += P1_mi.conj() @ H_ssii[t1, t2] @ P2_mi.T
         rng = np.arange(self.num_wann_scalar) * 2
         for ik, w in zip(kptirr, weights_k):
             v = [chk_up.v_matrix[ik], chk_down.v_matrix[ik]]
             vt = [v[i].T.conj() for i in range(2)]
             for i in range(2):
+                i1 = index_spin(i)
                 for j in range(2):
-                    # Hamiltonian
-                    soc_q_H_loc = soc_q_H[ik][i, j, selected_bands_list[i], :][:, selected_bands_list[j]]
-                    soc_q_W[ik, i::2, j::2] = w * (vt[i] @ soc_q_H_loc @ v[j])
+                    j1 = index_spin(j)
+                    # h_loc = h_soc[ik][i1, j1]
+                    # h_loc = h_loc[:, :, selected_bands_list[i], :]
+                    # h_loc = h_loc[:, :, :, selected_bands_list[j]]
+                    h_loc = h_soc[ik][i1, j1][:, :, selected_bands_list[i], :][:, :, :, selected_bands_list[j]]
+                    h_loc = cached_einsum("abmn,a,b->mn", h_loc, C_ss[:,i].conj(), C_ss[:,j])
+                    soc_q_W[ik, i::2, j::2] = w * (vt[i] @ h_loc @ v[j])
                     # Spin operator
                     if i == j:
                         ss_q_W[ik, i + rng, i + rng] = w * S_ssa[i, j, None, :]

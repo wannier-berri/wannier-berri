@@ -19,6 +19,12 @@ class SOC(W90_file):
         The azimuthal angle for the spin-orbit coupling.
     overlap : np.ndarray, optional
         The overlap matrix elements between the spin-up and spin-down states.  O_{ij} = < Psi^up_i | Psi^down_j >
+
+    Attributes
+    ----------
+    data : {ik:  np.ndarray(2,2,2,2,NB,NB)}
+        The SOC Hamiltonian data. 
+        data[ik][s1,s2,t1,t2,i,j] = < Psi^s1_i | H_soc^{t1,t2} | Psi^s2_j > 
     """
 
     extension = "soc"
@@ -29,8 +35,9 @@ class SOC(W90_file):
     def __init__(self, data, NK=None, overlap=None):
         super().__init__(data=data, NK=NK)
         shape = check_shape(self.data)
-        self.NB = shape[2]
-        assert shape == (2, 2, self.NB, self.NB), f"SOC data must have shape (NB, NB), got {shape}"
+        self.NB = shape[4]
+        self.nspin = shape[0]
+        assert shape == (self.nspin, self.nspin, 2,2, self.NB, self.NB), f"SOC data must have shape (nspin, nspin,2,2, NB, NB), got {shape}"
         if isinstance(overlap, list) or isinstance(overlap, np.ndarray):
             NK = len(data)
             self.overlap = {i: d for i, d in enumerate(overlap) if d is not None}
@@ -93,7 +100,7 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_gpaw(cls, calc, magnetic=True, theta=0, phi=0, calc_overlap=False):
+    def from_gpaw(cls, calc, calc_overlap=True):
         """
         Create SOC from a GPAW magnetic calculation.
         """
@@ -102,7 +109,9 @@ class SOC(W90_file):
         from gpaw import GPAW
         if isinstance(calc, str):
             calc = GPAW(calc, txt=None)
-        C_ss = cls.get_C_ss(theta, phi)
+        # C_ss = cls.get_C_ss(theta, phi)
+        nspin = calc.get_number_of_spins()
+        assert nspin in [1, 2], f"Only nspin=1 or 2 supported, got {nspin}"
 
         dVL_avii = {
             a: soc(calc.wfs.setups[a], calc.hamiltonian.xc, D_sp)
@@ -123,26 +132,23 @@ class SOC(W90_file):
             H_ssii[1, 1] = -dVL_vii[2]
             H_a[a] = H_ssii
 
-        h_soc = np.zeros((nk, 2, 2, m, m), complex)
+
+        h_soc = np.zeros((nk, nspin, nspin, 2, 2, m, m), complex)
         print(f"{h_soc.shape=}")
 
+        # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
             for a, H_ssii in H_a.items():
-                h_ssii = cached_einsum("ab,bcij,cd->adij", C_ss.T.conj(), H_ssii, C_ss, optimize=True)
-                for s1 in range(2):
-                    for s2 in range(2):
-                        h_ii = h_ssii[s1, s2]
-                        if magnetic:
-                            P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a]
-                            P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a]
-                        else:
-                            P1_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
-                            P2_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
-                        h_soc[q, s1, s2] += P1_mi.conj() @ h_ii @ P2_mi.T
+                for s1 in range(nspin):
+                    for s2 in range(nspin):
+                        P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a].conj()
+                        P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a].T
+                        for t1 in range(2):
+                            for t2 in range(2):
+                                h_soc[q, s1, s2, t1, t2] += P1_mi @ H_ssii[t1, t2] @ P2_mi
         h_soc *= Hartree
 
-
-        if magnetic and calc_overlap:
+        if nspin==2 and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
             for q in range(nk):

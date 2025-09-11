@@ -21,12 +21,7 @@ theta_deg=90
 theta_rad = theta_deg/180*np.pi
 phi_rad = phi_deg/180*np.pi
 
-soc = SOC.from_gpaw("mnte-nscf.gpw", calc_overlap=True, theta=theta_rad, phi=phi_rad)
-
-# print(soc.overlap)
-
-# exit()
-
+soc = SOC.from_gpaw("mnte-nscf.gpw")
 chk_up = CHK.from_npz("system_up.chk.npz")
 chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
