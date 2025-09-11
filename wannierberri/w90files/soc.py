@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 from .w90file import W90_file, check_shape
-from ..utility import cached_einsum
 
 
 class SOC(W90_file):
@@ -11,7 +10,7 @@ class SOC(W90_file):
 
     Parameters
     ----------
-    data : np.ndarray
+    data : np.ndarray or dict
         The SOC Hamiltonian data.
     theta : float
         The polar angle for the spin-orbit coupling.
@@ -25,6 +24,13 @@ class SOC(W90_file):
     data : {ik:  np.ndarray(2,2,2,2,NB,NB)}
         The SOC Hamiltonian data. 
         data[ik][s1,s2,t1,t2,i,j] = < Psi^s1_i | H_soc^{t1,t2} | Psi^s2_j > 
+    overlap : {ik:  np.ndarray(NB,NB)}
+        The overlap matrix elements between the spin-up and spin-down states.  O_{ij} = < Psi^up_i | Psi^down_j >
+    nspin : int
+        Number of spin channels (1 or 2).
+    NB : int
+        Number of bands (in each spin channel).
+
     """
 
     extension = "soc"
@@ -37,7 +43,7 @@ class SOC(W90_file):
         shape = check_shape(self.data)
         self.NB = shape[4]
         self.nspin = shape[0]
-        assert shape == (self.nspin, self.nspin, 2,2, self.NB, self.NB), f"SOC data must have shape (nspin, nspin,2,2, NB, NB), got {shape}"
+        assert shape == (self.nspin, self.nspin, 2, 2, self.NB, self.NB), f"SOC data must have shape (nspin, nspin,2,2, NB, NB), got {shape}"
         if isinstance(overlap, list) or isinstance(overlap, np.ndarray):
             NK = len(data)
             self.overlap = {i: d for i, d in enumerate(overlap) if d is not None}
@@ -83,7 +89,7 @@ class SOC(W90_file):
         return C_ss
 
     @classmethod
-    def get_S_vss(cls, theta=0, phi=0):
+    def get_S_ssv(cls, theta=0, phi=0):
         """
         Get the spin Pauli matrices in the spinor basis defined by C_ss.
         """
@@ -96,7 +102,7 @@ class SOC(W90_file):
             C_ss.T.conj() @ sy_ss @ C_ss,
             C_ss.T.conj() @ sz_ss @ C_ss,
         ]
-        return np.array(s_vss)
+        return np.array(s_vss).transpose(1, 2, 0)
 
 
     @classmethod
@@ -148,7 +154,7 @@ class SOC(W90_file):
                                 h_soc[q, s1, s2, t1, t2] += P1_mi @ H_ssii[t1, t2] @ P2_mi
         h_soc *= Hartree
 
-        if nspin==2 and calc_overlap:
+        if nspin == 2 and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
             for q in range(nk):
@@ -162,7 +168,7 @@ class SOC(W90_file):
                     overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
         else:
             overlap = None
-            
+
         return cls(data=h_soc, overlap=overlap, NK=nk)
 
 

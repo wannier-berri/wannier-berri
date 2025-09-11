@@ -11,15 +11,15 @@ from wannierberri.parallel import Parallel, Serial
 system_dw = System_R().load_npz("system_dw")
 system_up = System_R().load_npz("system_up")
 
-parallel=Parallel(num_cpus=16)
+parallel = Parallel(num_cpus=16)
 # _interlaced()
 
 
 phi_deg = 90
-theta_deg=90
+theta_deg = 90
 
-theta_rad = theta_deg/180*np.pi
-phi_rad = phi_deg/180*np.pi
+theta_rad = theta_deg / 180 * np.pi
+phi_rad = phi_deg / 180 * np.pi
 
 soc = SOC.from_gpaw("mnte-nscf.gpw")
 chk_up = CHK.from_npz("system_up.chk.npz")
@@ -41,22 +41,22 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
 #             labels=["K", "G", "A", "K", "H ", "M", "L"],
 #             length=1000)   # length [ Ang] ~= 2*pi/dk
 
-kz = 0.35/system_dw.recip_lattice[2,2]
+kz = 0.35 / system_dw.recip_lattice[2, 2]
 path = Path(system_dw,
             nodes=[
-                [2/3, -1/3, 0],
+                [2 / 3, -1 / 3, 0],
                 [0, 0, 0],
-                [-2/3,1/3,0],
+                [-2 / 3, 1 / 3, 0],
                 None,
                 [-0.5, 0, kz],
                 [0, 0, kz],
                 [0.5, 0, kz],
-                ],
-            labels=[r"${\rm K}\leftarrow$", 
-                    r"$\Gamma$", 
+            ],
+            labels=[r"${\rm K}\leftarrow$",
+                    r"$\Gamma$",
                     r"$\rightarrow{\rm K}$",
-                    r"$\overline{\rm M}\leftarrow$", 
-                    r"$\overline{\Gamma}$", 
+                    r"$\overline{\rm M}\leftarrow$",
+                    r"$\overline{\Gamma}$",
                     r"$\rightarrow\overline{\rm M}$"],
             length=200)   # length [ Ang] ~= 2*pi/dk
 
@@ -68,9 +68,9 @@ print(np.dot(path.K_list, system_dw.recip_lattice))
 bands_soc = evaluate_k_path(system_soc, path=path, quantities=["spin"])
 
 # EF = 9.22085
-EF=6.885145845031927
+EF = 6.885145845031927
 
-fig, axes = plt.subplots(4, 1, sharey=True, sharex=True, figsize=(15,30))
+fig, axes = plt.subplots(4, 1, sharey=True, sharex=True, figsize=(15, 30))
 
 for i in range(3):
     component = "xyz"[i]
@@ -80,7 +80,7 @@ for i in range(3):
                        component=component,
                        mode="color",
                        label=f"soc_nscf, S{component}, th={theta_deg}, phi={phi_deg}",
-                        axes=axes[1+i],
+                        axes=axes[1 + i],
                        fatmax=10,
                         linecolor="orange",
                         close_fig=False,
@@ -132,10 +132,10 @@ bands_soc.plot_path_fat(path=path,
                        label="soc",
                        Eshift=EF,
                        axes=axes[0],
-                          linecolor="black",
-                          kwargs_line=dict(linestyle='--', lw=0.5),
-                          close_fig=False,
-                          show_fig=False,)
+                        linecolor="black",
+                        kwargs_line=dict(linestyle='--', lw=0.5),
+                        close_fig=False,
+                        show_fig=False,)
 
 # bands_spinor.plot_path_fat(path=path,
 #                        label="spinor",
@@ -150,5 +150,5 @@ bands_soc.plot_path_fat(path=path,
 
 
 # plt.ylim(0,7)
-plt.ylim(-8,1)
+plt.ylim(-8, 1)
 plt.savefig("bands.png")
