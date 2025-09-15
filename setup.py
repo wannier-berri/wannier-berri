@@ -27,7 +27,7 @@ setuptools.setup(
      description="Constructuion of Wannier functions and Wannier interpolation",
      long_description=long_description,
      long_description_content_type="text/markdown",
-     python_requires='>=3.10',
+     python_requires='>=3.11',
      install_requires=[
                         'numpy>=2.0', 
                         'scipy>=1.13',

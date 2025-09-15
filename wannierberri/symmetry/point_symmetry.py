@@ -316,7 +316,7 @@ class PointGroup():
 
     def as_dict(self):
         nsym = len(self.symmetries)
-        ret = dict(real_lattice=self.recip_lattice,
+        ret = dict(real_lattice=self.real_lattice,
                    nsym=nsym)
         for i, s in enumerate(self.symmetries):
             for k, v in s.as_dict().items():

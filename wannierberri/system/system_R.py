@@ -883,6 +883,8 @@ class System_R(System):
                                      iRvec=val,
                                      shifts_left_red=self.wannier_centers_red
                                      )
+            elif "key" == "pointgroup":
+                self.set_pointgroup(pointgroup=val)
             else:
                 setattr(self, key_loc, val)
             logfile.write(" - Ok!\n")
