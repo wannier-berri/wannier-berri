@@ -138,7 +138,7 @@ class Projection:
             self.basis_list = np.array(basis_list)
         elif rotate_basis:
             basis0 = read_xzaxis(xaxis, zaxis)
-            self.basis_list = [ basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
+            self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
         else:
             self.basis_list = [np.eye(3, dtype=float)] * self.num_points
 

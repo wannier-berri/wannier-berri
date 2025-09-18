@@ -23,7 +23,7 @@ def wannierise(w90data,
                parallel=True,
                symmetrize_Z=True,
                irreducible=False,
-                print_wcc_chk=False,
+               print_wcc_chk=False,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.

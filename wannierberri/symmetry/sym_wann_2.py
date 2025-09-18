@@ -60,7 +60,7 @@ class SymWann:
             iRvec,
             wannier_centers_cart=None,
             silent=False,
-            use_symmetries_index = None,
+            use_symmetries_index=None,
     ):
 
         self.silent = silent
@@ -262,7 +262,7 @@ class SymWann:
                     # {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
                                                           cutoff=cutoff_dict[k])
-                    
+
                 matrix_dict_list_res, iRvec_ab_all = self.average_XX_block(iRab_new=iRab_irred,
                                                                         matrix_dict_in=matrix_dict_list,
                                                                         iRvec_origin=self.iRvec, mode="sum",
@@ -390,7 +390,7 @@ class SymWann:
                                 XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
                                 matrix_dict_list_res[X][(atom_a, atom_b)][iR] += self._rotate_XX_L(
                                     XX_L, X, isym, block1=block1, block2=block2, atom_a=atom_a_map, atom_b=atom_b_map, forward=forward)
-                                    
+
                 # in single mode we need to determine it only once
                 if mode == "single":
                     iR_new_list -= exclude_set

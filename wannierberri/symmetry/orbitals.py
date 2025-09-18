@@ -231,7 +231,7 @@ def get_orbitals():
 class OrbitalRotator:
     """
     a class to get the rotation matrix of orbitals under a given rotation
-    
+
 
     returns matrix Rij, where i is the index of the original orbital , and j is the index of the rotated orbital
 
