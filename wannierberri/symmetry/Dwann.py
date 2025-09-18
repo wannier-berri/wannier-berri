@@ -43,6 +43,10 @@ class Dwann:
         Number of symmetry operations in the spacegroup.
     atommap : np.ndarray(shape=(num_points, nsym), dtype=int)
         A matrix that maps the orbit points to each other by the symmetry operations of the spacegroup.
+        atommap[ip, isym] = ip2 means that the symmetry operation isym transforms the point ip to the point ip2.
+    T : np.ndarray(shape=(num_points, nsym, 3), dtype=int)
+        A matrix that contains the translation needed to bring the transformed point back to the home unit cell.
+        T[ip, isym] = ip - Symop( ip)
 
     Notes
     -----
@@ -82,7 +86,6 @@ class Dwann:
         self.num_orbitals = self.num_orbitals_scal * self.nspinor
 
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
-        self.rot_basis = np.zeros((self.num_points, self.nsym, 3, 3), dtype=float)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
 
         self.rot_orb = [[np.eye(self.num_orbitals_scal) for _ in range(self.nsym)] for _ in range(self.num_points)]

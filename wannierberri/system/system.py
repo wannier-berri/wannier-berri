@@ -145,7 +145,7 @@ class System:
         self.set_pointgroup(symmetry_gen=symmetry_gen, pointgroup=pointgroup, spacegroup=spacegroup)
 
 
-    def set_pointgroup(self, symmetry_gen=(), pointgroup=None, spacegroup=None):
+    def set_pointgroup(self, symmetry_gen=(), pointgroup=None, spacegroup=None, use_symmetries_index=None):
         """
         Set the symmetry group of the :class:`System`, which will be used for symmetrization
         in k-space and for reducing the number of k-points in the BZ.
@@ -173,7 +173,7 @@ class System:
             self.pointgroup = pointgroup
         elif spacegroup is not None:
             assert np.allclose(spacegroup.Lattice, self.real_lattice), f"the provided spacegroup has a different real_lattice:\n{spacegroup.Lattice}\n than the system:\n{self.real_lattice}"
-            self.pointgroup = PointGroup(spacegroup=spacegroup, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+            self.pointgroup = PointGroup(spacegroup=spacegroup, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice, use_symmetries_index=use_symmetries_index)
         else:
             self.pointgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 

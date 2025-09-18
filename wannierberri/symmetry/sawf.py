@@ -318,7 +318,7 @@ class SymmetrizerSAWF:
                     XX_L = wcc_red_in[start_a:start_a + norb]
                     if ncart > 0:
                         XX_L = symop.transform_r(XX_L) + T[atom_a]
-                    transformed = cached_einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym].T, XX_L, self.rot_orb_list[block][atom_a, isym].T).real
+                    transformed = cached_einsum("ij,j...,ji->i...", self.rot_orb_dagger_list[block][atom_a, isym], XX_L, self.rot_orb_list[block][atom_a, isym]).real
                     WCC_red_out[start_b:start_b + norb] += transformed
         if ncart > 0:
             WCC_red_out = WCC_red_out @ self.spacegroup.lattice

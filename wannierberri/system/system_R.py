@@ -240,7 +240,8 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize2(self, symmetrizer, silent=True):
+    def symmetrize2(self, symmetrizer, silent=True, use_symmetries_index = None, 
+                    cutoff=-1, cutoff_dict=None):
         """
         Symmetrize the system according to the Symmetrizer object.
 
@@ -250,6 +251,8 @@ class System_R(System):
             The symmetrizer object that will be used for symmetrization. (make sure it is consistent with the order of projections)
         silent : bool
             If True, do not print the symmetrization process. (set to False to see more debug information)
+        use_symmetries_index : list of int
+            List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
         """
         from ..symmetry.sym_wann_2 import SymWann
         symmetrize_wann = SymWann(
@@ -257,6 +260,7 @@ class System_R(System):
             iRvec=self.rvec.iRvec,
             wannier_centers_cart=self.wannier_centers_cart,
             silent=self.silent or silent,
+            use_symmetries_index = use_symmetries_index,
         )
 
         # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
@@ -266,14 +270,15 @@ class System_R(System):
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
-        self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R)
+        self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R, 
+                                                                                  cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.clear_cached_wcc()
         self.rvec = Rvectors(
             lattice=self.real_lattice,
             iRvec=iRvec,
             shifts_left_red=self.wannier_centers_red,
         )
-        self.set_pointgroup(spacegroup=symmetrizer.spacegroup)
+        self.set_pointgroup(spacegroup=symmetrizer.spacegroup, use_symmetries_index = use_symmetries_index)
 
         if not silent:
             logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
