@@ -1,3 +1,4 @@
+import copy
 from functools import cached_property, lru_cache
 import warnings
 from irrep.bandstructure import BandStructure
@@ -547,7 +548,7 @@ class SymmetrizerSAWF:
 
 
 
-    def check_eig(self, eig):
+    def check_eig(self, eig, warning_precision=1e-5, ignore_upper_bands=-4):
         """
         Check the symmetry of the eigenvlues
 
@@ -555,24 +556,36 @@ class SymmetrizerSAWF:
         ----------
         eig : EIG object
             the eigenvalues
-
+        warning_precision : float
+            when the error is larger than this value, a warning is printed with details
+        ignore_upper_bands : int
+            the first index of the upper bands to be ignored in the comparison (from 0 to NB-1), negative values count from the top (-4 means NB-4)
+        
         Returns
         -------
         float
             the maximum error
+        
         """
         maxerr = 0
-        for ik in range(self.NK):
-            ikirr = self.kpt2kptirr[ik]
-            e1 = eig.data[ik]
-            e2 = eig.data[self.kptirr[ikirr]]
-            maxerr = max(maxerr, np.linalg.norm(e1 - e2))
+        # for ik in range(self.NK):
+        #     ikirr = self.kpt2kptirr[ik]
+        #     e1 = eig.data[ik]
+        #     e2 = eig.data[self.kptirr[ikirr]]
+        #     maxerr = max(maxerr, np.linalg.norm(e1 - e2))
 
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
-                e1 = eig.data[self.kptirr[ikirr]]
-                e2 = eig.data[self.kptirr2kpt[ikirr, isym]]
-                maxerr = max(maxerr, np.linalg.norm(e1 - e2))
+                e1 = eig.data[self.kptirr[ikirr]][:ignore_upper_bands]
+                e2 = eig.data[self.kptirr2kpt[ikirr, isym]][:ignore_upper_bands]
+                maxerr_loc = np.linalg.norm(e1 - e2)
+                if maxerr_loc > warning_precision:
+                    print(f"ikirr={ikirr}, ikirr={self.kptirr[ikirr]}, isym={isym}, iksym={self.kptirr2kpt[ikirr, isym]} : \n "
+                          f"   eirr = {e1}\n"
+                          f"   esym = {e2}\n"
+                          f"   diff = {e1 - e2}\n")
+                maxerr = max(maxerr, maxerr_loc)
+                    
         return maxerr
 
     def check_amn(self, amn, warning_precision=1e-5,
@@ -694,58 +707,200 @@ class SymmetrizerSAWF:
         return self.from_dict(dic)
 
 
-    #
-    # def check_mmn(self, mmn, f1, f2):
-    #     """
-    #     Check the symmetry of data in the mmn file (not working)
 
-    #     Parameters
-    #     ----------
-    #     mmn : MMN object
-    #         the mmn file data
+    def check_mmn(self, mmn, warning_precision=1e-5, ignore_upper_bands=-4, ignore_lower_bands=0):
+        """
+        Check the symmetry of data in the mmn file (not working)
 
-    #     Returns
-    #     -------
-    #     float
-    #         the maximum error
-    #     """
-    #     assert mmn.NK == self.NK
-    #     assert mmn.NB == self.NB
+        Parameters
+        ----------
+        mmn : MMN object
+            the mmn file data
 
-    #     maxerr = 0
-    #     neighbours_irr = np.array([self.kpt2kptirr[neigh] for neigh in mmn.neighbours])
-    #     for i in range(self.NKirr):
-    #         ind1 = np.where(self.kpt2kptirr == i)[0]
-    #         kirr1 = self.kptirr[i]
-    #         neigh_irr = neighbours_irr[ind1]
-    #         for j in range(self.NKirr):
-    #             kirr2 = self.kptirr[j]
-    #             ind2x, ind2y = np.where(neigh_irr == j)
-    #             print(f"rreducible kpoints {kirr1} and {kirr2} are equivalent to {len(ind2x)} points")
-    #             ref = None
-    #             for x, y in zip(ind2x, ind2y):
-    #                 k1 = ind1[x]
-    #                 k2 = mmn.neighbours[k1][y]
-    #                 isym1 = self.kpt2kptirr_sym[k1]
-    #                 isym2 = self.kpt2kptirr_sym[k2]
-    #                 d1 = self.d_band[i, isym1]
-    #                 d2 = self.d_band[j, isym2]
-    #                 assert self.kptirr2kpt[i, isym1] == k1
-    #                 assert self.kptirr2kpt[j, isym2] == k2
-    #                 assert self.kpt2kptirr[k1] == i
-    #                 assert self.kpt2kptirr[k2] == j
-    #                 ib = np.where(mmn.neighbours[k1] == k2)[0][0]
-    #                 assert mmn.neighbours[k1][ib] == k2
-    #                 data = mmn.data[k1, ib]
-    #                 data = f1(d1) @ data @ f2(d2)
-    #                 if ref is None:
-    #                     ref = data
-    #                     err = 0
-    #                 else:
-    #                     err = np.linalg.norm(data - ref)
-    #                 print(f"   {k1} -> {k2} : {err}")
-    #                 maxerr = max(maxerr, err)
-    #     return maxerr
+        Returns
+        -------
+        float
+            the maximum error
+        """
+        assert mmn.NK == self.NK
+        assert mmn.NB == self.NB
+        b1=ignore_lower_bands
+        b2=ignore_upper_bands
+    
+
+        sym_product_table, translations_diff = self.spacegroup.get_product_table(get_translations_diff=True)
+        print("sym_product_table = \n ", sym_product_table)
+        print("translations_diff = \n ", translations_diff)
+    
+        nnb = len(mmn.bk_latt)
+        bk_latt = mmn.bk_latt
+        bk_latt_transformed = np.array([[symop.transform_k(bk)  for bk in bk_latt] for symop in self.spacegroup.symmetries])
+        assert np.allclose(bk_latt_transformed, np.round(bk_latt_transformed)), f"the symmetry operations do not leave the b_k as integers\n" \
+            f"b_k = {bk_latt}\n" \
+            f"b_k transformed = {bk_latt_transformed}\n"
+        bk_latt_transformed = np.round(bk_latt_transformed).astype(int)
+
+
+        bk_latt_map = -np.ones((self.Nsym, len(bk_latt),), dtype=int)
+        for isym in range(self.Nsym):
+            for ibk, bk in enumerate(bk_latt):
+                for ibk2, bk2 in enumerate(bk_latt_transformed[isym]):
+                    if np.all(bk2 == bk):
+                        bk_latt_map[isym, ibk2] = ibk
+                        break
+                else:
+                    raise ValueError(f"after applying symmetry operation{isym} to the bk vectors, none of the transformed vectors match the original vector {bk} ({ibk})\n"
+                        f"b_k transformed = {bk_latt_transformed[isym]}\n")
+        print ("bk_latt_map = \n ", bk_latt_map)
+
+        translations_cart = np.array([symop.translation @ self.spacegroup.real_lattice for symop in self.spacegroup.symmetries])
+        print ("translations_cart = \n ", translations_cart)
+        print (f"bk_cart = \n {mmn.bk_cart}")
+        print( f"real_lattice = \n {self.spacegroup.real_lattice}")
+        kpoints_red = self.kpoints_all
+        
+        checked = np.zeros((self.NK, nnb), dtype=bool)
+
+        maxerr = 0
+        for ikirr in range(self.NKirr):
+            ik = self.kptirr[ikirr]
+            for ib in range(nnb):
+                ikb = mmn.neighbours[ik][ib]
+                ikbirr = self.kpt2kptirr[ikb]
+                rindices = self.d_band_block_indices[ikbirr]
+                # if ikb not in self.kptirr:
+                #     continue
+                checked[ik, ib] = True
+
+                M = mmn.data[ik][ib]
+                for isym in range(self.Nsym):
+                    M_loc = M.copy()
+                    
+                    ik_sym = self.kptirr2kpt[ikirr, isym]
+                    ib_sym = bk_latt_map[isym, ib]
+                    
+                    if ikb in self.kptirr:
+                        rblocks = self.d_band_blocks_inverse[ikbirr][isym]
+                        factor = np.exp(-1j*(mmn.bk_cart[ib_sym] @ translations_cart[isym]))
+                    else:
+                        # continue
+                        isym1 = self.kpt2kptirr_sym[ikb]
+                        isym2 = sym_product_table[isym, isym1]
+                        transl_diff = translations_diff[isym, isym1]
+                        # ation_difference = (self.spacegroup.symmetries[isym2].translation - 
+                        #     (self.spacegroup.symmetries[isym].multiply_keeptransl(self.spacegroup.symmetries[isym1])).translation)
+                        # translation_difference_cart = translation_difference @ self.spacegroup.real_lattice
+                        # if not np.allclose(translation_difference, 0):
+                        #     continue
+                        # if has_translation[isym] or has_translation[isym1] or has_translation[isym2]:
+                        #     continue                            
+                        print(f"{ikbirr=} : original irreducible kpoint {kpoints_red[self.kptirr[ikbirr]]} (ibkirr={ikbirr}) ")
+                        print(f"transformed under isym={isym} ->     {self.kptirr2kpt[ikirr, isym]} = {kpoints_red[self.kptirr2kpt[ikbirr, isym]]} ")
+                        print(f"transformed under isym1={isym1} -> {self.kptirr2kpt[ikbirr, isym1]} = {kpoints_red[self.kptirr2kpt[ikbirr, isym1]]} ")
+                        print(f"transformed under isym2={isym2} -> {self.kptirr2kpt[ikbirr, isym2]} = {kpoints_red[self.kptirr2kpt[ikbirr, isym2]]} ")
+                        print(f"translation difference = {transl_diff} ")
+                        # if abs(kpoints_red[ik][2]) > 1e-5:
+                        #     continue
+                    
+                        print (f"isym1 = {isym1}, isym2 = {isym2}")
+                        rblocks = [d1 @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2] )]
+                        extra_factor = np.exp(2j*np.pi*(kpoints_red[self.kptirr2kpt[ikbirr, isym2]] @ transl_diff))
+                        factor = np.exp(-1j*(mmn.bk_cart[ib_sym] @ (translations_cart[isym] ))) 
+                        print (f"extra_factor = {extra_factor}, factor without it = {factor}")
+                        factor = factor*extra_factor
+                        # factor = np.exp(-1j*(mmn.bk_cart[ib_sym] @ translations_cart[isym2] - mmn.bk_cart[ib] @ translations_cart[isym1]))
+
+                    checked[ik_sym, ib_sym] = True
+
+                    
+                    if self.time_reversals[isym]:
+                        M_loc = M_loc.conj()
+                        print (f"applying time-reversal for isym={isym} : \n {M[b1:b2, b1:b2]} \n -> \n {M_loc[b1:b2, b1:b2]}")
+                    
+                    
+                    M_loc = rotate_block_matrix(M_loc,
+                                   lblocks=self.d_band_blocks[ikirr][isym],
+                                   lindices=self.d_band_block_indices[ikirr] ,
+                                   rblocks=rblocks,
+                                   rindices=rindices, )
+
+                    
+                    print (f"factor = {factor}")
+                    M_loc = M_loc*factor
+                    M_ref = mmn.data[ik_sym][ib_sym]
+
+                    Mloc = M_loc[b1:b2, b1:b2]
+                    Mref = M_ref[b1:b2, b1:b2]
+                    Mmax = np.max([np.abs(Mloc), np.abs(Mref)], axis=0)
+                    diff_phase = (np.angle(Mloc) - np.angle(Mref))/np.pi*180 % 360
+                    diff_phase[diff_phase>355] -= 360
+                    diff_phase = diff_phase[Mmax > 1e-3]
+                    print (f"phase differences (degrees) for elements > 1e-3 in abs : \n {np.mean(diff_phase)} ")
+                    # if np.std(diff_phase) <1e-2:
+                    #     continue
+                
+
+                    # print (f"absolute values M_loc : \n {np.abs(M_loc[b1:b2, b1:b2])} \n reference : \n {np.abs(M_ref[b1:b2, b1:b2])}")
+                    # print (f"angles (degrees) M_loc : \n {np.angle(M_loc[b1:b2, b1:b2])/np.pi*180} \n reference : \n {np.angle(M_ref[b1:b2, b1:b2])/np.pi*180}")
+                    # print( f"difference in phases (degrees) : \n {((np.angle(M_loc[b1:b2, b1:b2]) - np.angle(M_ref[b1:b2, b1:b2]))/np.pi*180)  % 360} ")
+
+
+                    # print(f"applying blocks for isym={isym} : \n {self.d_band_blocks[ikirr][isym][:2]}\n and \n {self.d_band_blocks_inverse[ikbirr][isym][:2]}") 
+                    # print (f"after rotation for isym={isym} : \n {M[b1:b2, b1:b2]} \n -> \n {M_loc[b1:b2, b1:b2]}")
+
+                    # print (f"reference isym={isym}, ik_sym={ik_sym}, ib_sym={ib_sym} : \n {M_ref[b1:b2, b1:b2]}")
+                    diff = np.abs(M_loc[b1:b2, b1:b2] - M_ref[b1:b2, b1:b2])
+                    err = np.max(diff)
+                    print (f"transition {kpoints_red[ik]}->{kpoints_red[ikb]} under symmetry {isym} -> {self.spacegroup.symmetries[isym]} \n"
+                           f"transition {kpoints_red[ik_sym]}->{kpoints_red[mmn.neighbours[ik_sym][ib_sym]]} \n")
+
+                    print(("CORRECT :" if err < warning_precision else "ERROR   :") + 
+                          f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} : err = {err}" +
+                         f"G[ {ik},{ib}] = {mmn.G[ik][ib]}, G[{ik_sym},{ib_sym}] = {mmn.G[ik_sym][ib_sym]} "
+                          )
+                    if err > warning_precision:
+                        A = np.round(np.log(np.abs(diff))/np.log(10), 0).astype(int)
+                        print("\n".join(" ".join(f"{a:3d}" for a in row) for row in A))
+                        
+
+                    maxerr = max(maxerr, err)     
+        print(f"checked = {sum(checked.flatten())} out of {checked.size} elements")
+        print (f"not checked elements (should be zero) = \n {np.where(~checked)}")
+        return maxerr                   
+                
+            
+            
+            
+        #     kirr1 = self.kptirr[ikirr]
+        #     neigh_irr = neighbours_irr[ind1]
+        #     for j in range(self.NKirr):
+        #         kirr2 = self.kptirr[j]
+        #         ind2x, ind2y = np.where(neigh_irr == j)
+        #         print(f"rreducible kpoints {kirr1} and {kirr2} are equivalent to {len(ind2x)} points")
+        #         ref = None
+        #         for x, y in zip(ind2x, ind2y):
+        #             k1 = ind1[x]
+        #             k2 = mmn.neighbours[k1][y]
+        #             isym1 = self.kpt2kptirr_sym[k1]
+        #             isym2 = self.kpt2kptirr_sym[k2]
+        #             d1 = self.d_band[ikirr, isym1]
+        #             d2 = self.d_band[j, isym2]
+        #             assert self.kptirr2kpt[ikirr, isym1] == k1
+        #             assert self.kptirr2kpt[j, isym2] == k2
+        #             assert self.kpt2kptirr[k1] == ikirr
+        #             assert self.kpt2kptirr[k2] == j
+        #             ib = np.where(mmn.neighbours[k1] == k2)[0][0]
+        #             assert mmn.neighbours[k1][ib] == k2
+        #             data = mmn.data[k1, ib]
+        #             data = f1(d1) @ data @ f2(d2)
+        #             if ref is None:
+        #                 ref = data
+        #                 err = 0
+        #             else:
+        #                 err = np.linalg.norm(data - ref)
+        #             print(f"   {k1} -> {k2} : {err}")
+        #             maxerr = max(maxerr, err)
+        # return maxerr
 
 
 
