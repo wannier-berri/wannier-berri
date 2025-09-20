@@ -727,7 +727,7 @@ class SymmetrizerSAWF:
         b2 = ignore_upper_bands
 
 
-        sym_product_table, translations_diff = self.spacegroup.get_product_table(get_translations_diff=True)
+        sym_product_table, translations_diff, spinor_factors= self.spacegroup.get_product_table(get_diff=True)
         # print("sym_product_table = \n ", sym_product_table)
         # print("translations_diff = \n ", translations_diff)
 
@@ -758,8 +758,6 @@ class SymmetrizerSAWF:
         # print( f"real_lattice = \n {self.spacegroup.real_lattice}")
         kpoints_red = self.kpoints_all
 
-        checked = np.zeros((self.NK, nnb), dtype=bool)
-
         maxerr = 0
         for ikirr in range(self.NKirr):
             ik = self.kptirr[ikirr]
@@ -767,9 +765,6 @@ class SymmetrizerSAWF:
                 ikb = mmn.neighbours[ik][ib]
                 ikbirr = self.kpt2kptirr[ikb]
                 rindices = self.d_band_block_indices[ikbirr]
-                # if ikb not in self.kptirr:
-                #     continue
-                checked[ik, ib] = True
 
                 M = mmn.data[ik][ib]
                 for isym in range(self.Nsym):
@@ -781,53 +776,35 @@ class SymmetrizerSAWF:
                     if ikb in self.kptirr:
                         rblocks = self.d_band_blocks_inverse[ikbirr][isym]
                         factor = np.exp(-1j * (mmn.bk_cart[ib_sym] @ translations_cart[isym]))
+                        TR1 = False
+                        TR2 = self.time_reversals[isym]
+                        TR = self.time_reversals[isym]
                     else:
-                        # continue
-
                         isym1 = self.kpt2kptirr_sym[ikb]
                         isym2 = sym_product_table[isym, isym1]
                         transl_diff = translations_diff[isym, isym1]
-                        # if self.time_reversals[isym1] == self.time_reversals[isym2]:
-                        #     continue
-
-                        # print(f"{ikbirr=} : original irreducible kpoint {kpoints_red[self.kptirr[ikbirr]]} (ibkirr={ikbirr}) ")
-                        # print(f"transformed under isym={isym} ->     {self.kptirr2kpt[ikirr, isym]} = {kpoints_red[self.kptirr2kpt[ikbirr, isym]]} ")
-                        # print(f"transformed under isym1={isym1} -> {self.kptirr2kpt[ikbirr, isym1]} = {kpoints_red[self.kptirr2kpt[ikbirr, isym1]]} ")
-                        # print(f"transformed under isym2={isym2} -> {self.kptirr2kpt[ikbirr, isym2]} = {kpoints_red[self.kptirr2kpt[ikbirr, isym2]]} ")
-                        # print(f"translation difference = {transl_diff} ")
-
-                        # print (f"isym1 = {isym1}, isym2 = {isym2}")
                         if self.time_reversals[isym]:
-                            # continue
                             rblocks = [d1.conj() @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2])]
                         else:
                             rblocks = [d1 @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2])]
-                        # print (f"angles for d1 (isym1={isym1}) : {[np.angle(d.diagonal())/np.pi*180 for d in self.d_band_blocks[ikbirr][isym1][:2]]} ")
-                        # print (f"angles for d2 (isym2={isym2}) : {[np.angle(d.diagonal())/np.pi*180 for d in self.d_band_blocks_inverse[ikbirr][isym2][:2]]} ")
-                        # print (f"angles for rblocks            : {[np.angle(d.diagonal())/np.pi*180 for d in rblocks[:2]]} ")
-
-                        extra_factor = np.exp(2j * np.pi * (kpoints_red[self.kptirr2kpt[ikbirr, isym2]] @ transl_diff))
+                        
+                        extra_factor = np.exp(2j * np.pi * (kpoints_red[self.kptirr2kpt[ikbirr, isym2]] @ transl_diff)) * spinor_factors[isym, isym1]
                         factor = np.exp(-1j * (mmn.bk_cart[ib_sym] @ (translations_cart[isym])))
-                        # print (f"extra_factor = {extra_factor}, factor without it = {factor}")
                         factor = factor * extra_factor
-                        # print (f"Time reversals isym[{isym}]={self.time_reversals[isym]}, isym1={isym1}={self.time_reversals[isym1]}, isym2={isym2}={self.time_reversals[isym2]} \n")
-
-                    # print (f"applying rblocks {rblocks[:2]} ")
-                    checked[ik_sym, ib_sym] = True
-
+                        TR1 = self.time_reversals[isym1]
+                        TR2 = self.time_reversals[isym2]
+                        TR = self.time_reversals[isym]
+                        
 
                     if self.time_reversals[isym]:
                         M_loc = M_loc.conj()
-                        # print (f"applying time-reversal for isym={isym} : \n {M[b1:b2, b1:b2]} \n -> \n {M_loc[b1:b2, b1:b2]}")
-
-
+                        
                     M_loc = rotate_block_matrix(M_loc,
                                    lblocks=self.d_band_blocks[ikirr][isym],
                                    lindices=self.d_band_block_indices[ikirr],
                                    rblocks=rblocks,
                                    rindices=rindices, )
 
-                    # print (f"factor = {factor}")
                     M_loc = M_loc * factor
                     M_ref = mmn.data[ik_sym][ib_sym]
 
@@ -837,75 +814,19 @@ class SymmetrizerSAWF:
                     diff_phase = (np.angle(Mloc) - np.angle(Mref)) / np.pi * 180 % 360
                     diff_phase[diff_phase > 355] -= 360
                     diff_phase = diff_phase[Mmax > 1e-3]
-                    # print (f"Mloc_abs = \n {np.abs(Mloc)} \n Mref_abs = \n {np.abs(Mref)}")
-                    # print (f"Mloc_angle = \n {np.angle(Mloc)/np.pi*180} \n Mref_angle = \n {np.angle(Mref)/np.pi*180}")
-                    # print (f"phase differences (degrees) for elements > 1e-3 in abs : \n {diff_phase} ")
-                    # if np.std(diff_phase) <1e-2:
-                    #     continue
 
-
-                    # print (f"absolute values M_loc : \n {np.abs(M_loc[b1:b2, b1:b2])} \n reference : \n {np.abs(M_ref[b1:b2, b1:b2])}")
-                    # print (f"angles (degrees) M_loc : \n {np.angle(M_loc[b1:b2, b1:b2])/np.pi*180} \n reference : \n {np.angle(M_ref[b1:b2, b1:b2])/np.pi*180}")
-                    # print( f"difference in phases (degrees) : \n {((np.angle(M_loc[b1:b2, b1:b2]) - np.angle(M_ref[b1:b2, b1:b2]))/np.pi*180)  % 360} ")
-
-
-                    # print(f"applying blocks for isym={isym} : \n {self.d_band_blocks[ikirr][isym][:2]}\n and \n {self.d_band_blocks_inverse[ikbirr][isym][:2]}")
-                    # print (f"after rotation for isym={isym} : \n {M[b1:b2, b1:b2]} \n -> \n {M_loc[b1:b2, b1:b2]}")
-
-                    # print (f"reference isym={isym}, ik_sym={ik_sym}, ib_sym={ib_sym} : \n {M_ref[b1:b2, b1:b2]}")
                     diff = np.abs(M_loc[b1:b2, b1:b2] - M_ref[b1:b2, b1:b2])
                     err = np.max(diff)
-                    # print (f"transition {kpoints_red[ik]}->{kpoints_red[ikb]} under symmetry {isym} -> {self.spacegroup.symmetries[isym]} \n"
-                    #        f"transition {kpoints_red[ik_sym]}->{kpoints_red[mmn.neighbours[ik_sym][ib_sym]]} \n")
 
                     if err > warning_precision or verbose:
                         print(("CORRECT :" if err < warning_precision else "ERROR   :") +
                               f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} : err = {err}"
-                              # + f"G[ {ik},{ib}] = {mmn.G[ik][ib]}, G[{ik_sym},{ib_sym}] = {mmn.G[ik_sym][ib_sym]} "
+                              f" TR = {TR}, TR1 = {TR1}, TR2 = {TR2} \n"
                                 )
-                        # if verbose:
-                        #     A = np.round(np.log(np.abs(diff))/np.log(10), 0).astype(int)
-                        #     print("\n".join(" ".join(f"{a:3d}" for a in row) for row in A))
-
+                        
 
                     maxerr = max(maxerr, err)
-        print(f"checked = {sum(checked.flatten())} out of {checked.size} elements")
-        print(f"not checked elements (should be zero) = \n {np.where(~checked)}")
         return maxerr
-
-
-
-
-        #     kirr1 = self.kptirr[ikirr]
-        #     neigh_irr = neighbours_irr[ind1]
-        #     for j in range(self.NKirr):
-        #         kirr2 = self.kptirr[j]
-        #         ind2x, ind2y = np.where(neigh_irr == j)
-        #         print(f"rreducible kpoints {kirr1} and {kirr2} are equivalent to {len(ind2x)} points")
-        #         ref = None
-        #         for x, y in zip(ind2x, ind2y):
-        #             k1 = ind1[x]
-        #             k2 = mmn.neighbours[k1][y]
-        #             isym1 = self.kpt2kptirr_sym[k1]
-        #             isym2 = self.kpt2kptirr_sym[k2]
-        #             d1 = self.d_band[ikirr, isym1]
-        #             d2 = self.d_band[j, isym2]
-        #             assert self.kptirr2kpt[ikirr, isym1] == k1
-        #             assert self.kptirr2kpt[j, isym2] == k2
-        #             assert self.kpt2kptirr[k1] == ikirr
-        #             assert self.kpt2kptirr[k2] == j
-        #             ib = np.where(mmn.neighbours[k1] == k2)[0][0]
-        #             assert mmn.neighbours[k1][ib] == k2
-        #             data = mmn.data[k1, ib]
-        #             data = f1(d1) @ data @ f2(d2)
-        #             if ref is None:
-        #                 ref = data
-        #                 err = 0
-        #             else:
-        #                 err = np.linalg.norm(data - ref)
-        #             print(f"   {k1} -> {k2} : {err}")
-        #             maxerr = max(maxerr, err)
-        # return maxerr
 
 
 
