@@ -153,7 +153,6 @@ class SymmetrizerSAWF:
         self.clear_inverse()
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
-        # self.set_upper_block_to_zero()
         return self
 
     @cached_property
@@ -242,16 +241,6 @@ class SymmetrizerSAWF:
             self.rot_orb_list.append(_Dwann.rot_orb)
         self.set_D_wann(D_wann_list)
         return self
-
-    # def set_upper_block_to_zero(self):
-    #     """
-    #     Sets the upper block of the d_band matrices to zero, to avoid problems with imcomplete irreps
-    #     """
-    #     for ikirr in range(self.NKirr):
-    #         for isym in range(self.Nsym):
-    #             blocks = self.d_band_blocks[ikirr][isym]
-    #             blocks[-1][:, :] = 0.0
-    #     self.clear_inverse(d=True, D=False)
 
     @cached_property
     def rot_orb_dagger_list(self):
@@ -581,12 +570,6 @@ class SymmetrizerSAWF:
 
         """
         maxerr = 0
-        # for ik in range(self.NK):
-        #     ikirr = self.kpt2kptirr[ik]
-        #     e1 = eig.data[ik]
-        #     e2 = eig.data[self.kptirr[ikirr]]
-        #     maxerr = max(maxerr, np.linalg.norm(e1 - e2))
-
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
                 e1 = eig.data[self.kptirr[ikirr]][:ignore_upper_bands]
@@ -598,7 +581,6 @@ class SymmetrizerSAWF:
                           f"   esym = {e2}\n"
                           f"   diff = {e1 - e2}\n")
                 maxerr = max(maxerr, maxerr_loc)
-
         return maxerr
 
     def check_amn(self, amn, warning_precision=1e-5,
@@ -689,18 +671,6 @@ class SymmetrizerSAWF:
             amn_sym_irr[ikirr] /= len(self.isym_little[ikirr])
         # now expand to the full BZ
         return self.U_to_full_BZ(amn_sym_irr)
-        # lfound = np.zeros(self.NK, dtype=bool)
-        # amn_sym = np.zeros((self.NK, self.NB, self.num_wann), dtype=complex)
-        # for ikirr in range(self.NKirr):
-        #     ik = self.kptirr[ikirr]
-        #     amn_sym[ik] = amn_sym_irr[ikirr]
-        #     lfound[ik] = True
-        #     for isym in range(self.Nsym):
-        #         ik = self.kptirr2kpt[ikirr, isym]
-        #         if not lfound[ik]:
-        #             amn_sym[ik] = self.rotate_U(amn_sym_irr[ikirr], ikirr, isym, forward=True)
-        #             lfound[ik] = True
-        # return amn_sym
 
     def get_random_amn(self):
         """ generate a random amn array that is comaptible with the symmetries of the Wanier functions in thesymmetrizer object

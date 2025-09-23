@@ -3,6 +3,7 @@
 from irrep import __version__ as irrep__version__
 from packaging import version
 from wannierberri import IRREP_IRREDUCIBLE_VERSION
+from wannierberri.wannierise import wannierise
 import glob
 import os
 import shutil
@@ -321,7 +322,7 @@ def test_create_amn_diamond_s_bond():
     assert err_amn < 1e-6, f"amn is not symmetric, error={err_amn}"
 
     # Now wannierise the system
-    w90data.wannierise(
+    wannierise(w90data,
         froz_min=-8,
         froz_max=20,
         num_iter=100,
@@ -340,7 +341,6 @@ def test_create_amn_diamond_s_bond():
     wannier_spreads = w90data.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
     assert wannier_spreads == approx(.398647548, abs=1e-5)
-
 
 
 def test_create_amn_diamond_p_bond():
@@ -362,8 +362,6 @@ def test_create_amn_diamond_p_bond():
 
     print("positions_cart = ", projection.positions @ lattice)
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
-                           normalize=True, return_object=True)
     symmetrizer = SAWF().from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections([projection])
 
@@ -397,28 +395,32 @@ def test_create_amn_diamond_p_bond():
     w90data = wberri.w90files.Wannier90data().from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
         readfiles=["mmn", "eig", "win", "unk"])
+
+    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
+                            normalize=True, return_object=True)
     w90data.set_file("amn", amn)
-    err_mmn = symmetrizer.check_mmn(w90data.get_file("mmn"), ignore_upper_bands=2)
-    assert err_mmn < 1e-6, f"mmn is not symmetric, error={err_mmn}"
     err_amn = symmetrizer.check_amn(amn, ignore_upper_bands=2)
     assert err_amn < 1e-6, f"amn is not symmetric, error={err_amn}"
 
+    err_eig = symmetrizer.check_eig(w90data.get_file("eig"))
+    assert err_eig < 1e-6, f"eig is not symmetric, error={err_eig}"
+    err_mmn = symmetrizer.check_mmn(w90data.get_file("mmn"), ignore_upper_bands=2)
+    assert err_mmn < 1e-6, f"mmn is not symmetric, error={err_mmn}"
+
 
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
-    amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
-    w90data.select_bands(win_min=20, win_max=1000)
-    print(f"amn is symmetric with accuracy {amn_symm_prec}")
+    w90data.select_bands(win_min=22, win_max=1000)
     # Now wannierise the system
-    w90data.wannierise(
+    wannierise(w90data,
         froz_min=22,
         froz_max=30,
-        num_iter=100,
+        num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
         mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
-        # localise=True
+        localise=True
     )
     w90data.plotWF()
 
@@ -435,8 +437,8 @@ def test_create_amn_diamond_p_bond():
 
     assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
 
-    expected_spread = 0.732778118
-    assert wannier_spreads == approx(expected_spread, abs=0.5)
+    expected_spread = 0.73
+    assert wannier_spreads == approx(expected_spread, abs=0.05)
 
 
 def test_create_amn_diamond_sp3():

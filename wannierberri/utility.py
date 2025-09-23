@@ -346,11 +346,12 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
 
 def arr_to_string(arr, fmt="{:+9.6f}"):
     string = ""
-    for line in arr:
+    for i, line in enumerate(arr):
         for a in line:
             if isinstance(a, complex):
                 string += fmt.format(a.real) + fmt.format(abs(a.imag)) + "j "
             else:
                 string += fmt.format(a)
-        string += "\n"
+        if i < len(arr) - 1:
+            string += "\n"
     return string

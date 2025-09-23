@@ -3,7 +3,7 @@
 import numpy as np
 from pytest import approx
 from wannierberri.formula.covariant import _spin_velocity_einsum_opt
-from wannierberri.utility import cached_einsum, vectorize
+from wannierberri.utility import cached_einsum, vectorize, arr_to_string
 
 
 def test_spin_velocity_einsum_opt():
@@ -44,3 +44,10 @@ def test_vectorized_matrix_prod():
         for a, b, c in zip(A, B, C):
             c1 = np.dot(a, b)
             assert c == approx(c1)
+
+
+def test_arr_to_string():
+    a = np.array([[1.123456789, 2.123456789], [3.123456789, 4.123456789]])
+    s = arr_to_string(a, fmt="{:8.4f}")
+    expected = "  1.1235  2.1235\n  3.1235  4.1235"
+    assert s == expected, f"Got: \n{s}, expected: \n{expected}"

@@ -127,7 +127,7 @@ def wannierise(w90data,
         if sitesym:
             num_wann = symmetrizer.num_wann
         else:
-            assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
+            assert num_wann is not None, "num_wann should be provided for random initialization without site-symmetry"
         amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
         amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
         w90data.chk.num_wann = num_wann
