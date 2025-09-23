@@ -409,7 +409,7 @@ class SphericalHarmonics:
         else:
             ibasis = len(self.calcualted_basices)
             self.calcualted_basices.append(basis)
-            print(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
+            # print(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
         if (orbital, ibasis) not in self.harmonics:
             self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
         return self.harmonics[(orbital, ibasis)]
@@ -432,10 +432,10 @@ class SphericalHarmonics:
                 assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
                 shell_pos = shell_list.index(orbital)
                 # print(f"basis = \n{basis}")
-                matrix = self.orbitalrotator(shell, rot_cart=basis)  
+                matrix = self.orbitalrotator(shell, rot_cart=basis)
                 # print(f"matrix = \n{matrix}")
                 vector = matrix[shell_pos, :]
-                print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
+                # print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
                 return sum(self(o, basis=None) * k for k, o in zip(vector, shell_list))
             else:
                 match orbital:

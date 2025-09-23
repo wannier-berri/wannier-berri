@@ -1,5 +1,5 @@
 import numpy as np
-from ..utility import orthogonalize, arr_to_string
+from ..utility import orthogonalize
 from .utility import get_inverse_block, rotate_block_matrix
 from .sawf import SymmetrizerSAWF, VoidSymmetrizer
 
@@ -36,15 +36,15 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         self.nb = symmetrizer.NB
         self.num_wann = symmetrizer.num_wann
         self.time_reversals = symmetrizer.time_reversals
-        self.symop_product, self.symop_diff, self.spinor_diff = symmetrizer.spacegroup.get_product_table(get_diff=True)
-        print(f"initializing Symmetrizer_Uirr for ikirr={ikirr}, ikpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries")
+        # self.symop_product, self.symop_diff, self.spinor_diff = symmetrizer.spacegroup.get_product_table(get_diff=True)
+        # print(f"initializing Symmetrizer_Uirr for ikirr={ikirr}, ikpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries")
         # print(f" product table:\n{ "\n".join([ " ".join([f'{self.symop_product[i,j]:3d}' for j in self.isym_little]) for i in self.isym_little]) }")
         # self.check_products_d()
         # self.check_products_D()
         # self.check_products_dD()
         err = self.check()
-        print (f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in check: {err}")
-    
+        print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in check: {err}")
+
 
     # def check_products_d(self):
     #     maxerr = 0.0
@@ -80,31 +80,31 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
     #                 if err > 1e-6:
     #                     print(f"Warning: product of D matrices does not match for isym1={isym1}, isym2={isym2}, isym3={isym3}, block {i} (of {len(self.D_indices)}) [{start}:{end}]: {err}")
     #                     print(f"D1 = {D1}, D2={D2}, D2@D1={prod} D3={D3},")
-    #     print (f"max error in D products: {maxerr}")
+    # #     print (f"max error in D products: {maxerr}")
 
-    def check_products_dD(self, U=None):
-        if U is None:
-            U = np.random.rand(self.nb, self.num_wann) + 1j * np.random.rand(self.nb, self.num_wann)
-        maxerr = 0.0
-        max_index = self.d_indices[-2][1]
-        for isym1 in self.isym_little:
-            for isym2 in self.isym_little:
-                isym3 = self.symop_product[isym1, isym2]
-                assert isym3 in self.isym_little, f"Error: product of two little group symmetries {isym1}, {isym2} gives {isym3} which is not in the little group"
-                U1 = self.rotate_U(U, isym2)
-                U2 = self.rotate_U(U1, isym1)
-                U3 = self.rotate_U(U, isym3)
-                err = np.linalg.norm(U2[:max_index] - U3[:max_index])
-                maxerr = max(maxerr, err)
-                if err > 1e-6:
-                    print(f"Warning: product of d and D matrices does not match for isym1={isym1}, isym2={isym2}, isym3={isym3}: {err}")
-                else:
-                    pass
-                    # print (f"applying {isym2}, then {isym1} gives the same result as applying {isym3} directly, error {err}")
-        return maxerr
-        # print (f"max error in dD products: {maxerr}")
+    # def check_products_dD(self, U=None):
+    #     if U is None:
+    #         U = np.random.rand(self.nb, self.num_wann) + 1j * np.random.rand(self.nb, self.num_wann)
+    #     maxerr = 0.0
+    #     max_index = self.d_indices[-2][1]
+    #     for isym1 in self.isym_little:
+    #         for isym2 in self.isym_little:
+    #             isym3 = self.symop_product[isym1, isym2]
+    #             assert isym3 in self.isym_little, f"Error: product of two little group symmetries {isym1}, {isym2} gives {isym3} which is not in the little group"
+    #             U1 = self.rotate_U(U, isym2)
+    #             U2 = self.rotate_U(U1, isym1)
+    #             U3 = self.rotate_U(U, isym3)
+    #             err = np.linalg.norm(U2[:max_index] - U3[:max_index])
+    #             maxerr = max(maxerr, err)
+    #             if err > 1e-6:
+    #                 print(f"Warning: product of d and D matrices does not match for isym1={isym1}, isym2={isym2}, isym3={isym3}: {err}")
+    #             else:
+    #                 pass
+    #                 # print (f"applying {isym2}, then {isym1} gives the same result as applying {isym3} directly, error {err}")
+    #     return maxerr
+    #     # print (f"max error in dD products: {maxerr}")
 
-                
+
     def check(self, U=None, warning_precision=1e-6, verbose=False):
         """
         Checks that the symmetrization is correct by comparing eig at the
@@ -128,7 +128,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         maxerr = 0.0
         U = self(U)  # symmetrize U
         # U = sum(self.rotate_U(U, isym) for isym in self.isym_little)
-        upper_bands = self.d_indices[-2][1] 
+        upper_bands = self.d_indices[-2][1]
         # print (f"symmetrized U matrix for check: \n{arr_to_string(U, fmt='{:12.5e}')}")
         for isym in self.isym_little:
             U1 = self.rotate_U(U, isym)
@@ -161,7 +161,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         return Uloc
 
 
-    def __call__(self, U, maxiter=100, tol=1e-8):
+    def __call__(self, U, maxiter=100, tol=1e-6):
         Uprev = U.copy()
         for i in range(maxiter):
             Uloc = Uprev.copy()
@@ -171,13 +171,14 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
             Usym_ortho[:self.max_band] = orthogonalize(Usym[:self.max_band])
             diff2 = abs(Usym_ortho - Usym).max()
             if diff1 < tol and diff2 < tol:
-                # print(f"Symmetrization converged in {i+1} iterations")  
+                # print(f"Symmetrization converged in {i+1} iterations")
                 return Usym
             Uprev = Usym_ortho
         else:
             print(f"Warning: symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}")
             return Usym
-        
+
+
 class Symmetrizer_Zirr(SymmetrizerSAWF):
 
     def __init__(self, symmetrizer, ikirr, free):

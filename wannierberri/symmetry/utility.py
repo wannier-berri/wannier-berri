@@ -86,5 +86,3 @@ def get_inverse_block(D):
             return np.linalg.inv(D)
     else:
         raise ValueError(f"Unknown type {type(D)}")
-
-

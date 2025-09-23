@@ -242,7 +242,7 @@ class SymmetrizerSAWF:
             self.rot_orb_list.append(_Dwann.rot_orb)
         self.set_D_wann(D_wann_list)
         return self
-    
+
     def set_upper_block_to_zero(self):
         """
         Sets the upper block of the d_band matrices to zero, to avoid problems with imcomplete irreps
@@ -650,12 +650,12 @@ class SymmetrizerSAWF:
                 diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))
                 if diff > warning_precision:
-                    print(f"ikirr={ikirr}, isym={isym} kpt  {self.kptirr[ikirr]}-> {ik}: {diff}")
+                    print(f"ikirr={ikirr}, isym={isym} kpt  {ik_origin} -> {ik_rotated}: {diff}")
                     if verbose:
                         print(f"   a1  = \n{arr_to_string(a1)}")
                         print(f"   a1' = \n{arr_to_string(a1p)}")
                         print(f"   a2  = \n{arr_to_string(a2)}")
-                        
+
         return maxerr
 
     def symmetrize_amn(self, amn):

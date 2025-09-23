@@ -386,7 +386,7 @@ class CheckPoint(SavableNPZ):
                 mmn_loc = self.wannier_gauge(mmn.data[ik][ib], ik, iknb)
                 mmn_loc = mmn_loc.diagonal()
                 log_loc = np.angle(mmn_loc)
-                wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib][None,:]
+                wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib][None, :]
                 if spreads:
                     r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * mmn.wk[ib]
         wcc /= mmn.NK

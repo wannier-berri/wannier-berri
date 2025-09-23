@@ -359,7 +359,7 @@ def test_create_amn_diamond_p_bond():
     # projection = Projection(position_num=[0, 0, 0], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
 
-    
+
     print("positions_cart = ", projection.positions @ lattice)
 
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
@@ -368,13 +368,13 @@ def test_create_amn_diamond_p_bond():
     symmetrizer.set_D_wann_from_projections([projection])
 
     lattice = symmetrizer.spacegroup.lattice
-    print (f"lattice = \n {lattice}")
-    print (f"positions_atoms_cart \n{ np.array([[1, 1, 1], [-1, -1, -1]])/8 @ lattice }")
-    print (f"positions_cart = \n {projection.positions @ lattice}")
-    print (f"basis_list = \n{projection.basis_list}")
-    print (f"rot_orb = \n {symmetrizer.rot_orb_list}")
+    print(f"lattice = \n {lattice}")
+    print(f"positions_atoms_cart \n{np.array([[1, 1, 1], [-1, -1, -1]]) / 8 @ lattice}")
+    print(f"positions_cart = \n {projection.positions @ lattice}")
+    print(f"basis_list = \n{projection.basis_list}")
+    print(f"rot_orb = \n {symmetrizer.rot_orb_list}")
     # exit()
-    
+
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
 
     # Check if the directory exists
@@ -403,7 +403,7 @@ def test_create_amn_diamond_p_bond():
     err_amn = symmetrizer.check_amn(amn, ignore_upper_bands=2)
     assert err_amn < 1e-6, f"amn is not symmetric, error={err_amn}"
 
-    
+
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
     w90data.select_bands(win_min=20, win_max=1000)
@@ -424,12 +424,12 @@ def test_create_amn_diamond_p_bond():
 
     wannier_centers = w90data.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
-    assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
+    assert wannier_centers == approx(0.806995 * np.array([[0, 0, 0], [-1, 1, 0], [0, 1, 1], [-1, 0, 1]]), abs=1e-6)
     wannier_spreads = w90data.chk.wannier_spreads
     V = np.array([w90data.chk.v_matrix[k] for k in range(w90data.chk.NK)])
-    print (f"shape of V matrix {V.shape}")
-    err_chk = symmetrizer.check_amn( V, verbose=True, ignore_upper_bands=None)
-    print (f"max error in chk : {err_chk}")
+    print(f"shape of V matrix {V.shape}")
+    err_chk = symmetrizer.check_amn(V, verbose=True, ignore_upper_bands=None)
+    print(f"max error in chk : {err_chk}")
     print("wannier_spreads = ", wannier_spreads)
     # assert wannier_spreads == approx(.398647548, abs=1e-5)
 
@@ -514,14 +514,14 @@ def test_create_amn_diamond_sp3():
 
     assert shift_abs == approx(0.13779566, abs=1e-3)
 
-    assert shifts1 == approx(shift_abs*np.array([[+1, +1,+1],
-                                                 [+1, -1,-1],
-                                                 [-1, +1,-1],
-                                                 [-1, -1,+1]]), abs=1e-5)
-    assert shifts2 == approx(shift_abs*np.array([[-1, +1,+1],
-                                                 [+1, +1,-1],
-                                                 [-1,-1,-1],
-                                                 [+1, -1,+1]]), abs=1e-5)
+    assert shifts1 == approx(shift_abs * np.array([[+1, +1, +1],
+                                                 [+1, -1, -1],
+        [-1, +1, -1],
+        [-1, -1, +1]]), abs=1e-5)
+    assert shifts2 == approx(shift_abs * np.array([[-1, +1, +1],
+                                                 [+1, +1, -1],
+        [-1, -1, -1],
+        [+1, -1, +1]]), abs=1e-5)
 
     assert wannier_spreads == approx(wannier_spreads.mean(), abs=1e-6)
 

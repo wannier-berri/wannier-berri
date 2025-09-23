@@ -349,7 +349,7 @@ def arr_to_string(arr, fmt="{:+9.6f}"):
     for line in arr:
         for a in line:
             if isinstance(a, complex):
-                string += fmt.format(a.real)  + fmt.format(abs(a.imag)) + "j "
+                string += fmt.format(a.real) + fmt.format(abs(a.imag)) + "j "
             else:
                 string += fmt.format(a)
         string += "\n"
