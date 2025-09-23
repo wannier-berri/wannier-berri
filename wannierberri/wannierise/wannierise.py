@@ -203,8 +203,8 @@ def wannierise(w90data,
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k if irreducible else None)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
     update_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads, print_wcc=print_wcc_chk)
-    # w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
-    #    comment="Final state (from chk)")
+    wcc, spreads = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from chk)")
     # if not np.allclose(wcc, wcc_chk, atol=1e-4):
     #     warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
     # if not np.allclose(spreads, spreads_chk, atol=1e-4):

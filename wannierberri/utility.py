@@ -80,10 +80,15 @@ def real_recip_lattice(real_lattice=None, recip_lattice=None):
     return np.array(real_lattice), np.array(recip_lattice)
 
 
-def clear_cached(obj, properties=()):
+def clear_cached(obj, properties=None):
+    if properties is None:
+        properties = []
+    elif isinstance(properties, str):
+        properties = [properties, ]
+    assert type(properties) in (list, tuple), f"properties should be list or tuple, got {type(properties)}"
     for attr in properties:
-        if hasattr(obj, attr):
-            delattr(obj, attr)
+        if attr in obj.__dict__:
+            del obj.__dict__[attr]
 
 
 def str2bool(v):
@@ -337,3 +342,15 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
         inside = np.zeros(E.shape, dtype=bool)
         inside[ind] = True
         return inside
+
+
+def arr_to_string(arr, fmt="{:+9.6f}"):
+    string = ""
+    for line in arr:
+        for a in line:
+            if isinstance(a, complex):
+                string += fmt.format(a.real)  + fmt.format(abs(a.imag)) + "j "
+            else:
+                string += fmt.format(a)
+        string += "\n"
+    return string
