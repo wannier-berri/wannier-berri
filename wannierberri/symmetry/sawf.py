@@ -153,7 +153,7 @@ class SymmetrizerSAWF:
         self.clear_inverse()
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
-        self.set_upper_block_to_zero()
+        # self.set_upper_block_to_zero()
         return self
 
     @cached_property
@@ -243,15 +243,15 @@ class SymmetrizerSAWF:
         self.set_D_wann(D_wann_list)
         return self
 
-    def set_upper_block_to_zero(self):
-        """
-        Sets the upper block of the d_band matrices to zero, to avoid problems with imcomplete irreps
-        """
-        for ikirr in range(self.NKirr):
-            for isym in range(self.Nsym):
-                blocks = self.d_band_blocks[ikirr][isym]
-                blocks[-1][:, :] = 0.0
-        self.clear_inverse(d=True, D=False)
+    # def set_upper_block_to_zero(self):
+    #     """
+    #     Sets the upper block of the d_band matrices to zero, to avoid problems with imcomplete irreps
+    #     """
+    #     for ikirr in range(self.NKirr):
+    #         for isym in range(self.Nsym):
+    #             blocks = self.d_band_blocks[ikirr][isym]
+    #             blocks[-1][:, :] = 0.0
+    #     self.clear_inverse(d=True, D=False)
 
     @cached_property
     def rot_orb_dagger_list(self):

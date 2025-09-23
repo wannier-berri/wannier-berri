@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from ..utility import orthogonalize
 from .utility import get_inverse_block, rotate_block_matrix
@@ -22,7 +23,20 @@ def get_symmetrizer_Zirr(symmetrizer, ikirr, free=None):
 
 class Symmetrizer_Uirr(SymmetrizerSAWF):
 
-    def __init__(self, symmetrizer, ikirr):
+    """Symmetrizer for the wannierization matrix at an irreducible k-point
+
+    Parameters
+    ----------
+    symmetrizer : SymmetrizerSAWF
+        The symmetrizer for the full k-point mesh
+    ikirr : int
+        The index of the irreducible k-point
+    accuracy_threshold : float, optional
+        The accuracy threshold for excluding bands that do not form a group (and therefore are not symmetrizable)
+
+    """
+
+    def __init__(self, symmetrizer, ikirr, accuracy_threshold=1e-6):
         self.ikirr = ikirr
         self.isym_little = symmetrizer.isym_little[ikirr]
         self.nsym_little = len(self.isym_little)
@@ -30,20 +44,21 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         self.kpt_latt = symmetrizer.kpoints_all[self.ikpt]
         self.d_indices = symmetrizer.d_band_block_indices[ikirr]
         self.D_indices = symmetrizer.D_wann_block_indices
-        self.max_band = self.d_indices[-2][1]  # upper index of the last band block (not counting the last empty block)
         self.d_band_blocks = symmetrizer.d_band_blocks[ikirr]
         self.D_wann_blocks_inverse = symmetrizer.D_wann_blocks_inverse[ikirr]
         self.nb = symmetrizer.NB
         self.num_wann = symmetrizer.num_wann
         self.time_reversals = symmetrizer.time_reversals
+        self.include_bands = np.ones(self.nb, dtype=bool)
         # self.symop_product, self.symop_diff, self.spinor_diff = symmetrizer.spacegroup.get_product_table(get_diff=True)
         # print(f"initializing Symmetrizer_Uirr for ikirr={ikirr}, ikpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries")
         # print(f" product table:\n{ "\n".join([ " ".join([f'{self.symop_product[i,j]:3d}' for j in self.isym_little]) for i in self.isym_little]) }")
         # self.check_products_d()
         # self.check_products_D()
         # self.check_products_dD()
-        err = self.check()
-        print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in check: {err}")
+        err = self.check(accuracy_threshold=accuracy_threshold)
+        print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in included blocks: {err}"
+              f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
 
 
     # def check_products_d(self):
@@ -105,10 +120,11 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
     #     # print (f"max error in dD products: {maxerr}")
 
 
-    def check(self, U=None, warning_precision=1e-6, verbose=False):
+    def check(self, U=None, verbose=False, accuracy_threshold=1e-6):
         """
         Checks that the symmetrization is correct by comparing eig at the
-        irreducible kpoint and at the symmetrized kpoints
+        irreducible kpoint and at the symmetrized kpoints. 
+        Also checks which blocks of bands cannot be symmetrized, and excludes them. (normally that should be only the upper block of bands, otherwise a warning is printed)
 
         Parameters
         ----------
@@ -125,26 +141,28 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         if U is None:
             U = np.random.rand(self.nb, self.num_wann) + 1j * np.random.rand(self.nb, self.num_wann)
         # print (f"random U matrix for check: \n{arr_to_string(U, fmt='{:12.5e}')}")
-        maxerr = 0.0
         U = self(U)  # symmetrize U
         # U = sum(self.rotate_U(U, isym) for isym in self.isym_little)
-        upper_bands = self.d_indices[-2][1]
         # print (f"symmetrized U matrix for check: \n{arr_to_string(U, fmt='{:12.5e}')}")
+        max_error_in_blocks = np.zeros(len(self.d_indices), dtype=float)
         for isym in self.isym_little:
             U1 = self.rotate_U(U, isym)
             # print (f"U rotated by symmetry {isym}:\n{arr_to_string(U1, fmt='{:12.5e}')}")
-            diff = (U1 - U)[:upper_bands]
-            diff = np.max(abs(diff))
-            maxerr = max(maxerr, diff)
-            if diff > warning_precision:
-                print(f"ikirr={self.ikirr}, isym={isym} : {diff}")
+            diff = (U1 - U)
+            diff = np.max(abs(diff), axis=1)
+            for i, (start, end) in enumerate(self.d_indices):
+                max_error_in_blocks[i] = max(max_error_in_blocks[i], diff[start:end].max())
+        maxerr = 0.0
+        for i, (start, end) in enumerate(self.d_indices):
+            if max_error_in_blocks[i] > accuracy_threshold:
+                self.include_bands[start:end] = False
                 if verbose:
-                    for aaa in zip(U1.flatten(), U.flatten(), diff.flatten()):
-                        string = ""
-                        for a in aaa:
-                            string += f"{a:12.6f} "
-                        print(string)
-                    print()
+                    print(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
+                if i != len(self.d_indices) - 1:
+                    warnings.warn(f"Warning: max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not the upper block of"
+                                 f" tota l {self.nb} bands, this may indicate inaccuracy in the input data")
+            else:
+                maxerr = max(maxerr, max_error_in_blocks[i])
         return maxerr
 
 
@@ -168,7 +186,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
             Usym = sum(self.rotate_U(Uloc, isym) for isym in self.isym_little) / self.nsym_little
             diff1 = abs(Usym - Uprev).max()
             Usym_ortho = np.zeros(Usym.shape, dtype=complex)
-            Usym_ortho[:self.max_band] = orthogonalize(Usym[:self.max_band])
+            Usym_ortho[self.include_bands] = orthogonalize(Usym[self.include_bands])
             diff2 = abs(Usym_ortho - Usym).max()
             if diff1 < tol and diff2 < tol:
                 # print(f"Symmetrization converged in {i+1} iterations")
