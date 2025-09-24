@@ -1,4 +1,5 @@
 from time import time
+import warnings
 import numpy as np
 
 from ..symmetry.sawf_kirr import get_symmetrizer_Zirr, get_symmetrizer_Uirr
@@ -22,7 +23,8 @@ def wannierise(w90data,
                num_wann=None,
                parallel=True,
                symmetrize_Z=True,
-               irreducible=False
+               irreducible=False,
+               print_wcc_chk=False,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -125,7 +127,7 @@ def wannierise(w90data,
         if sitesym:
             num_wann = symmetrizer.num_wann
         else:
-            assert num_wann is not None, "num_wann should be provided for random initialization without sitesymmetry"
+            assert num_wann is not None, "num_wann should be provided for random initialization without site-symmetry"
         amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
         amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
         w90data.chk.num_wann = num_wann
@@ -201,8 +203,15 @@ def wannierise(w90data,
 
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k if irreducible else None)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
-    update_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads)
-    #    comment="Final state (from chk)")
+    update_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads, print_wcc=print_wcc_chk)
+    if not irreducible:
+        wcc_chk, spreads_chk = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+        print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")
+        if not np.allclose(wcc, wcc_chk, atol=1e-6):
+            warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
+        if not np.allclose(spreads, spreads_chk, atol=1e-2):
+            warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+
     # if not np.allclose(wcc, wcc_chk, atol=1e-4):
     #     warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
     # if not np.allclose(spreads, spreads_chk, atol=1e-4):
@@ -234,7 +243,7 @@ def update_chk(w90data, U_opt_full_BZ,
     """
 
     w90data.chk.v_matrix = {ik: U for ik, U in enumerate(U_opt_full_BZ) if U is not None}
-    if (wcc is None) or (spreads is None):
+    if (wcc is None) or (spreads is None) or print_wcc:
         wcc_new, spreads_new = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
         if wcc is None:
             wcc = wcc_new
@@ -242,7 +251,7 @@ def update_chk(w90data, U_opt_full_BZ,
             spreads = spreads_new
     w90data.chk.wannier_centers_cart, w90data.chk.wannier_spreads = wcc, spreads
     if print_wcc:
-        print_centers_and_spreads(wcc, spreads, comment=comment + ": from chk")
+        print_centers_and_spreads(wcc_new, spreads_new, comment=comment + ": from chk")
     return wcc, spreads
 
 

@@ -138,7 +138,7 @@ def main(argv):
         WF = np.zeros((npw, NBout), dtype=complex)
         for ib in range(NBout):
             WF[:, ib] = record(3 + ik * (NBin + 1) + ib + IBstart, npw, np.complex64)
-       
+
         if normalize == "norm":
             WF /= np.linalg.norm(WF, axis=0)[None, :]
 

@@ -13,7 +13,7 @@ extras_require = {
                 # https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
     "fftw"     : ['pyFFTW>=0.12.0'],
     "plot"     : ['matplotlib'],
-    "symmetry" : [ 'sympy', 'spglib>=2', 'irrep>=2.2', 'spgrep'],
+    "symmetry" : [ 'sympy', 'spglib>=2', 'irrep>=2.3.3', 'spgrep'],
     "phonons"  : [ 'untangle' ],
                 }
 
@@ -27,7 +27,7 @@ setuptools.setup(
      description="Constructuion of Wannier functions and Wannier interpolation",
      long_description=long_description,
      long_description_content_type="text/markdown",
-     python_requires='>=3.10',
+     python_requires='>=3.11',
      install_requires=[
                         'numpy>=2.0', 
                         'scipy>=1.13',
