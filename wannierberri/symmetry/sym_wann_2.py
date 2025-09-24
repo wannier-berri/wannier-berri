@@ -164,6 +164,8 @@ class SymWann:
         R_map = [(R_list @ symop.rotation.T) for symop in self.spacegroup.symmetries]
 
         for isym in self.use_symmetries_index:
+            # T : np.ndarray(shape=(num_points, nsym, 3), dtype=int)
+            # A matrix that contains the translation needed to bring the transformed point back to the home unit cell.
             T1 = self.symmetrizer.T_list[block1][:, isym]
             T2 = self.symmetrizer.T_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
@@ -173,10 +175,8 @@ class SymWann:
             atom_R_map = R_map[isym][:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
             logfile.write(f"R_map = {R_map[isym]}\n")
             logfile.write(f"np1 = {np1}, np2 = {np2}\n")
-            for a in range(np1):
-                a1 = map1[a, isym]
-                for b in range(np2):
-                    b1 = map2[b, isym]
+            for a, a1 in enumerate(map1[:, isym]):
+                for b, b1 in enumerate(map2[:, isym]):
                     logfile.write(f"a = {a}, b = {b}, a1 = {a1}, b1 = {b1}, (a1, b1) >= (a, b) = {(a1, b1) >= (a, b)}\n")
                     if (a1, b1) >= (a, b):
                         for iR in range(self.nRvec):
@@ -197,7 +197,8 @@ class SymWann:
 
     def symmetrize(self, XX_R,
             cutoff=-1,
-            cutoff_dict=None):
+            cutoff_dict=None,
+            symmetrize_irred=False):
         """
         Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
         and find the new R vectors
@@ -266,20 +267,30 @@ class SymWann:
                 matrix_dict_list_res, iRvec_ab_all = self.average_XX_block(iRab_new=iRab_irred,
                                                                         matrix_dict_in=matrix_dict_list,
                                                                         iRvec_origin=self.iRvec, mode="sum",
-                                                                        block1=block1, block2=block2,
-                                                                        forward=True)
+                                                                        block1=block1, block2=block2)
+                
+                if symmetrize_irred:
+                    iRvec_irred_set = set.union(*iRvec_ab_all.values())
+                    iRvec_irred_set.add((0, 0, 0))
+                    iRvec_irred = list(iRvec_irred_set)
+                    # iRvec_irred_index = {r: i for i, r in enumerate(iRvec_irred)}
+                    # iRab_irred = {k: set([iRvec_irred_index[irvec] for irvec in v]) for k, v in iRvec_ab_all.items()}
+                    
+                    
+                    matrix_dict_list_res, _ = self.average_XX_block(iRab_new=iRab_irred,
+                                                                            matrix_dict_in=matrix_dict_list_res,
+                                                                            iRvec_origin=iRvec_irred, mode="sum",
+                                                                            block1=block1, block2=block2)
 
                 iRvec_new_set = set.union(*iRvec_ab_all.values())
                 iRvec_new_set.add((0, 0, 0))
                 iRvec_new = list(iRvec_new_set)
-                nRvec_new = len(iRvec_new)
                 iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
                 iRab_new = {k: set([iRvec_new_index[irvec] for irvec in v]) for k, v in iRvec_ab_all.items()}
                 matrix_dict_list_res, iRab_all_2 = self.average_XX_block(iRab_new=iRab_new,
                                                                          matrix_dict_in=matrix_dict_list_res,
                                                                          iRvec_origin=iRvec_new, mode="single",
-                                                                         block1=block1, block2=block2,
-                                                                         forward=True)
+                                                                         block1=block1, block2=block2)
 
                 full_matrix_dict_list[(block1, block2)] = matrix_dict_list_res
                 full_iRvec_list[(block1, block2)] = iRvec_new
@@ -322,7 +333,7 @@ class SymWann:
         return return_dic, np.array(iRvec_new), wcc
 
 
-    def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2, forward=True):
+    def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         """
         Averages matrices over symmetry operations for a given pair of blocks.
 
@@ -389,7 +400,7 @@ class SymWann:
                                 # X_L: only rotation wannier centres from L to L' before rotating orbitals.
                                 XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
                                 matrix_dict_list_res[X][(atom_a, atom_b)][iR] += self._rotate_XX_L(
-                                    XX_L, X, isym, block1=block1, block2=block2, atom_a=atom_a_map, atom_b=atom_b_map, forward=forward)
+                                    XX_L, X, isym, block1=block1, block2=block2, atom_a=atom_a_map, atom_b=atom_b_map, forward=False)
 
                 # in single mode we need to determine it only once
                 if mode == "single":
@@ -432,17 +443,21 @@ class SymWann:
 
         n_cart = num_cart_dim(X)  # number of cartesian indices
         symop = self.spacegroup.symmetries[isym]
+        if forward:
+            rot_mat_loc = symop.rotation_cart.T # transpose, because we below we rotate row-vectors, not column-vectors
+        else:
+            rot_mat_loc = symop.rotation_cart  # the inverse rotation
         for _ in range(n_cart):
             # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
             # n_cart times puts dimensions on the right place
-            XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((-n_cart,), (0,)))
+            XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= self.parity_I[X] * (-1)**n_cart
-        if forward:
+        if not forward:
             result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
         else:
             result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_list[block1][atom_a, isym], self.symmetrizer.rot_orb_dagger_list[block2][atom_b, isym])
-        if symop.time_reversal:
+        if symop.time_reversal:   
             result = result.conj() * self.parity_TR[X]
         return result
 

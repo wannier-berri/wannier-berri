@@ -241,7 +241,7 @@ class System_R(System):
         return self.get_R_mat('Ham')
 
     def symmetrize2(self, symmetrizer, silent=True, use_symmetries_index=None,
-                    cutoff=-1, cutoff_dict=None):
+                    cutoff=-1, cutoff_dict=None, symmetrize_irred=False):
         """
         Symmetrize the system according to the Symmetrizer object.
 
@@ -271,7 +271,8 @@ class System_R(System):
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
         self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R,
-                                                                                  cutoff=cutoff, cutoff_dict=cutoff_dict)
+                                                                                  cutoff=cutoff, cutoff_dict=cutoff_dict,
+                                                                                  symmetrize_irred=symmetrize_irred)
         self.clear_cached_wcc()
         self.rvec = Rvectors(
             lattice=self.real_lattice,
