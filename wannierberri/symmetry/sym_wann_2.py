@@ -135,7 +135,7 @@ class SymWann:
         except KeyError:
             return None
 
-    def get_atom_R_map(self, iRvec, isym, block1, block2, a=None, b=None):
+    def get_atom_R_map(self, iRvec, isym, block1, block2):
         """
         Get the R vector mapping for a specific symmetry operation and atom pair.
 
@@ -147,25 +147,17 @@ class SymWann:
             The index of the symmetry operation.
         block1, block2 : int
             The block indices for the two atoms.
-        a, b : int, optional
-            Specific atom indices to restrict the mapping.
-
+        
         Returns
         -------
         np.ndarray
             The R vector mapping for the specified symmetry operation and atom pair.
         """
-        assert (a is None) == (b is None), "Either both a and b should be provided, or neither."
         R_list = np.array(iRvec, dtype=int)
         R_map = R_list @ self.spacegroup.symmetries[isym].rotation.T
-        if a is None:
-            T1 = self.symmetrizer.T_list[block1][:, isym]
-            T2 = self.symmetrizer.T_list[block2][:, isym]
-            return R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
-        else:
-            T1 = self.symmetrizer.T_list[block1][a, isym]
-            T2 = self.symmetrizer.T_list[block2][b, isym]
-            return R_map + T1 - T2
+        T1 = self.symmetrizer.T_list[block1][:, isym]
+        T2 = self.symmetrizer.T_list[block2][:, isym]
+        return R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
 
     def find_irreducible_Rab(self, block1, block2):
         """
@@ -420,8 +412,8 @@ class SymWann:
                                 # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b 
                                 # (earlier it was atom_a_map, atom_b_map which was wrong)
                                 XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
-                                XX_L_rotated = self._rotate_XX_L(XX_L, X, isym, block1=block1, block2=block2,
-                                                                 atom_a=atom_a, atom_b=atom_b, forward=False)
+                                XX_L_rotated = self._rotate_XX_L_backwards(XX_L, X, isym, block1=block1, block2=block2,
+                                                                 atom_a=atom_a, atom_b=atom_b)
                                 matrix_dict_list_res[X][(atom_a, atom_b)][iR] += XX_L_rotated
                 # in single mode we need to determine it only once
                 if mode == "single":
@@ -439,10 +431,9 @@ class SymWann:
                         v /= len(self.use_symmetries_index)
         return matrix_dict_list_res, iRab_all
 
-    def _rotate_XX_L(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b, forward=True):
+    def _rotate_XX_L_backwards(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b):
         """
-        H_ab_sym = P_dagger_a dot H_ab dot P_b
-        H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
+        Rotate the matrix XX_L BACKWARD (i.e. the symmetry operation inverse) 
 
         Parameters
         ----------
@@ -463,20 +454,14 @@ class SymWann:
 
         n_cart = num_cart_dim(X)  # number of cartesian indices
         symop = self.spacegroup.symmetries[isym]
-        if forward:
-            rot_mat_loc = symop.rotation_cart.T  # transpose, because we below we rotate row-vectors, not column-vectors
-        else:
-            rot_mat_loc = symop.rotation_cart  # the inverse rotation
+        rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
         for _ in range(n_cart):
             # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
             # n_cart times puts dimensions on the right place
             XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= self.parity_I[X] * (-1)**n_cart
-        if not forward:
-            result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
-        else:
-            result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_list[block1][atom_a, isym], self.symmetrizer.rot_orb_dagger_list[block2][atom_b, isym])
+        result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
         if symop.time_reversal:
             result = result.conj() * self.parity_TR[X]
         return result
