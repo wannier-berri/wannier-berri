@@ -3,7 +3,6 @@ import numpy as np
 
 
 def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
-                        # inv_left, inv_right,
                         result=None):
     """
     Rotates the matrix Z using the block-diagonal rotation matrices
@@ -81,6 +80,9 @@ def get_inverse_block(D):
     if isinstance(D, list):
         return [get_inverse_block(d) for d in D]
     elif isinstance(D, np.ndarray):
-        return np.linalg.inv(D)
+        if abs(D).max() < 1e-8:
+            return np.zeros(D.shape, dtype=D.dtype)
+        else:
+            return np.linalg.inv(D)
     else:
         raise ValueError(f"Unknown type {type(D)}")

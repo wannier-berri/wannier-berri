@@ -75,8 +75,6 @@ def test_shiftcurrent_symmetry(check_symmetry, system_GaAs_sym_tb):
                     )
 
 
-
-
 def test_Mn3Sn_sym_tb(check_symmetry, system_Mn3Sn_sym_tb):
     param = {'Efermi': Efermi_Mn3Sn}
     calculators = {}
@@ -358,3 +356,145 @@ def test_KaneMele_sym(check_symmetry, system_KaneMele_odd_PythTB):
     check_symmetry(system=system_KaneMele_odd_PythTB,
                    grid_param=dict(NK=(6, 6, 1), NKFFT=(3, 3, 1)),
                    calculators=calculators)
+
+
+@pytest.mark.parametrize('include_TR', [True, False])
+@pytest.mark.parametrize('ibasis1', [0, 1, 2, None])
+@pytest.mark.parametrize('ibasis2', [0, 1, 2, None])
+def test_symmetrization_model(ibasis1, ibasis2, include_TR):
+    """Test symmetrization of a model"""
+    if include_TR and (ibasis1 is not None or ibasis2 is not None):
+        pytest.skip("With TR only the automatic basis is tested")
+    if (ibasis1 is None) != (ibasis2 is None):
+        pytest.skip("Either both bases are None or none of them")
+    rnd = np.random.random
+    from wannierberri.system import System_PythTB
+    from irrep.spacegroup import SpaceGroup
+    import pythtb
+    from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
+    from wannierberri.symmetry.projections import ProjectionsSet, Projection
+
+    sq32 = 3**0.5 / 2
+
+    # GaN structure
+    lattice = np.array([[sq32, 0.5, 0], [-sq32, 0.5, 0], [0, 0, 1.5]])
+    x = 0.001648822
+    pos = np.array([[1 / 3, 2 / 3, 0.0],
+                    [2 / 3, 1 / 3, 0.5],
+                    [1 / 3, 2 / 3, 0.375 + x],
+                    [2 / 3, 1 / 3, 0.875 + x]])
+
+    sg = SpaceGroup.from_cell(real_lattice=lattice,
+                            positions=pos,
+                            typat=[1, 1, 2, 2],
+                            spinor=False,
+                            include_TR=include_TR)
+
+    sg.show()
+
+    basis2_180 = np.diag([-1, -1, 1])
+    basis2_60 = np.array([[1 / 2, sq32, 0],
+                        [-sq32, 1 / 2, 0],
+        [0, 0, 1]])
+    basis2_300 = np.array([[1 / 2, -sq32, 0],
+                        [sq32, 1 / 2, 0],
+        [0, 0, 1]])
+
+    basis1_0 = np.eye(3)
+    basis1_120 = np.array([[-1 / 2, sq32, 0],
+                        [-sq32, -1 / 2, 0],
+        [0, 0, 1]])
+    basis1_240 = np.array([[-1 / 2, -sq32, 0],
+                        [sq32, -1 / 2, 0],
+        [0, 0, 1]])
+
+
+    if None in (ibasis1, ibasis2):
+        proj = Projection(
+            position_num=[[1 / 3, 2 / 3, 0], [2 / 3, 1 / 3, 1 / 2]],
+            orbital='sp2',
+            spacegroup=sg,
+            xaxis=[1, 0, 0],
+            rotate_basis=True,
+        )
+    else:
+        basis1 = [basis1_0, basis1_120, basis1_240][ibasis1]
+        basis2 = [basis2_60, basis2_180, basis2_300][ibasis2]
+
+        proj = Projection(
+            position_num=[[1 / 3, 2 / 3, 0], [2 / 3, 1 / 3, 1 / 2]],
+            orbital='sp2',
+            spacegroup=sg,
+            basis_list=[basis1, basis2]
+        )
+
+    proj_set = ProjectionsSet([proj])
+
+    norb = proj.num_wann_per_site
+
+    print(f"basis list : \n{"\n".join(str(a) for a in proj_set.projections[0].basis_list)}")
+
+
+    symmetrizer = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
+    rot_orb = np.array(symmetrizer.rot_orb_list[0])
+    assert np.allclose(rot_orb, np.round(rot_orb), atol=1e-10), f"For the chosen bases the rotation matrices should be integer, but they are \n{rot_orb}"
+
+    model = pythtb.tb_model(dim_k=3, dim_r=3,
+                            lat=lattice,
+                            orb=[[1 / 3, 1 / 3, 0]] * norb + [[2 / 3, 2 / 3, 1 / 2]] * norb,
+                            nspin=1)
+    for i in range(norb * 2):
+        model.set_onsite(rnd(), ind_i=i)
+
+    for R in [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, -1, 0], [0, 0, 1], [1, 1, 1]]:
+        for i in range(norb * 2):
+            for j in range(i + 1, norb * 2):
+                model.set_hop(rnd() + 1j * rnd(), ind_i=i, ind_j=j, ind_R=R)
+
+    system = System_PythTB(model)
+
+    calculators = {"tabulate": wberri.calculators.TabulatorAll(tabulators={})}
+
+    grid = wberri.Grid(system,
+                    NK=[24, 24, 4],
+                    NKFFT=[6, 6, 2],
+                    )
+
+    results_tab = wberri.run(system,
+                    grid=grid,
+                    calculators=calculators,
+                    use_irred_kpt=False,
+                        symmetrize=False,)
+
+    results_tab_sym = wberri.run(system,
+                    grid=grid,
+                    calculators=calculators,
+                    use_irred_kpt=True,
+                        symmetrize=True,)
+
+    kpoints_all = results_tab.results['tabulate'].kpoints
+    kpoints_all_sym = results_tab_sym.results['tabulate'].kpoints
+    assert np.allclose(kpoints_all, kpoints_all_sym)
+
+    key = "Energy"
+    res_sym = results_tab_sym.results["tabulate"].results[key].data
+    res = results_tab.results["tabulate"].results[key].data
+
+    kpoints_ok = []
+    maxdiff = 0
+    for ik, k in enumerate(kpoints_all):
+        diff = np.max(abs(res_sym[ik] - res[ik]))
+        maxdiff = max(maxdiff, diff)
+        if diff > 0.1:
+            print("#" * 80)
+            print("#" * 80)
+            print(f"Difference at k-point {k} : {diff}")
+            print(f"  without symmetrization : {res[ik]}")
+            print(f"  with symmetrization    : {res_sym[ik]}")
+        else:
+            kpoints_ok.append((ik, k))
+
+    print(f"Number of k-points with correct energy after symmetrization: {len(kpoints_ok)} out of {len(kpoints_all)}")
+
+    print(f"Maximum difference in energies: {maxdiff}")
+    assert maxdiff < 1e-5, f"Maximum difference in energies {maxdiff} is too large"

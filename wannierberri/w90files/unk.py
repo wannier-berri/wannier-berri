@@ -95,8 +95,8 @@ class UNK(W90_file):
                 for js in range(nspinor):
                     U[ib, :, :, :, js] = f.read_record(dtype=np.complex128).reshape(
                         nr1, nr2, nr3, order='F')[::reduce_grid[0], ::reduce_grid[1], ::reduce_grid[2]]
-                    print(f"norm of band {ib} (spinor {js}) = {np.linalg.norm(U[ib, :, :, :, js])}")
-                print(f"norm of band {ib} = {np.linalg.norm(U[ib, :, :, :, :])}")
+                #     print(f"norm of band {ib} (spinor {js}) = {np.linalg.norm(U[ib, :, :, :, js])}")
+                # print(f"norm of band {ib} = {np.linalg.norm(U[ib, :, :, :, :])}")
             data[ik] = U
         return UNK(data=data, NK=NK)
 

@@ -131,10 +131,10 @@ class MMN(W90_file):
         f_mmn_out.write(f"{self.NB} {self.NK} {self.NNB}\n")
         for ik in range(self.NK):
             for ib in range(self.NNB):
-                f_mmn_out.write(f"{ik + 1} {self.neighbours[ik, ib] + 1} {' '.join(map(str, self.G[ik, ib]))}\n")
+                f_mmn_out.write(f"{ik + 1} {self.neighbours[ik, ib] + 1} {' '.join(map(str, self.G[ik][ib]))}\n")
                 for m in range(self.NB):
                     for n in range(self.NB):
-                        f_mmn_out.write(f"{self.data[ik, ib, n, m].real} {self.data[ik, ib, n, m].imag}\n")
+                        f_mmn_out.write(f"{self.data[ik][ib, n, m].real} {self.data[ik][ib, n, m].imag}\n")
         f_mmn_out.close()
 
     def select_bands(self, selected_bands):

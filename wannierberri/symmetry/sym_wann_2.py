@@ -60,6 +60,7 @@ class SymWann:
             iRvec,
             wannier_centers_cart=None,
             silent=False,
+            use_symmetries_index=None,
     ):
 
         self.silent = silent
@@ -70,6 +71,10 @@ class SymWann:
         self.num_wann = symmetrizer.num_wann
         self.spacegroup = symmetrizer.spacegroup
         self.lattice = self.spacegroup.lattice
+        if use_symmetries_index is None:
+            self.use_symmetries_index = list(range(len(self.spacegroup.symmetries)))
+        else:
+            self.use_symmetries_index = use_symmetries_index
 
         self.symmetrizer = symmetrizer
         self.num_blocks = len(symmetrizer.D_wann_block_indices)
@@ -79,7 +84,6 @@ class SymWann:
         points_index = np.cumsum([0] + self.num_points_list)
         self.points_index_start = points_index[:-1]
         self.points_index_end = points_index[1:]
-
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
                                 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR']
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
@@ -130,6 +134,30 @@ class SymWann:
         except KeyError:
             return None
 
+    def get_atom_R_map(self, iRvec, isym, block1, block2):
+        """
+        Get the R vector mapping for a specific symmetry operation and atom pair.
+
+        Parameters
+        ----------
+        iRvec : list of tuples
+            The list of R vectors to consider.
+        isym : int
+            The index of the symmetry operation.
+        block1, block2 : int
+            The block indices for the two atoms.
+        
+        Returns
+        -------
+        np.ndarray
+            The R vector mapping for the specified symmetry operation and atom pair.
+        """
+        R_list = np.array(iRvec, dtype=int)
+        R_map = R_list @ self.spacegroup.symmetries[isym].rotation.T
+        T1 = self.symmetrizer.T_list[block1][:, isym]
+        T2 = self.symmetrizer.T_list[block2][:, isym]
+        return R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
+
     def find_irreducible_Rab(self, block1, block2):
         """
         Finds which Rvectors can be chosen as an irreducible set for each pair of atoms (a,b)
@@ -153,25 +181,17 @@ class SymWann:
         map1 = self.symmetrizer.atommap_list[block1]
         map2 = self.symmetrizer.atommap_list[block2]
         irreducible = np.ones((self.nRvec, np1, np2), dtype=bool)
+        logfile.write(f"np1 = {np1}, np2 = {np2}\n")
 
         R_list = np.array(self.iRvec, dtype=int)
         logfile.write(f"R_list = {R_list}\n")
-        R_map = [np.dot(R_list, np.transpose(symop.rotation)) for symop in self.spacegroup.symmetries]
 
-        for isym in range(self.symmetrizer.Nsym):
-            T1 = self.symmetrizer.T_list[block1][:, isym]
-            T2 = self.symmetrizer.T_list[block2][:, isym]
-            logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
-            logfile.write(f"T1 = {T1}\n")
-            logfile.write(f"T2 = {T2}\n")
-
-            atom_R_map = R_map[isym][:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
-            logfile.write(f"R_map = {R_map[isym]}\n")
-            logfile.write(f"np1 = {np1}, np2 = {np2}\n")
-            for a in range(np1):
-                a1 = map1[a, isym]
-                for b in range(np2):
-                    b1 = map2[b, isym]
+        for isym in self.use_symmetries_index:
+            # T : np.ndarray(shape=(num_points, nsym, 3), dtype=int)
+            # A matrix that contains the translation needed to bring the transformed point back to the home unit cell.
+            atom_R_map = self.get_atom_R_map(self.iRvec, isym, block1, block2)
+            for a, a1 in enumerate(map1[:, isym]):
+                for b, b1 in enumerate(map2[:, isym]):
                     logfile.write(f"a = {a}, b = {b}, a1 = {a1}, b1 = {b1}, (a1, b1) >= (a, b) = {(a1, b1) >= (a, b)}\n")
                     if (a1, b1) >= (a, b):
                         for iR in range(self.nRvec):
@@ -189,13 +209,21 @@ class SymWann:
         return res
 
 
-
     def symmetrize(self, XX_R,
             cutoff=-1,
-            cutoff_dict=None):
+            cutoff_dict=None,):
         """
         Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
         and find the new R vectors
+
+        Parameters
+        ----------
+        XX_R: dict {str: np.array(nRvec, num_wann, num_wann, ...), dtype=complex}
+            Matrices to be symmetrized.
+        cutoff: float
+            Cutoff for small matrix elements in XX_R.   
+        cutoff_dict: dict {str: float}
+            Cutoff for small matrix elements in XX_R for each matrix type.
 
         Returns
         --------
@@ -240,25 +268,37 @@ class SymWann:
                 norb2 = self.num_orb_list[block2]
                 np2 = self.num_points_list[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
+                logfile.write(f"iRab_irred = {iRab_irred}\n")
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
                     v = np.copy(v1)[:, ws1:we1, ws2:we2]
+
+                    # transforms a matrix X[iR, m,n,...] into a nested dictionary like
+                    # {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
                                                           cutoff=cutoff_dict[k])
+
                 matrix_dict_list_res, iRvec_ab_all = self.average_XX_block(iRab_new=iRab_irred,
                                                                         matrix_dict_in=matrix_dict_list,
-                                                                        iRvec_new=self.iRvec, mode="sum",
+                                                                        iRvec_origin=self.iRvec, mode="sum",
                                                                         block1=block1, block2=block2)
+
+                logfile.write(f"iRvec_ab_all = {iRvec_ab_all}\n")
+                logfile.write(f"iRab_irred = {iRab_irred}\n")
+                for k, val in matrix_dict_list_res.items():
+                    logfile.write(f"matrix_dict_list_res[{k}]  = \n")
+                    for ab, X in val.items():
+                        logfile.write(f"  ({ab}):\n {X}\n")
+
 
                 iRvec_new_set = set.union(*iRvec_ab_all.values())
                 iRvec_new_set.add((0, 0, 0))
                 iRvec_new = list(iRvec_new_set)
-                nRvec_new = len(iRvec_new)
                 iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
                 iRab_new = {k: set([iRvec_new_index[irvec] for irvec in v]) for k, v in iRvec_ab_all.items()}
                 matrix_dict_list_res, iRab_all_2 = self.average_XX_block(iRab_new=iRab_new,
                                                                          matrix_dict_in=matrix_dict_list_res,
-                                                                         iRvec_new=iRvec_new, mode="single",
+                                                                         iRvec_origin=iRvec_new, mode="single",
                                                                          block1=block1, block2=block2)
 
                 full_matrix_dict_list[(block1, block2)] = matrix_dict_list_res
@@ -302,8 +342,32 @@ class SymWann:
         return return_dic, np.array(iRvec_new), wcc
 
 
-    def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_new, mode, block1, block2):
+
+    def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         """
+        Averages matrices over symmetry operations for a given pair of blocks.
+
+        Parameters
+        ----------
+        iRab_new : dict
+            A dictionary mapping (atom_a, atom_b) pairs to lists of new R-vectors (That need to be evaluated)
+
+        matrix_dict_in : dict
+            A dictionary containing the input matrices to be averaged.
+
+        iRvec_origin : list
+            A list of original R-vectors.
+
+        mode : str
+            The averaging mode, either "sum" or "single". In sum mode all R-vectors that map to the same R-vector are summed.
+            In sungle mode only one of them is taken.
+
+        block1 : int
+            The index of the first block.
+
+        block2 : int
+            The index of the second block.
+
         Return
         --------
             (matrix_dict_list_res, iRab_all)
@@ -312,21 +376,24 @@ class SymWann:
         """
         assert mode in ["sum", "single"]
         iRab_new = copy.deepcopy(iRab_new)
-        iRvec_new_array = np.array(iRvec_new, dtype=int)
+        iRvec_origin_array = np.array(iRvec_origin, dtype=int)
 
         matrix_dict_list_res = {k: defaultdict(lambda: defaultdict(lambda: 0)) for k in matrix_dict_in}
 
         iRab_all = defaultdict(lambda: set())
         logfile = self.logfile
 
-        for isym, symop in enumerate(self.spacegroup.symmetries):
+        for isym in self.use_symmetries_index:
+            symop = self.spacegroup.symmetries[isym]
+            # T is the translation needed to return to the home unit cell after rotation
             T1 = self.symmetrizer.T_list[block1][:, isym]
             T2 = self.symmetrizer.T_list[block2][:, isym]
             atommap1 = self.symmetrizer.atommap_list[block1][:, isym]
             atommap2 = self.symmetrizer.atommap_list[block2][:, isym]
-            logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
-            R_map = iRvec_new_array @ np.transpose(symop.rotation)
+            logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
+            R_map = iRvec_origin_array @ symop.rotation.T
             atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
+            # atom_R_map[iR, a, b] gives the new R vector to wich the original iR vector is mapped for atoms a and b
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
                 atom_a_map = atommap1[atom_a]
                 atom_b_map = atommap2[atom_b]
@@ -340,33 +407,32 @@ class SymWann:
                             if new_Rvec_index in matrix_dict_in[X][(atom_a_map, atom_b_map)]:
                                 if mode == "single":
                                     exclude_set.add(iR)
-                                # X_L: only rotation wannier centres from L to L' before rotating orbitals.
-                                XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][
-                                    new_Rvec_index]
-                                matrix_dict_list_res[X][(atom_a, atom_b)][iR] += self._rotate_XX_L(
-                                    XX_L, X, isym, block1=block1, block2=block2, atom_a=atom_a_map, atom_b=atom_b_map)
+                                # we rotate from the XXL from the "new" R-vector and atom pairs back to the original,
+                                # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b 
+                                # (earlier it was atom_a_map, atom_b_map which was wrong)
+                                XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
+                                XX_L_rotated = self._rotate_XX_L_backwards(XX_L, X, isym, block1=block1, block2=block2,
+                                                                 atom_a=atom_a, atom_b=atom_b)
+                                matrix_dict_list_res[X][(atom_a, atom_b)][iR] += XX_L_rotated
                 # in single mode we need to determine it only once
                 if mode == "single":
                     iR_new_list -= exclude_set
 
         if mode == "single":
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
-                assert len(
-                    iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}" + ", ".join(
-                    str(iRvec_new[ir]) for ir in iR_new_list)
+                assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}" + ", ".join(
+                    str(iRvec_origin[ir]) for ir in iR_new_list)
 
         if mode == "sum":
             for x in matrix_dict_list_res.values():
                 for d in x.values():
                     for k, v in d.items():
-                        v /= self.spacegroup.size
+                        v /= len(self.use_symmetries_index)
         return matrix_dict_list_res, iRab_all
 
-
-    def _rotate_XX_L(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b):
+    def _rotate_XX_L_backwards(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b):
         """
-        H_ab_sym = P_dagger_a dot H_ab dot P_b
-        H_ab_sym_T = ul dot H_ab_sym.conj() dot ur
+        Rotate the matrix XX_L BACKWARD (i.e. the symmetry operation inverse) 
 
         Parameters
         ----------
@@ -387,10 +453,11 @@ class SymWann:
 
         n_cart = num_cart_dim(X)  # number of cartesian indices
         symop = self.spacegroup.symmetries[isym]
+        rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
         for _ in range(n_cart):
             # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
             # n_cart times puts dimensions on the right place
-            XX_L = np.tensordot(XX_L, symop.rotation_cart, axes=((-n_cart,), (0,)))
+            XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= self.parity_I[X] * (-1)**n_cart
         result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
@@ -425,8 +492,8 @@ def test_rotate_matrix():
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
-    """transforms a matrix X[iR, m,n,...] into a dictionary like
-        {(a,b): {iR: np.array(num_w_a.num_w_b,...)}}
+    """transforms a matrix X[iR, m,n,...] into a nested dictionary like
+        {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
     """
     result = defaultdict(lambda: {})
     for a in range(np1):

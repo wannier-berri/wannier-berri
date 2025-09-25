@@ -107,11 +107,17 @@ class CheckPoint(SavableNPZ):
         self.num_bands = num_bands
         self.num_kpts = num_kpts
 
+
     def get_selected_bands(self):
         if hasattr(self, "selected_bands") and self.selected_bands is not None:
             return self.selected_bands
         else:
             return np.arange(self.num_bands)
+        
+
+    @property
+    def NK(self):
+        return self.num_kpts
 
 
     def from_w90_file(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
@@ -386,11 +392,11 @@ class CheckPoint(SavableNPZ):
             r2 = np.zeros(self.num_wann, dtype=float)
         for ik in range(mmn.NK):
             for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik, ib]
-                mmn_loc = self.wannier_gauge(mmn.data[ik, ib], ik, iknb)
+                iknb = mmn.neighbours[ik][ib]
+                mmn_loc = self.wannier_gauge(mmn.data[ik][ib], ik, iknb)
                 mmn_loc = mmn_loc.diagonal()
                 log_loc = np.angle(mmn_loc)
-                wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib]
+                wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib][None, :]
                 if spreads:
                     r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * mmn.wk[ib]
         wcc /= mmn.NK
