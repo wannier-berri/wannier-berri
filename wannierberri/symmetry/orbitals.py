@@ -250,7 +250,7 @@ class OrbitalRotator:
         assert (irot is None) != (rot_cart is None), f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
         if irot is None:
             if basis1 is not None:
-                # rot_cart = basis1.T @ rot_cart @ basis2
+                # rot_cart = basis2.T @ rot_cart @ basis1
                 rot_cart = basis2 @ rot_cart @ basis1.T
             irot = self.calcualted_matrices.index_or_None(rot_cart)
             if irot is None:
