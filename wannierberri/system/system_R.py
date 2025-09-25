@@ -270,8 +270,7 @@ class System_R(System):
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
-        self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R,
-                                                                                  cutoff=cutoff, cutoff_dict=cutoff_dict)
+        self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.clear_cached_wcc()
         self.rvec = Rvectors(
             lattice=self.real_lattice,

@@ -346,6 +346,8 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
 
 def arr_to_string(arr, fmt="{:+9.6f}"):
     string = ""
+    if "{" not in fmt and "}" not in fmt:
+        fmt = "{:" + fmt + "}"
     for i, line in enumerate(arr):
         for a in line:
             if isinstance(a, complex):
