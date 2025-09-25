@@ -261,13 +261,23 @@ def soc_Fe_gpaw():
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_up():
     """Create system for Fe up channel using GPAW wannierisation data"""
-    return System_R().load_npz(os.path.join(PATH_Fe_GPAW, "system_up"), load_all_XX_R=True)
+    system = System_R().load_npz(os.path.join(PATH_Fe_GPAW, "system_up"), load_all_XX_R=True)
+    spacegroup = SpaceGroup.from_cell(real_lattice=system.real_lattice,
+                                positions=[[0, 0, 0]], typat=[1],
+                            magmom=[[0, 0, 0]])
+    system.set_pointgroup(spacegroup=spacegroup)
+    return system
 
 
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_dw():
     """Create system for Fe down channel using GPAW wannierisation data"""
-    return System_R().load_npz(os.path.join(PATH_Fe_GPAW, "system_dw"), load_all_XX_R=True)
+    system = System_R().load_npz(os.path.join(PATH_Fe_GPAW, "system_dw"), load_all_XX_R=True)
+    spacegroup = SpaceGroup.from_cell(real_lattice=system.real_lattice,
+                                positions=[[0, 0, 0]], typat=[1],
+                            magmom=[[0, 0, 0]])
+    system.set_pointgroup(spacegroup=spacegroup)
+    return system
 
 
 @pytest.fixture(scope="session")
@@ -291,6 +301,12 @@ def get_system_Fe_W90_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw
                             theta=theta,
                             phi=phi,
                             alpha_soc=alpha_soc)
+        # system_soc.symmetrize(proj=['Fe:sp3d2', 'Fe:t2g'],
+        #                     atom_name=['Fe'],
+        #                     positions=np.array([[0, 0, 0]]),
+        #                     soc=True,
+        #                     magmom=[[np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]]
+        #                     )
         system_soc.set_pointgroup(spacegroup=mg)
         return system_soc
     return _inner

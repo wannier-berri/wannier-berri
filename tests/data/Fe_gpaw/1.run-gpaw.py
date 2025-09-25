@@ -2,7 +2,7 @@ import numpy as np
 from ase import Atoms
 from gpaw import GPAW, PW
 
-do_scf = True
+do_scf = False
 do_nscf = True
 do_write_w90 = True
 
@@ -36,7 +36,7 @@ if do_nscf:
         kpts={'size': (2, 2, 2), 'gamma': True},
         symmetry='off',
         nbands=30,
-        # convergence={'bands' 30},
+        convergence={'bands' : 26},
         txt=f'{seed}-nscf.txt')
     calc_nscf.write(f'{seed}-nscf.gpw', mode='all')
 else:

@@ -35,9 +35,9 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
 
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     symmetrizer = SAWF().from_irrep(bandstructure,
-                                    unitary_params={'error_threshold': 0.1,
-                                                    'warning_threshold': 0.01,
-                                                    'nbands_upper_skip': 8 * (2 if spinor else 1)})
+                                    unitary_params={'error_threshold': 0.001,
+                                                    'warning_threshold': 1e-5,
+                                                    'nbands_upper_skip': 4 * (2 if spinor else 1)})
     symmetrizer.set_D_wann_from_projections(proj_set)
 
     w90data = Wannier90data().from_w90_files(prefix, readfiles=["win", "eig", "mmn"],
