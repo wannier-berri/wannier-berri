@@ -191,10 +191,10 @@ class SymWann:
         map2 = self.symmetrizer.atommap_list[block2]
         irreducible = np.ones((self.nRvec, np1, np2), dtype=bool)
         logfile.write(f"np1 = {np1}, np2 = {np2}\n")
-            
+
         R_list = np.array(self.iRvec, dtype=int)
         logfile.write(f"R_list = {R_list}\n")
-        
+
         for isym in self.use_symmetries_index:
             # T : np.ndarray(shape=(num_points, nsym, 3), dtype=int)
             # A matrix that contains the translation needed to bring the transformed point back to the home unit cell.
@@ -216,42 +216,11 @@ class SymWann:
                for a in range(np1) for b in range(np2)}
         res = {k: v for k, v in dic.items() if len(v) > 0}
         return res
-    
-    def find_little_groups(self, block1, block2, Rab_irred):
-        """find the symmetry operations that map a matrix element into itself
-        
-        Parameters:
-        
-        block1, block2 : int
-            Block indices
-        Rab_irred : dict
-            { (a,b):set([index of Rvecotr, if it is irreducible])}
 
-        Return
-        --------
-        dict
-         { (a,b): {iR:[index of symmetry operations that map (a,b,iR) into itself]}}
-        """
-        logfile = self.logfile
-        logfile.write("searching little groups for pairs of a,b and R\n")
-        little_groups = {(a,b):{ir:[] for ir in Rab_irred[(a,b)]} for (a,b) in Rab_irred.keys()}
-        map1 = self.symmetrizer.atommap_list[block1]
-        map2 = self.symmetrizer.atommap_list[block2]
-        
-        for (a, b), iRset in Rab_irred.items():
-            for isym in self.use_symmetries_index:
-                if map1[a, isym] == a and map2[b, isym] == b:
-                    iRvec_loc = [self.iRvec[iR] for iR in iRset]
-                    R_map = self.get_atom_R_map(iRvec_loc, isym, block1, block2, a=a, b=b)
-                    for i, iR in enumerate(iRset):
-                        if np.all(R_map[i] == iRvec_loc[i]):
-                            little_groups[(a, b)][iR].append(isym)
-        return little_groups  
 
     def symmetrize(self, XX_R,
             cutoff=-1,
-            cutoff_dict=None,
-            symmetrize_irred=False):
+            cutoff_dict=None,):
         """
         Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
         and find the new R vectors
@@ -308,9 +277,7 @@ class SymWann:
                 norb2 = self.num_orb_list[block2]
                 np2 = self.num_points_list[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
-                little_groups = self.find_little_groups(block1=block1, block2=block2, Rab_irred=iRab_irred)
                 logfile.write(f"iRab_irred = {iRab_irred}\n")
-                logfile.write(f"little_groups = {little_groups}\n")
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
                     v = np.copy(v1)[:, ws1:we1, ws2:we2]
@@ -324,21 +291,14 @@ class SymWann:
                                                                         matrix_dict_in=matrix_dict_list,
                                                                         iRvec_origin=self.iRvec, mode="sum",
                                                                         block1=block1, block2=block2)
-                
+
                 logfile.write(f"iRvec_ab_all = {iRvec_ab_all}\n")
                 logfile.write(f"iRab_irred = {iRab_irred}\n")
-                for k,val in matrix_dict_list_res.items():
+                for k, val in matrix_dict_list_res.items():
                     logfile.write(f"matrix_dict_list_res[{k}]  = \n")
                     for ab, X in val.items():
                         logfile.write(f"  ({ab}):\n {X}\n")
-                
-                if symmetrize_irred:
-                    matrix_dict_list_res = self.average_XX_block_little_group(matrix_dict_list_res, little_groups, block1=block1, block2=block2)
-                    logfile.write(f"After symmetrization over little group:\n")
-                    for k,val in matrix_dict_list_res.items():
-                        logfile.write(f"matrix_dict_list_res[{k}]  = \n")
-                        for ab, X in val.items():
-                            logfile.write(f"  ({ab}):\n {X}\n")
+
 
                 iRvec_new_set = set.union(*iRvec_ab_all.values())
                 iRvec_new_set.add((0, 0, 0))
@@ -389,7 +349,7 @@ class SymWann:
         logfile.write(f"wcc after symmetrization = \n {wcc}\n")
         logfile.write('Symmetrizing WCC Finished\n')
         return return_dic, np.array(iRvec_new), wcc
-    
+
 
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
@@ -456,28 +416,21 @@ class SymWann:
                             if new_Rvec_index in matrix_dict_in[X][(atom_a_map, atom_b_map)]:
                                 if mode == "single":
                                     exclude_set.add(iR)
-                                # X_L: only rotation wannier centres from L to L' before rotating orbitals.
+                                # we rotate from the XXL from the "new" R-vector and atom pairs back to the original,
+                                # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b 
+                                # (earlier it was atom_a_map, atom_b_map which was wrong)
                                 XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
-                                XX_L_rotated = self._rotate_XX_L(XX_L, X, isym, block1=block1, block2=block2, 
+                                XX_L_rotated = self._rotate_XX_L(XX_L, X, isym, block1=block1, block2=block2,
                                                                  atom_a=atom_a, atom_b=atom_b, forward=False)
-                                if mode == "single":
-                                    logfile.write(f"symmetry {isym} rotated atoms ({atom_a}, {atom_b}) into ({atom_a_map}, {atom_b_map}) "
-                                                  f"Rvector {iRvec_origin[iR][0]} {int(iRvec_origin[iR][1])}, {int(iRvec_origin[iR][2])} to "
-                                                  f"({new_Rvec[0]}, {new_Rvec[1]}, {new_Rvec[2]} )\n"
-                                                  f"matrix \n{XX_L}\n back to \n{XX_L_rotated}\n"
-                                                  f" rot_orb[a] =\n {self.symmetrizer.rot_orb_list[block1][atom_a_map, isym]}\n"
-                                                  f" rot_orb[b] =\n {self.symmetrizer.rot_orb_list[block2][atom_b_map, isym]}\n"
-                                                )
                                 matrix_dict_list_res[X][(atom_a, atom_b)][iR] += XX_L_rotated
-
                 # in single mode we need to determine it only once
                 if mode == "single":
                     iR_new_list -= exclude_set
 
-        # if mode == "single":
-        #     for (atom_a, atom_b), iR_new_list in iRab_new.items():
-        #         assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}" + ", ".join(
-        #             str(iRvec_origin[ir]) for ir in iR_new_list)
+        if mode == "single":
+            for (atom_a, atom_b), iR_new_list in iRab_new.items():
+                assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}" + ", ".join(
+                    str(iRvec_origin[ir]) for ir in iR_new_list)
 
         if mode == "sum":
             for x in matrix_dict_list_res.values():
@@ -486,48 +439,6 @@ class SymWann:
                         v /= len(self.use_symmetries_index)
         return matrix_dict_list_res, iRab_all
 
-
-    def average_XX_block_little_group(self, matrix_dict_in, little_groups, block1, block2):
-        """
-        Averages matrices over the little group of a particular R-vector for a given pair of blocks.
-
-        Parameters
-        ----------
-        matrix_dict_in : dict
-            A dictionary containing the input matrices to be averaged.
-
-        little_groups : dict
-            A dictionary mapping {(atom_a, atom_b): {iR:[index of symmetry operations that map (a,b,iR) into itself]}}
-
-        Return
-        --------
-            matrix_dict_list_res : dict
-                {"Ham":{ (a,b):{iR:mat} }, "AA":{...}, ...} , where iR is the index of R-vector in the old set of R-vectors
-        """
-
-        matrix_dict_list_res = {k: defaultdict(lambda: defaultdict(lambda: 0)) for k in matrix_dict_in}
-
-        logfile = self.logfile
-        logfile.write("Averaging over little groups\n")
-
-        for (atom_a, atom_b), little_groups in little_groups.items():
-            logfile.write(f"little group for atoms ({atom_a},{atom_b}): {little_groups}\n")
-            for iR, symops in little_groups.items():
-                logfile.write(f"  R vector {self.iRvec[iR]}: symops = {symops}\n")
-                for X in matrix_dict_in.keys():
-                    for isym in symops:
-                        XX_in = matrix_dict_in[X][(atom_a, atom_b)][iR]
-                        XX_rotated = self._rotate_XX_L(
-                                XX_in, X, isym, 
-                                block1=block1, block2=block2, atom_a=atom_a, atom_b=atom_b, forward=False)
-                        matrix_dict_list_res[X][(atom_a, atom_b)][iR] += XX_in
-                        logfile.write(f"    symmetry operation {isym} rotated matrix \n{XX_in}\n into \n {XX_rotated}\n"
-                                      f" rot_orb[a] =\n {self.symmetrizer.rot_orb_list[block1][atom_a, isym]}\n"
-                                      f" rot_orb[b] =\n {self.symmetrizer.rot_orb_list[block2][atom_b, isym]}\n"
-                                      ) 
-                    matrix_dict_list_res[X][(atom_a, atom_b)][iR] /= len(symops)
-        return matrix_dict_list_res
-                        
     def _rotate_XX_L(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b, forward=True):
         """
         H_ab_sym = P_dagger_a dot H_ab dot P_b
@@ -553,7 +464,7 @@ class SymWann:
         n_cart = num_cart_dim(X)  # number of cartesian indices
         symop = self.spacegroup.symmetries[isym]
         if forward:
-            rot_mat_loc = symop.rotation_cart.T # transpose, because we below we rotate row-vectors, not column-vectors
+            rot_mat_loc = symop.rotation_cart.T  # transpose, because we below we rotate row-vectors, not column-vectors
         else:
             rot_mat_loc = symop.rotation_cart  # the inverse rotation
         for _ in range(n_cart):
@@ -566,7 +477,7 @@ class SymWann:
             result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
         else:
             result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_list[block1][atom_a, isym], self.symmetrizer.rot_orb_dagger_list[block2][atom_b, isym])
-        if symop.time_reversal:   
+        if symop.time_reversal:
             result = result.conj() * self.parity_TR[X]
         return result
 
