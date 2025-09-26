@@ -136,7 +136,8 @@ class Projection:
 
         if basis_list is not None:
             assert not rotate_basis, "rotate_basis is not allowed if basis_list is provided"
-            for i,b in enumerate(basis_list):
+            for i, b in enumerate(basis_list):
+                b = np.array(b)
                 assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
                 assert b.dtype == float, f"basis_list[{i}] should be a float matrix, not {b.dtype}"
                 assert np.allclose(b @ b.T, np.eye(3), atol=1e-8), f"basis_list[{i}] should be an orthogonal matrix, not {b}"
