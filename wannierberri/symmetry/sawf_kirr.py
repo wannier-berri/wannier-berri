@@ -120,7 +120,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
     #     # print (f"max error in dD products: {maxerr}")
 
 
-    def check(self, U=None, verbose=False, accuracy_threshold=1e-6):
+    def check(self, U=None, verbose=False, accuracy_threshold=1e-6, no_exclude_bands=-4):
         """
         Checks that the symmetrization is correct by comparing eig at the
         irreducible kpoint and at the symmetrized kpoints. 
@@ -138,6 +138,8 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         float
             the maximum error found
         """
+        if no_exclude_bands <= 0:
+            no_exclude_bands = self.nb + no_exclude_bands
         if U is None:
             U = np.random.rand(self.nb, self.num_wann) + 1j * np.random.rand(self.nb, self.num_wann)
         # print (f"random U matrix for check: \n{arr_to_string(U, fmt='{:12.5e}')}")
@@ -155,12 +157,14 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         maxerr = 0.0
         for i, (start, end) in enumerate(self.d_indices):
             if max_error_in_blocks[i] > accuracy_threshold:
-                self.include_bands[start:end] = False
-                if verbose:
-                    print(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
-                if i != len(self.d_indices) - 1:
-                    warnings.warn(f"Warning: max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not the upper block of"
-                                 f" tota l {self.nb} bands, this may indicate inaccuracy in the input data")
+                if end > no_exclude_bands:
+                    self.include_bands[start:end] = False
+                    if verbose:
+                        print(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
+                else:
+                    warnings.warn(f"Warning: max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not among the  upper"
+                                f" bands({no_exclude_bands}:{self.nb}) bands, this may indicate inaccuracy in the input data")
+                    maxerr = max(maxerr, max_error_in_blocks[i])
             else:
                 maxerr = max(maxerr, max_error_in_blocks[i])
         return maxerr

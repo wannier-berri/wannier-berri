@@ -272,11 +272,16 @@ class System_R(System):
 
         self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.clear_cached_wcc()
-        self.rvec = Rvectors(
+        rvec_new = Rvectors(
             lattice=self.real_lattice,
             iRvec=iRvec,
             shifts_left_red=self.wannier_centers_red,
         )
+        try:
+            rvec_new.mp_grid = self.rvec.mp_grid,
+        except AttributeError:
+            pass
+        self.rvec = rvec_new
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup, use_symmetries_index=use_symmetries_index)
 
         if not silent:
@@ -460,8 +465,6 @@ class System_R(System):
         self.set_spin_pairs([(2 * i, 2 * i + 1) for i in range(num_wann_old)])
 
 
-
-
     def check_AA_diag_zero(self, msg="", set_zero=True, threshold=1e-5):
         if self.has_R_mat('AA'):
             A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal().T
@@ -492,12 +495,12 @@ class System_R(System):
                 if X in self._XX_R:
                     self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
 
-    def set_spin(self, spins, axis=(0, 0, 1), **kwargs):
+    def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
         """
         Set spins along axis in  SS(R=0).  Useful for model calculations.
         Note : The spin matrix is purely diagonal, so that <up | sigma_x | down> = 0
         For more cversatility use :func:`~wannierberri.system.System.set_R_mat`
-        :func:`~wannierberri.system.System.set_spin_pairs`, :func:`~wannierberri.system.System.set_spin_from_projections`
+        :func:`~wannierberri.system.System.set_spin_pairs`, :func:`~wannierberri.system.System.set_spin_interlaced`
 
         Parameters
         ----------
@@ -526,7 +529,7 @@ class System_R(System):
         Notes
         -----
         * For abinitio calculations this is a rough approximation, that may be used on own risk.
-        * See also :func:`~wannierberri.system.System.set_spin_from_projections`
+        * See also :func:`~wannierberri.system.System.set_spin_interlaced`
 
         """
         assert all(len(p) == 2 for p in pairs)
@@ -548,7 +551,7 @@ class System_R(System):
             SS_R0[j, j] = pauli_xyz[1, 1]
             self.set_R_mat(key='SS', value=SS_R0, diag=False, R=[0, 0, 0], reset=True)
 
-    def set_spin_from_projections(self):
+    def set_spin_interlaced(self):
         """set SS_R, assuming that each Wannier function is an eigenstate of Sz,
          with interlaced spin ordering, which  means that the orbitals of the two spins are interlaced. (like in the amn file of QE and new versions of VASP)
 

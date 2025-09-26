@@ -66,8 +66,11 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp, **remote_parameters))
             if (count + 1) % nstep_print == 0:
-                t_print_prev = print_progress(count=count + 1, total=numK, t0=t0,
-                                              tprev=t_print_prev, print_progress_step=print_progress_step)
+                t_print_prev = print_progress(count=count + 1,
+                                              total=numK,
+                                              t0=t0,
+                                              tprev=t_print_prev,
+                                              print_progress_step=print_progress_step)
     elif parallel.method == 'ray':
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
         num_remotes = len(remotes)
@@ -80,8 +83,11 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
             num_remotes_calculated = len(remotes_calculated)
             if num_remotes_calculated >= num_remotes:
                 break
-            t_print_prev = print_progress(count=num_remotes_calculated, total=numK, t0=t0,
-                                          tprev=t_print_prev, print_progress_step=print_progress_step)
+            t_print_prev = print_progress(count=num_remotes_calculated,
+                                          total=numK,
+                                          t0=t0,
+                                          tprev=t_print_prev,
+                                          print_progress_step=print_progress_step)
         res = parallel.ray.get(remotes)
     else:
         raise RuntimeError(f"unsupported parallel method : '{parallel.method}'")
@@ -375,9 +381,9 @@ def run(
                     result_excluded += results - K_list[iK].get_res
 
         if use_irred_kpt and isinstance(grid, Grid):
-            print(f"checking for equivalent points in all points (of new  {len(K_list) - l1} points)")
-            nexcl, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
-            print(f"excluded {nexcl} points")
+            # print(f"checking for equivalent points in all points (of new  {len(K_list) - l1} points)")
+            _, weight_changed_old = exclude_equiv_points(K_list, new_points=len(K_list) - l1)
+            # print(f"excluded {nexcl} points")
         else:
             weight_changed_old = {}
 

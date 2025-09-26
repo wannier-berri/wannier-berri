@@ -53,7 +53,9 @@ class SavableNPZ(abc.ABC):
         dic = {k: self.__getattribute__(k) for k in self.__class__.npz_tags}
         for k in self.__class__.npz_tags_optional:
             if hasattr(self, k):
-                dic[k] = self.__getattribute__(k)
+                val = self.__getattribute__(k)
+                if val is not None:
+                    dic[k] = self.__getattribute__(k)
         for tag in self.__class__.npz_keys_dict_int:
             dic.update(dic_to_keydic(self.__getattribute__(tag), tag))
         return dic

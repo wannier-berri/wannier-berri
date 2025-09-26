@@ -807,7 +807,7 @@ class Wannier90data:
                 selected_bands = np.where(selected_bands)[0]
                 assert selected_bands.shape == (self.eig.NB,), f"selected bands should be of shape (NB,), not {selected_bands.shape}"
             else:
-                assert selected_bands.dtype == np.int, f"selected_bands should be a list of int or a boolean array, not {selected_bands.dtype}"
+                assert np.issubdtype(selected_bands.dtype, np.integer), f"selected_bands should be a list of int or a boolean array, not {selected_bands.dtype}"
                 assert np.all(selected_bands >= 0), f"selected bands should be non-negative, not {selected_bands}"
                 assert np.all(selected_bands < self.eig.NB), f"selected bands should be less than {self.eig.NB}, not {selected_bands}"
         else:
@@ -852,6 +852,7 @@ class Wannier90data:
                 if key == 'chk':
                     print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
+        self.selected_bands = selected_bands
         return selected_bands
 
 

@@ -6,6 +6,7 @@ from .common import ROOT_DIR, OUTPUT_DIR, REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEG
 # WannierBerri Systems
 from .common_systems import (
     create_files_Fe_W90,
+    get_system_Fe_W90_gpaw_soc,
     create_files_Fe_W90_npz,
     create_files_GaAs_W90,
     create_files_Si_W90,
@@ -19,6 +20,12 @@ from .common_systems import (
     system_Fe_W90_proj_set_spin,
     system_Fe_W90_proj,
     system_Fe_FPLO,
+    system_Fe_gpaw_up,
+    system_Fe_gpaw_dw,
+    soc_Fe_gpaw,
+    system_Fe_gpaw_soc_angle,
+    system_Fe_gpaw_soc_z,
+    system_Fe_gpaw_soc_111,
     data_Te_ASE,
     system_Te_ASE,
     system_Te_QE,
