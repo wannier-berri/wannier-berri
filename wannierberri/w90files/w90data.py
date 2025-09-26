@@ -195,7 +195,7 @@ class Wannier90data:
             if hasattr(self.symmetrizer, "selected_kpoints"):
                 selected_kpoints = self.symmetrizer.selected_kpoints
             else:
-                selected_kpoints = np.arange(bandstructure.num_kpts)
+                selected_kpoints = np.arange(bandstructure.num_k)
         else:
             kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
             mp_grid = grid_from_kpoints(kpt_latt)
@@ -517,8 +517,10 @@ class Wannier90data:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
                 kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
-
-            val = FILES_CLASSES[key].autoread(self.seedname, read_npz=read_npz, kwargs_w90=kwargs_w90)
+            if key in ["spn", "uhu", "uiu", "shu", "siu", ]:
+                kwargs_w90['formatted'] = key in self.formatted_list
+            val = FILES_CLASSES[key].autoread(self.seedname, read_npz=read_npz, kwargs_w90=kwargs_w90,
+                                              write_npz=key in self.write_npz_list)
         self.check_conform(key, val)
         if key == 'amn' and self.has_file('chk'):
             self.get_file('chk').num_wann = val.NW

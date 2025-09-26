@@ -315,7 +315,9 @@ def system_GaAs_tb_noAA():
 
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                          matrices=dict(OSD=True),
-                         symmetrize=False):
+                         symmetrize=False,
+                         double=False,
+                         ):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
 
     for tag in ('uHu', 'uIu'):
@@ -329,6 +331,8 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                                       transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
                                       **matrices)
+    if double:
+        system.double_spin()
     if symmetrize:
         iRold = [tuple(R) for R in system.rvec.iRvec]
         print("Rvectors before symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
@@ -340,7 +344,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                                 [-0.125, -0.125, -0.125]]),
             atom_name=['bond'] * 4,
             proj=['bond:s'],
-            soc=False,)
+            soc=double)
         print("Rvectors after symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
         iRnew = [tuple(R) for R in system.rvec.iRvec]
         for rnew in iRnew:
@@ -372,6 +376,8 @@ def system_Si_W90_JM_sym(create_files_Si_W90):
     return system
 
 
+
+
 @pytest.fixture(scope="session")
 def system_Si_W90(create_files_Si_W90):
     """Create system for Si using Wannier90 data without Jae-Mo's approach for real-space matrix elements"""
@@ -386,6 +392,24 @@ def system_Si_W90_sym(create_files_Si_W90):
     system = get_system_Si_W90_JM(data_dir, transl_inv=True,
                                   symmetrize=True)
     # system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True, matrices=dict(berry=True) )
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_sym_double(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with symmetrization"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv=True,
+                                  symmetrize=True, double=True)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_double(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with symmetrization"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv=True,
+                                  symmetrize=False, double=True)
     return system
 
 

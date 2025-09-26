@@ -68,7 +68,9 @@ class System_fplo(System_R):
                 if (not have_spin) and self.need_R_any(['SS', 'SHA', 'SR', 'SH', 'SHR', 'SA']):
                     raise ValueError("spin info required, but not contained in the file")
             elif line.startswith("wancenters:"):
-                self.wannier_centers_cart = np.array([next(f).split() for _ in range(self.num_wann)], dtype=float)
+                wannier_centers_cart_bohr = np.array([next(f).split() for _ in range(self.num_wann)], dtype=float)
+            elif line.startswith("wannames:"):
+                self.wannier_names = np.array([next(f).strip() for _ in range(self.num_wann)])
             elif line.startswith("spin:"):
                 ispin = int(next(f))
                 assert ispin == 1, f"spin = 1 expected, got {ispin}"
@@ -94,7 +96,7 @@ class System_fplo(System_R):
                             continue
                         arread = np.array(arread, dtype=float)
                         Rvec_loc = arread[:, :3] + (
-                            self.wannier_centers_cart[None, iw] - self.wannier_centers_cart[None, jw])
+                            wannier_centers_cart_bohr[None, iw] - wannier_centers_cart_bohr[None, jw])
                         Rvec_loc = Rvec_loc.dot(inv_real_lattice)  # should be integer now
                         iRvec = np.array(np.round(Rvec_loc), dtype=int)
                         assert (abs(iRvec - Rvec_loc).max() < 1e-8)
@@ -107,6 +109,7 @@ class System_fplo(System_R):
         # Reading of file finished
 
         self.set_real_lattice(real_lattice_bohr * bohr)
+        self.wannier_centers_cart = wannier_centers_cart_bohr * bohr
         iRvec = list(Ham_R.keys())
         self.set_R_mat('Ham', np.array([Ham_R[iR] for iR in iRvec]))
         if self.need_R_any('SS'):
