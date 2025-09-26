@@ -484,7 +484,7 @@ class SymmetrizerSAWF:
                 if Ufull[iRk] is None and include_k[iRk]:
                     Ufull[iRk] = self.rotate_U(U[ikirr], ikirr, isym, forward=True)
         for ik in range(self.NK):
-            if Ufull[ik] is None and (all_k or include_k[ik]):
+            if Ufull[ik] is None and include_k[ik]:
                 raise ValueError(f"U_to_full_BZ: the U matrix at k-point {ik} (k={arr_to_string(self.kpoints_all[ik])}) was not set, please check the symmetry")
         return Ufull
 

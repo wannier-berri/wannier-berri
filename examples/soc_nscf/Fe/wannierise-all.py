@@ -22,6 +22,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                 normalize=True,
                                 spinor=spinor,
                                 spin_channel=spin_channel,
+                                include_TR=True,
                                 magmom=[[0, 0, 1]] if spinor else None
                                 )
     sg = bandstructure.spacegroup
@@ -57,7 +58,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
+    System_w90(w90data=w90data, symmetrize=False, berry=True).save_npz(save_name)
     w90data.get_file('chk').to_npz(save_name + ".chk.npz")
 
 

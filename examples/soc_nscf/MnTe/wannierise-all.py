@@ -51,18 +51,25 @@ def get_wannierised(prefix, spin_channel, save_name=None):
     proj_Te_s = Projection(position_num=positions_Te, orbital='s', spacegroup=sg)
     proj_Te_p = Projection(position_num=positions_Te, orbital='p', spacegroup=sg)
 
-    proj_set = ProjectionsSet([
-        proj_Mn1_d,
-        proj_Mn2_d,
-        proj_Mn1_s,
-        proj_Mn2_s,
-        proj_Mn1_p,
-        proj_Mn2_p,
-        proj_Te_s,
-        proj_Te_p])
+    # proj_set = ProjectionsSet([
+    #     proj_Mn1_d,
+    #     proj_Mn2_d,
+    #     proj_Mn1_s,
+    #     proj_Mn2_s,
+    #     proj_Mn1_p,
+    #     proj_Mn2_p,
+    #     proj_Te_s,
+    #     proj_Te_p])
 
-    # proj_set = ProjectionsSet([proj_Te_p])
 
+    if spin_channel == 0:
+        proj_set = ProjectionsSet([proj_Mn1_d, proj_Te_s, proj_Te_p])
+    elif spin_channel == 1:
+        proj_set = ProjectionsSet([proj_Mn2_d, proj_Te_s, proj_Te_p])
+    else:
+        raise ValueError("spin_channel must be 0 or 1")
+
+    
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     try:
         symmetrizer = SAWF().from_npz(f"symmetrizer-spin-{spin_channel}.npz")
@@ -83,14 +90,14 @@ def get_wannierised(prefix, spin_channel, save_name=None):
 
     w90data.wannierise(
         froz_min=-10,
-        froz_max=9.5,
+        froz_max=7,
         num_iter=500,
         print_progress_every=100,
         sitesym=True,
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=False).save_npz(save_name)
+    System_w90(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
     w90data.get_file('chk').to_npz(save_name + ".chk.npz")
 
 

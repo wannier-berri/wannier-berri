@@ -146,7 +146,7 @@ class SymWann:
             The index of the symmetry operation.
         block1, block2 : int
             The block indices for the two atoms.
-        
+
         Returns
         -------
         np.ndarray
@@ -408,7 +408,7 @@ class SymWann:
                                 if mode == "single":
                                     exclude_set.add(iR)
                                 # we rotate from the XXL from the "new" R-vector and atom pairs back to the original,
-                                # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b 
+                                # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b
                                 # (earlier it was atom_a_map, atom_b_map which was wrong)
                                 XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
                                 XX_L_rotated = self._rotate_XX_L_backwards(XX_L, X, isym, block1=block1, block2=block2,

@@ -11,23 +11,22 @@ from wannierberri.parallel import Parallel, Serial
 system_dw = System_R().load_npz("system_dw")
 system_up = System_R().load_npz("system_up")
 system_spinor = System_R().load_npz("system_spinor")
-system_spinor.set_spin_pairs([[2*i,2*i+1] for i in range(9)])
+system_spinor.set_spin_pairs([[2 * i, 2 * i + 1] for i in range(9)])
 
-parallel=Parallel(num_cpus=16)
+parallel = Parallel(num_cpus=16)
 # _interlaced()
 
 
 phi_deg = 0
-theta_deg=0
+theta_deg = 0
 
 soc = SOC.from_gpaw("Fe-nscf.gpw")
 chk_up = CHK.from_npz("Fe-spin-0.chk.npz")
 chk_dw = CHK.from_npz("Fe-spin-1.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
 system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
-                     theta=theta_deg/180*np.pi,
-                     phi=phi_deg/180*np.pi)
-
+                     theta=theta_deg / 180 * np.pi,
+                     phi=phi_deg / 180 * np.pi)
 
 path = Path(system_dw,
             nodes=[
@@ -52,14 +51,14 @@ bands_soc = evaluate_k_path(system_soc, path=path, quantities=["spin"])
 
 EF = 9.22085
 
-fig, axes = plt.subplots(3, 1, sharey=True, sharex=True, figsize=(30,50))
+fig, axes = plt.subplots(3, 1, sharey=True, sharex=True, figsize=(30, 50))
 
 bands_soc.plot_path_fat(path=path,
                        Eshift=EF,
                        quantity="spin",
                        component="z",
                        mode="color",
-                       label=f"soc_nscf, Sz, th={theta_deg}, phi={phi_deg}",                       axes=axes[2],
+                       label=f"soc_nscf, Sz, th={theta_deg}, phi={phi_deg}", axes=axes[2],
                        fatmax=4,
                         linecolor="orange",
                         close_fig=False,
@@ -128,6 +127,6 @@ bands_spinor.plot_path_fat(path=path,
 
 
 
-plt.ylim(-0.6, 0.6)
-# plt.ylim(-1.7,1.7)
+# plt.ylim(-0.6, 0.6)
+plt.ylim(-1.7, 1.7)
 plt.savefig("bands.png")

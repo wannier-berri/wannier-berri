@@ -113,7 +113,7 @@ class CheckPoint(SavableNPZ):
             return self.selected_bands
         else:
             return np.arange(self.num_bands)
-        
+
 
     @property
     def NK(self):

@@ -59,7 +59,7 @@ class SystemSOC(System_R):
         self.has_soc = False
 
 
-    def set_soc_R(self, soc, 
+    def set_soc_R(self, soc,
                   chk_up, chk_down=None,
                   kptirr=None, weights_k=None, ws_dist_tol=1e-5,
                   theta=0, phi=0, alpha_soc=1.0):
@@ -90,7 +90,7 @@ class SystemSOC(System_R):
 
         # chack number of spin channels
         nspin = soc.nspin
-        print (f"nspin in SOC: {nspin}")
+        print(f"nspin in SOC: {nspin}")
         if nspin == 1:
             def index_spin(s):
                 return 0
@@ -127,12 +127,12 @@ class SystemSOC(System_R):
             weights_k = np.ones(NK, dtype=float)
         else:
             raise NotImplementedError("kptirr and weights_k are not implemented yet")
-        
+
         soc_q_W = np.zeros((NK, self.num_wann, self.num_wann), dtype=complex)
         ss_q_W = np.zeros((NK, self.num_wann, self.num_wann, 3), dtype=complex)
 
         S_ssv = SOC.get_S_ssv(theta=theta, phi=phi)
-        C_ss = SOC.get_C_ss(theta=theta, phi=phi)  
+        C_ss = SOC.get_C_ss(theta=theta, phi=phi)
         rng = np.arange(self.num_wann_scalar) * 2
 
         for ik, w in zip(kptirr, weights_k):
@@ -143,7 +143,7 @@ class SystemSOC(System_R):
                 for j in range(2):
                     j1 = index_spin(j)
                     h_loc = h_soc[ik][i1, j1][:, :, selected_bands_list[i], :][:, :, :, selected_bands_list[j]]
-                    h_loc = cached_einsum("abmn,a,b->mn", h_loc, C_ss[:,i].conj(), C_ss[:,j])
+                    h_loc = cached_einsum("abmn,a,b->mn", h_loc, C_ss[:, i].conj(), C_ss[:, j])
                     soc_q_W[ik, i::2, j::2] = w * (vt[i1] @ h_loc @ v[j1])
                     # Spin operator
                     if i == j:
@@ -151,9 +151,9 @@ class SystemSOC(System_R):
                     elif i < j:  # the (i=0,j=1) case
                         if nspin == 2:
                             overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
-                            ss_q_W[ik, ::2, 1::2, :] = 2 * (vt[0] @ overlap_loc @ v[1])[:, :, None] * (w * S_ssv[0, 1, :]) # factor 2 because we use Hermiticity later
+                            ss_q_W[ik, ::2, 1::2, :] = 2 * (vt[0] @ overlap_loc @ v[1])[:, :, None] * (w * S_ssv[0, 1, :])  # factor 2 because we use Hermiticity later
                         else:
-                            ss_q_W[ik, rng, 1+rng, :] = (2 * w) * S_ssv[0, 1, None, :] # factor 2 because we use Hermiticity later
+                            ss_q_W[ik, rng, 1 + rng, :] = (2 * w) * S_ssv[0, 1, None, :]  # factor 2 because we use Hermiticity later
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         ss_q_W = (ss_q_W + ss_q_W.transpose(0, 2, 1, 3).conj()) / 2.0
 
