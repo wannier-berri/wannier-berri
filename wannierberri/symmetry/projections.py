@@ -101,7 +101,6 @@ class Projection:
                  basis_list=None,
                  zaxis=None,
                  xaxis=None,
-                 basis_list=None,
                  do_not_split_projections=False):
         if void:
             return
