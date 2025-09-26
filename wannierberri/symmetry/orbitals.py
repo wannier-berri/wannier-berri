@@ -22,6 +22,7 @@ orbitals_sets_dic = {
     'f': ['fz3', 'fxz2', 'fyz2', 'fzx2-zy2', 'fxyz', 'fx3-3xy2', 'f3yx2-y3'],
     'sp': ['sp-1', 'sp-2'],
     'p2': ['pz', 'py'],
+    'pxy': ['px', 'py'],
     'sp2': ['sp2-1', 'sp2-2', 'sp2-3'],
     'pz': ['pz'],
     'sp3': ['sp3-1', 'sp3-2', 'sp3-3', 'sp3-4'],
@@ -32,7 +33,7 @@ orbitals_sets_dic = {
 }
 
 basis_shells_list = ['s', 'p', 'd', 'f']
-hybrid_shells_list = ['sp', 'p2', 'sp2', 'pz', 'sp3', 'sp3d2', 't2g', 'eg']
+hybrid_shells_list = ['sp', 'p2', 'sp2', 'pz', 'sp3', 'sp3d2', 't2g', 'eg', 'pxy']
 
 basis_orbital_list = [k for o in basis_shells_list for k in orbitals_sets_dic[o]]
 
@@ -158,7 +159,21 @@ class Orbitals:
 
 
     def rot_orb_basis(self, orb_symbol, rot_glb):
-        ''' Get rotation matrix of orbitals in each orbital quantum number '''
+        """Get rotation matrix of orbitals in each orbital quantum number
+        orb_symbol : str
+            one of 's', 'p', 'd', 'f'
+        rot_glb : 3x3 array
+            rotation matrix in cartesian coordinates
+        Returns
+        -------
+        orb_rot_mat : array
+            rotation matrix of shape (num_orbitals, num_orbitals)
+            where num_orbitals = 1, 3, 5, 7 for 's', 'p', 'd', 'f' respectively
+        Notes
+        -----
+        The rotation matrix A is defined as
+        phi_j(R^-1 r) = phi_i(r) A_ij where phi_i is the original orbital, phi'_i is the rotated orbital
+        """
         orb_dim = num_orbitals(orb_symbol)
         orb_rot_mat = np.zeros((orb_dim, orb_dim), dtype=float)
         xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz)
@@ -214,6 +229,14 @@ def get_orbitals():
 
 
 class OrbitalRotator:
+    """
+    a class to get the rotation matrix of orbitals under a given rotation
+
+
+    returns matrix Rij, where i is the index of the original orbital , and j is the index of the rotated orbital
+
+    phi'_j = phi_i R_ij
+    """
 
     def __init__(self):
         self.calcualted_matrices = UniqueList(tolerance=1e-4)
@@ -221,16 +244,19 @@ class OrbitalRotator:
         self.results_dict = {}
 
     def __call__(self, orb_symbol, rot_cart=None, irot=None, basis1=None, basis2=None):
+        # return self.orbitals.rot_orb(orb_symbol=orb_symbol, rot_glb=basis1.T @ rot_cart @ basis2)
+
         assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
         assert (irot is None) != (rot_cart is None), f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
         if irot is None:
             if basis1 is not None:
+                # rot_cart = basis2.T @ rot_cart @ basis1
                 rot_cart = basis2 @ rot_cart @ basis1.T
             irot = self.calcualted_matrices.index_or_None(rot_cart)
             if irot is None:
                 irot = len(self.calcualted_matrices)
                 self.calcualted_matrices.append(rot_cart)
-        if rot_cart is None:
+        elif rot_cart is None:
             rot_cart = self.calcualted_matrices[irot]
         if (irot, orb_symbol) not in self.results_dict:
             orb_symbol = orb_symbol.strip()
@@ -383,6 +409,7 @@ class SphericalHarmonics:
         else:
             ibasis = len(self.calcualted_basices)
             self.calcualted_basices.append(basis)
+            # print(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
         if (orbital, ibasis) not in self.harmonics:
             self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
         return self.harmonics[(orbital, ibasis)]
@@ -395,7 +422,7 @@ class SphericalHarmonics:
         from numpy import pi
         if orbital not in basis_orbital_list:
             assert orbital in hybrids_coef, f"orbital {orbital} not in basis_orbital_list or hybrids_coef"
-            return sum(self(orb) * coef for orb, coef in hybrids_coef[orbital].items())
+            return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             if not np.allclose(basis, np.eye(3), atol=1e-4):
                 # print(f"evaluating orbital {orbital} in basis \n{basis}")
@@ -405,7 +432,7 @@ class SphericalHarmonics:
                 assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
                 shell_pos = shell_list.index(orbital)
                 # print(f"basis = \n{basis}")
-                matrix = self.orbitalrotator(shell, basis)
+                matrix = self.orbitalrotator(shell, rot_cart=basis)
                 # print(f"matrix = \n{matrix}")
                 vector = matrix[shell_pos, :]
                 # print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")

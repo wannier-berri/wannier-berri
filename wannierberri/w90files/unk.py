@@ -48,8 +48,11 @@ class UNK(W90_file):
                       NK=None, NKmax=10000, spinor=False,
                       spin_channel=1,
                       reduce_grid=(1, 1, 1),
-                      selected_kpoints=None):
+                      selected_kpoints=None,
+                      formatted=False):
 
+        if formatted:
+            raise NotImplementedError("Formatted UNK files are not supported yet")
         assert (path is None) != (seedname is None), "either path or seedname should be provided, and not both"
         if path is None:
             path = os.path.dirname(seedname)
@@ -92,8 +95,8 @@ class UNK(W90_file):
                 for js in range(nspinor):
                     U[ib, :, :, :, js] = f.read_record(dtype=np.complex128).reshape(
                         nr1, nr2, nr3, order='F')[::reduce_grid[0], ::reduce_grid[1], ::reduce_grid[2]]
-                    print(f"norm of band {ib} (spinor {js}) = {np.linalg.norm(U[ib, :, :, :, js])}")
-                print(f"norm of band {ib} = {np.linalg.norm(U[ib, :, :, :, :])}")
+                #     print(f"norm of band {ib} (spinor {js}) = {np.linalg.norm(U[ib, :, :, :, js])}")
+                # print(f"norm of band {ib} = {np.linalg.norm(U[ib, :, :, :, :])}")
             data[ik] = U
         return UNK(data=data, NK=NK)
 

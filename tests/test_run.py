@@ -701,6 +701,59 @@ def test_Haldane_TBmodels(check_run, compare_any_result, use_symmetry, system_Ha
     check_Haldane(check_run, system_Haldane_TBmodels, "TBmodels", use_symmetry)
 
 
+@pytest.mark.parametrize("symmetrize", [True, False])
+def test_Silicon_double(check_run, symmetrize,
+                        system_Si_W90_sym_double, system_Si_W90_sym,
+                        system_Si_W90_double, system_Si_W90,
+                        ):
+    param = {'Efermi': np.linspace(-5, 7, 11), 'tetra': True}
+    if symmetrize:
+        system_scalar = system_Si_W90_sym
+        system_double = system_Si_W90_sym_double
+    else:
+        system_scalar = system_Si_W90
+        system_double = system_Si_W90_double
+
+
+    calculators = {}
+    calculators["1dos"] = wberri.calculators.static.DOS(**param)
+    calculators["2cumdos"] = wberri.calculators.static.CumDOS(**param)
+    calculators["4conductivity_ohmic"] = wberri.calculators.static.Ohmic_FermiSea(**param)
+    calculators["3conductivity_ohmic_fsurf"] = wberri.calculators.static.Ohmic_FermiSurf(**param)
+    parameters_optical = dict(
+        Efermi=np.array([2.0, 4.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
+    calculators['5opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
+
+    result_scalar = check_run(
+        system_scalar,
+        calculators,
+        fout_name="Si_scalar",
+        suffix="sym" if symmetrize else "nosym",
+        use_symmetry=symmetrize,
+        do_not_compare=True,
+    )
+
+    result_double = check_run(
+        system_double,
+        calculators,
+        fout_name="Si_double",
+        suffix="sym" if symmetrize else "nosym",
+        use_symmetry=symmetrize,
+        do_not_compare=True,
+    )
+
+    for key in sorted(calculators.keys()):
+        data_scalar = result_scalar.results[key].data
+        data_double = result_double.results[key].data
+        assert data_scalar.shape == data_double.shape, (
+            f"Shape of {key} {symmetrize} is not equal to reference : {data_scalar.shape} and {data_double.shape}")
+        maxval = max(np.max(np.abs(2 * data_scalar)), np.max(np.abs(data_double)))
+        assert data_scalar * 2 == approx(data_double, abs=maxval * 1e-8), (
+            f"Data of {key} {symmetrize} is not equal to reference. the maximal difference is "
+            f"{np.max(np.abs(data_scalar - data_double))}"
+            f"at position {np.argmax(np.abs(data_scalar - data_double))} "
+        )
+
 
 
 def test_Chiral_left(check_run, compare_any_result, compare_energyresult, system_Chiral_left):

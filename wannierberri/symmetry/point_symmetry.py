@@ -263,10 +263,12 @@ class PointGroup():
     """
 
     def __init__(self, generator_list=[], recip_lattice=None, real_lattice=None, dictionary=None,
-                 spacegroup=None):
+                 spacegroup=None, use_symmetries_index=None):
         if spacegroup is not None:
             point_symmetries = []
-            for symop in spacegroup.symmetries:
+            for isym, symop in enumerate(spacegroup.symmetries):
+                if (use_symmetries_index is not None) and (isym not in use_symmetries_index):
+                    continue
                 R = symop.rotation_cart
                 TR = symop.time_reversal
                 point_symmetries.append(PointSymmetry(R, TR))
@@ -316,7 +318,7 @@ class PointGroup():
 
     def as_dict(self):
         nsym = len(self.symmetries)
-        ret = dict(real_lattice=self.recip_lattice,
+        ret = dict(real_lattice=self.real_lattice,
                    nsym=nsym)
         for i, s in enumerate(self.symmetries):
             for k, v in s.as_dict().items():

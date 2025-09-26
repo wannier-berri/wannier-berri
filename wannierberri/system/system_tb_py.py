@@ -85,34 +85,23 @@ class System_tb_py(System_R):
         self.wannier_centers_cart = wannier_centers_red.dot(self.real_lattice)
 
         self.periodic[self.dimr:] = False
-        iRvec = [tuple(row) for row in iRvec]
-        iRvec = np.unique(iRvec, axis=0).astype('int32')
 
-        nR = iRvec.shape[0]
-        for i in range(3 - self.dimr):
-            column = np.zeros(nR, dtype='int32')
-            iRvec = np.column_stack((iRvec, column))
-
-        iRvec_neg = np.array([-r for r in iRvec])
-        iRvec = np.concatenate((iRvec, iRvec_neg), axis=0)
-        iRvec = np.unique(iRvec, axis=0)
-        # Find the R=[000] index (used later)
-        index0 = np.argwhere(np.all(([0, 0, 0] - iRvec) == 0, axis=1))
-        # make sure it exists; otherwise, add it manually
-        # add it manually
-        if index0.size == 0:
-            iRvec = np.column_stack((np.array([0, 0, 0]), iRvec.T)).T
-            index0 = 0
-        elif index0.size == 1:
-            print(f"R=0 found at position(s) {index0}")
-            index0 = index0[0][0]
+        if len(iRvec) == 0:
+            iRvec = np.zeros((1, 3), dtype='int32')
         else:
-            raise RuntimeError(f"wrong value of index0={index0}, with R_all={iRvec}")
+            iRvec0 = np.array(iRvec, dtype='int32')
+            iRvec = np.zeros((iRvec0.shape[0], 3), dtype='int32')
+            iRvec[:, :self.dimr] = iRvec0
+            iRvec = np.vstack((iRvec, np.zeros((1, 3), dtype='int32'), -iRvec))
+            iRvec = [tuple(row) for row in iRvec]
+            iRvec = np.unique(iRvec, axis=0).astype('int32')
+
 
         self.rvec = Rvectors(lattice=self.real_lattice,
                          iRvec=iRvec,
                          shifts_left_red=wannier_centers_red,
                          dim=self.dimr)
+        index0 = self.rvec.iR0
         # Define Ham_R matrix from hoppings
         nRvec = self.rvec.nRvec
         Ham_R = np.zeros((nRvec, self.num_wann, self.num_wann), dtype=complex)
