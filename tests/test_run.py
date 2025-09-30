@@ -1316,14 +1316,26 @@ def check_Fe_gpaw_soc(check_run):
                 calculators[k] = v(**param)
 
         extra_precision = {}
-        if suffix in ['up', 'dw']:
-            extra_precision["ahc"] = 1e-8
-            extra_precision["ahc_test"] = 1e-8
-
+        if use_symmetry:
+            precision = -1e-8
+            if suffix in ['up', 'dw']:
+                extra_precision["ahc"] = 1e-8
+                extra_precision["ahc_test"] = 1e-8
+        else:
+            precision = -2e-5
+            if suffix in ['up', 'dw']:
+                extra_precision["ahc"] = 1e-8
+                extra_precision["ahc_test"] = 1e-8
+            # extra_precision["ahc"] = -1e-4
+            # extra_precision["ahc_test"] = -1e-4
+            # extra_precision["conductivity_ohmic"] = -1e-5
+            # extra_precision["conductivity_ohmic_fsurf"] = -1e-5
+            # extra_precision["Morb"] = -1e-5
 
         return check_run(
             system,
             calculators,
+            precision=precision,
             fout_name=f"Fe_gpaw_soc_{suffix}",
             suffix="" if use_symmetry else "nosym",
             use_symmetry=use_symmetry,

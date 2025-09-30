@@ -2,7 +2,7 @@ import numpy as np
 from ase import Atoms
 from gpaw import GPAW, PW
 
-do_scf = False
+do_scf = True
 do_nscf = True
 do_write_w90 = True
 
