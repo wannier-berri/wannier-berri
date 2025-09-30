@@ -98,9 +98,9 @@ class Projection:
                  free_var_values=None,
                  spinor=None,
                  rotate_basis=False,
+                 basis_list=None,
                  zaxis=None,
                  xaxis=None,
-                 basis_list=None,
                  do_not_split_projections=False):
         if void:
             return
@@ -135,6 +135,11 @@ class Projection:
         self.spinor = spinor
 
         if basis_list is not None:
+            assert not rotate_basis, "rotate_basis is not allowed if basis_list is provided"
+            for i, b in enumerate(basis_list):
+                b = np.array(b, dtype=float)
+                assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
+                assert np.allclose(b @ b.T, np.eye(3), atol=1e-8), f"basis_list[{i}] should be an orthogonal matrix, not {b}"
             self.basis_list = np.array(basis_list)
         elif rotate_basis:
             basis0 = read_xzaxis(xaxis, zaxis)
