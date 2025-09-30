@@ -79,55 +79,54 @@ bands_soc.plot_path_fat(path=path,
 #                         linecolor="orange",
 #                         close_fig=False,
 #                         show_fig=False,
-#                         kwargs_line=dict(linestyle='-', lw=0.0),
+#                         kwargs_line=dict(linestyle='-', lw=0.0),)
+
+    # axes[1].set_colorbar()
+
+    bands_up = evaluate_k_path(system_up, path=path,)
+    bands_dw = evaluate_k_path(system_dw, path=path,)
+
+    bands_up.plot_path_fat(path=path,
+Eshift = EF,
+axes = axes[0],
+label = "spin-up",
+linecolor = "red",
+close_fig = False,
+show_fig = False,
 )
 
-# axes[1].set_colorbar()
-
-bands_up = evaluate_k_path(system_up, path=path,)
-bands_dw = evaluate_k_path(system_dw, path=path,)
-
-bands_up.plot_path_fat(path=path,
-                       Eshift=EF,
-                       axes=axes[0],
-                       label="spin-up",
-                       linecolor="red",
-                       close_fig=False,
-                       show_fig=False,
-)
-
-bands_dw.plot_path_fat(path=path,
-                       label="spin-dw",
-                       axes=axes[0],
-                       Eshift=EF,
-                       linecolor="blue",
-                       close_fig=False,
-                       show_fig=False,)
+    bands_dw.plot_path_fat(path=path,
+label = "spin-dw",
+axes = axes[0],
+Eshift = EF,
+linecolor = "blue",
+close_fig = False,
+show_fig = False,)
 
 
 
 
-bands_spinor.plot_path_fat(path=path,
-                       label="spinor",
-                       Eshift=EF,
-                       axes=axes[0],
-                          linecolor="black",
-                          kwargs_line=dict(linestyle='--', lw=0.5),
-                          close_fig=False,
-                          show_fig=False,)
+    bands_spinor.plot_path_fat(path=path,
+label = "spinor",
+Eshift = EF,
+axes = axes[0],
+linecolor = "black",
+kwargs_line = dict(linestyle='--', lw=0.5),
+close_fig = False,
+show_fig = False,)
 
-bands_spinor.plot_path_fat(path=path,
-                       label="spinor",
-                       Eshift=EF,
-                       axes=axes[2],
-                          linecolor="black",
-                          kwargs_line=dict(linestyle='--', lw=0.5),
-                          close_fig=False,
-                          show_fig=False,)
-
-
+    bands_spinor.plot_path_fat(path=path,
+label = "spinor",
+Eshift = EF,
+axes = axes[2],
+linecolor = "black",
+kwargs_line = dict(linestyle='--', lw=0.5),
+close_fig = False,
+show_fig = False,)
 
 
-plt.ylim(-0.6, 0.6)
-# plt.ylim(-1.7,1.7)
-plt.savefig("bands.png")
+
+
+    plt.ylim(-0.6, 0.6)
+    # plt.ylim(-1.7,1.7)
+    plt.savefig("bands.png")

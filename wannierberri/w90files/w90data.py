@@ -274,9 +274,9 @@ class Wannier90data:
                                kwargs_bandstructure)
             self.set_file('unk', unk)
         return self
-    
-    def from_gpaw(self, 
-                  gpaw_calc, 
+
+    def from_gpaw(self,
+                  gpaw_calc,
                   files=("mmn", "eig", "amn", "symmetrizer"),
                   read_npz_list=None,
                   write_npz_list=None,
@@ -295,26 +295,26 @@ class Wannier90data:
         from irrep.spacegroup import SpaceGroup
         bandstructure = BandStructure(code="gpaw",
                                       gpaw_calc=gpaw_calc,
-                                        Ecut=ecut_pw,
+                                      Ecut=ecut_pw,
                                       )
         sg = bandstructure.spacegroup
         if typat is None:
             typat = [atom.number for atom in gpaw_calc.atoms]
         SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions, spinor=False,
-                                typat=typat, include_TR=include_TR)
+                             typat=typat, include_TR=include_TR)
         bandstructure.spacegroup = sg
 
         files_from_bandstructure = [f for f in files if f not in ["mmn", "soc"]]
         self.from_bandstructure(bandstructure,
-                                 files=files_from_bandstructure,
-                                    read_npz_list=read_npz_list,
-                                    write_npz_list=write_npz_list,
-                                    projections=projections,
-                                    unk_grid=unk_grid,
-                                    normalize=normalize,
-                                    irreducible=irreducible,
-                                    ecut_sym=ecut_sym,
-                                    mp_grid=mp_grid,
+                                files=files_from_bandstructure,
+                                read_npz_list=read_npz_list,
+                                write_npz_list=write_npz_list,
+                                projections=projections,
+                                unk_grid=unk_grid,
+                                normalize=normalize,
+                                irreducible=irreducible,
+                                ecut_sym=ecut_sym,
+                                mp_grid=mp_grid,
                                     )
         if "mmn" in files:
             mmn = MMN.from_gpaw(gpaw_calc,)

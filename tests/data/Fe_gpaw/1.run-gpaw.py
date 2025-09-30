@@ -36,7 +36,7 @@ if do_nscf:
         kpts={'size': (2, 2, 2), 'gamma': True},
         symmetry='off',
         nbands=30,
-        convergence={'bands' : 26},
+        convergence={'bands': 26},
         txt=f'{seed}-nscf.txt')
     calc_nscf.write(f'{seed}-nscf.gpw', mode='all')
 else:
