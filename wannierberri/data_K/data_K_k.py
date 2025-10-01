@@ -43,13 +43,15 @@ class Data_K_k(Data_K):
 
     def E_K_corners_parallel(self):
         dK = self.Kpoint.dK_fullBZ
-        Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
+        Ecorners = np.zeros((self.nk, 2, 2, 2, self.nbands), dtype=float)
         for ix in 0, 1:
             for iy in 0, 1:
                 for iz in 0, 1:
                     v = (np.array([ix, iy, iz]) - 0.5) * dK
                     _HH_K = np.array([self.system.Ham(k + v) for k in self.kpoints_all])
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
-                    Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
+                    Ecorners[:, ix, iy, iz, :] = E
+        self.select_bands(Ecorners)
+        Ecorners = Ecorners[self.select_K, :, :, :, :][:, :, :, :, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         return Ecorners

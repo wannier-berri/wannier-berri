@@ -95,6 +95,7 @@ class Data_K_R(Data_K, System_R):
 
 
     def E_K_corners_tetra(self):
+        _ = self.E_K  # to ensure that the bands are selected
         expdK = self.expdK_corners_tetra
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
@@ -116,6 +117,7 @@ class Data_K_R(Data_K, System_R):
         return np.array([1. / expdK, expdK])
 
     def E_K_corners_parallel(self):
+        _ = self.E_K  # to ensure that the bands are selected
         expdK = self.expdK_corners_parallel
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:

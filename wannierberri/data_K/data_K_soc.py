@@ -12,12 +12,14 @@ class Data_K_soc(Data_K_R):
     def __init__(self, system, dK, grid, **parameters):
         super().__init__(system, dK, grid, **parameters)
         self.num_wann_scalar = system.num_wann_scalar
-        self.data_K_up = Data_K_R(system.system_up, dK, grid, **parameters)
+        self.data_K_up = Data_K_R(system=system.system_up, dK=dK, grid=grid,
+                                  **parameters)
 
         if system.up_down_same:
             self.data_K_down = self.data_K_up
         else:
-            self.data_K_down = Data_K_R(system.system_down, dK, grid, **parameters)
+            self.data_K_down = Data_K_R(system=system.system_down, dK=dK, grid=grid,
+                                        **parameters)
         self.has_soc = system.has_soc
         if self.has_soc:
             soc_r_dk = self.rvec.apply_expdK(system.soc_R)
@@ -61,18 +63,19 @@ class Data_K_soc(Data_K_R):
 
     def E_K_corners_tetra(self):
         # raise NotImplementedError("E_K_corners_tetra is not implemented for Data_K_soc. ")
-        expdK_up = self.data_K_up.expdK_corners_parallel
-        expdK_down = self.data_K_up.expdK_corners_parallel
-        expdK = self.expdK_corners_parallel
+        expdK_up = self.data_K_up.expdK_corners_tetra
+        expdK_down = self.data_K_up.expdK_corners_tetra
+        expdK = self.expdK_corners_tetra if self.has_soc else None
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv in range(4):
             _HH_K_full = np.zeros((self.nk, self.num_wann, self.num_wann), dtype=complex)
             _Ham_R = self.data_K_up.Ham_R[:, :, :] * expdK_up[iv][:, None, None]
-            _HH_K_full[:, ::2, ::2] = self.rvec.R_to_k(_Ham_R, hermitian=True)
+            _HH_K_full[:, ::2, ::2] = self.data_K_up.rvec.R_to_k(_Ham_R, hermitian=True)
             _Ham_R = self.data_K_down.Ham_R[:, :, :] * expdK_down[iv][:, None, None]
-            _HH_K_full[:, 1::2, 1::2] = self.rvec.R_to_k(_Ham_R, hermitian=True)
-            _Ham_R = self.get_R_mat('soc') * expdK[iv][:, None, None]
-            _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
+            _HH_K_full[:, 1::2, 1::2] = self.data_K_down.rvec.R_to_k(_Ham_R, hermitian=True)
+            if self.has_soc:
+                _Ham_R = self.get_R_mat('soc') * expdK[iv][:, None, None]
+                _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
             _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K_full))
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
@@ -86,7 +89,7 @@ class Data_K_soc(Data_K_R):
         expdK_down = self.data_K_up.expdK_corners_parallel
         if self.has_soc:
             expdK = self.expdK_corners_parallel
-        Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
+        Ecorners = np.zeros((self.nk, 2, 2, 2, self.nbands), dtype=float)
         for ix in 0, 1:
             for iy in 0, 1:
                 for iz in 0, 1:
@@ -106,6 +109,8 @@ class Data_K_soc(Data_K_R):
                         _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
                     # calculate eigenvalues
                     E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K_full))
-                    Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
+                    Ecorners[:, ix, iy, iz, :] = E
+        self.select_bands(Ecorners)
+        Ecorners = Ecorners[self.select_K, :, :, :, :][:, :, :, :, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         return Ecorners

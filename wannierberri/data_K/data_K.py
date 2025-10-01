@@ -357,5 +357,30 @@ class Data_K(System, abc.ABC):
     def __enter__(self):
         return self
 
+    def E_K_corners_parallel_test(self):
+        """returns the energies in the corners of the parallelepiped around each k-point of the FFT grid"""
+        cls = self.__class__
+        dK = self.Kpoint.dK_fullBZ
+        E_corners = np.zeros((self.nk, 2, 2, 2, self.nbands), dtype=float)
+        for ix in 0, 1:
+            for iy in 0, 1:
+                for iz in 0, 1:
+                    dk = (np.array([ix, iy, iz]) - 1 / 2) * dK
+                    _data_K = cls(system=self.system, dK=self.dK + dk, grid=self.grid, Kpoint=self.Kpoint,)
+                    E_corners[:, ix, iy, iz, :] = _data_K.E_K
+        self.select_bands(E_corners)
+        return E_corners[self.select_K, :, :, :, :][:, :, :, :, self.select_B]
+
+    def E_K_corners_tetra_test(self):
+        """returns the energies in the corners of the tetrahedra around each k-point of the FFT grid"""
+        _ = self.E_K  # to ensure that the bands are selected
+        cls = self.__class__
+        vertices = self.Kpoint.vertices_fullBZ
+        E_corners = np.zeros((self.nk, 4, self.nbands), dtype=float)
+        for iv, v in enumerate(vertices):
+            _data_K = cls(system=self.system, dK=self.dK + v, grid=self.grid, Kpoint=self.Kpoint,)
+            E_corners[:, iv, :] = _data_K.E_K
+        self.select_bands(E_corners)
+        return E_corners[self.select_K, :, :][:, :, self.select_B]
 
 #########################################################################################################################################
