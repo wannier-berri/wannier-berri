@@ -29,13 +29,19 @@ class Rvectors:
 
         if shifts_left_red is None:
             self.shifts_left_red = np.zeros((1, 3), dtype=float)
+            self.has_shifts_left = False
         else:
             self.shifts_left_red = np.array(shifts_left_red)
+            self.has_shifts_left = True
+
+
 
         if shifts_right_red is None:
             self.shifts_right_red = self.shifts_left_red
+            self.has_shifts_right = False
         else:
             self.shifts_right_red = np.array(shifts_right_red)
+            self.has_shifts_right = True
 
         self._NKFFTrec = None
         if iRvec is not None:
@@ -46,6 +52,7 @@ class Rvectors:
         self.fft_q2R_set = False
 
         # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
+
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """
@@ -72,7 +79,7 @@ class Rvectors:
         else:
             ws_tolerance = abs(ws_tolerance)
             num_digits_tol = 8
-        self.all_shifts_red, self.shift_index = np.unique(
+        all_shifts_red, self.shift_index = np.unique(
             np.round(-self.shifts_left_red[:, None] + self.shifts_right_red[None, :], num_digits_tol).reshape(-1, 3),
             axis=0, return_inverse=True)
         self.shift_index = self.shift_index.reshape(self.nshifts_left, self.nshifts_right)
@@ -81,7 +88,7 @@ class Rvectors:
         self.iRvec_mod_list = []
         wigner = WignerSeitz(self.lattice, mp_grid=mp_grid, tolerance=ws_tolerance)
         self.iRvec_index_list = []  # indices of every shift in the
-        for shift in self.all_shifts_red:
+        for shift in all_shifts_red:
             iRvec, Ndegen, iRvec_mod = wigner(shift_reduced=shift)
             self.iRvec_list.append(iRvec)
             self.Ndegen_list.append(Ndegen)
@@ -440,7 +447,7 @@ class Rvectors:
             the shift of the grid in coordinates of the reciprocal lattice divided by the grid
         """
         self.dK = np.array(dK)
-        self. expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
+        self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
 
         self.fft_R_to_k = FFT_R_to_k(
             self.iRvec,

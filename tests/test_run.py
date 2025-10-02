@@ -1296,3 +1296,67 @@ def test_kp_mass_anisotropic_1(check_kp_mass_isotropic, system_kp_mass_aniso_1):
 
 def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
     check_kp_mass_isotropic(system_kp_mass_aniso_2, "aniso", "2", check_anal=False)
+
+
+
+@pytest.fixture
+def check_Fe_gpaw_soc(check_run):
+    def _inner(system, suffix, use_symmetry=True):
+        Efermi_Fe_gpaw = np.linspace(8.5, 10, 16)
+        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': False}
+        calculators = {}
+        for k, v in calculators_Fe.items():
+            if (suffix in ['up', 'dw']) and (k in ["spin"]):
+                pass
+            elif k.startswith("Morb"):
+                param_kwargs = {'Efermi': Efermi_Fe, 'use_factor': False,
+                                'kwargs_formula': {'external_terms': False}}
+                calculators[k] = v(**param_kwargs)
+            else:
+                calculators[k] = v(**param)
+
+        extra_precision = {}
+        if use_symmetry:
+            precision = -1e-8
+            if suffix in ['up', 'dw']:
+                extra_precision["ahc"] = 1e-8
+                extra_precision["ahc_test"] = 1e-8
+        else:
+            precision = -2e-5
+            if suffix in ['up', 'dw']:
+                extra_precision["ahc"] = 1e-8
+                extra_precision["ahc_test"] = 1e-8
+            # extra_precision["ahc"] = -1e-4
+            # extra_precision["ahc_test"] = -1e-4
+            # extra_precision["conductivity_ohmic"] = -1e-5
+            # extra_precision["conductivity_ohmic_fsurf"] = -1e-5
+            # extra_precision["Morb"] = -1e-5
+
+        return check_run(
+            system,
+            calculators,
+            precision=precision,
+            fout_name=f"Fe_gpaw_soc_{suffix}",
+            suffix="" if use_symmetry else "nosym",
+            use_symmetry=use_symmetry,
+            extra_precision=extra_precision,
+            parameters_K={
+                '_FF_antisym': True,
+                '_CCab_antisym': True
+            },
+        )
+    return _inner
+
+
+@pytest.mark.parametrize("system_name", ["z", "angle", "111", "up", "dw"])
+@pytest.mark.parametrize("use_symmetry", [True, False])
+def test_Fe_gpaw_soc(system_Fe_gpaw_soc_z, system_Fe_gpaw_soc_111, system_Fe_gpaw_soc_angle, system_Fe_gpaw_up, system_Fe_gpaw_dw,
+                     check_Fe_gpaw_soc, use_symmetry, system_name):
+    system = {"z": system_Fe_gpaw_soc_z,
+              "angle": system_Fe_gpaw_soc_angle,
+              "111": system_Fe_gpaw_soc_111,
+              "up": system_Fe_gpaw_up,
+              "dw": system_Fe_gpaw_dw
+              }[system_name]
+    check_Fe_gpaw_soc(system,
+                      suffix=system_name, use_symmetry=use_symmetry)

@@ -644,6 +644,7 @@ class SHC(StaticCalculator):
         | With Fermi sea integral. Eq(1) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`_
         | Qiao type : with kwargs_formula={'spin_current_type':'qiao'}. Eq(49,50) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.214402>`__
         | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`__
+        | Simple type : with kwargs_formula={'spin_current_type':'siple'}. simplified description of spin-velocity, needs only the SS_R matrix elements
         | Output: :math:`\sigma_{\alpha\beta} = -e^2/\hbar \int [dk] Im(j_{nm,\alpha} v_{mn,\beta})/(\epsilon_n - \epsilon_m)^2 f`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
 

@@ -1,3 +1,4 @@
+from functools import cached_property
 import numpy as np
 from ..utility import alpha_A, beta_A
 from .data_K import Data_K
@@ -15,23 +16,24 @@ class Data_K_R(Data_K, System_R):
         self._FF_antisym = _FF_antisym
         self._CCab_antisym = _CCab_antisym
 
-        self.rvec = system.rvec.copy()
-        self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
-                          numthreads=self.npar_k if self.npar_k > 0 else 1,
-                            fftlib=self.fftlib,
-                            dK=dK)
+        if system.rvec is not None:
+            self.rvec = system.rvec.copy()
+            self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
+                            numthreads=self.npar_k if self.npar_k > 0 else 1,
+                                fftlib=self.fftlib,
+                                dK=dK)
 
         self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
         self._XX_R = {}
 
-    @property
+    @cached_property
     def HH_K(self):
         return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 
     def get_R_mat(self, key):
-        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG']
+        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc']
         try:
             return self._XX_R[key]
         except KeyError:
@@ -85,10 +87,16 @@ class Data_K_R(Data_K, System_R):
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
         return self._rotate((self.rvec.R_to_k(XX_R, hermitian=hermitian, der=der))[self.select_K])
 
-    def E_K_corners_tetra(self):
+    @cached_property
+    def expdK_corners_tetra(self):
         vertices = self.Kpoint.vertices_fullBZ
         # we omit the wcc phases here, because they do not affect the energies
-        expdK = np.exp(2j * np.pi * self.rvec.iRvec.dot(vertices.T)).T
+        return np.exp(2j * np.pi * self.rvec.iRvec.dot(vertices.T)).T
+
+
+    def E_K_corners_tetra(self):
+        _ = self.E_K  # to ensure that the bands are selected
+        expdK = self.expdK_corners_tetra
         _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[:, None, None]
@@ -101,11 +109,16 @@ class Data_K_R(Data_K, System_R):
         Ecorners = self.phonon_freq_from_square(Ecorners)
         return Ecorners
 
-    def E_K_corners_parallel(self):
+    @cached_property
+    def expdK_corners_parallel(self):
         dK2 = self.Kpoint.dK_fullBZ / 2
         # we omit the wcc phases here, because they do not affect the energies
         expdK = np.exp(2j * np.pi * self.rvec.iRvec * dK2[None, :])
-        expdK = np.array([1. / expdK, expdK])
+        return np.array([1. / expdK, expdK])
+
+    def E_K_corners_parallel(self):
+        _ = self.E_K  # to ensure that the bands are selected
+        expdK = self.expdK_corners_parallel
         Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
         for ix in 0, 1:
             for iy in 0, 1:

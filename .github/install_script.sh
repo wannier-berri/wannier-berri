@@ -11,7 +11,7 @@ pip install -U pip setuptools wheel
 # install optional dependencies
 pip install pythtb # tbmodels spglib
 # pip install ase
-# pip install gpaw
+pip install gpaw
 # gpaw info
 # gpaw install-data --register ~/gpaw-data
 pip install -U .[all]

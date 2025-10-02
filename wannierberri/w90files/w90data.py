@@ -19,11 +19,12 @@ import os
 import warnings
 import numpy as np
 
-from wannierberri.utility import cached_einsum
+from ..utility import cached_einsum
 from ..wannierise import wannierise
 from ..symmetry.sawf import SymmetrizerSAWF
 from .utility import grid_from_kpoints
 
+from .soc import SOC
 from .win import WIN
 from .eig import EIG
 from .mmn import MMN
@@ -273,6 +274,54 @@ class Wannier90data:
                                kwargs_bandstructure)
             self.set_file('unk', unk)
         return self
+
+    def from_gpaw(self,
+                  gpaw_calc,
+                  files=("mmn", "eig", "amn", "symmetrizer"),
+                  read_npz_list=None,
+                  write_npz_list=None,
+                  projections=None,
+                  unk_grid=None,
+                  normalize=True,
+                  irreducible=None,
+                  ecut_sym=100,
+                  ecut_pw=200,
+                  include_TR=True,
+                  typat=None,
+                  mp_grid=None,):
+        if irreducible:
+            raise NotImplementedError("irreducible=True is not implemented yet for from_gpaw")
+        from irrep.bandstructure import BandStructure
+        from irrep.spacegroup import SpaceGroup
+        bandstructure = BandStructure(code="gpaw",
+                                      gpaw_calc=gpaw_calc,
+                                      Ecut=ecut_pw,
+                                      )
+        sg = bandstructure.spacegroup
+        if typat is None:
+            typat = [atom.number for atom in gpaw_calc.atoms]
+        SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions, spinor=False,
+                             typat=typat, include_TR=include_TR)
+        bandstructure.spacegroup = sg
+
+        files_from_bandstructure = [f for f in files if f not in ["mmn", "soc"]]
+        self.from_bandstructure(bandstructure,
+                                files=files_from_bandstructure,
+                                read_npz_list=read_npz_list,
+                                write_npz_list=write_npz_list,
+                                projections=projections,
+                                unk_grid=unk_grid,
+                                normalize=normalize,
+                                irreducible=irreducible,
+                                ecut_sym=ecut_sym,
+                                mp_grid=mp_grid,
+                                    )
+        if "mmn" in files:
+            mmn = MMN.from_gpaw(gpaw_calc,)
+            self.set_file('mmn', mmn)
+        if "soc" in files:
+            soc = SOC.from_gpaw(gpaw_calc,)
+            self.set_file('soc', soc)
 
     def from_npz(self,
                 seedname="wannier90",
@@ -807,7 +856,7 @@ class Wannier90data:
                 selected_bands = np.where(selected_bands)[0]
                 assert selected_bands.shape == (self.eig.NB,), f"selected bands should be of shape (NB,), not {selected_bands.shape}"
             else:
-                assert selected_bands.dtype == np.int, f"selected_bands should be a list of int or a boolean array, not {selected_bands.dtype}"
+                assert np.issubdtype(selected_bands.dtype, np.integer), f"selected_bands should be a list of int or a boolean array, not {selected_bands.dtype}"
                 assert np.all(selected_bands >= 0), f"selected bands should be non-negative, not {selected_bands}"
                 assert np.all(selected_bands < self.eig.NB), f"selected bands should be less than {self.eig.NB}, not {selected_bands}"
         else:
@@ -852,6 +901,7 @@ class Wannier90data:
                 if key == 'chk':
                     print(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
+        self.selected_bands = selected_bands
         return selected_bands
 
 

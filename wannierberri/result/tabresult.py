@@ -232,6 +232,7 @@ class TABresult(Result):
             Emax=None,
             iband=None,
             mode="fatband",
+            cmap="jet",
             fatfactor=20,
             kwargs_line={},
             label=None,
@@ -310,17 +311,30 @@ class TABresult(Result):
                     e = E[:, ib]
                     selE = (e <= Emax) * (e >= Emin)
                     klineselE = kline[selE]
-                    y = data[selE][:, ib]
+                    y = data[selE][:, ib] * fatfactor
                     select = abs(y) > 2
                     y[select] = np.log2(abs(y[select])) * np.sign(y[select])
                     y[~select] *= 0.5
                     e1 = e[selE]
                     for col, sel in [("red", (y > 0)), ("blue", (y < 0))]:
-                        sz = abs(y[sel]) * fatfactor
+                        sz = abs(y[sel])
                         sz[sz > fatmax] = fatmax
                         axes.scatter(klineselE[sel], e1[sel], s=sz, color=col)
+            elif mode == "color":
+                for ib in range(len(iband)):
+                    e = E[:, ib]
+                    selE = (e <= Emax) * (e >= Emin)
+                    klineselE = kline[selE]
+                    y = data[selE][:, ib]
+                    # print (f"y={y.min()}:{y.max()}")
+                    # select = abs(y) > 2
+                    # y[select] = np.log2(abs(y[select])) * np.sign(y[select])
+                    # y[~select] *= 0.5
+                    e1 = e[selE]
+                    axes.scatter(klineselE, e1, c=y, s=fatmax,
+                                 cmap=cmap, vmin=-1, vmax=1)
             else:
-                raise ValueError("So far only fatband mode is implemented")
+                raise ValueError("So far only 'fatband' and 'color' modes are implemented")
 
         x_ticks_labels = []
         x_ticks_positions = []

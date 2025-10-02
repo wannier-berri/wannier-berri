@@ -121,6 +121,7 @@ class System_w90(System_R):
             parameters["name"] = os.path.split(seedname)[-1]
         super().__init__(**parameters)
 
+
         if transl_inv_JM:
             known = ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SA', 'SHA']
             unknown = set(self.needed_R_matrices) - set(known)

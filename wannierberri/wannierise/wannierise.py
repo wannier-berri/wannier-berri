@@ -282,7 +282,7 @@ def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
     print("wannier centers and spreads")
     print(breakline)
     for w, s in zip(wcc, spreads):
-        w = np.round(w, 6)
+        w = np.round(w, 12)
         print(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
     print(breakline)
     w = wcc.sum(axis=0)

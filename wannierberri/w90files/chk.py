@@ -23,7 +23,7 @@ class CheckPoint(SavableNPZ):
 
     npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_latt", "mp_grid",
                 "wannier_centers_cart", "wannier_spreads"]
-    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
     npz_keys_dict_int = ["v_matrix"]
 
 
@@ -36,6 +36,7 @@ class CheckPoint(SavableNPZ):
                 wannier_spreads=None,
                 v_matrix=None,
                 kpt_latt=None,
+                selected_bands=None,
                 mp_grid=None,
                 kmesh_tol=1e-7,
                 bk_complete_tol=1e-5,
@@ -80,6 +81,9 @@ class CheckPoint(SavableNPZ):
         self.kmesh_tol = kmesh_tol
         self.bk_complete_tol = bk_complete_tol
 
+        if selected_bands is not None:
+            self.selected_bands = selected_bands
+
         if v_matrix is not None:
             if isinstance(v_matrix, list) or isinstance(v_matrix, np.ndarray):
                 v_matrix = {ik: np.array(v, dtype=complex) for ik, v in enumerate(v_matrix) if v is not None}
@@ -103,11 +107,17 @@ class CheckPoint(SavableNPZ):
         self.num_bands = num_bands
         self.num_kpts = num_kpts
 
+
+    def get_selected_bands(self):
+        if hasattr(self, "selected_bands") and self.selected_bands is not None:
+            return self.selected_bands
+        else:
+            return np.arange(self.num_bands)
+
+
     @property
     def NK(self):
         return self.num_kpts
-
-
 
 
     def from_w90_file(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
@@ -525,4 +535,5 @@ class CheckPoint(SavableNPZ):
             selected_bands_bool[selected_bands] = True
             assert np.any(selected_bands_bool), "No bands selected"
             self.num_bands = sum(selected_bands_bool)
+            self.selected_bands = selected_bands
         return self

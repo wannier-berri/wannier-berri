@@ -1,5 +1,8 @@
 import numpy as np
+from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.tetrahedron import weights_tetra
+from wannierberri.grid import Grid
+from wannierberri.data_K import get_data_k
 import pytest
 from pytest import approx
 
@@ -94,3 +97,37 @@ def test_tetra_accurate(data):
     print("weights (old/acc):", weight_old, weight_acc)
     assert weight_old[0] == approx(data[5], abs=1e-8)
     assert weight_acc[0] == approx(data[6], abs=1e-8)
+
+
+
+@pytest.mark.parametrize("kpoint_type", ["tetra", "parallel"])
+def test_tetra_corners_k(kpoint_type, system_kp_mass_aniso_0):
+    check_tetra_corners(system=system_kp_mass_aniso_0, kpoint_type=kpoint_type)
+
+
+@pytest.mark.parametrize("kpoint_type", ["tetra", "parallel"])
+def test_tetra_corners_R(kpoint_type, system_GaAs_W90_JM):
+    check_tetra_corners(system=system_GaAs_W90_JM, kpoint_type=kpoint_type)
+
+
+@pytest.mark.parametrize("kpoint_type", ["tetra", "parallel"])
+def test_tetra_corners_soc(kpoint_type, system_Fe_gpaw_soc_z):
+    check_tetra_corners(system=system_Fe_gpaw_soc_z, kpoint_type=kpoint_type)
+
+
+def check_tetra_corners(system, kpoint_type):
+    k = np.array([0.123, 0.234, 0.345])
+    if kpoint_type == "parallel":
+        grid = Grid(system, NK=(8, 8, 8), NKFFT=(4, 4, 4))
+    elif kpoint_type == "tetra":
+        grid = GridTetra(system, length=20, NKFFT=(2, 2, 2))
+    kpoint = grid.get_K_list(use_symmetry=False)[3]
+
+    data_k = get_data_k(system=system, grid=grid, dK=k, Kpoint=kpoint)
+    if kpoint_type == "parallel":
+        E_corners = data_k.E_K_corners_parallel()
+        E_corners_test = data_k.E_K_corners_parallel_test()
+    elif kpoint_type == "tetra":
+        E_corners = data_k.E_K_corners_tetra()
+        E_corners_test = data_k.E_K_corners_tetra_test()
+    assert E_corners == approx(E_corners_test, abs=1e-8), f"for kpoint type {kpoint_type}, got \n{E_corners} vs {E_corners_test}"

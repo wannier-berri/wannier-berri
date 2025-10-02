@@ -55,17 +55,12 @@ class W90_file(SavableNPZ):
         if os.path.exists(f_npz) and read_npz:
             obj = cls.from_npz(f_npz)
             write_npz = False  # do not write npz again if it was read
-        elif read_w90:
-            try:
-                obj = cls.from_w90_file(seedname, **kwargs_w90)
-            except FileNotFoundError:
-                pass
         elif bandstructure is not None:
             if kwargs_bandstructure is None:
                 kwargs_bandstructure = {}
             obj = cls.from_bandstructure(bandstructure, **kwargs_bandstructure)
-        else:
-            raise FileNotFoundError(f"Cannot find {f_npz} or {seedname}.{ext} and no bandstructure provided")
+        elif read_w90:
+            obj = cls.from_w90_file(seedname, **kwargs_w90)
         if write_npz:
             obj.to_npz(f_npz)
         # window is applied after, so that npz contains same data as original file
