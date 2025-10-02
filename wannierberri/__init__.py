@@ -15,7 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 from .run import run
 from .symmetry import point_symmetry
@@ -40,7 +40,8 @@ from termcolor import cprint
 
 
 from packaging import version
-IRREP_IRREDUCIBLE_VERSION = version.parse("2.2.0")  # the version of irrep that supports irreducible band structure
+import irrep
+assert version.parse(irrep.__version__) >= version.parse("2.3.2"), f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
 
 
 def welcome():

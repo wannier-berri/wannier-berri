@@ -1,8 +1,5 @@
 """test auxilary functions"""
 
-from irrep import __version__ as irrep__version__
-from packaging import version
-from wannierberri import IRREP_IRREDUCIBLE_VERSION
 from wannierberri.wannierise import wannierise
 import glob
 import os
@@ -20,8 +17,6 @@ from irrep.spacegroup import SpaceGroup
 
 from wannierberri.w90files.eig import EIG
 sq2 = np.sqrt(2)
-
-irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
 
 
 def test_perpedicular_coplanar():
@@ -113,19 +108,10 @@ def test_projection_basis_Telike_gen():
     x = 0.2
     positions = np.array([[x, 0, 0], [0, x, 1 / 3], [-x, -x, 2 / 3]])
     numbers = [1, 1, 1]
-    if irrep_new_version:
-        spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
-    else:
-        spacegroup = SpaceGroup(cell=(lattice, positions, numbers), spinor=False)
+    spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
     spacegroup.show()
     for i, s in enumerate(spacegroup.symmetries):
         print(i + 1, "\n", s.rotation_cart)
-    # wyckoff_pos = WyckoffPosition("x,0,0",spacegroup=spacegroup)
-    # wyckoff_pos = WyckoffPositionNumeric([x,0,0],spacegroup=spacegroup)
-    # for rot,tr in zip( wyckoff_pos.rotations, wyckoff_pos.translations):
-    #     print (rot.dot([0.1,0,0])+tr)
-    # print (wyckoff_pos.rotations)
-    # print (wyckoff_pos.rotations_cart)
     proj = Projection(orbital="p", position_num=[0.1, 0, 0.01], spacegroup=spacegroup, rotate_basis=True, xaxis=[1, 0, 0])
     print(repr(np.array(proj.basis_list)))
     reference = np.array([[[1., 0., 0.],
@@ -167,19 +153,10 @@ def test_projection_basis_Telike_onatom():
     x = 0.2
     positions = np.array([[x, 0, 0], [0, x, 1 / 3], [-x, -x, 2 / 3]])
     numbers = [1, 1, 1]
-    if irrep_new_version:
-        spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
-    else:
-        spacegroup = SpaceGroup(cell=(lattice, positions, numbers), spinor=False)
+    spacegroup = SpaceGroup.from_cell(cell=(lattice, positions, numbers), spinor=False)
     spacegroup.show()
     for i, s in enumerate(spacegroup.symmetries):
         print(i + 1, "\n", s.rotation_cart)
-    # wyckoff_pos = WyckoffPosition("x,0,0",spacegroup=spacegroup)
-    # wyckoff_pos = WyckoffPositionNumeric([x,0,0],spacegroup=spacegroup)
-    # for rot,tr in zip( wyckoff_pos.rotations, wyckoff_pos.translations):
-    #     print (rot.dot([0.1,0,0])+tr)
-    # print (wyckoff_pos.rotations)
-    # print (wyckoff_pos.rotations_cart)
     proj = Projection(orbital="p", position_num=[0.1, 0, 0], spacegroup=spacegroup, rotate_basis=True, xaxis=[1, 0, 0])
     print(repr(np.array(proj.basis_list)))
     reference = np.array([[[1., 0., 0.],

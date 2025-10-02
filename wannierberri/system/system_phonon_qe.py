@@ -2,6 +2,7 @@ import os.path
 
 import numpy as np
 import multiprocessing
+import xmltodict
 
 from ..fourier.rvectors import Rvectors
 from . import System_w90
@@ -63,43 +64,46 @@ class System_Phonon_QE(System_w90):
         #        print (self.mp_grid,nqirr)
         q_points = []
         dynamical_mat = []
-        cnt = 0
-        import untangle
         for ifile in range(1, nqirr + 1):
             fname = f"{seedname}.dyn{ifile}.xml"
-            data = untangle.parse(open(fname).read().lower()).root
-            geometry = data.geometry_info
-            if ifile == 1:
-                number_of_types = int(geometry.number_of_types.cdata)
-                masses_tp = np.array(
-                    [float(geometry.__getattr__(f'mass_{i + 1}').cdata) for i in range(number_of_types)])
-                self.real_lattice = _str2array(geometry.at.cdata)
-                self.number_of_atoms = int(geometry.number_of_atoms.cdata)
-                self.number_of_phonons = 3 * self.number_of_atoms
-                atom_positions_cart = np.array([geometry.__getattr__(f'atom_{i + 1}')['tau'].split()
-                                                for i in range(self.number_of_atoms)], dtype=float)
-                self.atom_positions = atom_positions_cart.dot(np.linalg.inv(self.real_lattice))
-                types = np.array([geometry.__getattr__(f'atom_{i + 1}')['index'] for i in range(self.number_of_atoms)],
-                                 dtype=int) - 1
-                masses = masses_tp[types]
-                self.num_wann = self.number_of_phonons
-                self.set_wannier_centers(wannier_centers_red=np.array([atom for atom in self.atom_positions for _ in range(3)])
-                                         )
-            number_of_q = int(geometry.number_of_q.cdata)
-            for iq in range(number_of_q):
-                dynamical = data.__getattr__(f"dynamical_mat__{iq + 1}")
-                q = _str2array(dynamical.q_point.cdata).reshape(3)
-                q = self.real_lattice.dot(q)  # converting from cartisean(2pi/alatt) to reduced coordinates
-                dyn_mat = np.zeros((3 * self.number_of_atoms, 3 * self.number_of_atoms), dtype=complex)
-                for i in range(self.number_of_atoms):
-                    for j in range(self.number_of_atoms):
-                        phi = _str2array(dynamical.__getattr__(f'phi_{i + 1}_{j + 1}').cdata, dtype=complex
+            with open(fname) as f:
+                data = xmltodict.parse(f.read().lower())['root']
+                geometry = data['geometry_info']
+                if ifile == 1:
+                    number_of_types = int(geometry['number_of_types'])
+                    masses_tp = np.array(
+                        [float(geometry[f'mass.{i + 1}']) for i in range(number_of_types)])
+                    self.real_lattice = _str2array(geometry['at'])
+                    self.number_of_atoms = int(geometry['number_of_atoms'])
+                    self.number_of_phonons = 3 * self.number_of_atoms
+                    atom_positions_cart = np.array(
+                        [geometry[f'atom.{i + 1}']['@tau'].split()
+                         for i in range(self.number_of_atoms)], dtype=float)
+                    self.atom_positions = atom_positions_cart.dot(np.linalg.inv(self.real_lattice))
+                    types = np.array(
+                        [geometry[f'atom.{i + 1}']['@index'] for i in range(self.number_of_atoms)],
+                        dtype=int) - 1
+                    masses = masses_tp[types]
+                    self.num_wann = self.number_of_phonons
+                    self.set_wannier_centers(
+                        wannier_centers_red=np.array([atom for atom in self.atom_positions for _ in range(3)])
+                    )
+                number_of_q = int(geometry['number_of_q'])
+                for iq in range(number_of_q):
+                    dynamical = data[f'dynamical_mat_.{iq + 1}']
+                    q = _str2array(dynamical['q_point']).reshape(3)
+                    q = self.real_lattice.dot(q)  # converting from cartisean(2pi/alatt) to reduced coordinates
+                    dyn_mat = np.zeros((3 * self.number_of_atoms, 3 * self.number_of_atoms), dtype=complex)
+                    for i in range(self.number_of_atoms):
+                        for j in range(self.number_of_atoms):
+                            phi = _str2array(dynamical[f'phi.{i + 1}.{j + 1}'], dtype=complex
                                          ).reshape(3, 3, order='F')
-                        dyn_mat[i * 3:i * 3 + 3, j * 3:j * 3 + 3] = phi
-                dyn_mat = 0.5 * (dyn_mat + dyn_mat.T.conj())
-                dynamical_mat.append(dyn_mat)
-                q_points.append(q)
-                cnt += 1
+                            dyn_mat[i * 3:i * 3 + 3, j * 3:j * 3 + 3] = phi
+                    dyn_mat = 0.5 * (dyn_mat + dyn_mat.T.conj())
+                    dynamical_mat.append(dyn_mat)
+                    q_points.append(q)
+                    
+        self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
         self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
 
 

@@ -6,7 +6,7 @@ from ..symmetry.projections import ProjectionsSet
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
 from .w90file import W90_file, auto_kptirr, check_shape
-
+        
 
 class AMN(W90_file):
     """
@@ -157,11 +157,7 @@ class AMN(W90_file):
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        from ..import IRREP_IRREDUCIBLE_VERSION
-        from packaging import version
-        from irrep import __version__ as irrep__version__
-        irrep_new_version = (version.parse(irrep__version__) >= IRREP_IRREDUCIBLE_VERSION)
-
+        
         positions = []
         orbitals = []
         basis_list = []
@@ -185,11 +181,9 @@ class AMN(W90_file):
 
         for i, ikirr in enumerate(kptirr):
             kp = bandstructure.kpoints[selected_kpoints[i]]
-            ig_loc = kp.ig if irrep_new_version else kp.ig.T
-            igk = ig_loc[:, :3] + kp.k[None, :]
-            ng = igk.shape[0]
+            igk = kp.ig[:, :3] + kp.k[None, :]
             expgk = np.exp(-2j * np.pi * (pos @ igk.T))
-            wf = kp.WF if irrep_new_version else kp.WF.reshape((kp.WF.shape[0], ng, -1), order='F')
+            wf = kp.WF
             wf = wf.conj()
             if normalize:
                 norms = np.linalg.norm(wf, axis=(1, 2))
