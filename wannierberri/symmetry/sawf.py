@@ -13,13 +13,6 @@ from .projections import Projection, ProjectionsSet
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
 
-from packaging import version
-import irrep
-irrep_version = version.parse(irrep.__version__)
-
-
-IRREP_IRREDUCIBLE_VERSION = version.parse("2.2.0")  # the version of irrep that supports irreducible band structure
-
 
 class SymmetrizerSAWF:
     """
@@ -117,20 +110,12 @@ class SymmetrizerSAWF:
         """
         if unitary_params is None:
             unitary_params = {}
-        if irrep_version >= IRREP_IRREDUCIBLE_VERSION:
-            data = bandstructure.get_dmn(grid=grid,
-                                         Ecut=ecut,
-                                         irreducible=irreducible,
-                                         degen_thresh=degen_thresh,
-                                         unitary=True,
-                                         unitary_params=unitary_params)
-        else:
-            if irreducible:
-                raise ImportError("The irreducible option requires irrep version >= 2.2.0, please update irrep")
-            data = bandstructure.get_dmn(grid=grid,
-                                         degen_thresh=degen_thresh,
-                                         unitary=True,
-                                         unitary_params=unitary_params)
+        data = bandstructure.get_dmn(grid=grid,
+                                     Ecut=ecut,
+                                     irreducible=irreducible,
+                                     degen_thresh=degen_thresh,
+                                     unitary=True,
+                                     unitary_params=unitary_params)
         self.grid = data["grid"]
         self.kpoints_all = data["kpoints"]
         self.kpt2kptirr = data["kpt2kptirr"]
@@ -148,13 +133,9 @@ class SymmetrizerSAWF:
         self._NK = len(self.kpoints_all)
         self._NB = bandstructure.num_bands
         self.clear_inverse()
-        if irrep_version >= IRREP_IRREDUCIBLE_VERSION:
-            self.selected_kpoints = data["selected_kpoints"]
-            self.kpt_from_kptirr_isym = data["kpt_from_kptirr_isym"]
-        else:
-            self.kpt_from_kptirr_isym = get_kpt_from_kptirr_isym(kptirr2kpt=self.kptirr2kpt,
-                                                                 kpt2kptirr=self.kpt2kptirr)
-
+        self.selected_kpoints = data["selected_kpoints"]
+        self.kpt_from_kptirr_isym = data["kpt_from_kptirr_isym"]
+        
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self

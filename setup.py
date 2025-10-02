@@ -7,17 +7,16 @@ with open("README.rst", "r") as fh:
 
 
 extras_require = {
-    "parallel" : ['ray[default]', 'protobuf==3.20.2'],
+        "parallel" : ['ray[default]', 'protobuf==3.20.2'],
                 # protobuf req by ray :
                 # https://github.com/ray-project/ray/issues/25205 ,
                 # https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
-    "fftw"     : ['pyFFTW>=0.12.0'],
-    "plot"     : ['matplotlib'],
-    "symmetry" : [ 'sympy', 'spglib>=2', 'irrep>=2.3.3', 'spgrep'],
-    "phonons"  : [ 'untangle' ],
+        "fftw"     : ['pyFFTW>=0.12.0'],
+        # "symmetry" : [ 'sympy', 'spglib>=2', 'irrep>=2.3.3', 'spgrep'],
                 }
 
 extras_require["all"] = sum( (extras_require[k] for k in extras_require.keys()), [])
+extras_require["default"] = sum( (extras_require[k] for k in extras_require.keys() if k != "fftw"), [])
 
 
 setuptools.setup(
@@ -36,7 +35,13 @@ setuptools.setup(
                         'numba>=0.55.2',
                         'packaging>=20.8',
                         'fortio>=0.4',
-                        'wannier90io'
+                        'wannier90io',
+                        'xmltodict',
+                        'matplotlib',
+                        'sympy', 
+                        'spglib>=2', 
+                        'irrep>=2.3.3', 
+                        'spgrep'
                       ],
      extras_require=extras_require,
      url="https://wannier-berri.org",
