@@ -6,7 +6,7 @@ from ..symmetry.projections import ProjectionsSet
 from ..symmetry.orbitals import Bessel_j_exp_int, Projector
 from .utility import str2arraymmn
 from .w90file import W90_file, auto_kptirr, check_shape
-        
+
 
 class AMN(W90_file):
     """
@@ -156,8 +156,8 @@ class AMN(W90_file):
         """
 
         NK, selected_kpoints, kptirr = auto_kptirr(
-            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        
+            bandstructure.num_k, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+
         positions = []
         orbitals = []
         basis_list = []

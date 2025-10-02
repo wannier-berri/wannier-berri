@@ -109,7 +109,9 @@ class Wannier90data:
                           normalize=True,
                           irreducible=None,
                           ecut_sym=100,
-                          mp_grid=None,):
+                          mp_grid=None,
+                          unitary_params=None,
+                          ):
         """
         Create a Wannier90data object from a bandstructure object
 
@@ -183,7 +185,8 @@ class Wannier90data:
                 symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure,
                                                            grid=mp_grid,
                                                            irreducible=irreducible,
-                                                           ecut=ecut_sym)
+                                                           ecut=ecut_sym,
+                                                           unitary_params=unitary_params,)
                 if projections is not None:
                     symmetrizer.set_D_wann_from_projections(projections)
             self.set_symmetrizer(symmetrizer)
@@ -276,16 +279,19 @@ class Wannier90data:
         return self
 
     def from_gpaw(self,
-                  gpaw_calc,
+                  calculator,
+                  spin_channel=0,
                   files=("mmn", "eig", "amn", "symmetrizer"),
                   read_npz_list=None,
                   write_npz_list=None,
                   projections=None,
+                  spacegroup=None,
                   unk_grid=None,
                   normalize=True,
                   irreducible=None,
-                  ecut_sym=100,
+                  ecut_sym=200,
                   ecut_pw=200,
+                  unitary_params=None,
                   include_TR=True,
                   typat=None,
                   mp_grid=None,):
@@ -294,15 +300,20 @@ class Wannier90data:
         from irrep.bandstructure import BandStructure
         from irrep.spacegroup import SpaceGroup
         bandstructure = BandStructure(code="gpaw",
-                                      gpaw_calc=gpaw_calc,
+                                      calculator_gpaw=calculator,
                                       Ecut=ecut_pw,
+                                      spin_channel=spin_channel,
                                       )
-        sg = bandstructure.spacegroup
-        if typat is None:
-            typat = [atom.number for atom in gpaw_calc.atoms]
-        SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions, spinor=False,
-                             typat=typat, include_TR=include_TR)
-        bandstructure.spacegroup = sg
+        if spacegroup is None:
+            spacegroup = bandstructure.spacegroup
+            if typat is None:
+                typat = [atom.number for atom in calculator.atoms]
+            spacegroup = SpaceGroup.from_cell(real_lattice=spacegroup.real_lattice, positions=spacegroup.positions, spinor=False,
+                                typat=typat, include_TR=include_TR)
+        else:
+            assert isinstance(spacegroup, SpaceGroup)
+            assert spacegroup.spinor is False, "from_gpaw only works for non-spinor spacegroups, SOC is treated as a perturbation after wannierisation"
+        bandstructure.spacegroup = spacegroup
 
         files_from_bandstructure = [f for f in files if f not in ["mmn", "soc"]]
         self.from_bandstructure(bandstructure,
@@ -315,13 +326,21 @@ class Wannier90data:
                                 irreducible=irreducible,
                                 ecut_sym=ecut_sym,
                                 mp_grid=mp_grid,
-                                    )
-        if "mmn" in files:
-            mmn = MMN.from_gpaw(gpaw_calc,)
-            self.set_file('mmn', mmn)
+                                unitary_params=unitary_params,
+                                )
         if "soc" in files:
-            soc = SOC.from_gpaw(gpaw_calc,)
+            soc = SOC.from_gpaw(calculator,)
             self.set_file('soc', soc)
+        if "mmn" in files:
+            if "symmetrizer" in self._files:
+                symmetrizer = self.get_file("symmetrizer")
+            else:
+                symmetrizer = None
+            mmn = MMN.from_gpaw(calculator,
+                               symmetrizer=symmetrizer,
+                               spin_channel=spin_channel,)
+            self.set_file('mmn', mmn)
+        return self
 
     def from_npz(self,
                 seedname="wannier90",

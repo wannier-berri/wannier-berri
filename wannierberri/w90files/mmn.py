@@ -8,6 +8,7 @@ from wannierberri.utility import cached_einsum
 from .utility import convert, grid_from_kpoints
 from .w90file import W90_file, auto_kptirr, check_shape
 from ..io import sparselist_to_dict
+from irrep.bandstructure import BandStructure
 
 
 class MMN(W90_file):
@@ -255,6 +256,17 @@ class MMN(W90_file):
 
 
     @classmethod
+    def from_gpaw(cls, calculator, spin_channel=0,
+                  selected_kpoints=None,
+                  symmetrizer=None,):
+        return cls.from_bandstructure(
+            bandstructure=calculator,
+            selected_kpoints=selected_kpoints,
+            symmetrizer=symmetrizer,
+            spin_channel=spin_channel,
+        )
+
+    @classmethod
     def from_bandstructure(cls, bandstructure,
                            normalize=False,
                            verbose=False,
@@ -266,6 +278,7 @@ class MMN(W90_file):
                            NK=None,
                            kpt_latt_grid=None,
                            symmetrizer=None,
+                           spin_channel=0,
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -273,7 +286,7 @@ class MMN(W90_file):
 
         Parameters
         ----------
-        bandstructure : BandStructure
+        bandstructure : BandStructure or GPAW
             the band structure object
         normalize : bool
             if True, the wavefunctions are normalised
@@ -287,25 +300,40 @@ class MMN(W90_file):
         MMN or np.ndarray
             the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
         """
+        mode = None
+        if isinstance(bandstructure, BandStructure):
+            kpoints_bandstruct = np.array([kp.k for kp in bandstructure.kpoints])
+            num_k_bandstruct = bandstructure.num_k
+            recip_lattice = bandstructure.RecLattice
+            mode = "BandStructure"
+        else:
+            try:
+                from gpaw import GPAW
+                if isinstance(bandstructure, GPAW):
+                    kpoints_bandstruct = np.array(bandstructure.get_ibz_k_points())
+                    num_k_bandstruct = len(kpoints_bandstruct)
+                    real_lattice = bandstructure.atoms.cell
+                    recip_lattice = np.linalg.inv(real_lattice).T * (2 * np.pi)
+                    mode = "GPAW"
+                else:
+                    raise ValueError(f"bandstructure in MMN.from_bandstructure is neither a BandStructure object nor a GPAW object. It is a {type(bandstructure)}")
+            except ImportError as e:
+                raise ValueError("bandstructure in MMN.from_bandstructure is not a BandStructure object. Checking if it is a GPAW object failed because GPAW is not installed.") from e
+
         if symmetrizer is not None:
             kptirr = symmetrizer.kptirr
             kpt2kptirr = symmetrizer.kpt2kptirr
             kpt_from_kptirr_isym = symmetrizer.kpt_from_kptirr_isym
-            kpt_latt_grid = symmetrizer.kpt_latt_grid
+            kpt_latt_grid = symmetrizer.kpoints_all
         if kpt_latt_grid is None:
-            kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
+            kpt_latt_grid = kpoints_bandstruct
         mp_grid = np.array(grid_from_kpoints(kpt_latt_grid))
 
         NK, selected_kpoints, kptirr = auto_kptirr(
-            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+            num_k_bandstruct, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
         print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
         NK = kpt_latt_grid.shape[0]
-
-        kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
-        
-        spinor = bandstructure.spinor
-        nspinor = 2 if spinor else 1
 
         if verbose:
             print("Creating mmn. ")
@@ -313,36 +341,131 @@ class MMN(W90_file):
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
 
-        wk, bk_cart, bk_latt = find_bk_vectors(
-            recip_lattice=bandstructure.RecLattice,
+        wk, bk_cart, bk_latt, neighbours, G = get_bk_neightbours(
+            kpt_latt_grid=kpt_latt_grid,
             mp_grid=mp_grid,
+            recip_lattice=recip_lattice,
             **param_search_bk
         )
 
+        if mode == "BandStructure":
+            data = cls.get_data_from_bandstructure(
+                bandstructure=bandstructure,
+                selected_kpoints=selected_kpoints,
+                neighbours=neighbours,
+                G=G,
+                normalize=normalize,
+                kptirr=kptirr,
+                kpt_from_kptirr_isym=kpt_from_kptirr_isym,
+                kpt2kptirr=kpt2kptirr,
+                kpt_latt_grid=kpt_latt_grid,
+            )
+        elif mode == "GPAW":
+            data = cls.get_data_from_gpaw(
+                calculator=bandstructure,
+                spin_channel=spin_channel,
+                selected_kpoints=selected_kpoints,
+                neighbours=neighbours,
+                G=G,
+                kptirr=kptirr,
+                kpt_from_kptirr_isym=kpt_from_kptirr_isym,
+                kpt2kptirr=kpt2kptirr,
+                kpt_latt_grid=kpt_latt_grid,
+                normalize=normalize,
+            )
 
+        return MMN(
+            data=data,
+            NK=NK,
+            neighbours=neighbours,
+            G=G,
+            bk_latt=bk_latt,
+            bk_cart=bk_cart,
+            wk=wk,
+            bk_reorder=None
+        )
 
-        NNB = len(wk)
-        NB = bandstructure.num_bands
+    @classmethod
+    def get_data_from_gpaw(cls,
+                           calculator,
+                           spin_channel,
+                           selected_kpoints,
+                           neighbours,
+                           G,
+                           normalize=True,
+                           kptirr=None,
+                           kpt_from_kptirr_isym=None,
+                           kpt2kptirr=None,
+                           kpt_latt_grid=None,
+                           less_memory=False
+                           ):
+        from gpaw.wannier90 import get_projections_in_bz, get_overlap, get_phase_shifted_overlap_coefficients
+        from gpaw.ibz2bz import IBZ2BZMaps, get_overlap_coefficients
+        NNB = next(iter(neighbours.values())).shape[0]
+        NB = calculator.get_number_of_bands()
+        bands = np.arange(NB)
+        data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
+        NK = len(kpt_latt_grid)
+        ibz2bz = IBZ2BZMaps.from_calculator(calculator)
+        kpts_kc = calculator.get_bz_k_points()
+        spos_ac = calculator.spos_ac
+        wfs = calculator.wfs
+        dO_aii = get_overlap_coefficients(wfs)
+        icell_cv = (2 * np.pi) * np.linalg.inv(calculator.wfs.gd.cell_cv).T
+        r_g = calculator.wfs.gd.get_grid_point_coordinates()
+        if not less_memory:
+            u_knG = []
+            for ik in range(NK):
+                u_nG = wavefunctions_gpaw(calculator, ibz2bz, ik, spin_channel)
+                u_knG.append(u_nG)
 
-        k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
+        proj_k = []
+        for ik in range(NK):
+            proj_k.append(get_projections_in_bz(wfs=calculator.wfs,
+                                                K=ik, s=spin_channel,
+                                                ibz2bz=ibz2bz,
+                                                bcomm=None))
 
-        G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
-        neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
-        for ikirr in kptirr:
+        for ik1 in range(NK):
+            if less_memory:
+                u1_nG = wavefunctions_gpaw(calculator, ibz2bz, ik1, spin_channel)
+            else:
+                u1_nG = u_knG[ik1]
             for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[ikirr] + bk_latt[ib]
-                for ik2 in range(NK):
-                    g = k_latt_int_nb - k_latt_int[ik2]
-                    if np.all(g % mp_grid == 0):
-                        neighbours[ikirr][ib] = ik2
-                        G[ikirr][ib] = g // mp_grid
-                        break
+                # b denotes nearest neighbor k-point
+                ik2 = neighbours[ik1][ib]
+                if less_memory:
+                    u2_nG = wavefunctions_gpaw(calculator, ibz2bz, ik2, spin_channel)
                 else:
-                    raise RuntimeError(
-                        f"Could not find a neighbour for k-point {ikirr} with k-lattice {k_latt_int[ikirr]} and "
-                        f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
-                        f"Check the parameters of `find_bk_vectors`."
-                    )
+                    u2_nG = u_knG[ik2]
+                G_c = G[ik1][ib]
+                bG_v = np.dot(G_c, icell_cv)
+                u2_nG = u2_nG * np.exp(-1.0j * np.tensordot(bG_v, r_g, axes=(0, 0)))
+                bG_c = kpts_kc[ik2] - kpts_kc[ik1] + G_c
+                phase_shifted_dO_aii = get_phase_shifted_overlap_coefficients(dO_aii, spos_ac, -bG_c)
+                data[ik1][ib] = get_overlap(bands,
+                                   wfs.gd,
+                                   u1_nG,
+                                   u2_nG,
+                                   proj_k[ik1],
+                    proj_k[ik2],
+                    phase_shifted_dO_aii)
+        return data
+
+
+    @classmethod
+    def get_data_from_bandstructure(cls,
+                                    bandstructure,
+                                    selected_kpoints,
+                                    neighbours,
+                                    G,
+                                    normalize=True,
+                                    kptirr=None,
+                                    kpt_from_kptirr_isym=None,
+                                    kpt2kptirr=None,
+                                    kpt_latt_grid=None,
+                                    ):
+        kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
         extra_kpoints = {}  # a dictionary to store kpoints that are not in the original bandstructure
@@ -368,13 +491,11 @@ class MMN(W90_file):
 
 
         ig_list = [kp.ig for kp in kpoints_sel] + [kp.ig for kp in extra_kpoints.values()]
-        
+
         igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
         igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
 
         del ig_list
-
-        # print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
 
         Gloc = np.array([g for g in G.values()])
 
@@ -382,9 +503,10 @@ class MMN(W90_file):
         igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         ig_grid = igmax_glob - igmin_glob + 1
-        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
 
-
+        nspinor = 2 if bandstructure.spinor else 1
+        NNB = len(next(iter(neighbours.values())))
+        NB = bandstructure.num_bands
         bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
         ket = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
 
@@ -398,7 +520,6 @@ class MMN(W90_file):
         #     norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
         #     norm_extra = {ik2: np.ones(kp.WF.shape[0], dtype=float)
         #                   for ik2, kp in extra_kpoints.items()}
-
 
 
 
@@ -420,7 +541,7 @@ class MMN(W90_file):
                     kp2 = kpoints_sel[ik2]
                 else:
                     kp2 = extra_kpoints[ik2]
-                
+
                 for ig, g in enumerate(kp2.ig):
                     _g = g[:3] - igmin_glob - G[ikirr][ib]
                     assert np.all(_g >= 0) and np.all(_g < ig_grid), \
@@ -434,18 +555,87 @@ class MMN(W90_file):
                         _norm = norm_extra[ik2]
                     ket[:] = ket / _norm[:, None, None, None, None]
                 data[ikirr][ib, :, :] = cached_einsum('asijk,bsijk->ab', bra, ket)
+        return data
 
-        return MMN(
-            data=data,
-            NK=NK,
-            neighbours=neighbours,
-            G=G,
-            bk_latt=bk_latt,
-            bk_cart=bk_cart,
-            wk=wk,
-            bk_reorder=None
-        )
 
+
+def get_bk_neightbours(recip_lattice, kpt_latt_grid, mp_grid, kptirr=None, **kwargs):
+    """
+    Get the bk vectors and the neighbours for the finite-difference scheme
+    Parameters
+    ----------
+    recip_lattice : np.ndarray(shape=(3, 3), dtype=float)
+        the reciprocal lattice vectors
+    kpt_latt_grid : np.ndarray(shape=(NK, 3), dtype=float)
+        the k-points in the basis of the reciprocal lattice
+    mp_grid : np.ndarray(shape=(3,), dtype=int)
+        the Monkhorst-Pack grid
+    kptirr : list of int or None
+        the indices of the irreducible k-points. If None, all k-points are considered as irreducible
+
+    Returns
+    -------
+    bk_cart : np.ndarray(shape=(NNB, 3), dtype=float)
+        the bk vectors in cartesian coordinates
+    bk_latt : np.ndarray(shape=(NNB, 3), dtype=int)
+        the bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid
+    wk : np.ndarray(shape=(NNB,), dtype=float)
+        the weights of the bk vectors
+    neighbours : dict of np.ndarray(shape=(NNB,), dtype=int)
+        the indices of the neighbouring k-points
+    G : dict of np.ndarray(shape=(NNB, 3), dtype=int)
+        the reciprocal lattice vectors connecting the k-points
+    """
+    if kptirr is None:
+        kptirr = list(range(kpt_latt_grid.shape[0]))
+    wk, bk_cart, bk_latt = find_bk_vectors(recip_lattice=recip_lattice, mp_grid=mp_grid, **kwargs)
+    neighbours, G = get_neighbours(kptirr=kptirr, kpt_latt_grid=kpt_latt_grid, mp_grid=mp_grid, bk_latt=bk_latt)
+    return wk, bk_cart, bk_latt, neighbours, G
+
+
+def get_neighbours(kptirr, kpt_latt_grid, mp_grid, bk_latt):
+    """
+    Get the neighbours and the G vectors for the finite-difference scheme
+    Parameters
+    ----------
+    kptirr : list of int
+        the indices of the irreducible k-points
+    kpt_latt_grid : np.ndarray(shape=(NK, 3), dtype=float)
+        the k-points in the basis of the reciprocal lattice
+    mp_grid : np.ndarray(shape=(3,), dtype=int)
+        the Monkhorst-Pack grid
+    bk_latt : np.ndarray(shape=(NNB, 3), dtype=int)
+        the bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid
+    Returns
+    -------
+    neighbours : dict of np.ndarray(shape=(NNB,), dtype=int)
+        the indices of the neighbouring k-points
+    G : dict of np.ndarray(shape=(NNB, 3), dtype=int)
+        the reciprocal lattice vectors connecting the k-points
+    """
+    NNB = len(bk_latt)
+    NK = kpt_latt_grid.shape[0]
+    assert kpt_latt_grid.shape == (NK, 3)
+    k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
+
+    G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
+    neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
+    for ikirr in kptirr:
+        for ib in range(NNB):
+            k_latt_int_nb = k_latt_int[ikirr] + bk_latt[ib]
+            for ik2 in range(NK):
+                g = k_latt_int_nb - k_latt_int[ik2]
+                if np.all(g % mp_grid == 0):
+                    neighbours[ikirr][ib] = ik2
+                    G[ikirr][ib] = g // mp_grid
+                    break
+            else:
+                raise RuntimeError(
+                    f"Could not find a neighbour for k-point {ikirr} with k-lattice {k_latt_int[ikirr]} and "
+                    f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
+                    f"Check the parameters of `find_bk_vectors`."
+                )
+    return neighbours, G
 
 
 def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5, search_supercell=2):
@@ -568,3 +758,14 @@ def get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=1e-5):
     bk_cart = np.array(bk_cart)
     bk_latt = np.array(bk_latt, dtype=int)
     return wk, bk_cart, bk_latt
+
+
+
+def wavefunctions_gpaw(calc, ibz2bz, bz_index, ispin):
+    maxband = calc.get_number_of_bands()
+    ibz_index = calc.wfs.kd.bz2ibz_k[bz_index]
+    ut_nR = np.array([calc.wfs.get_wave_function_array(n, ibz_index, ispin, periodic=True)
+                      for n in range(maxband)])
+    ut_nR_sym = np.array([ibz2bz[bz_index].map_pseudo_wave_to_BZ(
+        ut_nR[n]) for n in range(maxband)])
+    return ut_nR_sym
