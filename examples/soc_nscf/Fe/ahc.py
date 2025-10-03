@@ -99,8 +99,8 @@ for name in ["soc", "spinor"]:
 ahc_spinor = results["spinor"].results["ahc_int"].data
 ahc_soc = results["soc"].results["ahc_int"].data
 
-plt.plot(Efermi - EF, ahc_spinor[:,2]/100, label="spinor")
-plt.plot(Efermi - EF, ahc_soc[:,2]/100, label="soc")
+plt.plot(Efermi - EF, ahc_spinor[:, 2] / 100, label="spinor")
+plt.plot(Efermi - EF, ahc_soc[:, 2] / 100, label="soc")
 plt.legend()
 plt.xlabel("E-EF (eV)")
 plt.ylabel("AHC (S/cm)")

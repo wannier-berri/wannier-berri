@@ -225,14 +225,14 @@ def check_shape(data, shape=None):
     return shape
 
 
-def auto_kptirr(bandstructure, selected_kpoints=None, kptirr=None, NK=None):
+def auto_kptirr(num_k, selected_kpoints=None, kptirr=None, NK=None):
     """
     Automatically determine the kptirr from the bandstructure and selected_kpoints.
 
     Parameters
     ----------
-    bandstructure : irrep.bandstructure.BandStructure
-        The band structure object.
+    num_k : int
+        The number of k-points in the bandstructure.
     selected_kpoints : list of int, optional
         The list of selected k-points. If None, all k-points are used.
     kptirr : list of int, optional
@@ -242,7 +242,7 @@ def auto_kptirr(bandstructure, selected_kpoints=None, kptirr=None, NK=None):
 
     """
     if selected_kpoints is None:
-        selected_kpoints = np.arange(bandstructure.num_k)
+        selected_kpoints = np.arange(num_k)
     if NK is None:
         NK = len(selected_kpoints)
     if kptirr is None:

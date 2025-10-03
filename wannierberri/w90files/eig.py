@@ -47,7 +47,7 @@ class EIG(W90_file):
             the band structure object
         """
         NK, selected_kpoints, kptirr = auto_kptirr(
-            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+            bandstructure.num_k, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
         if verbose:
             print("Creating eig.")

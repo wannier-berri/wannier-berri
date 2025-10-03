@@ -69,7 +69,7 @@ def get_wannierised(prefix, spin_channel, save_name=None):
     else:
         raise ValueError("spin_channel must be 0 or 1")
 
-    
+
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     try:
         symmetrizer = SAWF().from_npz(f"symmetrizer-spin-{spin_channel}.npz")

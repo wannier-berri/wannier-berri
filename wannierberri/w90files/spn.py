@@ -71,8 +71,8 @@ class SPN(W90_file):
             if True, the wavefunctions are normalised
         """
         NK, selected_kpoints, kptirr = auto_kptirr(
-            bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        
+            bandstructure.num_k, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+
         assert bandstructure.spinor, "SPN only works for spinor bandstructures"
 
         if verbose:

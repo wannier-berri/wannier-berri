@@ -87,28 +87,15 @@ class Dwann:
 
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
+        for isym, symop in enumerate(spacegroup.symmetries):
+            self.atommap[:, isym], self.T[:, isym] = get_atom_map(symop, self.orbit)
 
         self.rot_orb = [[np.eye(self.num_orbitals_scal) for _ in range(self.nsym)] for _ in range(self.num_points)]
-        for ip, p in enumerate(self.orbit):
-            for isym, symop in enumerate(spacegroup.symmetries):
-                p2 = symop.transform_r(p)
-                ip2 = self.orbit.index(p2)
-                self.atommap[ip, isym] = ip2
-                if orbital != "_":
+        if orbital != "_":
+            for ip in range(self.num_points):
+                for isym, symop in enumerate(spacegroup.symmetries):
+                    ip2 = self.atommap[ip, isym]
                     self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])
-                p2a = self.orbit[ip2]
-                self.T[ip, isym] = p2a - p2
-        assert np.all(self.atommap >= 0), f"atommap={self.atommap}"
-
-        T_round = np.round(self.T)
-        T_diff = np.abs(self.T - T_round).max()
-        if T_diff > 1e-6:
-            msg = f"the T vectors should result integer values, but the maximal deviation from in=teger is {T_diff} T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={T_diff}"
-            if T_diff > 1e-3:
-                raise ValueError(msg)
-            else:
-                warnings.warn(msg)
-        self.T = T_round.astype(int)
 
         if self.spinor:
             for isym, symop in enumerate(spacegroup.symmetries):
@@ -210,3 +197,30 @@ def orbit_from_positions(spacegroup, positions):
         for p in positions:
             orbit.append((symop.transform_r(p)) % 1)
     return orbit
+
+
+def get_atom_map(symop, positions):
+    positions_list = UniqueListMod1(positions, tol=1e-4)
+    assert len(positions) == len(UniqueListMod1(positions)), f"some positions are equivalent mod 1: {positions}"
+    num_points = len(positions)
+    atommap = -np.ones((num_points), dtype=int)
+    T = np.zeros((num_points, 3), dtype=float)
+
+    for ip, p in enumerate(positions):
+        p2 = symop.transform_r(p)
+        ip2 = positions_list.index(p2)
+        atommap[ip] = ip2
+        p2a = positions[ip2]
+        T[ip] = p2a - p2
+    assert np.all(atommap >= 0), f"some positions are not mapped: atommap={atommap}"
+
+    T_round = np.round(T)
+    T_diff = np.abs(T - T_round).max()
+    if T_diff > 1e-6:
+        msg = f"the T vectors should result integer values, but the maximal deviation from integer is {T_diff} T=\n{T}, \nT_round=\n{T_round}, \n max_diff={T_diff}"
+        if T_diff > 1e-3:
+            raise ValueError(msg)
+        else:
+            warnings.warn(msg)
+    T = T_round.astype(int)
+    return atommap, T

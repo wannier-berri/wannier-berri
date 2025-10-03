@@ -106,7 +106,7 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_gpaw(cls, calc, calc_overlap=True):
+    def from_gpaw(cls, calc, calc_overlap=True, kptirr=None):
         """
         Create SOC from a GPAW magnetic calculation.
         """
@@ -126,7 +126,7 @@ class SOC(W90_file):
 
         m = calc.get_number_of_bands()
         print(f"number of bands = {m}")
-        nk = len(calc.get_ibz_k_points())
+
 
         H_a = {}
         for a, dVL_vii in dVL_avii.items():
@@ -139,11 +139,17 @@ class SOC(W90_file):
             H_a[a] = H_ssii
 
 
+
+        if kptirr is None:
+            nk = len(calc.get_ibz_k_points())
+            kptirr = np.arange(nk)
+        else:
+            nk = len(kptirr)
         h_soc = np.zeros((nk, nspin, nspin, 2, 2, m, m), complex)
         print(f"{h_soc.shape=}")
 
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
-        for q in range(nk):
+        for iq, q in enumerate(kptirr):
             for a, H_ssii in H_a.items():
                 for s1 in range(nspin):
                     for s2 in range(nspin):
@@ -151,21 +157,21 @@ class SOC(W90_file):
                         P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a].T
                         for t1 in range(2):
                             for t2 in range(2):
-                                h_soc[q, s1, s2, t1, t2] += P1_mi @ H_ssii[t1, t2] @ P2_mi
+                                h_soc[iq, s1, s2, t1, t2] += P1_mi @ H_ssii[t1, t2] @ P2_mi
         h_soc *= Hartree
 
         if nspin == 2 and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
-            for q in range(nk):
+            for iq, q in enumerate(kptirr):
                 psi1 = calc.wfs.kpt_qs[q][0].psit_nG[:]
                 psi2 = calc.wfs.kpt_qs[q][1].psit_nG[:]
-                overlap[q] += alpha * psi1.conj() @ psi2.T
+                overlap[iq] += alpha * psi1.conj() @ psi2.T
                 for a, setup in enumerate(calc.wfs.setups):
                     P1_mi = calc.wfs.kpt_qs[q][0].P_ani[a]
                     P2_mi = calc.wfs.kpt_qs[q][1].P_ani[a]
                     overlap_ii = setup.dO_ii
-                    overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
+                    overlap[iq] += P1_mi.conj() @ overlap_ii @ P2_mi.T
         else:
             overlap = None
 

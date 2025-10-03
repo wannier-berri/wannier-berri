@@ -45,7 +45,7 @@ class Rvectors:
 
         self._NKFFTrec = None
         if iRvec is not None:
-            self.iRvec = np.array(iRvec)
+            self.iRvec = np.array(iRvec, dtype=int)
 
         self.dim = dim
         self.fft_R2k_set = False
@@ -93,9 +93,9 @@ class Rvectors:
             self.iRvec_list.append(iRvec)
             self.Ndegen_list.append(Ndegen)
             self.iRvec_mod_list.append(iRvec_mod)
-        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))))
+        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))), dtype=int)
         self.clear_cached()
-        for i, iRvec in enumerate(self.iRvec_list):
+        for iRvec in self.iRvec_list:
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
 
 
@@ -446,6 +446,7 @@ class Rvectors:
         dK : tuple of 3 floats in range [0,1)
             the shift of the grid in coordinates of the reciprocal lattice divided by the grid
         """
+        print(f"iRvec at set_fft_R_to_k = {self.iRvec}")
         self.dK = np.array(dK)
         self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
 
@@ -577,6 +578,6 @@ class WignerSeitz:
                 # print (f"    {iRs[j]} : {dist[i][j]} {ndeg}")
                 iRvec.append(iRs[j])
                 Ndegen.append(ndeg)
-        iRvec = np.array(iRvec)
-        Ndegen = np.array(Ndegen)
+        iRvec = np.array(iRvec, dtype=int)
+        Ndegen = np.array(Ndegen, dtype=int)
         return iRvec, Ndegen, iRvec % self.mp_grid
