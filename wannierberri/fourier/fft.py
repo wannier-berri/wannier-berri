@@ -57,6 +57,7 @@ def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='ff
 class FFT_R_to_k:
 
     def __init__(self, iRvec, NKFFT, num_wann, numthreads=1, fftlib='fftw', name=None):
+        print(f"iRvec at fft initialization input = {iRvec}")
         t0 = time()
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
@@ -78,10 +79,12 @@ class FFT_R_to_k:
                 direction='FFTW_BACKWARD',
                 threads=numthreads)
         self.iRvec = iRvec % self.NKFFT
+
         self.nRvec = iRvec.shape[0]
         self.time_init = time() - t0
         self.time_call = 0
         self.n_call = 0
+        print(f"iRvec at initialization = {self.iRvec}")
 
     def execute_fft(self, A):
         return self.fft_plan(A)
@@ -128,6 +131,7 @@ class FFT_R_to_k:
         AAA_K : np.ndarray(complex, shape=(NKFFT[0], NKFFT[1], NKFFT[2], num_wann, num_wann, ...))
             the transformed matrix
         """
+        print(f"iRvec at call = {self.iRvec}")
         t0 = time()
         # AAA_R is an array of dimension (  num_wann x num_wann x nRpts X... ) (any further dimensions allowed)
         if hermitian and antihermitean:
@@ -151,6 +155,7 @@ class FFT_R_to_k:
             AAA_K = np.zeros(self.NKFFT + shapeA[1:], dtype=complex)
             # TODO : place AAA_R to FFT grid from beginning, even before multiplying by exp(dkR)
             for ir, irvec in enumerate(self.iRvec):
+                print(f"placing AAA_R[{ir}] at {tuple(irvec)}")
                 AAA_K[tuple(irvec)] += AAA_R[ir]
             self.transform(AAA_K)
             AAA_K *= np.prod(self.NKFFT)

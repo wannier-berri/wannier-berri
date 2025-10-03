@@ -19,6 +19,8 @@ import os
 import warnings
 import numpy as np
 
+from wannierberri.symmetry import get_spacegroup_from_gpaw
+
 from ..utility import cached_einsum
 from ..wannierise import wannierise
 from ..symmetry.sawf import SymmetrizerSAWF
@@ -288,7 +290,7 @@ class Wannier90data:
                   spacegroup=None,
                   unk_grid=None,
                   normalize=True,
-                  irreducible=None,
+                  irreducible=False,
                   ecut_sym=200,
                   ecut_pw=200,
                   unitary_params=None,
@@ -305,6 +307,7 @@ class Wannier90data:
                                       spin_channel=spin_channel,
                                       )
         if spacegroup is None:
+            spacegroup = get_spacegroup_from_gpaw(calculator, typat=typat, include_TR=include_TR)
             spacegroup = bandstructure.spacegroup
             if typat is None:
                 typat = [atom.number for atom in calculator.atoms]
@@ -328,17 +331,26 @@ class Wannier90data:
                                 mp_grid=mp_grid,
                                 unitary_params=unitary_params,
                                 )
+        if irreducible:
+            kptirr = self.symmetrizer.kptirr
+        else:
+            kptirr = None
+
+    
         if "soc" in files:
-            soc = SOC.from_gpaw(calculator,)
+            soc = SOC.from_gpaw(calculator, kptirr=kptirr,)
             self.set_file('soc', soc)
         if "mmn" in files:
             if "symmetrizer" in self._files:
                 symmetrizer = self.get_file("symmetrizer")
             else:
+                assert not irreducible, "symmetrizer is needed if only irreducible kpoints are used"
                 symmetrizer = None
             mmn = MMN.from_gpaw(calculator,
                                symmetrizer=symmetrizer,
-                               spin_channel=spin_channel,)
+                               irreducible=irreducible,
+                               spin_channel=spin_channel,
+                               mp_grid=self.mp_grid,)
             self.set_file('mmn', mmn)
         return self
 
@@ -376,7 +388,6 @@ class Wannier90data:
                 irreducible = True
         self.irreducible = irreducible
         return self
-
 
 
     def to_npz(self,
