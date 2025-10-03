@@ -11,6 +11,7 @@ from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from wannierberri.w90files.eig import EIG
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
+from wannierberri.symmetry import get_spacegroup_from_gpaw
 
 
 @fixture
@@ -444,3 +445,41 @@ def _test_create_sawf_Fe_444(check_sawf, include_TR):
     sawf_new.to_npz(tmp_sawf_path)
     sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
     check_sawf(sawf_new, sawf_ref)
+
+
+@pytest.mark.parametrize("ispin", [0, 1])
+def test_create_w90files_Fe_gpaw(ispin):
+    from gpaw import GPAW
+    path_data = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
+    calc = GPAW(path_data + "/Fe-nscf.gpw", txt=None)
+    sg = get_spacegroup_from_gpaw(calc)
+    pos = [[0, 0, 0]]
+    proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
+    proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
+    proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
+    w90files = wberri.w90files.Wannier90data().from_gpaw(
+        calculator=calc,
+        ecut_pw=300,
+        ecut_sym=150,
+        spin_channel=ispin,
+        projections=proj_set,
+        read_npz_list=[],
+        write_npz_list=[],
+        files=["amn", "mmn", "eig", "symmetrizer"],
+        unitary_params=dict(error_threshold=0.1,
+                            warning_threshold=0.01,
+                            nbands_upper_skip=8),
+    )
+    eig = w90files.get_file("eig")
+    # eig.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.eig.npz"))
+    eig_ref = wberri.w90files.EIG.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.eig.npz"))
+    for ik, E in eig_ref.data.items():
+        assert ik in eig.data, f"k-point {ik} missing in eig data"
+        assert eig.data[ik] == approx(E, abs=1e-6), f"Energies at k-point {ik} differ: {eig.data[ik]} != {E}"
+    mmn = w90files.get_file("mmn")
+    mmn.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.mmn.npz"))
+    mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.mmn.npz"))
+    mmn_ref.reorder_bk(bk_latt_new=mmn.bk_latt)
+    assert np.all(mmn.bk_latt == mmn_ref.bk_latt), f"bk_latt differ {mmn.bk_latt} != {mmn_ref.bk_latt}"
+    for ik in mmn_ref.data.keys():
+        assert mmn.data[ik] == approx(mmn_ref.data[ik], abs=1e-5), f"MMN at k-point {ik} differ: max diff {np.max(np.abs(mmn.data[ik] - mmn_ref.data[ik]))} > 1e-5"

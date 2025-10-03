@@ -371,7 +371,7 @@ class MMN(W90_file):
                 kpt_from_kptirr_isym=kpt_from_kptirr_isym,
                 kpt2kptirr=kpt2kptirr,
                 kpt_latt_grid=kpt_latt_grid,
-                normalize=normalize,
+                bk_red=bk_latt / mp_grid[None, :],
             )
 
         return MMN(
@@ -392,64 +392,47 @@ class MMN(W90_file):
                            selected_kpoints,
                            neighbours,
                            G,
-                           normalize=True,
                            kptirr=None,
                            kpt_from_kptirr_isym=None,
                            kpt2kptirr=None,
                            kpt_latt_grid=None,
-                           less_memory=False
+                           less_memory=False,
+                           bk_red=None
                            ):
-        from gpaw.wannier90 import get_projections_in_bz, get_overlap, get_phase_shifted_overlap_coefficients
-        from gpaw.ibz2bz import IBZ2BZMaps, get_overlap_coefficients
+        from gpaw.wannier90 import get_overlap, get_phase_shifted_overlap_coefficients
+        from gpaw.ibz2bz import get_overlap_coefficients
         NNB = next(iter(neighbours.values())).shape[0]
         NB = calculator.get_number_of_bands()
         bands = np.arange(NB)
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
         NK = len(kpt_latt_grid)
-        ibz2bz = IBZ2BZMaps.from_calculator(calculator)
-        kpts_kc = calculator.get_bz_k_points()
+
+        WF = WavefunctionsGpaw(calc=calculator, ispin=spin_channel, cache=not less_memory)
+        # kpts_kc = calculator.get_bz_k_points()
         spos_ac = calculator.spos_ac
         wfs = calculator.wfs
         dO_aii = get_overlap_coefficients(wfs)
         icell_cv = (2 * np.pi) * np.linalg.inv(calculator.wfs.gd.cell_cv).T
         r_g = calculator.wfs.gd.get_grid_point_coordinates()
-        if not less_memory:
-            u_knG = []
-            for ik in range(NK):
-                u_nG = wavefunctions_gpaw(calculator, ibz2bz, ik, spin_channel)
-                u_knG.append(u_nG)
-
-        proj_k = []
-        for ik in range(NK):
-            proj_k.append(get_projections_in_bz(wfs=calculator.wfs,
-                                                K=ik, s=spin_channel,
-                                                ibz2bz=ibz2bz,
-                                                bcomm=None))
 
         for ik1 in range(NK):
-            if less_memory:
-                u1_nG = wavefunctions_gpaw(calculator, ibz2bz, ik1, spin_channel)
-            else:
-                u1_nG = u_knG[ik1]
+            u1_nG = WF(ik1)
             for ib in range(NNB):
                 # b denotes nearest neighbor k-point
                 ik2 = neighbours[ik1][ib]
-                if less_memory:
-                    u2_nG = wavefunctions_gpaw(calculator, ibz2bz, ik2, spin_channel)
-                else:
-                    u2_nG = u_knG[ik2]
+                u2_nG = WF(ik2)  # wavefunctions at k-point ik2
                 G_c = G[ik1][ib]
                 bG_v = np.dot(G_c, icell_cv)
                 u2_nG = u2_nG * np.exp(-1.0j * np.tensordot(bG_v, r_g, axes=(0, 0)))
-                bG_c = kpts_kc[ik2] - kpts_kc[ik1] + G_c
-                phase_shifted_dO_aii = get_phase_shifted_overlap_coefficients(dO_aii, spos_ac, -bG_c)
+                # bG_c = kpts_kc[ik2] - kpts_kc[ik1] + G_c
+                # assert np.allclose(bG_c, bk_red[ib], atol=1e-5), f"Error in bk vector calculation: {bG_c} vs {bk_red[ib]}"
+                phase_shifted_dO_aii = get_phase_shifted_overlap_coefficients(dO_aii, spos_ac, -bk_red[ib])
                 data[ik1][ib] = get_overlap(bands,
-                                   wfs.gd,
-                                   u1_nG,
-                                   u2_nG,
-                                   proj_k[ik1],
-                    proj_k[ik2],
-                    phase_shifted_dO_aii)
+                                            wfs.gd,
+                                            u1_nG, u2_nG,
+                                            WF.get_projection(ik1),
+                                            WF.get_projection(ik2),
+                                            phase_shifted_dO_aii)
         return data
 
 
@@ -479,15 +462,9 @@ class MMN(W90_file):
                     ik_origin = kpt2kptirr[ik2]
                     kp_origin = kpoints_sel[ik_origin]
                     symop = bandstructure.spacegroup.symmetries[isym]
-                    # TODO: in principle, here it is not needed to transform the k-point,
-                    # For the first symmetry the transformation is the identity
-                    # For the rest the transformations can be obtained from the
-                    # little group of the irreducible k-point. But we do it
-                    # here explicitly, further it will be checked, and recoded
                     kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
                                                     k_new=kpt_latt_grid[ik2])
                     extra_kpoints[ik2] = kp2
-                    # print("extra_kpoints", extra_kpoints.keys())
 
 
         ig_list = [kp.ig for kp in kpoints_sel] + [kp.ig for kp in extra_kpoints.values()]
@@ -521,10 +498,6 @@ class MMN(W90_file):
         #     norm_extra = {ik2: np.ones(kp.WF.shape[0], dtype=float)
         #                   for ik2, kp in extra_kpoints.items()}
 
-
-
-
-        # but are needed for the finite-difference scheme (obtained by symmetry)
         for ikirr in kptirr:
             kp1 = kpoints_sel[ikirr]
             for ig, g in enumerate(kp1.ig):
@@ -761,11 +734,39 @@ def get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=1e-5):
 
 
 
-def wavefunctions_gpaw(calc, ibz2bz, bz_index, ispin):
-    maxband = calc.get_number_of_bands()
-    ibz_index = calc.wfs.kd.bz2ibz_k[bz_index]
-    ut_nR = np.array([calc.wfs.get_wave_function_array(n, ibz_index, ispin, periodic=True)
-                      for n in range(maxband)])
-    ut_nR_sym = np.array([ibz2bz[bz_index].map_pseudo_wave_to_BZ(
-        ut_nR[n]) for n in range(maxband)])
-    return ut_nR_sym
+class WavefunctionsGpaw:
+
+    def __init__(self, calc, ispin, cache=True):
+        from gpaw.ibz2bz import IBZ2BZMaps
+        from gpaw.wannier90 import get_projections_in_bz
+        self.get_projections_in_bz = get_projections_in_bz
+        self.calc = calc
+        self.ispin = ispin
+        self.nband = self.calc.get_number_of_bands()
+        self.wf_dict = {}
+        self.proj_dict = {}
+        self.cache = cache
+        self.ibz2bz = IBZ2BZMaps.from_calculator(self.calc)
+
+    def get_wavefunctions(self, bz_index):
+        ibz_index = self.calc.wfs.kd.bz2ibz_k[bz_index]
+        ut_nR = np.array([self.calc.wfs.get_wave_function_array(n, ibz_index, self.ispin, periodic=True)
+                        for n in range(self.nband)])
+        ut_nR_sym = np.array([self.ibz2bz[bz_index].map_pseudo_wave_to_BZ(
+            ut_nR[n]) for n in range(self.nband)])
+        return ut_nR_sym
+
+    def get_projection(self, bz_index):
+        if bz_index not in self.proj_dict:
+            self.proj_dict[bz_index] = self.get_projections_in_bz(wfs=self.calc.wfs,
+                                                K=bz_index, s=self.ispin,
+                                                ibz2bz=self.ibz2bz,
+                                                bcomm=None)
+        return self.proj_dict[bz_index]
+
+    def __call__(self, bz_index):
+        if bz_index not in self.wf_dict:
+            wf = self.get_wavefunctions(bz_index)
+            if self.cache:
+                self.wf_dict[bz_index] = wf
+        return self.wf_dict[bz_index]

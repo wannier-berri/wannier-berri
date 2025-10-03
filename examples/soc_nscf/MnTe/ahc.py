@@ -34,12 +34,12 @@ system_dw = System_R().load_npz("system_dw", load_all_XX_R=True)
 system_up = System_R().load_npz("system_up", load_all_XX_R=True)
 
 
-parallel=Parallel(num_cpus=24)
+parallel = Parallel(num_cpus=24)
 # _interlaced()
 
 
 phi_deg = 0
-theta_deg=0
+theta_deg = 0
 
 
 soc = SOC.from_gpaw("mnte-nscf.gpw")
@@ -47,8 +47,8 @@ chk_up = CHK.from_npz("system_up.chk.npz")
 chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
 system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
-                     theta=theta_deg/180*np.pi,
-                     phi=phi_deg/180*np.pi,
+                     theta=theta_deg / 180 * np.pi,
+                     phi=phi_deg / 180 * np.pi,
                      alpha_soc=1.0)
 
 system_soc.set_pointgroup(spacegroup=mg)
@@ -60,7 +60,7 @@ grid = wb.grid.Grid(system_soc, NK=400)
 
 EF = 6.7
 
-Efermi = np.linspace(EF-2,EF+0.1, 1001)
+Efermi = np.linspace(EF - 2, EF + 0.1, 1001)
 calculators = {}
 
 tetra = False
@@ -70,20 +70,20 @@ tetra = False
 # calculators["ohmic_surf"] = wb.calculators.static.Ohmic_FermiSurf(Efermi=Efermi, tetra=tetra)
 # # calculators["ohmic_sea"] = wb.calculators.static.Ohmic_FermiSea(Efermi=Efermi, tetra=tetra)
 # calculators["ahc"] = wb.calculators.static.AHC(Efermi=Efermi,tetra=tetra)
-calculators["ahc_int"] = wb.calculators.static.AHC(Efermi=Efermi,tetra=tetra, kwargs_formula={"external_terms":False})
+calculators["ahc_int"] = wb.calculators.static.AHC(Efermi=Efermi, tetra=tetra, kwargs_formula={"external_terms": False})
 # calculators["ahc_ext"] = wb.calculators.static.AHC(Efermi=Efermi,tetra=tetra, kwargs_formula={"internal_terms":False})
 
 
 # for name in ["up", "dw"]:
 for name in ["soc"]:
-    system = {"up": system_up, 
+    system = {"up": system_up,
               "dw": system_dw,
               "soc": system_soc}[name]
 
 
     print(f"Running {name}...")
-    wb.run(system, 
-           grid=grid, 
+    wb.run(system,
+           grid=grid,
            parallel=parallel,
            fout_name=f"results/{name}",
            calculators=calculators,
@@ -91,4 +91,3 @@ for name in ["soc"]:
            restart=False,
            print_progress_step=5,
            )
-
