@@ -135,7 +135,7 @@ class SymmetrizerSAWF:
         self.clear_inverse()
         self.selected_kpoints = data["selected_kpoints"]
         self.kpt_from_kptirr_isym = data["kpt_from_kptirr_isym"]
-        
+
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
