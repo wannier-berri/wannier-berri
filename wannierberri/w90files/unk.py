@@ -114,7 +114,7 @@ class UNK(W90_file):
         """
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        
+
         # NK = len(bandstructure.kpoints)
         NB = bandstructure.num_bands
         spinor = bandstructure.spinor
@@ -140,7 +140,7 @@ class UNK(W90_file):
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             WF_grid = np.zeros((NB, *grid_size, nspinor), dtype=complex)
             g_loc = ig_list[ikirr][:, :3]
-            WF_loc = kp.WF 
+            WF_loc = kp.WF
             if normalize:
                 norm = np.linalg.norm(WF_loc, axis=(1, 2))
                 WF_loc = WF_loc / norm[:, None, None]

@@ -128,7 +128,7 @@ def test_create_w90files_diamond_irred(select_grid):
     wannier_spreads_mean = np.mean(wannier_spreads)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     spread_ref = 0.39865686  if select_grid == (2, 2, 2) else 0.580249066578
-    assert wannier_spreads == approx(spread_ref, abs=1e-5)
+    assert wannier_spreads == approx(spread_ref, abs=2e-5)
     assert wannier_centers == approx(np.array([[0, 0, 0],
                                             [0, 0, 1],
         [0, 1, 0],

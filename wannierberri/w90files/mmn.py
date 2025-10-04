@@ -266,6 +266,7 @@ class MMN(W90_file):
                            NK=None,
                            kpt_latt_grid=None,
                            symmetrizer=None,
+                           paw=False
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -303,7 +304,7 @@ class MMN(W90_file):
         NK = kpt_latt_grid.shape[0]
 
         kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
-        
+
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
 
@@ -318,7 +319,6 @@ class MMN(W90_file):
             mp_grid=mp_grid,
             **param_search_bk
         )
-
 
 
         NNB = len(wk)
@@ -345,95 +345,29 @@ class MMN(W90_file):
                     )
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
-        extra_kpoints = {}  # a dictionary to store kpoints that are not in the original bandstructure
+        kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
+
         for ikirr in kptirr:
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ik2 = int(ik2)
-                if ik2 in kptirr:
-                    continue
-                elif ik2 not in extra_kpoints:
+                if ik2 not in kpoints_dict_all:
                     isym = kpt_from_kptirr_isym[ik2]
                     ik_origin = kpt2kptirr[ik2]
                     kp_origin = kpoints_sel[ik_origin]
                     symop = bandstructure.spacegroup.symmetries[isym]
-                    # TODO: in principle, here it is not needed to transform the k-point,
-                    # For the first symmetry the transformation is the identity
-                    # For the rest the transformations can be obtained from the
-                    # little group of the irreducible k-point. But we do it
-                    # here explicitly, further it will be checked, and recoded
                     kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
                                                     k_new=kpt_latt_grid[ik2])
-                    extra_kpoints[ik2] = kp2
-                    # print("extra_kpoints", extra_kpoints.keys())
-
-
-        ig_list = [kp.ig for kp in kpoints_sel] + [kp.ig for kp in extra_kpoints.values()]
-        
-        igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
-        igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
-
-        del ig_list
-
-        # print(f"igmin_k = {igmin_k}, igmax_k = {igmax_k}")
-
-        Gloc = np.array([g for g in G.values()])
-
-        igmin_glob = igmin_k.min(axis=0) - Gloc.max(axis=(0, 1))
-        igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
-
-        ig_grid = igmax_glob - igmin_glob + 1
-        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
-
-
-        bra = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
-        ket = np.zeros((NB, nspinor) + tuple(ig_grid), dtype=complex)
+                    kpoints_dict_all[ik2] = kp2
 
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
-
-        if normalize:
-            norm = [np.linalg.norm(kp.WF.reshape(NB, -1), axis=1) for kp in kpoints_sel]
-            norm_extra = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)
-                          for ik2, kp in extra_kpoints.items()}
-        # else:
-        #     norm = [np.ones(kp.WF.shape[0], dtype=float) for kp in kpoints_sel]
-        #     norm_extra = {ik2: np.ones(kp.WF.shape[0], dtype=float)
-        #                   for ik2, kp in extra_kpoints.items()}
-
-
-
-
+        wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
 
         # but are needed for the finite-difference scheme (obtained by symmetry)
         for ikirr in kptirr:
-            kp1 = kpoints_sel[ikirr]
-            for ig, g in enumerate(kp1.ig):
-                _g = g[:3] - igmin_glob
-                assert np.all(_g >= 0) and np.all(_g < ig_grid), \
-                    f"g {_g} out of bounds for ig_grid {ig_grid} at ik1={ikirr}, ig={ig}"
-                for ispinor in range(nspinor):
-                    bra[:, ispinor, _g[0], _g[1], _g[2]] = kp1.WF[:, ig, ispinor].conj()
-            if normalize:
-                bra[:] = bra / norm[ikirr][:, None, None, None, None]
+            bra = wavefunc_all.get_WF(ikirr, conj=True)
             for ib, ik2 in enumerate(neighbours[ikirr]):
-                ik2 = int(ik2)
-                if ik2 in kptirr:
-                    kp2 = kpoints_sel[ik2]
-                else:
-                    kp2 = extra_kpoints[ik2]
-                
-                for ig, g in enumerate(kp2.ig):
-                    _g = g[:3] - igmin_glob - G[ikirr][ib]
-                    assert np.all(_g >= 0) and np.all(_g < ig_grid), \
-                        f"g_loc {_g} out of bounds for ig_grid {ig_grid} at ik1={ikirr}, inb={ib}, ik2={ik2}"
-                    for ispinor in range(nspinor):
-                        ket[:, ispinor, _g[0], _g[1], _g[2]] = kp2.WF[:, ig, ispinor]
-                if normalize:
-                    if ik2 in kptirr:
-                        _norm = norm[ik2]
-                    else:
-                        _norm = norm_extra[ik2]
-                    ket[:] = ket / _norm[:, None, None, None, None]
-                data[ikirr][ib, :, :] = cached_einsum('asijk,bsijk->ab', bra, ket)
+                ket = wavefunc_all.get_WF(ik2, conj=False, G=G[ikirr][ib])
+                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket)
 
         return MMN(
             data=data,
@@ -446,6 +380,50 @@ class MMN(W90_file):
             bk_reorder=None
         )
 
+
+
+class Grid_ig_all:
+
+    def __init__(self, kpoints_dict_all, G, NB, nspinor, normalize=False):
+        self.kpoints_dict_all = kpoints_dict_all
+        ig_list = [kp.ig for kp in kpoints_dict_all.values()]
+
+        igmin_k = np.array([ig[:, :3].min(axis=0) for ig in ig_list])
+        igmax_k = np.array([ig[:, :3].max(axis=0) for ig in ig_list])
+
+        del ig_list
+        self.NB = NB
+        self.nspinor = nspinor
+
+        Gloc = np.array([g for g in G.values()])
+
+        self.igmin_glob = igmin_k.min(axis=0) - Gloc.max(axis=(0, 1))
+        self.igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
+
+        self.ig_grid = self.igmax_glob - self.igmin_glob + 1
+        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        self.normalize = normalize
+        if normalize:
+            self.norm = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)
+                         for ik2, kp in kpoints_dict_all.items()}
+
+    def get_WF(self, ik, conj=False, G=0):
+        kp1 = self.kpoints_dict_all[ik]
+        bra = np.zeros((self.NB, self.nspinor) + tuple(self.ig_grid), dtype=complex)
+        for ig, g in enumerate(kp1.ig):
+            _g = g[:3] - self.igmin_glob - G
+            assert np.all(_g >= 0) and np.all(_g < self.ig_grid), \
+                f"g {_g} out of bounds for ig_grid {self.ig_grid} at ik1={ik}, ig={ig}"
+            for ispinor in range(self.nspinor):
+                bra[:, ispinor, _g[0], _g[1], _g[2]] = kp1.WF[:, ig, ispinor]
+        if conj:
+            bra = bra.conj()
+        if self.normalize:
+            bra[:] = bra / self.norm[ik][:, None, None, None, None]
+        return bra
+
+    def product(self, bra, ket):
+        return cached_einsum('asijk,bsijk->ab', bra, ket)
 
 
 def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5, search_supercell=2):
