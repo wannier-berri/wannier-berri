@@ -302,8 +302,7 @@ class MMN(W90_file):
         print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
         NK = kpt_latt_grid.shape[0]
-
-        kpoints_sel = [bandstructure.kpoints[ik] for ik in selected_kpoints]
+        identity_operation = bandstructure.spacegroup.get_identity_operation()
 
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
@@ -345,12 +344,21 @@ class MMN(W90_file):
                     )
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
+        if hasattr(bandstructure, "kpoints_paw"):
+            use_paw = True
+            kpoints_in = bandstructure.kpoints_paw
+        else:
+            use_paw = False
+            kpoints_in = bandstructure.kpoints
+        kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
         for ikirr in kptirr:
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ik2 = int(ik2)
                 if ik2 not in kpoints_dict_all:
+                    # if use_paw:
+                    #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
                     isym = kpt_from_kptirr_isym[ik2]
                     ik_origin = kpt2kptirr[ik2]
                     kp_origin = kpoints_sel[ik_origin]
@@ -360,14 +368,20 @@ class MMN(W90_file):
                     kpoints_dict_all[ik2] = kp2
 
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
-        wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
+        if use_paw:
+            wavefunc_all = Grid_PAW_all(kpoints_dict_all=kpoints_dict_all, NB=NB, wfs=bandstructure.wfs,
+                                        positions=bandstructure.spacegroup.positions,
+                                        identity_operation=identity_operation)
+        else:
+            wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
 
         # but are needed for the finite-difference scheme (obtained by symmetry)
+        bk_red = bk_latt / mp_grid[None, :]
         for ikirr in kptirr:
             bra = wavefunc_all.get_WF(ikirr, conj=True)
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ket = wavefunc_all.get_WF(ik2, conj=False, G=G[ikirr][ib])
-                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket)
+                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
 
         return MMN(
             data=data,
@@ -379,6 +393,37 @@ class MMN(W90_file):
             wk=wk,
             bk_reorder=None
         )
+
+
+class Grid_PAW_all:
+
+    def __init__(self, kpoints_dict_all, NB, wfs, identity_operation, positions=None):
+        from gpaw.wannier90 import get_overlap, get_phase_shifted_overlap_coefficients, get_overlap_coefficients
+        self.get_overlap = get_overlap
+        self.kpoints_dict_all = kpoints_dict_all
+        self.get_phase_shifted_overlap_coefficients = get_phase_shifted_overlap_coefficients
+        self.NB = NB
+        self.wfs = wfs
+        self.positions = positions
+        self.dO_aii = get_overlap_coefficients(wfs)
+        self.identity_operation = identity_operation
+
+    def get_WF(self, ik, G=0, conj=False):
+        kp = self.kpoints_dict_all[ik]
+        kp = kp.get_transformed_copy(symop=self.identity_operation, k_target=kp.k + G)
+        return kp.wavefunction, kp.proj
+
+    def product(self, bra, ket, bk=0):
+        wf1, proj1 = bra
+        wf2, proj2 = ket
+        phase_shifted_dO_aii = self.get_phase_shifted_overlap_coefficients(self.dO_aii, self.positions, -bk)
+        return self.get_overlap(np.arange(self.NB),
+                            self.wfs.gd,
+                            wf1, wf2,
+                            proj1, proj2,
+                            phase_shifted_dO_aii)
+
+
 
 
 
@@ -422,7 +467,7 @@ class Grid_ig_all:
             bra[:] = bra / self.norm[ik][:, None, None, None, None]
         return bra
 
-    def product(self, bra, ket):
+    def product(self, bra, ket, bk=0):
         return cached_einsum('asijk,bsijk->ab', bra, ket)
 
 

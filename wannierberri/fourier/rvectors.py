@@ -45,7 +45,7 @@ class Rvectors:
 
         self._NKFFTrec = None
         if iRvec is not None:
-            self.iRvec = np.array(iRvec)
+            self.iRvec = np.array(iRvec, dtype=int)
 
         self.dim = dim
         self.fft_R2k_set = False
@@ -93,7 +93,7 @@ class Rvectors:
             self.iRvec_list.append(iRvec)
             self.Ndegen_list.append(Ndegen)
             self.iRvec_mod_list.append(iRvec_mod)
-        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))))
+        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))), dtype=int)
         self.clear_cached()
         for i, iRvec in enumerate(self.iRvec_list):
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
