@@ -4,10 +4,10 @@ import multiprocessing
 from time import time
 import numpy as np
 
-from wannierberri.utility import cached_einsum
 from .utility import convert, grid_from_kpoints
 from .w90file import W90_file, auto_kptirr, check_shape
 from ..io import sparselist_to_dict
+from ..utility import cached_einsum
 
 
 class MMN(W90_file):
@@ -369,8 +369,8 @@ class MMN(W90_file):
 
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
         if use_paw:
-            wavefunc_all = Grid_PAW_all(kpoints_dict_all=kpoints_dict_all, NB=NB, wfs=bandstructure.wfs,
-                                        positions=bandstructure.spacegroup.positions,
+            wavefunc_all = Grid_PAW_all(kpoints_dict_all=kpoints_dict_all,
+                                        product=bandstructure.overlap_paw.product,
                                         identity_operation=identity_operation)
         else:
             wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
@@ -379,9 +379,12 @@ class MMN(W90_file):
         bk_red = bk_latt / mp_grid[None, :]
         for ikirr in kptirr:
             bra = wavefunc_all.get_WF(ikirr, conj=True)
+            overtlaps = wavefunc_all.product(bra, bra)
+            overlaps_err = np.max(abs((overtlaps - np.eye(NB))[:NB // 2, :NB // 2]))
+            print(f"Calculating overlaps for k-point {ikirr} overlaps error = {overlaps_err}")
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ket = wavefunc_all.get_WF(ik2, conj=False, G=G[ikirr][ib])
-                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
+                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket)
 
         return MMN(
             data=data,
@@ -397,34 +400,15 @@ class MMN(W90_file):
 
 class Grid_PAW_all:
 
-    def __init__(self, kpoints_dict_all, NB, wfs, identity_operation, positions=None):
-        from gpaw.wannier90 import get_overlap, get_phase_shifted_overlap_coefficients, get_overlap_coefficients
-        self.get_overlap = get_overlap
+    def __init__(self, kpoints_dict_all, identity_operation, product):
         self.kpoints_dict_all = kpoints_dict_all
-        self.get_phase_shifted_overlap_coefficients = get_phase_shifted_overlap_coefficients
-        self.NB = NB
-        self.wfs = wfs
-        self.positions = positions
-        self.dO_aii = get_overlap_coefficients(wfs)
         self.identity_operation = identity_operation
+        self.product = product
 
     def get_WF(self, ik, G=0, conj=False):
         kp = self.kpoints_dict_all[ik]
-        kp = kp.get_transformed_copy(symop=self.identity_operation, k_target=kp.k + G)
-        return kp.wavefunction, kp.proj
-
-    def product(self, bra, ket, bk=0):
-        wf1, proj1 = bra
-        wf2, proj2 = ket
-        phase_shifted_dO_aii = self.get_phase_shifted_overlap_coefficients(self.dO_aii, self.positions, -bk)
-        return self.get_overlap(np.arange(self.NB),
-                            self.wfs.gd,
-                            wf1, wf2,
-                            proj1, proj2,
-                            phase_shifted_dO_aii)
-
-
-
+        kp = kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
+        return kp
 
 
 class Grid_ig_all:
@@ -467,7 +451,7 @@ class Grid_ig_all:
             bra[:] = bra / self.norm[ik][:, None, None, None, None]
         return bra
 
-    def product(self, bra, ket, bk=0):
+    def product(self, bra, ket):
         return cached_einsum('asijk,bsijk->ab', bra, ket)
 
 

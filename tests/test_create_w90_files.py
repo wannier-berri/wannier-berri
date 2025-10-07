@@ -451,6 +451,8 @@ def _test_create_sawf_Fe_444(check_sawf, include_TR):
 def test_create_w90files_Fe_gpaw(ispin):
     from gpaw import GPAW
     path_data = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
+    path_output = os.path.join(OUTPUT_DIR, "Fe_gpaw")
+    os.makedirs(path_output, exist_ok=True)
     calc = GPAW(path_data + "/Fe-nscf.gpw", txt=None)
     sg = SpaceGroup.from_gpaw(calc)
     pos = [[0, 0, 0]]
@@ -464,13 +466,21 @@ def test_create_w90files_Fe_gpaw(ispin):
         spin_channel=ispin,
         projections=proj_set,
         read_npz_list=[],
-        write_npz_list=[],
+        # write_npz_list=[],
+        seedname=os.path.join(path_output, f"Fe-spin-{ispin}"),
         irreducible=False,
         files=["amn", "mmn", "eig", "symmetrizer"],
         unitary_params=dict(error_threshold=0.1,
                             warning_threshold=0.01,
                             nbands_upper_skip=8),
     )
+    mmn = w90files.get_file("mmn")
+    symmetrizer = w90files.get_file("symmetrizer")
+    check = symmetrizer.check_mmn(mmn, warning_precision=1e-4, ignore_upper_bands=-20)
+    acc = 0.002  # because gpaw was with symmetry off
+    assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
+    print(f"mmn is symmetric, max deviation is {check}")
+
     eig = w90files.get_file("eig")
     # eig.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.eig.npz"))
     eig_ref = wberri.w90files.EIG.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.eig.npz"))
@@ -484,6 +494,7 @@ def test_create_w90files_Fe_gpaw(ispin):
     assert np.all(mmn.bk_latt == mmn_ref.bk_latt), f"bk_latt differ {mmn.bk_latt} != {mmn_ref.bk_latt}"
     bk = mmn.bk_latt
     NNB = mmn.NNB
+    check_tot = 0
     for ik in mmn_ref.data.keys():
         G = mmn.G[ik]
         for ib in range(NNB):
@@ -491,3 +502,75 @@ def test_create_w90files_Fe_gpaw(ispin):
             data_ref = mmn_ref.data[ik][ib]
             check = np.max(np.abs(data - data_ref))
             print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
+            check_tot = max(check_tot, check)
+    assert check_tot < 3e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
+
+
+@pytest.mark.parametrize("ispin", [0, 1])
+def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
+    from gpaw import GPAW
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+    path_output = os.path.join(OUTPUT_DIR, "Fe-gpaw-irred")
+    os.makedirs(path_output, exist_ok=True)
+    calc = GPAW(path_data + "/Fe-nscf-irred-222.gpw", txt=None)
+    sg = SpaceGroup.from_gpaw(calc)
+    pos = [[0, 0, 0]]
+    proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
+    proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
+    proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
+    seedname = os.path.join(path_output, f"Fe-irred-spin-{ispin}")
+    seedname_ref = os.path.join(path_data, f"Fe-irred-spin-{ispin}")
+    w90files = wberri.w90files.Wannier90data().from_gpaw(
+        calculator=calc,
+        ecut_pw=300,
+        ecut_sym=150,
+        spin_channel=ispin,
+        projections=proj_set,
+        read_npz_list=[],
+        # write_npz_list=[],
+        seedname=seedname,
+        irreducible=True,
+        files=["amn", "mmn", "eig", "symmetrizer"],
+        unitary_params=dict(error_threshold=0.1,
+                            warning_threshold=0.01,
+                            nbands_upper_skip=8),
+    )
+    mmn = w90files.get_file("mmn")
+    symmetrizer = w90files.get_file("symmetrizer")
+    check = symmetrizer.check_mmn(mmn, warning_precision=1e-5, ignore_upper_bands=-20)
+    acc = 5e-5
+    assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
+    print(f"mmn is symmetric, max deviation is {check}")
+
+
+    eig = w90files.get_file("eig")
+    eig_ref = wberri.w90files.EIG.from_npz(f"{seedname_ref}.eig.npz")
+    assert eig.equals(eig_ref, tolerance=1e-6), "EIG files differ"
+
+    amn = w90files.get_file("amn")
+    amn_ref = wberri.w90files.AMN.from_npz(f"{seedname_ref}.amn.npz")  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
+    assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
+
+    symmetrizer_ref = SymmetrizerSAWF().from_npz(f"{seedname_ref}.symmetrizer.npz")
+    check_sawf(symmetrizer, symmetrizer_ref)
+
+    # for ik, E in eig_ref.data.items():
+    #     assert ik in eig.data, f"k-point {ik} missing in eig data"
+    #     assert eig.data[ik] == approx(E, abs=1e-6), f"Energies at k-point {ik} differ: {eig.data[ik]} != {E}"
+
+    mmn.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.mmn.npz"))
+    mmn_ref = wberri.w90files.MMN.from_npz(f"{seedname_ref}.mmn.npz")
+    mmn_ref.reorder_bk(bk_latt_new=mmn.bk_latt)
+    assert np.all(mmn.bk_latt == mmn_ref.bk_latt), f"bk_latt differ {mmn.bk_latt} != {mmn_ref.bk_latt}"
+    bk = mmn.bk_latt
+    NNB = mmn.NNB
+    check_tot = 0
+    for ik in mmn_ref.data.keys():
+        G = mmn.G[ik]
+        for ib in range(NNB):
+            data = mmn.data[ik][ib]
+            data_ref = mmn_ref.data[ik][ib]
+            check = np.max(np.abs(data - data_ref))
+            print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
+            check_tot = max(check_tot, check)
+    assert check_tot < 3e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"

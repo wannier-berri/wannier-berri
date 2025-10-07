@@ -279,6 +279,7 @@ class Wannier90data:
 
     def from_gpaw(self,
                   calculator,
+                  seedname="wannier",
                   files=("mmn", "eig", "amn", "symmetrizer"),
                   read_npz_list=None,
                   write_npz_list=None,
@@ -286,15 +287,15 @@ class Wannier90data:
                   unk_grid=None,
                   normalize=True,
                   irreducible=None,
-                  ecut_sym=100,
+                  ecut_sym=200,
                   ecut_pw=200,
                   spin_channel=0,
+                  spacegroup=None,
                   include_TR=True,
                   typat=None,
                   mp_grid=None,
-                  unitary_params=None,):
-        if irreducible:
-            raise NotImplementedError("irreducible=True is not implemented yet for from_gpaw")
+                  unitary_params=None,
+                  verbosity=3,):
         from irrep.bandstructure import BandStructure
         # from irrep.spacegroup import SpaceGroup
         bandstructure = BandStructure(code="gpaw",
@@ -303,7 +304,13 @@ class Wannier90data:
                                       read_paw=("mmn" in files),
                                       irreducible=irreducible,
                                       spin_channel=spin_channel,
+                                      spacegroup=spacegroup,
+                                      verbosity=verbosity,
                                       )
+
+        for KP in bandstructure.kpoints:
+            print(f"KP.K (latt) = {KP.K}, energies = {KP.Energy_raw}")
+
         # sg = bandstructure.spacegroup
         # if typat is None:
         #     typat = [atom.number for atom in calculator.atoms]
@@ -313,6 +320,7 @@ class Wannier90data:
 
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
         self.from_bandstructure(bandstructure,
+                                seedname=seedname,
                                 files=files_from_bandstructure,
                                 read_npz_list=read_npz_list,
                                 write_npz_list=write_npz_list,
@@ -323,7 +331,7 @@ class Wannier90data:
                                 ecut_sym=ecut_sym,
                                 mp_grid=mp_grid,
                                 unitary_params=unitary_params,
-                                    )
+                                )
         if "soc" in files:
             soc = SOC.from_gpaw(calculator)
             self.set_file('soc', soc)

@@ -724,6 +724,9 @@ class SymmetrizerSAWF:
         assert mmn.NB == self.NB
         b1 = ignore_lower_bands
         b2 = ignore_upper_bands
+        print(f"irreducible k-points : {self.kptirr}")
+        print(f"kpt2kptirr : {self.kpt2kptirr}")
+        print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
         sym_product_table, translations_diff, spinor_factors = self.spacegroup.get_product_table(get_diff=True)
@@ -770,6 +773,8 @@ class SymmetrizerSAWF:
                     M_loc = M.copy()
 
                     ik_sym = self.kptirr2kpt[ikirr, isym]
+                    if ik_sym not in mmn.data:
+                        continue
                     ib_sym = bk_latt_map[isym, ib]
 
                     if ikb in self.kptirr:
@@ -819,7 +824,7 @@ class SymmetrizerSAWF:
 
                     if err > warning_precision or verbose:
                         print(("CORRECT :" if err < warning_precision else "ERROR   :") +
-                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} : err = {err}"
+                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {mmn.neighbours[ik_sym][ib_sym]}: err = {err}"
                               f" TR = {TR}, TR1 = {TR1}, TR2 = {TR2} \n"
                                 )
 
