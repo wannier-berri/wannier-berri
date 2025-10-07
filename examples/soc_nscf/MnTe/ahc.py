@@ -38,8 +38,8 @@ parallel=Parallel(num_cpus=24)
 # _interlaced()
 
 
-phi_deg = 0
-theta_deg=0
+phi_deg = 90
+theta_deg = 90
 
 
 soc = SOC.from_gpaw("mnte-nscf.gpw")
