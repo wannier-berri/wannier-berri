@@ -287,20 +287,20 @@ class Wannier90data:
                   unk_grid=None,
                   normalize=True,
                   irreducible=None,
+                  select_grid=None,
                   ecut_sym=200,
                   ecut_pw=200,
                   spin_channel=0,
                   spacegroup=None,
-                  include_TR=True,
-                  typat=None,
                   mp_grid=None,
                   unitary_params=None,
-                  verbosity=3,):
+                  verbosity=0,):
         from irrep.bandstructure import BandStructure
         # from irrep.spacegroup import SpaceGroup
         bandstructure = BandStructure(code="gpaw",
                                       calculator_gpaw=calculator,
                                       Ecut=ecut_pw,
+                                      select_grid=select_grid,
                                       read_paw=("mmn" in files),
                                       irreducible=irreducible,
                                       spin_channel=spin_channel,
@@ -308,16 +308,7 @@ class Wannier90data:
                                       verbosity=verbosity,
                                       )
 
-        for KP in bandstructure.kpoints:
-            print(f"KP.K (latt) = {KP.K}, energies = {KP.Energy_raw}")
-
-        # sg = bandstructure.spacegroup
-        # if typat is None:
-        #     typat = [atom.number for atom in calculator.atoms]
-        # SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions, spinor=False,
-        #                      typat=typat, include_TR=include_TR)
-        # bandstructure.spacegroup = sg
-
+        
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
         self.from_bandstructure(bandstructure,
                                 seedname=seedname,

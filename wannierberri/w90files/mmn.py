@@ -266,7 +266,6 @@ class MMN(W90_file):
                            NK=None,
                            kpt_latt_grid=None,
                            symmetrizer=None,
-                           paw=False
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -324,6 +323,7 @@ class MMN(W90_file):
         NB = bandstructure.num_bands
 
         k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
+        bk_red = bk_latt / mp_grid[None, :]
 
         G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
         neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
@@ -376,15 +376,14 @@ class MMN(W90_file):
             wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
 
         # but are needed for the finite-difference scheme (obtained by symmetry)
-        bk_red = bk_latt / mp_grid[None, :]
         for ikirr in kptirr:
             bra = wavefunc_all.get_WF(ikirr, conj=True)
-            overtlaps = wavefunc_all.product(bra, bra)
-            overlaps_err = np.max(abs((overtlaps - np.eye(NB))[:NB // 2, :NB // 2]))
-            print(f"Calculating overlaps for k-point {ikirr} overlaps error = {overlaps_err}")
+            overlaps = wavefunc_all.product(bra, bra)
+            overlaps_err = np.max(abs((overlaps - np.eye(NB))))
+            print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ket = wavefunc_all.get_WF(ik2, conj=False, G=G[ikirr][ib])
-                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket)
+                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket, include_paw=False, include_pseudo=True, bk=bk_red[ib])
 
         return MMN(
             data=data,

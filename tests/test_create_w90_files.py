@@ -1,3 +1,4 @@
+from gpaw import GPAW
 from .test_wannierise import spreads_Fe_spd_444_nowin as spreads_Fe_spd_444
 import irrep
 from irrep.bandstructure import BandStructure
@@ -574,3 +575,56 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
             print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
     assert check_tot < 3e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
+
+
+@pytest.mark.parametrize("select_grid", [None, (4, 4, 4), (2, 2, 2)])
+def test_create_w90files_diamond_gpaw_irred(select_grid):
+
+    path_data = os.path.join(ROOT_DIR, "data", "diamond-gpaw")
+    path_output = os.path.join(OUTPUT_DIR, "diamond-gpaw")
+    os.makedirs(path_output, exist_ok=True)
+    calc = GPAW(path_data + "/diamond-nscf-irred.gpw", txt=None)
+    sg = SpaceGroup.from_gpaw(calc)
+    pos = np.array([[0, 0, 0],
+                    [0, 0, 1],
+                    [0, 1, 0],
+                    [1, 0, 0]
+                    ]) / 2 + 1 / 8
+    proj_s = Projection(position_num=pos, orbital='s', spacegroup=sg)
+    proj_set = ProjectionsSet(projections=[proj_s])
+    seedname = os.path.join(path_output, "diamond-irred")
+    # seedname_ref = os.path.join(path_data, "diamond-irred")
+    w90data = wberri.w90files.Wannier90data().from_gpaw(
+        calculator=calc,
+        spin_channel=0,
+        projections=proj_set,
+        read_npz_list=[],
+        select_grid=select_grid,
+        # write_npz_list=[],
+        seedname=seedname,
+        irreducible=True,
+        files=["amn", "mmn", "eig", "symmetrizer"],
+        unitary_params=dict(error_threshold=0.1,
+                            warning_threshold=0.01,
+                            nbands_upper_skip=8),
+    )
+
+
+    w90data.wannierise(
+        froz_min=-np.inf,
+        froz_max=20,
+        num_iter=1000,
+        conv_tol=1e-10,
+        mix_ratio_z=0.8,
+        mix_ratio_u=1,
+        print_progress_every=20,
+        sitesym=True,
+        localise=True
+    )
+    wannier_centers = w90data.chk.wannier_centers_cart
+    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_spreads_mean = np.mean(wannier_spreads)
+    assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
+    spread_ref = 0.43413866  if select_grid == (2, 2, 2) else 0.74711613
+    assert wannier_spreads == approx(spread_ref, abs=2e-5)
+    assert wannier_centers == approx(pos @ w90data.chk.real_lattice, abs=1e-6)

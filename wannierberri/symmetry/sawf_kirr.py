@@ -57,7 +57,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         # self.check_products_D()
         # self.check_products_dD()
         err = self.check(accuracy_threshold=accuracy_threshold)
-        print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in included blocks: {err}"
+        print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
               f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
 
 
@@ -185,7 +185,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
 
     def __call__(self, U, maxiter=100, tol=1e-6):
         Uprev = U.copy()
-        for i in range(maxiter):
+        for _ in range(maxiter):
             Uloc = Uprev.copy()
             Usym = sum(self.rotate_U(Uloc, isym) for isym in self.isym_little) / self.nsym_little
             diff1 = abs(Usym - Uprev).max()
@@ -193,7 +193,6 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
             Usym_ortho[self.include_bands] = orthogonalize(Usym[self.include_bands])
             diff2 = abs(Usym_ortho - Usym).max()
             if diff1 < tol and diff2 < tol:
-                # print(f"Symmetrization converged in {i+1} iterations")
                 return Usym
             Uprev = Usym_ortho
         else:
