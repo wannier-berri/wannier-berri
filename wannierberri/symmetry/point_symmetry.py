@@ -48,14 +48,13 @@ Contains a general class for Rotation, Mirror, and also some pre-defined shortcu
 
 import numpy as np
 import scipy
-import scipy.spatial
-import scipy.spatial.transform
-from scipy.spatial.transform import Rotation as rotmat
-from packaging import version as pversion
+# import scipy.spatial
+# import scipy.spatial.transform
 import warnings
 from copy import deepcopy
 from ..utility import real_recip_lattice
 from collections.abc import Iterable
+
 
 SYMMETRY_PRECISION = 1e-6
 
@@ -157,10 +156,7 @@ class Rotation(PointSymmetry):
         if norm < 1e-10:
             raise ValueError(f"the axis vector is too small : {norm}. do you know what you are doing?")
         axis = np.array(axis) / norm
-        if pversion.parse(scipy.__version__) < pversion.parse("1.4.0"):
-            R = rotmat.from_rotvec(2 * np.pi / n * axis / np.linalg.norm(axis)).as_dcm()
-        else:
-            R = rotmat.from_rotvec(2 * np.pi / n * axis / np.linalg.norm(axis)).as_matrix()
+        R = scipy.spatial.transform.Rotation.from_rotvec(2 * np.pi / n * axis / np.linalg.norm(axis)).as_matrix()
         super().__init__(R)
 
 

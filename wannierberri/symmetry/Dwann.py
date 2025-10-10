@@ -1,8 +1,7 @@
-
-import warnings
 import numpy as np
 from .orbitals import num_orbitals
 from .unique_list import UniqueListMod1
+from irrep.symmetry_operation import get_atom_map
 
 
 class Dwann:
@@ -85,30 +84,19 @@ class Dwann:
         self.num_wann = self.num_wann_scal * self.nspinor
         self.num_orbitals = self.num_orbitals_scal * self.nspinor
 
+
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
 
-        self.rot_orb = [[np.eye(self.num_orbitals_scal) for _ in range(self.nsym)] for _ in range(self.num_points)]
-        for ip, p in enumerate(self.orbit):
-            for isym, symop in enumerate(spacegroup.symmetries):
-                p2 = symop.transform_r(p)
-                ip2 = self.orbit.index(p2)
-                self.atommap[ip, isym] = ip2
-                if orbital != "_":
-                    self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])
-                p2a = self.orbit[ip2]
-                self.T[ip, isym] = p2a - p2
-        assert np.all(self.atommap >= 0), f"atommap={self.atommap}"
+        for isym, symop in enumerate(spacegroup.symmetries):
+            self.atommap[:, isym], self.T[:, isym, :] = get_atom_map(symop=symop, positions=self.orbit)
 
-        T_round = np.round(self.T)
-        T_diff = np.abs(self.T - T_round).max()
-        if T_diff > 1e-6:
-            msg = f"the T vectors should result integer values, but the maximal deviation from in=teger is {T_diff} T=\n{self.T}, \nT_round=\n{T_round}, \n max_diff={T_diff}"
-            if T_diff > 1e-3:
-                raise ValueError(msg)
-            else:
-                warnings.warn(msg)
-        self.T = T_round.astype(int)
+        self.rot_orb = [[np.eye(self.num_orbitals_scal) for _ in range(self.nsym)] for _ in range(self.num_points)]
+        if orbital != "_":
+            for ip, p in enumerate(self.orbit):
+                for isym, symop in enumerate(spacegroup.symmetries):
+                    ip2 = self.atommap[ip, isym]
+                    self.rot_orb[ip][isym] = orbitalrotator(orb_symbol=orbital, rot_cart=symop.rotation_cart, basis1=basis_list[ip], basis2=basis_list[ip2])
 
         if self.spinor:
             for isym, symop in enumerate(spacegroup.symmetries):

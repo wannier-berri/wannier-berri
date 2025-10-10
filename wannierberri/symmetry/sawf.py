@@ -135,7 +135,7 @@ class SymmetrizerSAWF:
         self.clear_inverse()
         self.selected_kpoints = data["selected_kpoints"]
         self.kpt_from_kptirr_isym = data["kpt_from_kptirr_isym"]
-        
+
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
@@ -724,6 +724,9 @@ class SymmetrizerSAWF:
         assert mmn.NB == self.NB
         b1 = ignore_lower_bands
         b2 = ignore_upper_bands
+        print(f"irreducible k-points : {self.kptirr}")
+        print(f"kpt2kptirr : {self.kpt2kptirr}")
+        print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
         sym_product_table, translations_diff, spinor_factors = self.spacegroup.get_product_table(get_diff=True)
@@ -770,6 +773,8 @@ class SymmetrizerSAWF:
                     M_loc = M.copy()
 
                     ik_sym = self.kptirr2kpt[ikirr, isym]
+                    if ik_sym not in mmn.data:
+                        continue
                     ib_sym = bk_latt_map[isym, ib]
 
                     if ikb in self.kptirr:
@@ -805,22 +810,23 @@ class SymmetrizerSAWF:
                                    rindices=rindices, )
 
                     M_loc = M_loc * factor
-                    M_ref = mmn.data[ik_sym][ib_sym]
+                    M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
 
-                    Mloc = M_loc[b1:b2, b1:b2]
-                    Mref = M_ref[b1:b2, b1:b2]
-                    Mmax = np.max([np.abs(Mloc), np.abs(Mref)], axis=0)
-                    diff_phase = (np.angle(Mloc) - np.angle(Mref)) / np.pi * 180 % 360
-                    diff_phase[diff_phase > 355] -= 360
-                    diff_phase = diff_phase[Mmax > 1e-3]
+                    M_loc = M_loc[b1:b2, b1:b2]
 
-                    diff = np.abs(M_loc[b1:b2, b1:b2] - M_ref[b1:b2, b1:b2])
+                    # Mmax = np.max([np.abs(Mloc), np.abs(M_ref)], axis=0)
+                    # diff_phase = (np.angle(Mloc) - np.angle(M_ref)) / np.pi * 180 % 360
+                    # diff_phase[diff_phase > 355] -= 360
+                    # diff_phase = diff_phase[Mmax > 1e-3]
+
+                    diff = np.abs(M_loc - M_ref)
                     err = np.max(diff)
 
                     if err > warning_precision or verbose:
                         print(("CORRECT :" if err < warning_precision else "ERROR   :") +
-                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} : err = {err}"
-                              f" TR = {TR}, TR1 = {TR1}, TR2 = {TR2} \n"
+                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {mmn.neighbours[ik_sym][ib_sym]}: err = {err}"
+                              f" TR = {TR}, TR1 = {TR1}, TR2 = {TR2}"
+                              # "" factor = {factor} M_loc=\n{arr_to_string(M_loc)}\nM_ref=\n{arr_to_string(M_ref)}\n Diff=\n{arr_to_string(diff)}"
                                 )
 
 

@@ -42,6 +42,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
 
     w90data = Wannier90data().from_w90_files(prefix, readfiles=["win", "eig", "mmn"],
                                              read_npz=False)
+    # exit()
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)
     w90data.select_bands(win_min=-100,
