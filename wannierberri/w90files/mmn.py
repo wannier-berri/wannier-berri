@@ -353,6 +353,8 @@ class MMN(W90_file):
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
+
+
         for ikirr in kptirr:
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ik2 = int(ik2)
@@ -383,7 +385,7 @@ class MMN(W90_file):
             print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
             for ib, ik2 in enumerate(neighbours[ikirr]):
                 ket = wavefunc_all.get_WF(ik2, conj=False, G=G[ikirr][ib])
-                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket, include_paw=False, include_pseudo=True, bk=bk_red[ib])
+                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
 
         return MMN(
             data=data,
@@ -450,7 +452,11 @@ class Grid_ig_all:
             bra[:] = bra / self.norm[ik][:, None, None, None, None]
         return bra
 
-    def product(self, bra, ket):
+    def product(self, bra, ket, bk=None):
+        """
+        Calculate the product <bra|ket> 
+        bk is not used for the grid representation, but is kept for compatibility with the PAW representation
+        """
         return cached_einsum('asijk,bsijk->ab', bra, ket)
 
 

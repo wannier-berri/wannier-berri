@@ -625,6 +625,6 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     wannier_spreads = w90data.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
-    spread_ref = 0.43413866  if select_grid == (2, 2, 2) else 0.74711613
+    spread_ref = 0.39536796  if select_grid == (2, 2, 2) else 0.57345447
     assert wannier_spreads == approx(spread_ref, abs=2e-5)
     assert wannier_centers == approx(pos @ w90data.chk.real_lattice, abs=1e-6)
