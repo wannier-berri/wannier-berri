@@ -182,12 +182,15 @@ class System_R(System):
         """
         if num_wann is None:
             num_wann = self.num_wann
+            range_wann = self.range_wann
+        else:
+            range_wann = np.arange(num_wann)
         if diag:
             assert value.shape[0] == num_wann, f"the 0th dimension for 'diag=True' of value should be {num_wann}, found {value.shape[0]}"
             if R is None:
                 R = [0, 0, 0]
             XX = np.zeros((num_wann, num_wann) + value.shape[1:], dtype=value.dtype)
-            XX[self.range_wann, self.range_wann] = value
+            XX[range_wann, range_wann] = value
             self.set_R_mat(key, XX, R=R, reset=reset, add=add)
         elif R is not None:
             assert value.shape[0:2] == (num_wann, num_wann), f"the 0th and 1st dimensions of value for R={R}!=None should be nW={num_wann}, found {value.shape[0:2]}"

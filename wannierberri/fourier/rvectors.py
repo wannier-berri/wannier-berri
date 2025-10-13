@@ -140,7 +140,8 @@ class Rvectors:
         assert np.allclose(XX_R_sum_tmp, XX_R_sum_old), f"XX_R_sum_T_tmp {XX_R_sum_tmp} != XX_R_sum_R_old {XX_R_sum_old}"
         return self.remap_XX_from_grid_to_list_R(XX_R_tmp)
 
-    def get_remapper_XX_from_grid_to_list_R(self, select_left=None, select_right=None):
+    @cached_property
+    def get_remapper_XX_from_grid_to_list_R(self):
         """
         remap the matrix from the grid to the list of R-vectors,
         taking into account the wannier centers
@@ -155,37 +156,25 @@ class Rvectors:
         XX_R_new : np.ndarray(shape=(num_wann_l, num_wann_r, nRvec, ...))
             The matrix in the list of R-vectors representation.
         """
-        if not hasattr(self, 'cached_remappers'):
-            self.cached_remappers = {}
-        assert (select_left is None) == (select_right is None), "select_left and select_right should be both None or both not None"
-        if select_left is None:
-            key=0
-            select_left = range(self.nshifts_left)
-            select_right = range(self.nshifts_right)
-        else:
-            key = (tuple(select_left), tuple(select_right))
-        if key not in self.cached_remappers:
-            
-            nl = len(select_left)
-            nr = len(select_right)
-            remapper = np.zeros((self.nRvec, nl, nr, 3), dtype=int)
-            weights = np.zeros((self.nRvec, nl, nr), dtype=float)
-            for ia, a in enumerate(select_left):
-                for ib, b in enumerate(select_right):
-                    ishift = self.shift_index[a, b]
-                    for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
-                                            self.iRvec_mod_list[ishift],
-                                            self.Ndegen_list[ishift]):
-                        remapper[iRi, ia, ib] = iRm
-                        weights[iRi, ia, ib] += 1. / nd
-            sum_expected = np.prod(self.mp_grid) * nl * nr
-            sum_calculated = np.sum(weights)
-            assert np.allclose(sum_calculated, sum_expected), f"found sum of weights {sum_calculated}, expected {sum_expected}"
-            mapx = remapper[:, :, :, 0]
-            mapy = remapper[:, :, :, 1]
-            mapz = remapper[:, :, :, 2]
-            self.cached_remappers[key] = (mapx, mapy, mapz, weights)
-        return self.cached_remappers[key]
+        nl = self.nshifts_left
+        nr = self.nshifts_right
+        remapper = np.zeros((self.nRvec, nl, nr, 3), dtype=int)
+        weights = np.zeros((self.nRvec, nl, nr), dtype=float)
+        for ia in range(nl):
+            for ib in range(nr):
+                ishift = self.shift_index[ia, ib]
+                for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
+                                        self.iRvec_mod_list[ishift],
+                                        self.Ndegen_list[ishift]):
+                    remapper[iRi, ia, ib] = iRm
+                    weights[iRi, ia, ib] += 1. / nd
+        sum_expected = np.prod(self.mp_grid) * nl * nr
+        sum_calculated = np.sum(weights)
+        assert np.allclose(sum_calculated, sum_expected), f"found sum of weights {sum_calculated}, expected {sum_expected}"
+        mapx = remapper[:, :, :, 0]
+        mapy = remapper[:, :, :, 1]
+        mapz = remapper[:, :, :, 2]
+        return mapx, mapy, mapz, weights
 
 
     def remap_XX_from_grid_to_list_R(self, XX_R_grid, select_left=None, select_right=None):
@@ -204,14 +193,20 @@ class Rvectors:
             The matrix in the list of R-vectors representation.
         """
         assert (select_left is None) == (select_right is None), "select_left and select_right should be both None or both not None"
-        if select_left is None:
-            select_left = range(self.nshifts_left)
-            select_right = range(self.nshifts_right)
 
-        mapx, mapy, mapz, weights = self.get_remapper_XX_from_grid_to_list_R(select_left=select_left, select_right=select_right)
+        mapx, mapy, mapz, weights = self.get_remapper_XX_from_grid_to_list_R
+        if select_left is None:
+            nl = self.nshifts_left
+            nr = self.nshifts_right
+        else:
+            nl = len(select_left)
+            nr = len(select_right)
+            mapx = mapx[:, select_left, :][:, :, select_right]
+            mapy = mapy[:, select_left, :][:, :, select_right]
+            mapz = mapz[:, select_left, :][:, :, select_right]
+            weights = weights[:, select_left, :][:, :, select_right]
+
         assert XX_R_grid.shape[0:3] == tuple(self.mp_grid), f"XX_R_grid {XX_R_grid.shape} should be {self.mp_grid}"
-        nl = len(select_left)
-        nr = len(select_right)
         assert (nl == 1) or (XX_R_grid.shape[3] == nl), f"XX_R_grid {XX_R_grid.shape} should have {nl} lWFs"
         assert (nr == 1) or (XX_R_grid.shape[4] == nr), f"XX_R_grid {XX_R_grid.shape} should have {nr} rWFs"
         XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))

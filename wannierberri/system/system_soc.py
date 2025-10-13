@@ -142,12 +142,12 @@ class SystemSOC(System_R):
                 sel_j = selected_bands_list[j1]
                 dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
                 for ik, w in zip(kptirr, weights_k):
-                    v = chk_list[i1].v_matrix[ik]
-                    vt = v.T.conj()
+                    vt = chk_list[i1].v_matrix[ik].T.conj()
+                    v = chk_list[j1].v_matrix[ik]
                     dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
                 if i1==j1:
                     assert np.allclose(dV_soc_wann_ik, dV_soc_wann_ik.transpose(0,2,1,3).conj()), "The diagonal spin components of SOC should be Hermitian"
-                    dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
+                    # dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
                 key = f"dV_soc_wann_{i1}_{j1}"
                 mat =  self.rvec.q_to_R(dV_soc_wann_ik, select_left=rng+i1, select_right=rng+j1)
                 self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
