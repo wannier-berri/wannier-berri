@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 from .w90file import W90_file, check_shape
+from ..utility import cached_einsum, pauli_xyz
 
 
 class SOC(W90_file):
@@ -43,7 +44,7 @@ class SOC(W90_file):
         shape = check_shape(self.data)
         self.NB = shape[4]
         self.nspin = shape[0]
-        assert shape == (self.nspin, self.nspin, 2, 2, self.NB, self.NB), f"SOC data must have shape (nspin, nspin,2,2, NB, NB), got {shape}"
+        assert shape == (self.nspin, self.nspin, 3, self.NB, self.NB), f"SOC data must have shape (nspin, nspin,2,2, NB, NB), got {shape}"
         if isinstance(overlap, list) or isinstance(overlap, np.ndarray):
             NK = len(data)
             self.overlap = {i: d for i, d in enumerate(overlap) if d is not None}
@@ -89,6 +90,15 @@ class SOC(W90_file):
         return C_ss
 
     @classmethod
+    def get_pauli_rotated(cls, theta=0, phi=0):
+        """
+        Get the rotated Pauli matrices for the given angles theta and phi.
+        """
+        C_ss = cls.get_C_ss(theta, phi)
+        return cached_einsum('ai,abc,bj->ijc', C_ss.conj(), pauli_xyz, C_ss)
+
+        
+    @classmethod
     def get_S_ssv(cls, theta=0, phi=0):
         """
         Get the spin Pauli matrices in the spinor basis defined by C_ss.
@@ -115,7 +125,6 @@ class SOC(W90_file):
         from gpaw import GPAW
         if isinstance(calc, str):
             calc = GPAW(calc, txt=None)
-        # C_ss = cls.get_C_ss(theta, phi)
         nspin = calc.get_number_of_spins()
         assert nspin in [1, 2], f"Only nspin=1 or 2 supported, got {nspin}"
 
@@ -128,32 +137,30 @@ class SOC(W90_file):
         print(f"number of bands = {m}")
         nk = len(calc.get_ibz_k_points())
 
-        H_a = {}
-        for a, dVL_vii in dVL_avii.items():
-            ni = dVL_vii.shape[1]
-            H_ssii = np.zeros((2, 2, ni, ni), complex)
-            H_ssii[0, 0] = dVL_vii[2]
-            H_ssii[0, 1] = dVL_vii[0] - 1j * dVL_vii[1]
-            H_ssii[1, 0] = dVL_vii[0] + 1j * dVL_vii[1]
-            H_ssii[1, 1] = -dVL_vii[2]
-            H_a[a] = H_ssii
+        # H_a = {}
+        # for a, dVL_vii in dVL_avii.items():
+        #     ni = dVL_vii.shape[1]
+        #     H_ssii = np.zeros((2, 2, ni, ni), complex)
+        #     H_ssii[0, 0] = dVL_vii[2]
+        #     H_ssii[0, 1] = dVL_vii[0] - 1j * dVL_vii[1]
+        #     H_ssii[1, 0] = dVL_vii[0] + 1j * dVL_vii[1]
+        #     H_ssii[1, 1] = -dVL_vii[2]
+        #     H_a[a] = H_ssii
 
 
-        h_soc = np.zeros((nk, nspin, nspin, 2, 2, m, m), complex)
-        print(f"{h_soc.shape=}")
-
+        dV_soc = np.zeros((nk, nspin, nspin, 3, m, m), complex)
+        
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
-            for a, H_ssii in H_a.items():
+            for a, H_ssii in dVL_avii.items():
                 for s1 in range(nspin):
                     for s2 in range(nspin):
                         P1_mi = calc.wfs.kpt_qs[q][s1].P_ani[a].conj()
                         P2_mi = calc.wfs.kpt_qs[q][s2].P_ani[a].T
-                        for t1 in range(2):
-                            for t2 in range(2):
-                                h_soc[q, s1, s2, t1, t2] += P1_mi @ H_ssii[t1, t2] @ P2_mi
-        h_soc *= Hartree
-
+                        for t in range(3):
+                            dV_soc[q, s1, s2, t] += P1_mi @ H_ssii[t] @ P2_mi
+        dV_soc *= Hartree
+        
         if nspin == 2 and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()
@@ -169,7 +176,7 @@ class SOC(W90_file):
         else:
             overlap = None
 
-        return cls(data=h_soc, overlap=overlap, NK=nk)
+        return cls(data=dV_soc, overlap=overlap, NK=nk)
 
 
     def select_bands(self, selected_bands):

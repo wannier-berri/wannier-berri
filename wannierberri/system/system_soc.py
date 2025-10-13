@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..utility import cached_einsum
+from ..utility import cached_einsum, pauli_xyz
 from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
@@ -106,7 +106,7 @@ class SystemSOC(System_R):
 
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
         overlap_q_H = soc.overlap
-        h_soc = soc.data
+        dV_soc = soc.data
 
         if overlap_q_H is None:
             eye = np.eye(chk_up.num_bands, dtype=complex)
@@ -132,20 +132,33 @@ class SystemSOC(System_R):
         ss_q_W = np.zeros((NK, self.num_wann, self.num_wann, 3), dtype=complex)
 
         S_ssv = SOC.get_S_ssv(theta=theta, phi=phi)
-        C_ss = SOC.get_C_ss(theta=theta, phi=phi)
+        pauli_rotated = soc.get_pauli_rotated(theta=theta, phi=phi)
         rng = np.arange(self.num_wann_scalar) * 2
+
 
         for ik, w in zip(kptirr, weights_k):
             v = [chk.v_matrix[ik] for chk in chk_list]
             vt = [v_.T.conj() for v_ in v]
+            dV_soc_wann = {}
+            for i1 in range(nspin):
+                sel_i = selected_bands_list[i1]
+                for j1 in range(i1, nspin):
+                    sel_j = selected_bands_list[j1]
+                    dV_soc_wann[(i1, j1)] = w * cached_einsum("mi,cij,jn->mnc", vt[i1], dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v[j1])
+            if nspin == 2:
+                dV_soc_wann[(1, 0)] = dV_soc_wann[(0, 1)].conj().transpose(1, 0, 2)
+
+
             for i in range(2):
                 i1 = index_spin(i)
                 for j in range(2):
                     j1 = index_spin(j)
-                    h_loc = h_soc[ik][i1, j1][:, :, selected_bands_list[i], :][:, :, :, selected_bands_list[j]]
-                    h_loc = cached_einsum("abmn,a,b->mn", h_loc, C_ss[:, i].conj(), C_ss[:, j])
-                    soc_q_W[ik, i::2, j::2] = w * (vt[i1] @ h_loc @ v[j1])
-                    # Spin operator
+                    dV_loc = cached_einsum("mnc,c->mn", dV_soc_wann[(i1, j1)], pauli_rotated[i, j,:])
+                    soc_q_W[ik, i::2, j::2] = dV_loc
+
+            # Spin operator        
+            for i in range(2):
+                for j in range(2):
                     if i == j:
                         ss_q_W[ik, i + rng, i + rng, :] = w * S_ssv[i, j, None, :]
                     elif i < j:  # the (i=0,j=1) case
@@ -154,6 +167,10 @@ class SystemSOC(System_R):
                             ss_q_W[ik, ::2, 1::2, :] = 2 * (vt[0] @ overlap_loc @ v[1])[:, :, None] * (w * S_ssv[0, 1, :])  # factor 2 because we use Hermiticity later
                         else:
                             ss_q_W[ik, rng, 1 + rng, :] = (2 * w) * S_ssv[0, 1, None, :]  # factor 2 because we use Hermiticity later
+        
+        
+
+
         soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         ss_q_W = (ss_q_W + ss_q_W.transpose(0, 2, 1, 3).conj()) / 2.0
 
