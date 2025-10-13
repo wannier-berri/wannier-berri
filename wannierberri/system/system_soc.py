@@ -128,35 +128,55 @@ class SystemSOC(System_R):
         else:
             raise NotImplementedError("kptirr and weights_k are not implemented yet")
 
-        soc_q_W = np.zeros((NK, self.num_wann, self.num_wann), dtype=complex)
+        # soc_q_W = np.zeros((NK, self.num_wann, self.num_wann), dtype=complex)
         ss_q_W = np.zeros((NK, self.num_wann, self.num_wann, 3), dtype=complex)
 
         S_ssv = SOC.get_S_ssv(theta=theta, phi=phi)
         pauli_rotated = soc.get_pauli_rotated(theta=theta, phi=phi)
         rng = np.arange(self.num_wann_scalar) * 2
+        
+
+        for i1 in range(nspin):
+            sel_i = selected_bands_list[i1]
+            for j1 in range(i1, nspin):
+                sel_j = selected_bands_list[j1]
+                dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
+                for ik, w in zip(kptirr, weights_k):
+                    v = chk_list[i1].v_matrix[ik]
+                    vt = v.T.conj()
+                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
+                if i1==j1:
+                    assert np.allclose(dV_soc_wann_ik, dV_soc_wann_ik.transpose(0,2,1,3).conj()), "The diagonal spin components of SOC should be Hermitian"
+                    dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
+                key = f"dV_soc_wann_{i1}_{j1}"
+                mat =  self.rvec.q_to_R(dV_soc_wann_ik, select_left=rng+i1, select_right=rng+j1)
+                self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
+                if i1!=j1:
+                    key = f"dV_soc_wann_{j1}_{i1}"
+                    mat = self.rvec.q_to_R(dV_soc_wann_ik.conj().transpose(0,2,1,3), select_left=rng+j1, select_right=rng+i1)
+                    self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
+            
+
+        nRvec = self.rvec.nRvec
+        soc_R_W = np.zeros((nRvec, self.num_wann, self.num_wann), dtype=complex)
+        soc_R_W[:,::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 0, :])
+        if nspin == 2:
+            soc_R_W[:,1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_1'), pauli_rotated[1, 1, :])
+            soc_R_W[:,::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_1'), pauli_rotated[0, 1, :])
+            soc_R_W[:,1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_0'), pauli_rotated[1, 0, :])
+        elif nspin == 1:
+            soc_R_W[:,1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])
+            soc_R_W[:,::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 1, :])
+            soc_R_W[:,1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 0, :])
+        self.soc_R = soc_R_W * alpha_soc
 
 
+
+
+        # Spin operator        
         for ik, w in zip(kptirr, weights_k):
             v = [chk.v_matrix[ik] for chk in chk_list]
             vt = [v_.T.conj() for v_ in v]
-            dV_soc_wann = {}
-            for i1 in range(nspin):
-                sel_i = selected_bands_list[i1]
-                for j1 in range(i1, nspin):
-                    sel_j = selected_bands_list[j1]
-                    dV_soc_wann[(i1, j1)] = w * cached_einsum("mi,cij,jn->mnc", vt[i1], dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v[j1])
-            if nspin == 2:
-                dV_soc_wann[(1, 0)] = dV_soc_wann[(0, 1)].conj().transpose(1, 0, 2)
-
-
-            for i in range(2):
-                i1 = index_spin(i)
-                for j in range(2):
-                    j1 = index_spin(j)
-                    dV_loc = cached_einsum("mnc,c->mn", dV_soc_wann[(i1, j1)], pauli_rotated[i, j,:])
-                    soc_q_W[ik, i::2, j::2] = dV_loc
-
-            # Spin operator        
             for i in range(2):
                 for j in range(2):
                     if i == j:
@@ -167,14 +187,8 @@ class SystemSOC(System_R):
                             ss_q_W[ik, ::2, 1::2, :] = 2 * (vt[0] @ overlap_loc @ v[1])[:, :, None] * (w * S_ssv[0, 1, :])  # factor 2 because we use Hermiticity later
                         else:
                             ss_q_W[ik, rng, 1 + rng, :] = (2 * w) * S_ssv[0, 1, None, :]  # factor 2 because we use Hermiticity later
-        
-        
-
-
-        soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
         ss_q_W = (ss_q_W + ss_q_W.transpose(0, 2, 1, 3).conj()) / 2.0
 
-        self.soc_R = self.rvec.q_to_R(soc_q_W) * alpha_soc
         self.set_R_mat('SS', self.rvec.q_to_R(ss_q_W))
 
         self.has_soc = True
