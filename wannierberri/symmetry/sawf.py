@@ -2,6 +2,7 @@ from functools import cached_property, lru_cache
 import warnings
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroup
+from irrep.utility import get_kpt_from_kptirr_isym
 import numpy as np
 
 
@@ -136,6 +137,8 @@ class SymmetrizerSAWF:
         self.selected_kpoints = data["selected_kpoints"]
         self.kpt_from_kptirr_isym = data["kpt_from_kptirr_isym"]
 
+        self.sym_product_table, self.translations_diff, self.spinor_factors = self.spacegroup.get_product_table(get_diff=True)
+
         if store_eig:
             self.set_eig([bandstructure.kpoints[ik].Energy_raw for ik in self.kptirr])
         return self
@@ -176,6 +179,32 @@ class SymmetrizerSAWF:
         """
         return np.array([len(set(self.kptirr2kpt[ikirr])) for ikirr in range(self.NKirr)])
 
+
+    def get_bk_mapping(self, bk_latt, neighbours):
+        NNB = bk_latt.shape[0]
+        isym_little = self.isym_little
+        bk_map = self.get_bk_map(bk_latt)
+        NKirr = len(self.kptirr)
+        bkirr = [[] for _ in range(NKirr)]
+        bk2bkirr = -np.ones((NKirr, NNB), dtype=int)
+        bk_from_bk_irr_isym = -np.ones((NKirr, NNB), dtype=int)
+        bk_is_irreducible = np.ones((NKirr, NNB), dtype=bool)
+
+        for ikirr, kirr in enumerate(self.kptirr):
+            for ib, ik2 in enumerate(neighbours[kirr]):
+                if bk_is_irreducible[ikirr][ib]:
+                    ik2 = int(ik2)
+                    bkirr[ikirr].append(ib)
+                    for isym in isym_little[ikirr]:
+                        ib_rot = bk_map[isym, ib]
+                        if bk2bkirr[ikirr, ib_rot] <0:
+                            bk2bkirr[ikirr, ib_rot] = ib
+                            bk_from_bk_irr_isym[ikirr][ib_rot] = isym
+                        if ib_rot != ib:
+                            bk_is_irreducible[ikirr, ib_rot] = False
+            assert sum(bk_is_irreducible[ikirr]) == len(bkirr[ikirr]), f"Reordering failed for k-point {ikirr}. Expected {len(bkirr[ikirr])} irreducible blocks, got {sum(bk_is_irreducible[ikirr])}"
+        return bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map
+        
 
 
 
@@ -729,12 +758,86 @@ class SymmetrizerSAWF:
         print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
-        sym_product_table, translations_diff, spinor_factors = self.spacegroup.get_product_table(get_diff=True)
-        # print("sym_product_table = \n ", sym_product_table)
-        # print("translations_diff = \n ", translations_diff)
-
         nnb = len(mmn.bk_latt)
         bk_latt = mmn.bk_latt
+
+        bk_latt_map = self.get_bk_map(bk_latt)
+        
+        
+        maxerr = 0
+        for ikirr in range(self.NKirr):
+            ik = self.kptirr[ikirr]
+            for ib in range(nnb):
+                ikb = mmn.neighbours[ik][ib]
+                
+                M = mmn.data[ik][ib]
+                for isym in range(self.Nsym):
+                    ik_sym = int(self.kptirr2kpt[ikirr, isym])
+                    ib_sym = int(bk_latt_map[isym, ib])
+        
+                    if ik_sym not in mmn.data:
+                        continue
+                    print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
+                    M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_latt_map=bk_latt_map, bk_cart=mmn.bk_cart)
+                    M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
+
+                    M_loc = M_loc[b1:b2, b1:b2]
+
+                    
+                    diff = np.abs(M_loc - M_ref)
+                    err = np.max(diff)
+
+                    if err > warning_precision or verbose:
+                        print(("CORRECT :" if err < warning_precision else "ERROR   :") +
+                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {mmn.neighbours[ik_sym][ib_sym]}: err = {err}"
+                            #   "\n M_ref   = \n" + arr_to_string(M_ref) +
+                            #     "\n M'  = \n" + arr_to_string(M_loc) +
+                            #     "\n diff = \n" + arr_to_string(diff)
+                                )
+
+
+                    maxerr = max(maxerr, err)
+        return maxerr
+    
+    def transform_Mmn_kb(self, M, isym, ikirr, ib, ikb, bk_latt_map, bk_cart):
+        M_loc = M.copy()
+        kpoints_red = self.kpoints_all
+
+        ikbirr = self.kpt2kptirr[ikb]
+        ib_sym = bk_latt_map[isym, ib]
+        rindices = self.d_band_block_indices[ikbirr]
+
+
+        if ikb in self.kptirr:
+            rblocks = self.d_band_blocks_inverse[ikbirr][isym]
+            factor = np.exp(-1j * (bk_cart[ib_sym] @ self.spacegroup.translations_cart[isym]))
+        else:
+            isym1 = self.kpt2kptirr_sym[ikb]
+            isym2 = self.sym_product_table[isym, isym1]
+            transl_diff = self.translations_diff[isym, isym1]
+            if self.time_reversals[isym]:
+                rblocks = [d1.conj() @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2])]
+            else:
+                rblocks = [d1 @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2])]
+
+            extra_factor = np.exp(2j * np.pi * (kpoints_red[self.kptirr2kpt[ikbirr, isym2]] @ transl_diff)) * self.spinor_factors[isym, isym1]
+            factor = np.exp(-1j * (bk_cart[ib_sym] @ (self.spacegroup.translations_cart[isym])))
+            factor = factor * extra_factor
+
+        if self.time_reversals[isym]:
+            M_loc = M_loc.conj()
+
+        M_loc = rotate_block_matrix(M_loc,
+                        lblocks=self.d_band_blocks[ikirr][isym],
+                        lindices=self.d_band_block_indices[ikirr],
+                        rblocks=rblocks,
+                        rindices=rindices, )
+
+        return M_loc * factor
+
+
+
+    def get_bk_map(self, bk_latt):
         bk_latt_transformed = np.array([[symop.transform_k(bk)  for bk in bk_latt] for symop in self.spacegroup.symmetries])
         assert np.allclose(bk_latt_transformed, np.round(bk_latt_transformed)), f"the symmetry operations do not leave the b_k as integers\n" \
             f"b_k = {bk_latt}\n" \
@@ -752,87 +855,9 @@ class SymmetrizerSAWF:
                 else:
                     raise ValueError(f"after applying symmetry operation{isym} to the bk vectors, none of the transformed vectors match the original vector {bk} ({ibk})\n"
                         f"b_k transformed = {bk_latt_transformed[isym]}\n")
-        # print ("bk_latt_map = \n ", bk_latt_map)
-
-        translations_cart = np.array([symop.translation @ self.spacegroup.real_lattice for symop in self.spacegroup.symmetries])
-        # print ("translations_cart = \n ", translations_cart)
-        # print (f"bk_cart = \n {mmn.bk_cart}")
-        # print( f"real_lattice = \n {self.spacegroup.real_lattice}")
-        kpoints_red = self.kpoints_all
-
-        maxerr = 0
-        for ikirr in range(self.NKirr):
-            ik = self.kptirr[ikirr]
-            for ib in range(nnb):
-                ikb = mmn.neighbours[ik][ib]
-                ikbirr = self.kpt2kptirr[ikb]
-                rindices = self.d_band_block_indices[ikbirr]
-
-                M = mmn.data[ik][ib]
-                for isym in range(self.Nsym):
-                    M_loc = M.copy()
-
-                    ik_sym = self.kptirr2kpt[ikirr, isym]
-                    if ik_sym not in mmn.data:
-                        continue
-                    ib_sym = bk_latt_map[isym, ib]
-
-                    if ikb in self.kptirr:
-                        rblocks = self.d_band_blocks_inverse[ikbirr][isym]
-                        factor = np.exp(-1j * (mmn.bk_cart[ib_sym] @ translations_cart[isym]))
-                        TR1 = False
-                        TR2 = self.time_reversals[isym]
-                        TR = self.time_reversals[isym]
-                    else:
-                        isym1 = self.kpt2kptirr_sym[ikb]
-                        isym2 = sym_product_table[isym, isym1]
-                        transl_diff = translations_diff[isym, isym1]
-                        if self.time_reversals[isym]:
-                            rblocks = [d1.conj() @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2])]
-                        else:
-                            rblocks = [d1 @ d2 for d1, d2 in zip(self.d_band_blocks[ikbirr][isym1], self.d_band_blocks_inverse[ikbirr][isym2])]
-
-                        extra_factor = np.exp(2j * np.pi * (kpoints_red[self.kptirr2kpt[ikbirr, isym2]] @ transl_diff)) * spinor_factors[isym, isym1]
-                        factor = np.exp(-1j * (mmn.bk_cart[ib_sym] @ (translations_cart[isym])))
-                        factor = factor * extra_factor
-                        TR1 = self.time_reversals[isym1]
-                        TR2 = self.time_reversals[isym2]
-                        TR = self.time_reversals[isym]
-
-
-                    if self.time_reversals[isym]:
-                        M_loc = M_loc.conj()
-
-                    M_loc = rotate_block_matrix(M_loc,
-                                   lblocks=self.d_band_blocks[ikirr][isym],
-                                   lindices=self.d_band_block_indices[ikirr],
-                                   rblocks=rblocks,
-                                   rindices=rindices, )
-
-                    M_loc = M_loc * factor
-                    M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
-
-                    M_loc = M_loc[b1:b2, b1:b2]
-
-                    # Mmax = np.max([np.abs(Mloc), np.abs(M_ref)], axis=0)
-                    # diff_phase = (np.angle(Mloc) - np.angle(M_ref)) / np.pi * 180 % 360
-                    # diff_phase[diff_phase > 355] -= 360
-                    # diff_phase = diff_phase[Mmax > 1e-3]
-
-                    diff = np.abs(M_loc - M_ref)
-                    err = np.max(diff)
-
-                    if err > warning_precision or verbose:
-                        print(("CORRECT :" if err < warning_precision else "ERROR   :") +
-                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {mmn.neighbours[ik_sym][ib_sym]}: err = {err}"
-                              f" TR = {TR}, TR1 = {TR1}, TR2 = {TR2}"
-                              # "" factor = {factor} M_loc=\n{arr_to_string(M_loc)}\nM_ref=\n{arr_to_string(M_ref)}\n Diff=\n{arr_to_string(diff)}"
-                                )
-
-
-                    maxerr = max(maxerr, err)
-        return maxerr
-
+                
+        return bk_latt_map
+        
 
 
 class VoidSymmetrizer(SymmetrizerSAWF):
@@ -859,23 +884,3 @@ class VoidSymmetrizer(SymmetrizerSAWF):
     def symmetrize_wannier_property(self, wannier_property):
         return wannier_property
 
-
-# copied from irrep for compatibility with its older versions
-try:
-    from irrep.utility import get_kpt_from_kptirr_isym
-except ImportError:
-    def get_kpt_from_kptirr_isym(kpt2kptirr, kptirr2kpt):
-        NKirr, Nsym = kptirr2kpt.shape
-        NK = kpt2kptirr.shape[0]
-        print(f"kpt_from_kptirr {NK=}, NKirr=, {Nsym=}")
-        kpt_from_kptirr_isym = -np.ones(NK, dtype=int)
-        for ik, ikirr in enumerate(kpt2kptirr):
-            for isym in range(Nsym):
-                if kptirr2kpt[ikirr, isym] == ik:
-                    kpt_from_kptirr_isym[ik] = isym
-                    break
-            else:
-                raise RuntimeError(f"No Symmetry operation maps irreducible "
-                                f"k-point {ikirr} to point {ik}, but kpt2kptirr[{ik}] = {ikirr}.")
-        print(f"returning {kpt_from_kptirr_isym}")
-        return kpt_from_kptirr_isym

@@ -110,7 +110,8 @@ class Wannier90data:
                           irreducible=None,
                           ecut_sym=100,
                            unitary_params=None,
-                          mp_grid=None,):
+                          mp_grid=None,
+                          irred_bk_only=True,):
         """
         Create a Wannier90data object from a bandstructure object
 
@@ -191,6 +192,8 @@ class Wannier90data:
             self.set_symmetrizer(symmetrizer)
             if "symmetrizer" in write_npz_list and not symmetrizer_read_ok:
                 symmetrizer.to_npz(seedname + ".symmetrizer.npz")
+        else:
+            symmetrizer = None
 
         if self.has_symmetrizer:
             kpt_latt = self.symmetrizer.kpoints_all
@@ -209,6 +212,7 @@ class Wannier90data:
             kpt2kptirr = self.symmetrizer.kpt2kptirr
             NK = np.prod(mp_grid)
         else:
+            irred_bk_only = False
             kptirr = None
             kpt_from_kptirr_isym = None
             kpt2kptirr = None
@@ -255,6 +259,8 @@ class Wannier90data:
                                kwargs_bandstructure={"normalize": normalize,
                                                      "kpt_latt_grid": kpt_latt,
                                                      "kpt2kptirr": kpt2kptirr,
+                                                     "symmetrizer": symmetrizer,
+                                                     "irred_bk_only": irred_bk_only,
                                                      "kpt_from_kptirr_isym": kpt_from_kptirr_isym} |
                                kwargs_bandstructure)
             self.set_file('mmn', mmn)

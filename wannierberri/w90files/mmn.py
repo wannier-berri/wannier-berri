@@ -266,6 +266,7 @@ class MMN(W90_file):
                            NK=None,
                            kpt_latt_grid=None,
                            symmetrizer=None,
+                           irred_bk_only=True,
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -291,7 +292,7 @@ class MMN(W90_file):
             kptirr = symmetrizer.kptirr
             kpt2kptirr = symmetrizer.kpt2kptirr
             kpt_from_kptirr_isym = symmetrizer.kpt_from_kptirr_isym
-            kpt_latt_grid = symmetrizer.kpt_latt_grid
+            kpt_latt_grid = symmetrizer.kpoints_all
         if kpt_latt_grid is None:
             kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
         mp_grid = np.array(grid_from_kpoints(kpt_latt_grid))
@@ -327,18 +328,18 @@ class MMN(W90_file):
 
         G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
         neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
-        for ikirr in kptirr:
+        for kirr in kptirr:
             for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[ikirr] + bk_latt[ib]
+                k_latt_int_nb = k_latt_int[kirr] + bk_latt[ib]
                 for ik2 in range(NK):
                     g = k_latt_int_nb - k_latt_int[ik2]
                     if np.all(g % mp_grid == 0):
-                        neighbours[ikirr][ib] = ik2
-                        G[ikirr][ib] = g // mp_grid
+                        neighbours[kirr][ib] = ik2
+                        G[kirr][ib] = g // mp_grid
                         break
                 else:
                     raise RuntimeError(
-                        f"Could not find a neighbour for k-point {ikirr} with k-lattice {k_latt_int[ikirr]} and "
+                        f"Could not find a neighbour for k-point {kirr} with k-lattice {k_latt_int[kirr]} and "
                         f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
@@ -353,21 +354,32 @@ class MMN(W90_file):
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
+        if symmetrizer is not None and irred_bk_only:
+            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bk_latt, neighbours)
+        else:
+            bkirr = [np.arange(NNB) for _ in kptirr]
+            bk2bkirr = np.array([np.arange(NNB) for _ in kptirr])
+            bk_from_bk_irr_isym = np.zeros((len(kptirr), NNB), dtype=int)
+            bk_map = None
 
 
-        for ikirr in kptirr:
-            for ib, ik2 in enumerate(neighbours[ikirr]):
-                ik2 = int(ik2)
-                if ik2 not in kpoints_dict_all:
-                    # if use_paw:
-                    #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
-                    isym = kpt_from_kptirr_isym[ik2]
-                    ik_origin = kpt2kptirr[ik2]
-                    kp_origin = kpoints_sel[ik_origin]
-                    symop = bandstructure.spacegroup.symmetries[isym]
-                    kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
-                                                    k_new=kpt_latt_grid[ik2])
-                    kpoints_dict_all[ik2] = kp2
+        for ikirr, kirr in enumerate(kptirr):
+            for ib, ik2 in enumerate(neighbours[kirr]):
+                if ib in bkirr[ikirr]:
+                    ik2 = int(ik2)
+                    if ik2 not in kpoints_dict_all:
+                        # if use_paw:
+                        #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
+                        isym = kpt_from_kptirr_isym[ik2]
+                        print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
+                        ik_origin = kpt2kptirr[ik2]
+                        kp_origin = kpoints_sel[ik_origin]
+                        symop = bandstructure.spacegroup.symmetries[isym]
+                        kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
+                                                        k_new=kpt_latt_grid[ik2])
+                        kpoints_dict_all[ik2] = kp2    
+
+                    
 
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
         if use_paw:
@@ -378,15 +390,34 @@ class MMN(W90_file):
             wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
 
         # but are needed for the finite-difference scheme (obtained by symmetry)
-        for ikirr in kptirr:
-            bra = wavefunc_all.get_WF(ikirr, conj=True)
-            overlaps = wavefunc_all.product(bra, bra)
-            overlaps_err = np.max(abs((overlaps - np.eye(NB))))
-            print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
-            for ib, ik2 in enumerate(neighbours[ikirr]):
-                ket = wavefunc_all.get_WF(ik2, conj=False, G=G[ikirr][ib])
-                data[ikirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
-
+        for ikirr, kirr in enumerate(kptirr):
+            bra = wavefunc_all.get_WF(kirr, conj=True)
+            # overlaps = wavefunc_all.product(bra, bra)
+            # overlaps_err = np.max(abs((overlaps - np.eye(NB))))
+            # print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
+            print(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
+            ib_is_set = np.zeros(NNB, dtype=bool)
+            for ib in bkirr[ikirr]:  # only calculate for irreducible bk points
+                assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
+                ik2 = int(neighbours[kirr][ib])
+                ket = wavefunc_all.get_WF(ik2, conj=False, G=G[kirr][ib])
+                data[kirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
+                ib_is_set[ib] = True
+            
+            for ib, ik2 in enumerate(neighbours[kirr]):
+                if ib not in bkirr[ikirr]:
+                    assert ib_is_set[ib] == False, f"bk index {ib} for k-point {kirr} is already set."
+                    ib_origin = bk2bkirr[ikirr][ib]
+                    ikb_origin = int(neighbours[kirr][ib_origin])
+                    isym = bk_from_bk_irr_isym[ikirr][ib]
+                    assert symmetrizer.kptirr2kpt[ikirr,isym] == kirr
+                    # print(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
+                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikikirr}, ib={ib_origin}, ikb={ikb_origin}")
+                    data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin], 
+                                                                         isym=isym, ikirr=ikirr, ib=ib_origin, 
+                                                                         ikb=ikb_origin, 
+                                                                         bk_latt_map=bk_map, bk_cart=bk_cart)
+                    ib_is_set[ib] = True
         return MMN(
             data=data,
             NK=NK,
