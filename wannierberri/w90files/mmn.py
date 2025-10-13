@@ -261,11 +261,12 @@ class MMN(W90_file):
                            param_search_bk={},
                            selected_kpoints=None,
                            kptirr=None,
-                           kpt_from_kptirr_isym=None,
-                           kpt2kptirr=None,
+                        #    kpt_from_kptirr_isym=None,
+                        #    kpt2kptirr=None,
                            NK=None,
-                           kpt_latt_grid=None,
+                        #    kpt_latt_grid=None,
                            symmetrizer=None,
+                           irreducible=False,
                            irred_bk_only=True,
                            ):
         """
@@ -288,20 +289,24 @@ class MMN(W90_file):
         MMN or np.ndarray
             the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
         """
-        if symmetrizer is not None:
-            kptirr = symmetrizer.kptirr
+        if irreducible:
+            assert symmetrizer is not None, "Symmetrizer should be provided if irreducible is True"
+        if irreducible:
+            if kptirr is None:
+                kptirr = symmetrizer.kptirr
             kpt2kptirr = symmetrizer.kpt2kptirr
             kpt_from_kptirr_isym = symmetrizer.kpt_from_kptirr_isym
             kpt_latt_grid = symmetrizer.kpoints_all
-        if kpt_latt_grid is None:
+        else:
             kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
         mp_grid = np.array(grid_from_kpoints(kpt_latt_grid))
+        k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
         print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
-        NK = kpt_latt_grid.shape[0]
+        # NK = kpt_latt_grid.shape[0]
         identity_operation = bandstructure.spacegroup.get_identity_operation()
 
         spinor = bandstructure.spinor
@@ -323,7 +328,6 @@ class MMN(W90_file):
         NNB = len(wk)
         NB = bandstructure.num_bands
 
-        k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
         bk_red = bk_latt / mp_grid[None, :]
 
         G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
@@ -395,7 +399,7 @@ class MMN(W90_file):
             # overlaps = wavefunc_all.product(bra, bra)
             # overlaps_err = np.max(abs((overlaps - np.eye(NB))))
             # print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
-            print(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
+            # print(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
             ib_is_set = np.zeros(NNB, dtype=bool)
             for ib in bkirr[ikirr]:  # only calculate for irreducible bk points
                 assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."

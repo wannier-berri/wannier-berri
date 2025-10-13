@@ -307,6 +307,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                                 include_TR=True,
                                 select_grid=select_grid,
                                 )
+    print (f"kpoints in bandstructure: {[KP.k for KP in bandstructure.kpoints]}")
 
     norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
     if norms.ndim == 3:
@@ -329,6 +330,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                          unk_grid=(18,) * 3,
                          irreducible=irreducible,
                          )
+    print(f"kpoints in w90data: {w90data.get_file('mmn').data.keys()} irreducible={w90data.irreducible} /{irreducible}")
 
 
     if wannierise:
@@ -429,24 +431,6 @@ def test_create_w90files_Fe_reduce222():
                              select_grid=(2, 2, 2))
 
 
-@pytest.mark.parametrize("include_TR", [True, False])
-def _test_create_sawf_Fe_444(check_sawf, include_TR):
-    "this test is disabled, because the necessary data is not included into repo, but need to be generated with QE"
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "pwscf")
-
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
-    pos = [[0, 0, 0]]
-    proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
-    proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
-    proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
-    sawf_new.set_D_wann_from_projections(projections=[proj_s, proj_p, proj_d])
-    tmp_sawf_path = os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}.sawf.npz")
-    sawf_new.to_npz(tmp_sawf_path)
-    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", f"Fe_TR={include_TR}.sawf.npz"))
-    check_sawf(sawf_new, sawf_ref)
-
 
 @pytest.mark.parametrize("ispin", [0, 1])
 def test_create_w90files_Fe_gpaw(ispin):
@@ -478,7 +462,6 @@ def test_create_w90files_Fe_gpaw(ispin):
     mmn = w90files.get_file("mmn")
     symmetrizer = w90files.get_file("symmetrizer")
     print (f"kpt_from_kptirr_isym = {symmetrizer.kpt_from_kptirr_isym}")
-    return
     check = symmetrizer.check_mmn(mmn, warning_precision=1e-4, ignore_upper_bands=-20)
     acc = 0.002  # because gpaw was with symmetry off
     assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"

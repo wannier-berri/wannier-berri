@@ -257,11 +257,13 @@ class Wannier90data:
                                write_npz="mmn" in write_npz_list,
                                bandstructure=bandstructure,
                                kwargs_bandstructure={"normalize": normalize,
-                                                     "kpt_latt_grid": kpt_latt,
-                                                     "kpt2kptirr": kpt2kptirr,
+                                                    #  "kpt_latt_grid": kpt_latt,
+                                                    #  "kpt2kptirr": kpt2kptirr,
                                                      "symmetrizer": symmetrizer,
                                                      "irred_bk_only": irred_bk_only,
-                                                     "kpt_from_kptirr_isym": kpt_from_kptirr_isym} |
+                                                     "irreducible": self.irreducible,
+                                                    #  "kpt_from_kptirr_isym": kpt_from_kptirr_isym
+                                                    } |
                                kwargs_bandstructure)
             self.set_file('mmn', mmn)
         if "spn" in files:
