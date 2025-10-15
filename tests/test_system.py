@@ -62,7 +62,13 @@ def check_system():
             if key in exclude_properties:
                 return
             print(f"checking {key} prec={prec} XX={XX}", end="")
-            data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
+            try:
+                data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
+            except FileNotFoundError as err:
+                if XX:
+                    data_ref = np.load(os.path.join(REF_DIR, "systems", name, "_XX_R_" + key + ".npz"))['arr_0']
+                else:
+                    raise err
             if XX:
                 data = system.get_R_mat(key)
                 if legacy:
@@ -543,4 +549,42 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
         matrices=['Ham', 'AA', 'SS'],
         sort_iR=True,
         legacy=True,
+    )
+
+
+def test_system_Fe_gpaw_up(check_system, system_Fe_gpaw_up):
+    check_system(
+        system_Fe_gpaw_up, "Fe_gpaw_up",
+        matrices=['Ham', 'AA'],
+    )
+
+
+def test_system_Fe_gpaw_dw(check_system, system_Fe_gpaw_dw):
+    check_system(
+        system_Fe_gpaw_dw, "Fe_gpaw_dw",
+        matrices=['Ham', 'AA'],
+    )
+
+
+def test_system_Fe_gpaw_soc_z(check_system, system_Fe_gpaw_soc_z):
+    check_system(
+        system_Fe_gpaw_soc_z, "Fe_gpaw_soc_theta0.00_phi0.00_alpha1.00",
+        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+    )
+
+
+def test_system_Fe_gpaw_soc_111(check_system, system_Fe_gpaw_soc_111):
+    check_system(
+        system_Fe_gpaw_soc_111, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00",
+        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+    )
+
+
+def test_system_Fe_gpaw_soc_angle(check_system, system_Fe_gpaw_soc_angle):
+    check_system(
+        system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
+        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )

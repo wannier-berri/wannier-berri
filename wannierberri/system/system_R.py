@@ -155,7 +155,7 @@ class System_R(System):
             if self.has_R_mat(k):
                 return True
 
-    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
+    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False, num_wann=None):
         """
         Set real-space matrix specified by `key`. Either diagonal, specific R or full matrix.  Useful for model calculations
 
@@ -180,20 +180,25 @@ class System_R(System):
         Hermitian : bool
             force the value to be Hermitian (only if all vectors are set at once)
         """
+        if num_wann is None:
+            num_wann = self.num_wann
+            range_wann = self.range_wann
+        else:
+            range_wann = np.arange(num_wann)
         if diag:
-            assert value.shape[0] == self.num_wann, f"the 0th dimension for 'diag=True' of value should be {self.num_wann}, found {value.shape[0]}"
+            assert value.shape[0] == num_wann, f"the 0th dimension for 'diag=True' of value should be {num_wann}, found {value.shape[0]}"
             if R is None:
                 R = [0, 0, 0]
-            XX = np.zeros((self.num_wann, self.num_wann) + value.shape[1:], dtype=value.dtype)
-            XX[self.range_wann, self.range_wann] = value
+            XX = np.zeros((num_wann, num_wann) + value.shape[1:], dtype=value.dtype)
+            XX[range_wann, range_wann] = value
             self.set_R_mat(key, XX, R=R, reset=reset, add=add)
         elif R is not None:
-            assert value.shape[0:2] == (self.num_wann, self.num_wann), f"the 0th and 1st dimensions of value for R={R}!=None should be nW={self.num_wann}, found {value.shape[0:2]}"
-            XX = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann) + value.shape[2:], dtype=value.dtype)
+            assert value.shape[0:2] == (num_wann, num_wann), f"the 0th and 1st dimensions of value for R={R}!=None should be nW={num_wann}, found {value.shape[0:2]}"
+            XX = np.zeros((self.rvec.nRvec, num_wann, num_wann) + value.shape[2:], dtype=value.dtype)
             XX[self.rvec.iR(R), :, :] = value
             self.set_R_mat(key, XX, reset=reset, add=add)
         else:
-            assert value.shape[1:3] == (self.num_wann, self.num_wann), f"for R=None  the 1st and 2nd dimensions should be nw={self.num_wann}, found {value.shape[1:3]}"
+            assert value.shape[1:3] == (num_wann, num_wann), f"for R=None  the 1st and 2nd dimensions should be nw={num_wann}, found {value.shape[1:3]}"
             if hasattr(self, 'rvec'):
                 assert value.shape[0] == self.rvec.nRvec, f"the 0th dimension of value should be nR={self.rvec.nRvec}, found {value.shape[0]}"
             if Hermitian:

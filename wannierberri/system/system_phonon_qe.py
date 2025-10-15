@@ -102,7 +102,7 @@ class System_Phonon_QE(System_w90):
                     dyn_mat = 0.5 * (dyn_mat + dyn_mat.T.conj())
                     dynamical_mat.append(dyn_mat)
                     q_points.append(q)
-                    
+
         self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
         self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
 

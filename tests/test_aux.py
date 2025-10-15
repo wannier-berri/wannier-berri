@@ -51,5 +51,5 @@ def test_vectorized_matrix_prod():
 def test_arr_to_string(fmt):
     a = np.array([[1.123456789, 2.123456789], [3.123456789, 4.123456789]])
     s = arr_to_string(a, fmt=fmt)
-    expected = "  1.1235  2.1235\n  3.1235  4.1235"
+    expected = "  1.1235   2.1235 \n  3.1235   4.1235 "
     assert s == expected, f"Got: \n{s}, expected: \n{expected}"

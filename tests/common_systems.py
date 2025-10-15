@@ -15,7 +15,7 @@ from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
 from wannierberri.system.system_soc import SystemSOC
-from .common import ROOT_DIR
+from .common import OUTPUT_DIR, ROOT_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
@@ -308,6 +308,9 @@ def get_system_Fe_W90_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw
         #                     magmom=[[np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]]
         #                     )
         system_soc.set_pointgroup(spacegroup=mg)
+        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}")
+        os.makedirs(os.path.dirname(path_save), exist_ok=True)
+        system_soc.save_npz(path_save)
         return system_soc
     return _inner
 

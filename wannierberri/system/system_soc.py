@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 from ..utility import cached_einsum
@@ -19,7 +20,9 @@ class SystemSOC(System_R):
                  system_up,
                  system_down=None,
                  axis=(0, 0, 1),
+                 silent=True
                  ):
+        self.silent = silent
         assert isinstance(system_up, System_R), f"system_up must be an instance of System_R, got {type(system_up)}"
         self.system_up = system_up
         assert not system_up.is_phonon, "SystemSOC does not support phonons"
@@ -53,7 +56,6 @@ class SystemSOC(System_R):
         self.pointgroup = system_up.pointgroup
         self.force_internal_terms_only = any(
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
-        self.soc_R = None  # to be set later
         self.rvec = None
         self._XX_R = dict()
         self.has_soc = False
@@ -90,14 +92,11 @@ class SystemSOC(System_R):
 
         # chack number of spin channels
         nspin = soc.nspin
+        self.nspin = nspin
         print(f"nspin in SOC: {nspin}")
         if nspin == 1:
-            def index_spin(s):
-                return 0
             chk_list = [chk_up]
         elif nspin == 2:
-            def index_spin(s):
-                return s
             assert chk_down is not None, "chk_down must be provided for nspin=2 SOC"
             assert chk_up.num_kpts == chk_down.num_kpts, f"Number of k-points must match for up and down systems ({chk_up.num_kpts} != {chk_down.num_kpts})"
             assert np.all(chk_up.mp_grid == chk_down.mp_grid)
@@ -106,7 +105,7 @@ class SystemSOC(System_R):
 
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
         overlap_q_H = soc.overlap
-        h_soc = soc.data
+        dV_soc = soc.data
 
         if overlap_q_H is None:
             eye = np.eye(chk_up.num_bands, dtype=complex)
@@ -128,37 +127,100 @@ class SystemSOC(System_R):
         else:
             raise NotImplementedError("kptirr and weights_k are not implemented yet")
 
-        soc_q_W = np.zeros((NK, self.num_wann, self.num_wann), dtype=complex)
-        ss_q_W = np.zeros((NK, self.num_wann, self.num_wann, 3), dtype=complex)
 
-        S_ssv = SOC.get_S_ssv(theta=theta, phi=phi)
-        C_ss = SOC.get_C_ss(theta=theta, phi=phi)
         rng = np.arange(self.num_wann_scalar) * 2
 
-        for ik, w in zip(kptirr, weights_k):
-            v = [chk.v_matrix[ik] for chk in chk_list]
-            vt = [v_.T.conj() for v_ in v]
-            for i in range(2):
-                i1 = index_spin(i)
-                for j in range(2):
-                    j1 = index_spin(j)
-                    h_loc = h_soc[ik][i1, j1][:, :, selected_bands_list[i], :][:, :, :, selected_bands_list[j]]
-                    h_loc = cached_einsum("abmn,a,b->mn", h_loc, C_ss[:, i].conj(), C_ss[:, j])
-                    soc_q_W[ik, i::2, j::2] = w * (vt[i1] @ h_loc @ v[j1])
-                    # Spin operator
-                    if i == j:
-                        ss_q_W[ik, i + rng, i + rng, :] = w * S_ssv[i, j, None, :]
-                    elif i < j:  # the (i=0,j=1) case
-                        if nspin == 2:
-                            overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
-                            ss_q_W[ik, ::2, 1::2, :] = 2 * (vt[0] @ overlap_loc @ v[1])[:, :, None] * (w * S_ssv[0, 1, :])  # factor 2 because we use Hermiticity later
-                        else:
-                            ss_q_W[ik, rng, 1 + rng, :] = (2 * w) * S_ssv[0, 1, None, :]  # factor 2 because we use Hermiticity later
-        soc_q_W = (soc_q_W + soc_q_W.transpose(0, 2, 1).conj()) / 2.0
-        ss_q_W = (ss_q_W + ss_q_W.transpose(0, 2, 1, 3).conj()) / 2.0
-
-        self.soc_R = self.rvec.q_to_R(soc_q_W) * alpha_soc
-        self.set_R_mat('SS', self.rvec.q_to_R(ss_q_W))
-
+        for i1 in range(nspin):
+            sel_i = selected_bands_list[i1]
+            for j1 in range(i1, nspin):
+                sel_j = selected_bands_list[j1]
+                dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
+                for ik, w in zip(kptirr, weights_k):
+                    vt = chk_list[i1].v_matrix[ik].T.conj()
+                    v = chk_list[j1].v_matrix[ik]
+                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
+                if i1 == j1:
+                    assert np.allclose(dV_soc_wann_ik, dV_soc_wann_ik.transpose(0, 2, 1, 3).conj()), "The diagonal spin components of SOC should be Hermitian"
+                    # dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
+                key = f"dV_soc_wann_{i1}_{j1}"
+                mat = self.rvec.q_to_R(dV_soc_wann_ik, select_left=rng + i1, select_right=rng + j1)
+                self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
+                # if i1!=j1:
+                #     key = f"dV_soc_wann_{j1}_{i1}"
+                #     mat = self.rvec.q_to_R(dV_soc_wann_ik.conj().transpose(0,2,1,3), select_left=rng+j1, select_right=rng+i1)
+                #     self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
+        if nspin == 2:
+            overlap_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar), dtype=complex)
+            for ik, w in zip(kptirr, weights_k):
+                vt = chk_list[0].v_matrix[ik].T.conj()
+                v = chk_list[1].v_matrix[ik]
+                overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
+                overlap_ik[ik] = w * (vt @ overlap_loc @ v)
+            overlap_Rud = self.rvec.q_to_R(overlap_ik, select_left=rng, select_right=rng + 1)
+            self.set_R_mat('overlap_up_down', overlap_Rud, num_wann=self.num_wann_scalar)
         self.has_soc = True
-        return self.soc_R
+        return self.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+
+
+    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0):
+        assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
+        pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
+
+        nRvec = self.rvec.nRvec
+        soc_R_W = np.zeros((nRvec, self.num_wann, self.num_wann), dtype=complex)
+        soc_R_W[:, ::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 0, :])
+        if self.nspin == 2:
+            soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_1'), pauli_rotated[1, 1, :])
+            dV01 = self.get_R_mat('dV_soc_wann_0_1')
+            soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", dV01, pauli_rotated[0, 1, :])
+            # soc_R_W[:,1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_0'), pauli_rotated[1, 0, :])
+            soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.rvec.conj_XX_R(dV01), pauli_rotated[1, 0, :])
+        elif self.nspin == 1:
+            soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])
+            soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 1, :])
+            soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 0, :])
+        self.set_R_mat('Ham_SOC', soc_R_W * alpha_soc)  
+
+        # Spin operator
+        rng = np.arange(self.num_wann_scalar) * 2
+        iR0 = self.rvec.iR0
+        SS_R_W = np.zeros((nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+        SS_R_W[iR0, rng, rng, :] = pauli_rotated[None, 0, 0, None, None, :]
+        SS_R_W[iR0, rng + 1, rng + 1, :] = pauli_rotated[None, 1, 1, None, None, :]
+        if self.nspin == 2:
+            overlap = self.get_R_mat('overlap_up_down')
+            SS_R_W[:, 0::2, 1::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 0, 1, None, None, :]
+            overlap = self.rvec.conj_XX_R(overlap)
+            SS_R_W[:, 1::2, 0::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 1, 0, None, None, :]
+        elif self.nspin == 1:
+            SS_R_W[iR0, rng, rng + 1, :] = pauli_rotated[None, 0, 1, None, None, :]
+            SS_R_W[iR0, rng + 1, rng, :] = pauli_rotated[None, 1, 0, None, None, :]
+        else:
+            raise ValueError(f"Invalid nspin: {self.nspin}")
+
+        self.set_R_mat('SS', SS_R_W)
+
+        return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
+    
+    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+        if not self.silent:
+            print(f"Saving SystemSOC to {path}")
+        super().save_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        self.system_up.save_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+        if not self.up_down_same:
+            self.system_down.save_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+
+    def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
+        if not self.silent:
+            print(f"Loading SystemSOC from {path}")
+        super().load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        self.system_up = System_R().load_npz(path=os.path.join(path, "system_up"), load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        path_down = os.path.join(path, "system_down")
+        if os.path.exists(path_down):
+            self.system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+            self.up_down_same = False
+        else:
+            self.system_down = self.system_up
+            self.up_down_same = True
+        return self
+    

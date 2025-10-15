@@ -45,7 +45,7 @@ class Rvectors:
 
         self._NKFFTrec = None
         if iRvec is not None:
-            self.iRvec = np.array(iRvec)
+            self.iRvec = np.array(iRvec, dtype=int)
 
         self.dim = dim
         self.fft_R2k_set = False
@@ -93,7 +93,7 @@ class Rvectors:
             self.iRvec_list.append(iRvec)
             self.Ndegen_list.append(Ndegen)
             self.iRvec_mod_list.append(iRvec_mod)
-        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))))
+        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))), dtype=int)
         self.clear_cached()
         for i, iRvec in enumerate(self.iRvec_list):
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
@@ -177,7 +177,7 @@ class Rvectors:
         return mapx, mapy, mapz, weights
 
 
-    def remap_XX_from_grid_to_list_R(self, XX_R_grid):
+    def remap_XX_from_grid_to_list_R(self, XX_R_grid, select_left=None, select_right=None):
         """
         remap the matrix from the grid to the list of R-vectors,
         taking into account the wannier centers
@@ -192,10 +192,21 @@ class Rvectors:
         XX_R_new : np.ndarray(shape=(num_wann_l, num_wann_r, nRvec, ...))
             The matrix in the list of R-vectors representation.
         """
+        assert (select_left is None) == (select_right is None), "select_left and select_right should be both None or both not None"
+
         mapx, mapy, mapz, weights = self.get_remapper_XX_from_grid_to_list_R
+        if select_left is None:
+            nl = self.nshifts_left
+            nr = self.nshifts_right
+        else:
+            nl = len(select_left)
+            nr = len(select_right)
+            mapx = mapx[:, select_left, :][:, :, select_right]
+            mapy = mapy[:, select_left, :][:, :, select_right]
+            mapz = mapz[:, select_left, :][:, :, select_right]
+            weights = weights[:, select_left, :][:, :, select_right]
+
         assert XX_R_grid.shape[0:3] == tuple(self.mp_grid), f"XX_R_grid {XX_R_grid.shape} should be {self.mp_grid}"
-        nl = self.nshifts_left
-        nr = self.nshifts_right
         assert (nl == 1) or (XX_R_grid.shape[3] == nl), f"XX_R_grid {XX_R_grid.shape} should have {nl} lWFs"
         assert (nr == 1) or (XX_R_grid.shape[4] == nr), f"XX_R_grid {XX_R_grid.shape} should have {nr} rWFs"
         XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
@@ -516,14 +527,14 @@ class Rvectors:
         self.fft_q2R_set = True
 
 
-    def q_to_R(self, AA_q):
+    def q_to_R(self, AA_q, select_left=None, select_right=None):
         assert self.fft_q2R_set, "FFT_q_to_R is not set, please set it first using set_fft_q_to_R"
         shapeA = AA_q.shape[1:]  # remember the shapes after q
         AA_q_mp = np.zeros(tuple(self.mp_grid) + shapeA, dtype=complex)
         for i, k in enumerate(self.kpt_mp_grid):
             AA_q_mp[k] = AA_q[i]
         AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
-        AA_q_mp = self.remap_XX_from_grid_to_list_R(AA_q_mp)
+        AA_q_mp = self.remap_XX_from_grid_to_list_R(AA_q_mp, select_left=select_left, select_right=select_right)
         return AA_q_mp
 
     def qq_to_RR(self, AA_qq):

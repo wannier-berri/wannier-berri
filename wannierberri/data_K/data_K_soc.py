@@ -22,7 +22,7 @@ class Data_K_soc(Data_K_R):
                                         **parameters)
         self.has_soc = system.has_soc
         if self.has_soc:
-            soc_r_dk = self.rvec.apply_expdK(system.soc_R)
+            soc_r_dk = self.rvec.apply_expdK(system.get_R_mat('Ham_SOC'))
             self.set_R_mat('soc', soc_r_dk)
 
     @cached_property
