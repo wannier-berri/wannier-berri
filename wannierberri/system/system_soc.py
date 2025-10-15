@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 from ..utility import cached_einsum
@@ -55,7 +56,6 @@ class SystemSOC(System_R):
         self.pointgroup = system_up.pointgroup
         self.force_internal_terms_only = any(
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
-        self.soc_R = None  # to be set later
         self.rvec = None
         self._XX_R = dict()
         self.has_soc = False
@@ -179,7 +179,7 @@ class SystemSOC(System_R):
             soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])
             soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 1, :])
             soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 0, :])
-        self.soc_R = soc_R_W * alpha_soc
+        self.set_R_mat('Ham_SOC', soc_R_W * alpha_soc)  
 
         # Spin operator
         rng = np.arange(self.num_wann_scalar) * 2
@@ -200,4 +200,27 @@ class SystemSOC(System_R):
 
         self.set_R_mat('SS', SS_R_W)
 
-        return self.soc_R
+        return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
+    
+    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+        if not self.silent:
+            print(f"Saving SystemSOC to {path}")
+        super().save_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        self.system_up.save_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+        if not self.up_down_same:
+            self.system_down.save_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+
+    def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
+        if not self.silent:
+            print(f"Loading SystemSOC from {path}")
+        super().load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        self.system_up = System_R().load_npz(path=os.path.join(path, "system_up"), load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        path_down = os.path.join(path, "system_down")
+        if os.path.exists(path_down):
+            self.system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+            self.up_down_same = False
+        else:
+            self.system_down = self.system_up
+            self.up_down_same = True
+        return self
+    
