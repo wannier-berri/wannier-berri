@@ -197,14 +197,14 @@ class SymmetrizerSAWF:
                     bkirr[ikirr].append(ib)
                     for isym in isym_little[ikirr]:
                         ib_rot = bk_map[isym, ib]
-                        if bk2bkirr[ikirr, ib_rot] <0:
+                        if bk2bkirr[ikirr, ib_rot] < 0:
                             bk2bkirr[ikirr, ib_rot] = ib
                             bk_from_bk_irr_isym[ikirr][ib_rot] = isym
                         if ib_rot != ib:
                             bk_is_irreducible[ikirr, ib_rot] = False
             assert sum(bk_is_irreducible[ikirr]) == len(bkirr[ikirr]), f"Reordering failed for k-point {ikirr}. Expected {len(bkirr[ikirr])} irreducible blocks, got {sum(bk_is_irreducible[ikirr])}"
         return bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map
-        
+
 
 
 
@@ -762,19 +762,19 @@ class SymmetrizerSAWF:
         bk_latt = mmn.bk_latt
 
         bk_latt_map = self.get_bk_map(bk_latt)
-        
-        
+
+
         maxerr = 0
         for ikirr in range(self.NKirr):
             ik = self.kptirr[ikirr]
             for ib in range(nnb):
                 ikb = mmn.neighbours[ik][ib]
-                
+
                 M = mmn.data[ik][ib]
                 for isym in range(self.Nsym):
                     ik_sym = int(self.kptirr2kpt[ikirr, isym])
                     ib_sym = int(bk_latt_map[isym, ib])
-        
+
                     if ik_sym not in mmn.data:
                         continue
                     print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
@@ -783,7 +783,7 @@ class SymmetrizerSAWF:
 
                     M_loc = M_loc[b1:b2, b1:b2]
 
-                    
+
                     diff = np.abs(M_loc - M_ref)
                     err = np.max(diff)
 
@@ -798,7 +798,7 @@ class SymmetrizerSAWF:
 
                     maxerr = max(maxerr, err)
         return maxerr
-    
+
     def transform_Mmn_kb(self, M, isym, ikirr, ib, ikb, bk_latt_map, bk_cart):
         M_loc = M.copy()
         kpoints_red = self.kpoints_all
@@ -855,9 +855,9 @@ class SymmetrizerSAWF:
                 else:
                     raise ValueError(f"after applying symmetry operation{isym} to the bk vectors, none of the transformed vectors match the original vector {bk} ({ibk})\n"
                         f"b_k transformed = {bk_latt_transformed[isym]}\n")
-                
+
         return bk_latt_map
-        
+
 
 
 class VoidSymmetrizer(SymmetrizerSAWF):
@@ -883,4 +883,3 @@ class VoidSymmetrizer(SymmetrizerSAWF):
 
     def symmetrize_wannier_property(self, wannier_property):
         return wannier_property
-

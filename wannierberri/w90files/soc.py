@@ -97,7 +97,7 @@ class SOC(W90_file):
         C_ss = cls.get_C_ss(theta, phi)
         return cached_einsum('ai,abc,bj->ijc', C_ss.conj(), pauli_xyz, C_ss)
 
-        
+
     @classmethod
     def get_S_ssv(cls, theta=0, phi=0):
         """
@@ -149,7 +149,7 @@ class SOC(W90_file):
 
 
         dV_soc = np.zeros((nk, nspin, nspin, 3, m, m), complex)
-        
+
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
             for a, H_ssii in dVL_avii.items():
@@ -160,7 +160,7 @@ class SOC(W90_file):
                         for t in range(3):
                             dV_soc[q, s1, s2, t] += P1_mi @ H_ssii[t] @ P2_mi
         dV_soc *= Hartree
-        
+
         if nspin == 2 and calc_overlap:
             overlap = np.zeros((nk, m, m), complex)
             alpha = calc.wfs.gd.dv / calc.wfs.gd.N_c.prod()

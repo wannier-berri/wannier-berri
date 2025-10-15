@@ -307,7 +307,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                                 include_TR=True,
                                 select_grid=select_grid,
                                 )
-    print (f"kpoints in bandstructure: {[KP.k for KP in bandstructure.kpoints]}")
+    print(f"kpoints in bandstructure: {[KP.k for KP in bandstructure.kpoints]}")
 
     norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
     if norms.ndim == 3:
@@ -461,7 +461,7 @@ def test_create_w90files_Fe_gpaw(ispin):
     )
     mmn = w90files.get_file("mmn")
     symmetrizer = w90files.get_file("symmetrizer")
-    print (f"kpt_from_kptirr_isym = {symmetrizer.kpt_from_kptirr_isym}")
+    print(f"kpt_from_kptirr_isym = {symmetrizer.kpt_from_kptirr_isym}")
     check = symmetrizer.check_mmn(mmn, warning_precision=1e-4, ignore_upper_bands=-20)
     acc = 0.002  # because gpaw was with symmetry off
     assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"

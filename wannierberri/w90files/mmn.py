@@ -381,9 +381,9 @@ class MMN(W90_file):
                         symop = bandstructure.spacegroup.symmetries[isym]
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
                                                         k_new=kpt_latt_grid[ik2])
-                        kpoints_dict_all[ik2] = kp2    
+                        kpoints_dict_all[ik2] = kp2
 
-                    
+
 
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
         if use_paw:
@@ -407,20 +407,20 @@ class MMN(W90_file):
                 ket = wavefunc_all.get_WF(ik2, conj=False, G=G[kirr][ib])
                 data[kirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
                 ib_is_set[ib] = True
-            
+
             for ib, ik2 in enumerate(neighbours[kirr]):
                 if ib not in bkirr[ikirr]:
-                    assert ib_is_set[ib] == False, f"bk index {ib} for k-point {kirr} is already set."
+                    assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
                     ib_origin = bk2bkirr[ikirr][ib]
                     ikb_origin = int(neighbours[kirr][ib_origin])
                     isym = bk_from_bk_irr_isym[ikirr][ib]
-                    assert symmetrizer.kptirr2kpt[ikirr,isym] == kirr
+                    assert symmetrizer.kptirr2kpt[ikirr, isym] == kirr
                     # print(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
                     # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikikirr}, ib={ib_origin}, ikb={ikb_origin}")
-                    data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin], 
-                                                                         isym=isym, ikirr=ikirr, ib=ib_origin, 
-                                                                         ikb=ikb_origin, 
-                                                                         bk_latt_map=bk_map, bk_cart=bk_cart)
+                    data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin],
+                                                                        isym=isym, ikirr=ikirr, ib=ib_origin,
+                                                                        ikb=ikb_origin,
+                                                                        bk_latt_map=bk_map, bk_cart=bk_cart)
                     ib_is_set[ib] = True
         return MMN(
             data=data,

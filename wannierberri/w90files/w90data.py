@@ -208,14 +208,14 @@ class Wannier90data:
             selected_kpoints = None
         if irreducible:
             kptirr = self.symmetrizer.kptirr
-            kpt_from_kptirr_isym = self.symmetrizer.kpt_from_kptirr_isym
-            kpt2kptirr = self.symmetrizer.kpt2kptirr
+            # kpt_from_kptirr_isym = self.symmetrizer.kpt_from_kptirr_isym
+            # kpt2kptirr = self.symmetrizer.kpt2kptirr
             NK = np.prod(mp_grid)
         else:
             irred_bk_only = False
             kptirr = None
-            kpt_from_kptirr_isym = None
-            kpt2kptirr = None
+            # kpt_from_kptirr_isym = None
+            # kpt2kptirr = None
             NK = None
         kwargs_bandstructure = {"selected_kpoints":
                         selected_kpoints, "kptirr": kptirr,
@@ -316,7 +316,7 @@ class Wannier90data:
                                       verbosity=verbosity,
                                       )
 
-        
+
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
         self.from_bandstructure(bandstructure,
                                 seedname=seedname,
