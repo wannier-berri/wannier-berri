@@ -40,7 +40,7 @@ setuptools.setup(
                         'matplotlib',
                         'sympy', 
                         'spglib>=2', 
-                        'irrep>=2.3.3', 
+                        'irrep>=2.4.0', 
                         'spgrep'
                       ],
      extras_require=extras_require,
