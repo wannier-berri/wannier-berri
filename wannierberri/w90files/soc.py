@@ -97,22 +97,17 @@ class SOC(W90_file):
         C_ss = cls.get_C_ss(theta, phi)
         return cached_einsum('ai,abc,bj->ijc', C_ss.conj(), pauli_xyz, C_ss)
 
-
-    @classmethod
-    def get_S_ssv(cls, theta=0, phi=0):
-        """
-        Get the spin Pauli matrices in the spinor basis defined by C_ss.
-        """
-        C_ss = cls.get_C_ss(theta, phi)
-        sx_ss = np.array([[0, 1], [1, 0]], complex)
-        sy_ss = np.array([[0, -1.0j], [1.0j, 0]], complex)
-        sz_ss = np.array([[1, 0], [0, -1]], complex)
-        s_vss = [
-            C_ss.T.conj() @ sx_ss @ C_ss,
-            C_ss.T.conj() @ sy_ss @ C_ss,
-            C_ss.T.conj() @ sz_ss @ C_ss,
-        ]
-        return np.array(s_vss).transpose(1, 2, 0)
+    # original code by Yaroslav
+    # def get_S_ssv(cls, theta=0, phi=0):
+        # sx_ss = np.array([[0, 1], [1, 0]], complex)
+        # sy_ss = np.array([[0, -1.0j], [1.0j, 0]], complex)
+        # sz_ss = np.array([[1, 0], [0, -1]], complex)
+        # s_vss = [
+        #     C_ss.T.conj() @ sx_ss @ C_ss,
+        #     C_ss.T.conj() @ sy_ss @ C_ss,
+        #     C_ss.T.conj() @ sz_ss @ C_ss,
+        # ]
+        # return np.array(s_vss).transpose(1, 2, 0)
 
 
     @classmethod

@@ -19,7 +19,9 @@ class SystemSOC(System_R):
                  system_up,
                  system_down=None,
                  axis=(0, 0, 1),
+                 silent=True
                  ):
+        self.silent = silent
         assert isinstance(system_up, System_R), f"system_up must be an instance of System_R, got {type(system_up)}"
         self.system_up = system_up
         assert not system_up.is_phonon, "SystemSOC does not support phonons"
@@ -147,8 +149,6 @@ class SystemSOC(System_R):
                 #     key = f"dV_soc_wann_{j1}_{i1}"
                 #     mat = self.rvec.q_to_R(dV_soc_wann_ik.conj().transpose(0,2,1,3), select_left=rng+j1, select_right=rng+i1)
                 #     self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
-
-
         if nspin == 2:
             overlap_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar), dtype=complex)
             for ik, w in zip(kptirr, weights_k):
@@ -164,7 +164,6 @@ class SystemSOC(System_R):
 
     def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0):
         assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
-        S_ssv = SOC.get_S_ssv(theta=theta, phi=phi)
         pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
 
         nRvec = self.rvec.nRvec
@@ -183,17 +182,19 @@ class SystemSOC(System_R):
         self.soc_R = soc_R_W * alpha_soc
 
         # Spin operator
+        rng = np.arange(self.num_wann_scalar) * 2
+        iR0 = self.rvec.iR0
         SS_R_W = np.zeros((nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
-        SS_R_W[:, 0::2, 0::2, :] = S_ssv[None, 0, 0, None, None, :]
-        SS_R_W[:, 1::2, 1::2, :] = S_ssv[None, 1, 1, None, None, :]
+        SS_R_W[iR0, rng, rng, :] = pauli_rotated[None, 0, 0, None, None, :]
+        SS_R_W[iR0, rng + 1, rng + 1, :] = pauli_rotated[None, 1, 1, None, None, :]
         if self.nspin == 2:
             overlap = self.get_R_mat('overlap_up_down')
-            SS_R_W[:, 0::2, 1::2, :] = overlap[:, :, :, None] * S_ssv[None, 0, 1, None, None, :]
+            SS_R_W[:, 0::2, 1::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 0, 1, None, None, :]
             overlap = self.rvec.conj_XX_R(overlap)
-            SS_R_W[:, 1::2, 0::2, :] = overlap[:, :, :, None] * S_ssv[None, 1, 0, None, None, :]
+            SS_R_W[:, 1::2, 0::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 1, 0, None, None, :]
         elif self.nspin == 1:
-            SS_R_W[:, 0::2, 1::2, :] = S_ssv[None, 0, 1, None, None, :]
-            SS_R_W[:, 1::2, 0::2, :] = S_ssv[None, 1, 0, None, None, :]
+            SS_R_W[iR0, rng, rng + 1, :] = pauli_rotated[None, 0, 1, None, None, :]
+            SS_R_W[iR0, rng + 1, rng, :] = pauli_rotated[None, 1, 0, None, None, :]
         else:
             raise ValueError(f"Invalid nspin: {self.nspin}")
 
