@@ -24,9 +24,9 @@ def num_cart_dim(key):
     """
     returns the number of cartesian dimensions of a matrix by key
     """
-    if key in ["Ham"]:
+    if key in ["Ham", "overlap_up_down"]:
         return 0
-    elif key in ["AA", "BB", "CC", "SS", "SH", "OO"]:
+    elif key in ["AA", "BB", "CC", "SS", "SH", "OO", "dV_soc_wann_0_0", "dV_soc_wann_0_1", "dV_soc_wann_1_1"]:
         return 1
     elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
         return 2
