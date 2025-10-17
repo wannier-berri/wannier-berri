@@ -819,8 +819,9 @@ class System_R(System):
             if the directory already exiists, it will be overwritten
         """
         logfile = self.logfile
-
+        
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
+        print(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 
@@ -832,12 +833,15 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
+            print(f"saving {key} to {fullpath}" )
             if key == 'iRvec':
                 val = self.rvec.iRvec
             else:
                 val = getattr(self, key)
             if key in ['pointgroup']:
                 np.savez(fullpath, **val.as_dict())
+            elif key in ['cell']:
+                np.savez(fullpath, **val)
             else:
                 np.savez(fullpath, val)
             logfile.write(" - Ok!\n")
@@ -888,6 +892,8 @@ class System_R(System):
 
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
+            elif key_loc == 'cell':
+                val = dict(**a)
             else:
                 val = a['arr_0']
 

@@ -42,7 +42,6 @@ class Wannier90DataSOC(Wannier90data):
         cell = {}
         magmoms_on_axis = calc.get_magnetic_moments()
         cell["magmoms_on_axis"] = group_numbers(magmoms_on_axis, precision=mag_symprec)
-        cell["lattice"] = calc.atoms.cell
         cell["typat"] = calc.atoms.get_atomic_numbers()
         cell["positions"] = calc.atoms.get_scaled_positions()
 

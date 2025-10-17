@@ -1392,13 +1392,13 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_up(system_Fe_gpaw_soc_up, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_up, suffix="up", use_symmetry=use_symmetry)
+def test_Fe_gpaw_up(system_Fe_gpaw_up, check_Fe_gpaw_soc, use_symmetry):
+    check_Fe_gpaw_soc(system_Fe_gpaw_up, suffix="up", use_symmetry=use_symmetry)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_dw(system_Fe_gpaw_soc_dw, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_dw, suffix="dw", use_symmetry=use_symmetry)
+def test_Fe_gpaw_dw(system_Fe_gpaw_dw, check_Fe_gpaw_soc, use_symmetry):
+    check_Fe_gpaw_soc(system_Fe_gpaw_dw, suffix="dw", use_symmetry=use_symmetry)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
@@ -1422,8 +1422,8 @@ def test_Fe_gpaw_soc_111_symmetrized(system_Fe_gpaw_soc_111_symmetrized, check_F
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_111_irred(system_Fe_gpaw_soc_111_irred, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_111_irred, suffix="111_irred", use_symmetry=use_symmetry)
+def test_Fe_gpaw_soc_111_irred(system_Fe_gpaw_soc_111, check_Fe_gpaw_soc, use_symmetry):
+    check_Fe_gpaw_soc(system_Fe_gpaw_soc_111, suffix="111_irred", use_symmetry=use_symmetry)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
