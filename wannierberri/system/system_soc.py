@@ -2,6 +2,8 @@ import os
 import warnings
 import numpy as np
 
+from ..symmetry.point_symmetry import PointGroup
+
 from ..utility import cached_einsum
 from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
@@ -54,7 +56,7 @@ class SystemSOC(System_R):
         self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
         self.wannier_centers_cart[1::2] = self.system_down.wannier_centers_cart
 
-        self.pointgroup = system_up.pointgroup
+        self.pointgroup = PointGroup()
         self.force_internal_terms_only = any(
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
         self.rvec = None
@@ -125,9 +127,6 @@ class SystemSOC(System_R):
         if kptirr is None:
             kptirr = np.arange(NK)
             weights_k = np.ones(NK, dtype=float)
-        else:
-            raise NotImplementedError("kptirr and weights_k are not implemented yet")
-
 
         rng = np.arange(self.num_wann_scalar) * 2
 

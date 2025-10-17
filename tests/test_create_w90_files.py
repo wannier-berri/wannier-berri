@@ -206,7 +206,7 @@ def test_irreducible_vs_full_Fe():
 
     kwargs_w90file = dict(
         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
-        seedname="./Fe",
+        seedname=os.path.join(OUTPUT_DIR, "Fe-irr-vs-full"),
         projections=projections_set,
         read_npz_list=[],
         normalize=False)
@@ -274,6 +274,7 @@ def test_irreducible_vs_full_Fe():
 
 
     kwargs_run = dict(
+        fout_name=os.path.join(OUTPUT_DIR, "Fe-irr-vs-full"),
         grid=grid,
         adpt_num_iter=0,
         calculators=calculators,
@@ -566,7 +567,6 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
 
 @pytest.mark.parametrize("select_grid", [None, (4, 4, 4), (2, 2, 2)])
 def test_create_w90files_diamond_gpaw_irred(select_grid):
-
     path_data = os.path.join(ROOT_DIR, "data", "diamond-gpaw")
     path_output = os.path.join(OUTPUT_DIR, "diamond-gpaw")
     os.makedirs(path_output, exist_ok=True)

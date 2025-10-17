@@ -28,6 +28,7 @@ from .common_systems import (
     system_Fe_gpaw_soc_z,
     system_Fe_gpaw_soc_z_symmetrized,
     system_Fe_gpaw_soc_111,
+    system_Fe_gpaw_soc_111_irred,
     system_Fe_gpaw_soc_111_symmetrized,
     data_Te_ASE,
     system_Te_ASE,
