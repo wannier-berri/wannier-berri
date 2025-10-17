@@ -44,7 +44,7 @@ class SOC(W90_file):
         shape = check_shape(self.data)
         self.NB = shape[4]
         self.nspin = shape[0]
-        assert shape == (self.nspin, self.nspin, 3, self.NB, self.NB), f"SOC data must have shape (nspin, nspin,2,2, NB, NB), got {shape}"
+        assert shape == (self.nspin, self.nspin, 3, self.NB, self.NB), f"SOC data must have shape (nspin, nspin, 3, NB, NB), got {shape}"
         if isinstance(overlap, list) or isinstance(overlap, np.ndarray):
             NK = len(data)
             self.overlap = {i: d for i, d in enumerate(overlap) if d is not None}
@@ -175,4 +175,14 @@ class SOC(W90_file):
 
 
     def select_bands(self, selected_bands):
-        raise NotImplementedError()
+        self.NB = len(selected_bands)
+        if self.overlap is not None:
+            for ik in self.overlap:
+                self.overlap[ik] = self.overlap[ik][selected_bands][:, selected_bands]
+        selected_bands = [selected_bands, selected_bands]
+        for ik in self.data:
+            data_new = np.zeros((self.nspin, self.nspin, 3, self.NB, self.NB), dtype=complex)
+            for s in range(self.nspin):
+                for t in range(self.nspin):
+                    data_new[s, t] = self.data[ik][s, t][:, selected_bands[s]][:, :, selected_bands[t]]
+            self.data[ik] = data_new

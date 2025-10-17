@@ -1,6 +1,7 @@
 import os
 import warnings
 import numpy as np
+from irrep.spacegroup import SpaceGroup
 
 from ..symmetry.point_symmetry import PointGroup
 
@@ -9,6 +10,7 @@ from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
 from .system_R import System_R
+from .system_w90 import System_w90
 
 
 
@@ -22,8 +24,8 @@ class SystemSOC(System_R):
     def __init__(self,
                  system_up,
                  system_down=None,
-                 axis=(0, 0, 1),
-                 silent=True
+                 silent=True,
+                 cell=None
                  ):
         self.silent = silent
         assert isinstance(system_up, System_R), f"system_up must be an instance of System_R, got {type(system_up)}"
@@ -50,7 +52,6 @@ class SystemSOC(System_R):
         self.num_wann = 2 * self.num_wann_scalar
         self.real_lattice = system_up.real_lattice
         self.periodic = system_up.periodic
-        self.axis = np.array(axis, dtype=float)
 
         self.wannier_centers_cart = np.zeros((self.num_wann, 3), dtype=float)
         self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
@@ -62,6 +63,7 @@ class SystemSOC(System_R):
         self.rvec = None
         self._XX_R = dict()
         self.has_soc = False
+        self.cell = cell
 
 
     def set_soc_R(self, soc,
@@ -200,6 +202,17 @@ class SystemSOC(System_R):
 
         self.set_R_mat('SS', SS_R_W, reset=True)
 
+        axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
+        magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
+        print(f"using magmoms \n {magmoms}")
+        mag_group = SpaceGroup.from_cell(real_lattice=self.cell["lattice"],
+                                positions=self.cell["positions"],
+                                typat=self.cell["typat"],
+                                spinor=True,
+                                include_TR=True,
+                                magmom=magmoms)
+        self.set_pointgroup(spacegroup=mag_group)
+
         return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
 
     def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
@@ -299,3 +312,25 @@ class SystemSOC(System_R):
         symmetrize_wann_down_down.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
                                                                 iRvec=self.rvec.iRvec,
                                                                 cutoff=cutoff, cutoff_dict=cutoff_dict)
+
+    @classmethod
+    def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
+        system_up = System_w90(w90data=w90data.data_up, **kwargs)
+        if w90data.nspin == 2:
+            system_down = System_w90(w90data=w90data.data_down, **kwargs)
+        else:
+            system_down = None
+        system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)
+        kptirr, weights_k = w90data.data_up.kptirr_system
+        system_soc.set_soc_R(w90data.soc,
+                             chk_up=w90data.get_file_ud("up", "chk"),
+                             chk_down=w90data.get_file_ud("down", "chk"),
+                             kptirr=kptirr, weights_k=weights_k
+        )
+        if w90data.is_irreducible:
+            symmetrize = True
+        if symmetrize:
+            system_soc.symmetrize2(symmetrizer_up=w90data.get_file_ud('up', 'symmetrizer'),
+                           symmetrizer_down=w90data.get_file_ud('down', 'symmetrizer'))
+        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        return system_soc
