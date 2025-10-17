@@ -7,42 +7,33 @@ from collections import defaultdict
 import copy
 
 
+def do_rotate_vector(key):
+    return True
+    # if key.startswith('dV_soc_wann_'):
+    #     return True
+    # if key == 'overlap_up_down':
+    #     return False
+    # return True
+
+
 class SymWann:
     """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
 
     Parameters
     ----------
-    num_wann: int
-        Number of wannier functions.
-    lattice: array
-        Unit cell lattice constant.
-    positions: array
-        Positions of each atom.
-    atom_name: list
-        Name of each atom.
-    projections: list
-        Should be the same with projections card in relative Wannier90.win.
-
-        eg: ``['Te: s','Te:p']``
-
-        If there is hybrid orbital, grouping the other orbitals.
-
-        eg: ``['Fe':sp3d2;t2g]`` Please don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
-
-            ``['X':sp;p2]`` Please don't use ``['X':sp;pz,py]``
     iRvec: array
         List of R vectors.
-    XX_R: dic
-        Matrix before symmetrization.
-    soc: bool
-        Spin orbital coupling.
-    magmom: 2D array
-        Magnetic moment of each atom.
-    wannier_centers_cart: np.array(num_wann, 3)
-        Wannier centers in cartesian coordinates.
-    logile: file
-        Log file. 
+    symmetrizer: SymmetrizerSAWF
+        Symmetrizer object for both left and right. (if they are the same)
+    symmetrizer_left: SymmetrizerSAWF
+        Symmetrizer object for the left side. (if None it is set to symmetrizer)
+    symmetrizer_right: SymmetrizerSAWF
+        Symmetrizer object for the right side. (if None it is set to symmetrizer_left)
+    silent: bool
+        If True, suppresses output to the console.
+    use_symmetries_index: list of int
+        List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
 
     Returns
     -------
@@ -59,27 +50,18 @@ class SymWann:
             symmetrizer=None,
             symmetrizer_left=None,
             symmetrizer_right=None,
-            wannier_centers_cart=None,
-            wannier_centers_cart_left=None,
-            wannier_centers_cart_right=None,
             silent=False,
             use_symmetries_index=None,
     ):
 
         self.silent = silent
 
-        if wannier_centers_cart_left is None:
-            wannier_centers_cart_left = wannier_centers_cart
-        if wannier_centers_cart_right is None:
-            wannier_centers_cart_right = wannier_centers_cart_left
-        
+
         if symmetrizer_left is None:
-            symmetrizer_left = symmetrizer  
+            symmetrizer_left = symmetrizer
         if symmetrizer_right is None:
             symmetrizer_right = symmetrizer_left
 
-        self.wannier_centers_cart_left = wannier_centers_cart_left
-        self.wannier_centers_cart_right = wannier_centers_cart_right
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
         self.nRvec = len(self.iRvec)
@@ -104,7 +86,7 @@ class SymWann:
         self.num_points_tot_left = sum(self.num_points_list_left)
         self.num_points_tot_right = sum(self.num_points_list_right)
         points_index_left = np.cumsum([0] + self.num_points_list_left)
-        points_index_right = np.cumsum([0] + self.num_points_list_right)    
+        points_index_right = np.cumsum([0] + self.num_points_list_right)
         self.points_index_start_left = points_index_left[:-1]
         self.points_index_end_left = points_index_left[1:]
         self.points_index_start_right = points_index_right[:-1]
@@ -136,9 +118,9 @@ class SymWann:
         }  #
         self.parity_TR = {
             'overlap_up_down': 1,
-            'dV_soc_wann_0_0': 1,
-            'dV_soc_wann_0_1': 1,
-            'dV_soc_wann_1_1': 1,
+            'dV_soc_wann_0_0': -1,
+            'dV_soc_wann_0_1': -1,
+            'dV_soc_wann_1_1': -1,
             'Ham': 1,
             'AA': 1,
             'BB': 1,
@@ -305,7 +287,6 @@ class SymWann:
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
                     v = np.copy(v1)[:, ws1:we1, ws2:we2]
-
                     # transforms a matrix X[iR, m,n,...] into a nested dictionary like
                     # {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
@@ -367,14 +348,19 @@ class SymWann:
                             return_dic[k][iRvec_map[iR], ws1a:we1a, ws2b:we2b] += XX_L
 
         logfile.write('Symmetrizing Finished\n')
-        logfile.write(f"wcc before symmetrization: \n left = \n {self.wannier_centers_cart_left}\n right = \n {self.wannier_centers_cart_right}\n")
-        wcc_left = self.symmetrizer_left.symmetrize_WCC(self.wannier_centers_cart_left)
-        wcc_right = self.symmetrizer_right.symmetrize_WCC(self.wannier_centers_cart_right)
-        logfile.write(f"wcc after symmetrization:\n left = \n {wcc_left}\n right = \n {wcc_right}\n")
-        logfile.write('Symmetrizing WCC Finished\n')
-        return return_dic, np.array(iRvec_new), wcc_left, wcc_right
+        return return_dic, np.array(iRvec_new)
 
-
+    def symmetrize_inplace_no_change_iRvec(self, XX_R_dict, iRvec, cutoff=-1, cutoff_dict=None):
+        XX_R_dict_new, iRvec_new = self.symmetrize(XX_R=XX_R_dict,
+                                                   cutoff=cutoff, cutoff_dict=cutoff_dict)
+        assert len(iRvec_new) == len(iRvec), "Number of R-vectors changed during symmetrization, this should not happen"
+        reorder = [self.index_R(r) for r in iRvec_new]
+        assert np.all(iRvec[reorder] == iRvec_new), f"iRvec reordering failed: {iRvec[reorder]} != {iRvec_new}"
+        for k in XX_R_dict:
+            XX_R_copy = XX_R_dict[k].copy()
+            XX_R_dict[k][reorder] = XX_R_dict_new[k][:]
+            print(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
+        return XX_R_dict
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         """
@@ -425,6 +411,9 @@ class SymWann:
             atommap2 = self.symmetrizer_right.atommap_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
             R_map = iRvec_origin_array @ symop.rotation.T
+            R_map_round = np.rint(R_map).astype(int)
+            assert np.allclose(R_map, R_map_round), f"R_map not integer: {R_map}"
+            R_map = R_map_round
             atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
             # atom_R_map[iR, a, b] gives the new R vector to wich the original iR vector is mapped for atoms a and b
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
@@ -483,21 +472,22 @@ class SymWann:
         np.ndarray
             Rotated matrix
         """
-
-        n_cart = num_cart_dim(X)  # number of cartesian indices
-        symop = self.spacegroup.symmetries[isym]
-        rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
-        for _ in range(n_cart):
-            # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
-            # n_cart times puts dimensions on the right place
-            XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
-        if symop.inversion:
-            XX_L *= self.parity_I[X] * (-1)**n_cart
-        result = _rotate_matrix(X=XX_L, 
-                                L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym], 
+        if do_rotate_vector(X):
+            n_cart = num_cart_dim(X)  # number of cartesian indices
+            symop = self.spacegroup.symmetries[isym]
+            rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
+            for _ in range(n_cart):
+                # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
+                # n_cart times puts dimensions on the right place
+                XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
+            if symop.inversion:
+                XX_L *= self.parity_I[X] * (-1)**n_cart
+        result = _rotate_matrix(X=XX_L,
+                                L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
                                 R=self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
-        if symop.time_reversal:
-            result = result.conj() * self.parity_TR[X]
+        if do_rotate_vector(X):
+            if symop.time_reversal:
+                result = result.conj() * self.parity_TR[X]
         return result
 
 

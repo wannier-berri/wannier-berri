@@ -86,7 +86,7 @@ class Dwann:
 
 
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
-        self.T = np.zeros((self.num_points, self.nsym, 3), dtype=float)
+        self.T = np.zeros((self.num_points, self.nsym, 3), dtype=int)
 
         for isym, symop in enumerate(spacegroup.symmetries):
             self.atommap[:, isym], self.T[:, isym, :] = get_atom_map(symop=symop, positions=self.orbit)

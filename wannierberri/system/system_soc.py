@@ -1,4 +1,5 @@
 import os
+import warnings
 import numpy as np
 
 from ..utility import cached_einsum
@@ -179,7 +180,7 @@ class SystemSOC(System_R):
             soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])
             soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 1, :])
             soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 0, :])
-        self.set_R_mat('Ham_SOC', soc_R_W * alpha_soc)  
+        self.set_R_mat('Ham_SOC', soc_R_W * alpha_soc, reset=True)
 
         # Spin operator
         rng = np.arange(self.num_wann_scalar) * 2
@@ -198,10 +199,10 @@ class SystemSOC(System_R):
         else:
             raise ValueError(f"Invalid nspin: {self.nspin}")
 
-        self.set_R_mat('SS', SS_R_W)
+        self.set_R_mat('SS', SS_R_W, reset=True)
 
         return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
-    
+
     def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         if not self.silent:
             print(f"Saving SystemSOC to {path}")
@@ -223,4 +224,79 @@ class SystemSOC(System_R):
             self.system_down = self.system_up
             self.up_down_same = True
         return self
-    
+
+    def symmetrize2(self, symmetrizer=None,
+                    symmetrizer_up=None,
+                    symmetrizer_down=None,
+                    silent=None, use_symmetries_index=None,
+                    cutoff=-1, cutoff_dict=None):
+        """
+        Symmetrize the system according to the Symmetrizer object.
+
+        Parameters
+        ----------
+        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
+            The symmetrizer object that will be used for symmetrization. (make sure it is consistent with the order of projections)
+        silent : bool
+            If True, do not print the symmetrization process. (set to False to see more debug information)
+        use_symmetries_index : list of int
+            List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
+        """
+        from ..symmetry.sym_wann_2 import SymWann
+        assert symmetrizer is not None or symmetrizer_up is not None, "Either symmetrizer or symmetrizer_up must be provided"
+        if symmetrizer_up is None:
+            symmetrizer_up = symmetrizer
+        if symmetrizer_down is None:
+            symmetrizer_down = symmetrizer_up
+            warnings.warn("symmetrizer_down is not provided, using symmetrizer_up for both spin channels")
+        if silent is None:
+            silent = self.silent
+
+        symmetrize_wann_up_up = SymWann(
+            symmetrizer_left=symmetrizer_up,
+            symmetrizer_right=symmetrizer_up,
+            iRvec=self.rvec.iRvec,
+            silent=silent,
+            use_symmetries_index=use_symmetries_index,
+        )
+        if self.up_down_same:
+            symmetrize_wann_down_down = symmetrize_wann_up_up
+            symmetrize_wann_up_down = symmetrize_wann_up_up
+        else:
+            symmetrize_wann_down_down = SymWann(
+                symmetrizer_left=symmetrizer_down,
+                symmetrizer_right=symmetrizer_down,
+                iRvec=self.rvec.iRvec,
+                silent=silent,
+                use_symmetries_index=use_symmetries_index,
+            )
+            symmetrize_wann_up_down = SymWann(
+                symmetrizer_left=symmetrizer_up,
+                symmetrizer_right=symmetrizer_down,
+                iRvec=self.rvec.iRvec,
+                silent=silent,
+                use_symmetries_index=use_symmetries_index,
+            )
+
+        # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
+        logfile = self.logfile
+
+        if not silent:
+            logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+            logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
+
+        _XX_dict = {k: self.get_R_mat(k) for k in ['dV_soc_wann_0_1', 'overlap_up_down']}
+        # _XX_dict = {k: self.get_R_mat(k) for k in ['overlap_up_down']}
+        symmetrize_wann_up_down.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
+                                                                iRvec=self.rvec.iRvec,
+                                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+
+        _XX_dict = {k: self.get_R_mat(k) for k in ['dV_soc_wann_0_0']}
+        symmetrize_wann_up_up.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
+                                                                iRvec=self.rvec.iRvec,
+                                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+
+        _XX_dict = {k: self.get_R_mat(k) for k in ['dV_soc_wann_1_1']}
+        symmetrize_wann_down_down.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
+                                                                iRvec=self.rvec.iRvec,
+                                                                cutoff=cutoff, cutoff_dict=cutoff_dict)

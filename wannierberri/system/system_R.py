@@ -263,7 +263,6 @@ class System_R(System):
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
             iRvec=self.rvec.iRvec,
-            wannier_centers_cart=self.wannier_centers_cart,
             silent=self.silent or silent,
             use_symmetries_index=use_symmetries_index,
         )
@@ -275,8 +274,9 @@ class System_R(System):
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
-        self._XX_R, iRvec, self.wannier_centers_cart, wcc_right = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
-        assert np.allclose(wcc_right, self.wannier_centers_cart)
+        self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
+        self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
+
         self.clear_cached_wcc()
         rvec_new = Rvectors(
             lattice=self.real_lattice,
