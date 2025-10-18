@@ -13,7 +13,6 @@ from wannierberri import models as wb_models
 from irrep.spacegroup import SpaceGroup
 
 from wannierberri.system.system_R import System_R
-from wannierberri.system.system_w90 import System_w90
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
 from wannierberri.w90files.w90data_soc import Wannier90DataSOC
@@ -296,11 +295,11 @@ def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
 
         sg = SpaceGroup.from_cell(real_lattice=2.87 * np.array([[1, 1, 1], [-1, 1, 1], [-1, -1, 1]]) / 2,
                                 positions=[[0, 0, 0]], typat=[1], include_TR=True, spinor=False)
-        cell = dict(positions=[[0, 0, 0]], typat=[1],magmoms_on_axis=[1])
+        cell = dict(positions=[[0, 0, 0]], typat=[1], magmoms_on_axis=[1])
 
         system_dw = system_Fe_gpaw_dw
         system_up = system_Fe_gpaw_up
-        
+
         soc = soc_Fe_gpaw
         chk_up = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))
         chk_dw = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))
@@ -315,8 +314,8 @@ def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
             system_soc.symmetrize2(symmetrizer_up=symmetrizer_up, symmetrizer_down=symmetrizer_dw, silent=False)
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
         # system_soc.set_pointgroup(spacegroup=mg)
-        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
-                                 +f"{'_symmetrized' if do_symmetrize else ''}")
+        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}" +
+                                 f"{'_symmetrized' if do_symmetrize else ''}")
         os.makedirs(os.path.dirname(path_save), exist_ok=True)
         system_soc.save_npz(path_save)
         return system_soc

@@ -66,11 +66,11 @@ class SystemSOC(System_R):
         self.has_soc = False
         if cell is not None:
             self.set_cell(**cell)
-        
+
     def set_cell(self, positions, typat, magmoms_on_axis):
-        self.cell = dict(positions=np.array(positions), 
-                         typat=np.array(typat), 
-                         magmoms_on_axis=np.array(magmoms_on_axis ))
+        self.cell = dict(positions=np.array(positions),
+                         typat=np.array(typat),
+                         magmoms_on_axis=np.array(magmoms_on_axis))
         return self
 
 
@@ -223,7 +223,7 @@ class SystemSOC(System_R):
             self.set_pointgroup(spacegroup=mag_group)
 
         return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
-    
+
     @cached_property
     def essential_properties(self):
         return super().essential_properties + ['cell']
@@ -276,6 +276,18 @@ class SystemSOC(System_R):
             warnings.warn("symmetrizer_down is not provided, using symmetrizer_up for both spin channels")
         if silent is None:
             silent = self.silent
+        if not hasattr(self.system_up, 'symmetrized') or not self.system_up.symmetrized:
+            self.system_up.symmetrize2(symmetrizer=symmetrizer_up, silent=silent,
+                                    use_symmetries_index=use_symmetries_index,
+                                    cutoff=cutoff, cutoff_dict=cutoff_dict)
+            self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
+        if not self.up_down_same:
+            if not hasattr(self.system_down, 'symmetrized') or not self.system_down.symmetrized:
+                self.system_down.symmetrize2(symmetrizer=symmetrizer_down, silent=silent,
+                                            use_symmetries_index=use_symmetries_index,
+                                            cutoff=cutoff, cutoff_dict=cutoff_dict)
+                self.wannier_centers_cart[1::2] = self.system_down.wannier_centers_cart
+
 
         symmetrize_wann_up_up = SymWann(
             symmetrizer_left=symmetrizer_up,

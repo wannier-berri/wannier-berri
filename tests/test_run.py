@@ -1301,7 +1301,7 @@ def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
 
 @pytest.fixture
 def check_Fe_gpaw_soc(check_run, compare_any_result):
-    def _inner(system, suffix, use_symmetry=True):
+    def _inner(system, suffix, use_symmetry=True, precision=-1e-8):
         Efermi_Fe_gpaw = np.linspace(8.5, 10, 16)
         param = {'Efermi': Efermi_Fe_gpaw, 'tetra': False}
         calculators = {}
@@ -1316,11 +1316,13 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
                 calculators[k] = v(**param)
 
         extra_precision = {}
-        if use_symmetry or suffix.endswith("symmetrized") or suffix.startswith("irred"):
-            precision = -1e-8
+        if use_symmetry or suffix.endswith("symmetrized"):
+            precision = precision
             if suffix in ['up', 'dw']:
                 extra_precision["ahc"] = 1e-8
                 extra_precision["ahc_test"] = 1e-8
+        elif suffix.endswith("irred"):
+            precision = -5e-5  # because we do wannierization every time, it is hard to have predictable results here
         else:
             precision = -2e-5
             if suffix in ['up', 'dw']:
@@ -1422,8 +1424,8 @@ def test_Fe_gpaw_soc_111_symmetrized(system_Fe_gpaw_soc_111_symmetrized, check_F
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_111_irred(system_Fe_gpaw_soc_111, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_111, suffix="111_irred", use_symmetry=use_symmetry)
+def test_Fe_gpaw_soc_111_irred(system_Fe_gpaw_soc_111_irred, check_Fe_gpaw_soc, use_symmetry):
+    check_Fe_gpaw_soc(system_Fe_gpaw_soc_111_irred, suffix="111_irred", use_symmetry=use_symmetry)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])

@@ -294,8 +294,9 @@ class System_R(System):
             logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
 
-        # self.clear_cached_R()
-        # self.clear_cached_wcc()
+        self.clear_cached_R()
+        self.clear_cached_wcc()
+        self.symmetrized = True
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=True,
@@ -819,7 +820,7 @@ class System_R(System):
             if the directory already exiists, it will be overwritten
         """
         logfile = self.logfile
-        
+
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
         print(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
@@ -833,7 +834,7 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
-            print(f"saving {key} to {fullpath}" )
+            print(f"saving {key} to {fullpath}")
             if key == 'iRvec':
                 val = self.rvec.iRvec
             else:
