@@ -22,22 +22,25 @@ class SystemSOC(System_R):
 
     """
 
+    half_wann_matrices = set(["overlap_up_down", "dV_soc_wann_0_0", "dV_soc_wann_0_1", "dV_soc_wann_1_1"])
+
     def __init__(self,
                  system_up,
                  system_down=None,
                  silent=True,
                  cell=None
                  ):
+        self.needed_R_matrices = set()
         self.silent = silent
         assert isinstance(system_up, System_R), f"system_up must be an instance of System_R, got {type(system_up)}"
         self.system_up = system_up
         assert not system_up.is_phonon, "SystemSOC does not support phonons"
         if system_down is None:
             self.system_down = system_up
-            self.up_down_same = True
+            self.nspin = 1
         else:
             assert isinstance(system_down, System_R), "system_down must be an instance of System_R"
-            self.up_down_same = False
+            self.nspin = 2
             self.system_down = system_down
             assert system_up.num_wann == system_down.num_wann, \
                 f"Number of Wannier functions must match for up and down systems ({system_up.num_wann} != {system_down.num_wann})"
@@ -66,6 +69,8 @@ class SystemSOC(System_R):
         self.has_soc = False
         if cell is not None:
             self.set_cell(**cell)
+        else:
+            self.cell = None
 
     def set_cell(self, positions, typat, magmoms_on_axis):
         self.cell = dict(positions=np.array(positions),
@@ -105,7 +110,7 @@ class SystemSOC(System_R):
 
         # chack number of spin channels
         nspin = soc.nspin
-        self.nspin = nspin
+        assert self.nspin == nspin, f"Number of spin channels in SystemSOC ({self.nspin}) does not match that in SOC ({nspin})"
         print(f"nspin in SOC: {nspin}")
         if nspin == 1:
             chk_list = [chk_up]
@@ -154,11 +159,7 @@ class SystemSOC(System_R):
                     # dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
                 key = f"dV_soc_wann_{i1}_{j1}"
                 mat = self.rvec.q_to_R(dV_soc_wann_ik, select_left=rng + i1, select_right=rng + j1)
-                self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
-                # if i1!=j1:
-                #     key = f"dV_soc_wann_{j1}_{i1}"
-                #     mat = self.rvec.q_to_R(dV_soc_wann_ik.conj().transpose(0,2,1,3), select_left=rng+j1, select_right=rng+i1)
-                #     self.set_R_mat(key, mat, num_wann=self.num_wann_scalar)
+                self.set_R_mat(key, mat)
         if nspin == 2:
             overlap_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar), dtype=complex)
             for ik, w in zip(kptirr, weights_k):
@@ -167,12 +168,20 @@ class SystemSOC(System_R):
                 overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
                 overlap_ik[ik] = w * (vt @ overlap_loc @ v)
             overlap_Rud = self.rvec.q_to_R(overlap_ik, select_left=rng, select_right=rng + 1)
-            self.set_R_mat('overlap_up_down', overlap_Rud, num_wann=self.num_wann_scalar)
+            self.set_R_mat('overlap_up_down', overlap_Rud)
         self.has_soc = True
         return self.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
 
 
-    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0):
+    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians"):
+        units = units.lower()
+        if units.startswith("r"):
+            pass
+        elif units.startswith("d"):
+            theta = np.deg2rad(theta)
+            phi = np.deg2rad(phi)
+        else:
+            raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
         assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
         pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
 
@@ -233,22 +242,34 @@ class SystemSOC(System_R):
         print(f"Saving SystemSOC to {path}")
         super().save_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
         self.system_up.save_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
-        if not self.up_down_same:
+        if self.nspin == 2:
             self.system_down.save_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
 
-    def load_npz(self, path, load_all_XX_R=False, exclude_properties=()):
-        if not self.silent:
+    @property
+    def has_soc_R(self):
+        if self.nspin == 2:
+            return self.has_R_mat_all(['dV_soc_wann_0_0', 'dV_soc_wann_1_1', 'dV_soc_wann_0_1', 'overlap_up_down'])
+        else:
+            return self.has_R_mat(['dV_soc_wann_0_0'])
+
+
+    @classmethod
+    def from_npz(cls, path, silent=True, load_all_XX_R=True, exclude_properties=()):
+        if not silent:
             print(f"Loading SystemSOC from {path}")
-        super().load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
-        self.system_up = System_R().load_npz(path=os.path.join(path, "system_up"), load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"directory {path} does not exist")
+        system_up = System_R().load_npz(path=os.path.join(path, "system_up"), load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
         path_down = os.path.join(path, "system_down")
         if os.path.exists(path_down):
-            self.system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
-            self.up_down_same = False
+            system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
         else:
-            self.system_down = self.system_up
-            self.up_down_same = True
-        return self
+            system_down = None
+        system_soc =cls(system_up=system_up, system_down=system_down, silent=silent)
+        system_soc.load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        if system_soc.has_soc_R:
+            system_soc.has_soc = True
+        return system_soc
 
     def symmetrize2(self, symmetrizer=None,
                     symmetrizer_up=None,
@@ -281,7 +302,7 @@ class SystemSOC(System_R):
                                     use_symmetries_index=use_symmetries_index,
                                     cutoff=cutoff, cutoff_dict=cutoff_dict)
             self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
-        if not self.up_down_same:
+        if self.nspin == 2:
             if not hasattr(self.system_down, 'symmetrized') or not self.system_down.symmetrized:
                 self.system_down.symmetrize2(symmetrizer=symmetrizer_down, silent=silent,
                                             use_symmetries_index=use_symmetries_index,
@@ -296,7 +317,7 @@ class SystemSOC(System_R):
             silent=silent,
             use_symmetries_index=use_symmetries_index,
         )
-        if self.up_down_same:
+        if self.nspin == 1:
             symmetrize_wann_down_down = symmetrize_wann_up_up
             symmetrize_wann_up_down = symmetrize_wann_up_up
         else:

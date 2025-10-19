@@ -73,6 +73,8 @@ class System_R(System):
             the recommended size of the FFT grid to be used in the interpolation.
         """
 
+    half_wann_matrices = set()
+
     def __init__(self,
                  berry=False,
                  morb=False,
@@ -154,8 +156,14 @@ class System_R(System):
         for k in keys:
             if self.has_R_mat(k):
                 return True
+            
+    def has_R_mat_all(self, keys):
+        for k in keys:
+            if not self.has_R_mat(k):
+                return False
+        return True
 
-    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False, num_wann=None):
+    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """
         Set real-space matrix specified by `key`. Either diagonal, specific R or full matrix.  Useful for model calculations
 
@@ -180,11 +188,13 @@ class System_R(System):
         Hermitian : bool
             force the value to be Hermitian (only if all vectors are set at once)
         """
-        if num_wann is None:
+        if key in self.half_wann_matrices:
+            num_wann = self.num_wann // 2
+            range_wann = np.arange(num_wann)
+        else:
             num_wann = self.num_wann
             range_wann = self.range_wann
-        else:
-            range_wann = np.arange(num_wann)
+
         if diag:
             assert value.shape[0] == num_wann, f"the 0th dimension for 'diag=True' of value should be {num_wann}, found {value.shape[0]}"
             if R is None:
@@ -872,6 +882,8 @@ class System_R(System):
             if True, the order of indices in the XX_R matrices will be expected as in older verisons of wannierberri : [m,n,iR, ...]
             in the newer versions the order is [iR, m ,n,...]
         """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"directory {path} does not exist")
         logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]

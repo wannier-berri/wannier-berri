@@ -314,6 +314,9 @@ def run(
     result_excluded = None
 
     for i_iter in range(adpt_num_iter + 1):
+        i_iter_global = i_iter + start_iter
+        print("\n" + "#" * 60)
+        print(f"Iteration {i_iter_global} out of {adpt_num_iter + start_iter} ")
         if print_Kpoints:
             print("iteration {0} - {1} points. New points are:".format(i_iter + start_iter,
                                                                        len([K for K in K_list if K.res is None])))

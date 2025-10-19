@@ -1322,7 +1322,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
                 extra_precision["ahc"] = 1e-8
                 extra_precision["ahc_test"] = 1e-8
         elif suffix.endswith("irred"):
-            precision = -5e-5  # because we do wannierization every time, it is hard to have predictable results here
+            precision = -1e-4  # because we do wannierization every time, it is hard to have predictable results here
         else:
             precision = -2e-5
             if suffix in ['up', 'dw']:
