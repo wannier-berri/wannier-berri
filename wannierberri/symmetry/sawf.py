@@ -779,7 +779,7 @@ class SymmetrizerSAWF:
 
                     if ik_sym not in mmn.data:
                         continue
-                    print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
+                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
                     M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_latt_map=bk_latt_map, bk_cart=mmn.bk_cart)
                     M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
 

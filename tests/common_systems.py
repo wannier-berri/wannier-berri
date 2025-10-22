@@ -2,6 +2,7 @@
 
 import os
 import tarfile
+from gpaw import GPAW
 import pytest
 import numpy as np
 import pickle
@@ -14,7 +15,11 @@ from irrep.spacegroup import SpaceGroup
 from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
+from wannierberri.w90files.w90data_soc import Wannier90dataSOC
+
 from wannierberri.system.system_soc import SystemSOC
+from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from .common import OUTPUT_DIR, ROOT_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
@@ -255,7 +260,12 @@ PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
 @pytest.fixture(scope="session")
 def soc_Fe_gpaw():
     """Create SOC object for Fe from GPAW calculation"""
-    return SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
+    selected_bands_up = np.load(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))['selected_bands']
+    selected_bands_down = np.load(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))['selected_bands']
+    soc = SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
+    soc.select_bands(selected_bands_up=selected_bands_up, selected_bands_down=selected_bands_down)
+    return soc
+
 
 
 @pytest.fixture(scope="session")
@@ -281,14 +291,15 @@ def system_Fe_gpaw_dw():
 
 
 @pytest.fixture(scope="session")
-def get_system_Fe_W90_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
-    def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0):
+def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
+    def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0,
+               do_symmetrize=False):
         theta = theta_deg / 180 * np.pi
         phi = phi_deg / 180 * np.pi
 
-        mg = SpaceGroup.from_cell(real_lattice=2.87 * np.array([[1, 1, 1], [-1, 1, 1], [-1, -1, 1]]) / 2,
-                                positions=[[0, 0, 0]], typat=[1],
-                            magmom=[[np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]])
+        sg = SpaceGroup.from_cell(real_lattice=2.87 * np.array([[1, 1, 1], [-1, 1, 1], [-1, -1, 1]]) / 2,
+                                positions=[[0, 0, 0]], typat=[1], include_TR=True, spinor=False)
+        cell = dict(positions=[[0, 0, 0]], typat=[1], magmoms_on_axis=[1])
 
         system_dw = system_Fe_gpaw_dw
         system_up = system_Fe_gpaw_up
@@ -296,19 +307,19 @@ def get_system_Fe_W90_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw
         soc = soc_Fe_gpaw
         chk_up = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))
         chk_dw = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))
-        system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
-        system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
-                            theta=theta,
-                            phi=phi,
-                            alpha_soc=alpha_soc)
-        # system_soc.symmetrize(proj=['Fe:sp3d2', 'Fe:t2g'],
-        #                     atom_name=['Fe'],
-        #                     positions=np.array([[0, 0, 0]]),
-        #                     soc=True,
-        #                     magmom=[[np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]]
-        #                     )
-        system_soc.set_pointgroup(spacegroup=mg)
-        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}")
+        system_soc = SystemSOC(system_up=system_up, system_down=system_dw, cell=cell)
+        system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw)
+        if do_symmetrize:
+            projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
+            projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
+            proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
+            symmetrizer_up = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
+            symmetrizer_dw = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
+            system_soc.symmetrize2(symmetrizer_up=symmetrizer_up, symmetrizer_down=symmetrizer_dw, silent=False)
+        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        # system_soc.set_pointgroup(spacegroup=mg)
+        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}" +
+                                 f"{'_symmetrized' if do_symmetrize else ''}")
         os.makedirs(os.path.dirname(path_save), exist_ok=True)
         system_soc.save_npz(path_save)
         return system_soc
@@ -316,19 +327,149 @@ def get_system_Fe_W90_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_z(get_system_Fe_W90_gpaw_soc):
-    return get_system_Fe_W90_gpaw_soc(phi_deg=0, theta_deg=0)
+def system_Fe_gpaw_soc_z(get_system_Fe_gpaw_soc):
+    return get_system_Fe_gpaw_soc(phi_deg=0, theta_deg=0)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_angle(get_system_Fe_W90_gpaw_soc):
-    return get_system_Fe_W90_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0)
+def system_Fe_gpaw_soc_z_symmetrized(get_system_Fe_gpaw_soc):
+    return get_system_Fe_gpaw_soc(phi_deg=0, theta_deg=0, do_symmetrize=True)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_111(get_system_Fe_W90_gpaw_soc):
-    return get_system_Fe_W90_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0)
+def system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc):
+    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0)
 
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_angle_symmetrized(get_system_Fe_gpaw_soc):
+    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, do_symmetrize=True)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_111(get_system_Fe_gpaw_soc):
+    return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_111_symmetrized(get_system_Fe_gpaw_soc):
+    return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0, do_symmetrize=True)
+
+
+# @pytest.fixture(scope="session")
+# def _system_Fe_gpaw_soc_111_irred():
+#     PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+
+#     gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
+#     sg = SpaceGroup.from_gpaw(gpaw_calc)
+#     projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
+#     projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
+#     proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
+#     path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
+#     os.makedirs(path, exist_ok=True)
+#     kwargs_w90data = dict(calculator=gpaw_calc,
+#                           projections=proj_set,
+#         #                     ecut_pw=300,
+#         # ecut_sym=150,
+#         mp_grid=(2, 2, 2),
+#         read_npz_list=[],
+#         spacegroup=sg,
+#         # write_npz_list=[],
+#         # irreducible=True,
+#         # files=["amn", "mmn", "eig", "symmetrizer"],
+#         unitary_params=dict(error_threshold=0.1,
+#                             warning_threshold=0.01,
+#                             nbands_upper_skip=8),
+#     )
+
+#     w90data_up = wberri.w90files.Wannier90data().from_gpaw(
+#         spin_channel=0,
+#         seedname=os.path.join(path, "Fe-irred-spin-0"),
+#         **kwargs_w90data)
+#     w90data_dw = wberri.w90files.Wannier90data().from_gpaw(
+#         spin_channel=1,
+#         seedname=os.path.join(path, "Fe-irred-spin-1"),
+#         **kwargs_w90data)
+#     w90data_dw.select_bands(win_min=-100,
+#                          win_max=50)
+#     w90data_up.select_bands(win_min=-100,
+#                             win_max=50)
+
+#     w90data_up.wannierise(
+#         froz_min=-np.inf,
+#         froz_max=17,
+#         num_iter=500,
+#         print_progress_every=10,
+#         sitesym=True,
+#         localise=True,
+#     )
+
+#     w90data_dw.wannierise(
+#         froz_min=-np.inf,
+#         froz_max=17,
+#         num_iter=500,
+#         print_progress_every=10,
+#         sitesym=True,
+#         localise=True,
+#     )
+#     system_up = System_w90(w90data=w90data_up, berry=True)
+#     system_dw = System_w90(w90data=w90data_dw, berry=True)
+#     system_soc = SystemSOC(system_up=system_up, system_down=system_dw)
+#     chk_up = w90data_up.get_file('chk')
+#     chk_dw = w90data_dw.get_file('chk')
+#     soc = SOC.from_gpaw(gpaw_calc)
+#     kptirr, weights_k = w90data_up.kptirr_system
+#     system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw, kptirr=kptirr, weights_k=weights_k)
+#     system_soc.symmetrize2(symmetrizer_up=w90data_up.get_file('symmetrizer'),
+#                            symmetrizer_down=w90data_dw.get_file('symmetrizer'),)
+#     theta = np.arccos(1 / np.sqrt(3))
+#     phi = np.pi / 4
+#     system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
+#     mg = SpaceGroup.from_gpaw_magnetic(gpaw_calc, theta=theta, phi=phi)
+#     system_soc.set_pointgroup(spacegroup=mg)
+#     return system_soc
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_111_irred():
+    PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+
+    gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
+    sg = SpaceGroup.from_gpaw(gpaw_calc)
+    projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
+    projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
+    proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
+
+    # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
+    # os.makedirs(path, exist_ok=True)
+    w90data = Wannier90dataSOC.from_gpaw(
+        calculator=gpaw_calc,
+        projections=proj_set,
+        mp_grid=(2, 2, 2),
+        read_npz_list=[],
+        spacegroup=sg,
+    )
+
+    w90data.select_bands(win_min=-100,
+                         win_max=50)
+
+    w90data.wannierise(
+        froz_min=-np.inf,
+        froz_max=17,
+        num_iter=500,
+        print_progress_every=10,
+        sitesym=True,
+        localise=True,
+    )
+
+    theta = np.arccos(1 / np.sqrt(3))
+    phi = np.pi / 4
+
+    system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False)
+    system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
+    system.save_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred"))
+
+    return system
 
 
 @pytest.fixture(scope="session")

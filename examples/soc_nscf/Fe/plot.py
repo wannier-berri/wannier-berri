@@ -13,7 +13,8 @@ system_up = System_R().load_npz("system_up")
 system_spinor = System_R().load_npz("system_spinor")
 system_spinor.set_spin_pairs([[2 * i, 2 * i + 1] for i in range(9)])
 
-parallel = Parallel(num_cpus=16)
+# parallel = Parallel(num_cpus=16)
+parallel = Serial()
 # _interlaced()
 
 
@@ -21,8 +22,8 @@ phi_deg = 0
 theta_deg = 0
 
 soc = SOC.from_gpaw("Fe-nscf.gpw")
-chk_up = CHK.from_npz("Fe-spin-0.chk.npz")
-chk_dw = CHK.from_npz("Fe-spin-1.chk.npz")
+chk_up = CHK.from_npz("system_up.chk.npz")
+chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)
 system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
                      theta=theta_deg / 180 * np.pi,

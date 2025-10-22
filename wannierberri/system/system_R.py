@@ -73,6 +73,8 @@ class System_R(System):
             the recommended size of the FFT grid to be used in the interpolation.
         """
 
+    half_wann_matrices = set()
+
     def __init__(self,
                  berry=False,
                  morb=False,
@@ -155,7 +157,13 @@ class System_R(System):
             if self.has_R_mat(k):
                 return True
 
-    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False, num_wann=None):
+    def has_R_mat_all(self, keys):
+        for k in keys:
+            if not self.has_R_mat(k):
+                return False
+        return True
+
+    def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """
         Set real-space matrix specified by `key`. Either diagonal, specific R or full matrix.  Useful for model calculations
 
@@ -180,11 +188,13 @@ class System_R(System):
         Hermitian : bool
             force the value to be Hermitian (only if all vectors are set at once)
         """
-        if num_wann is None:
+        if key in self.half_wann_matrices:
+            num_wann = self.num_wann // 2
+            range_wann = np.arange(num_wann)
+        else:
             num_wann = self.num_wann
             range_wann = self.range_wann
-        else:
-            range_wann = np.arange(num_wann)
+
         if diag:
             assert value.shape[0] == num_wann, f"the 0th dimension for 'diag=True' of value should be {num_wann}, found {value.shape[0]}"
             if R is None:
@@ -263,7 +273,6 @@ class System_R(System):
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
             iRvec=self.rvec.iRvec,
-            wannier_centers_cart=self.wannier_centers_cart,
             silent=self.silent or silent,
             use_symmetries_index=use_symmetries_index,
         )
@@ -275,7 +284,9 @@ class System_R(System):
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
-        self._XX_R, iRvec, self.wannier_centers_cart = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
+        self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
+        self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
+
         self.clear_cached_wcc()
         rvec_new = Rvectors(
             lattice=self.real_lattice,
@@ -293,8 +304,9 @@ class System_R(System):
             logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
 
-        # self.clear_cached_R()
-        # self.clear_cached_wcc()
+        self.clear_cached_R()
+        self.clear_cached_wcc()
+        self.symmetrized = True
 
 
     def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=True,
@@ -820,6 +832,7 @@ class System_R(System):
         logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
+        print(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 
@@ -831,12 +844,15 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
+            print(f"saving {key} to {fullpath}")
             if key == 'iRvec':
                 val = self.rvec.iRvec
             else:
                 val = getattr(self, key)
             if key in ['pointgroup']:
                 np.savez(fullpath, **val.as_dict())
+            elif key in ['cell']:
+                np.savez(fullpath, **val)
             else:
                 np.savez(fullpath, val)
             logfile.write(" - Ok!\n")
@@ -866,6 +882,8 @@ class System_R(System):
             if True, the order of indices in the XX_R matrices will be expected as in older verisons of wannierberri : [m,n,iR, ...]
             in the newer versions the order is [iR, m ,n,...]
         """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"directory {path} does not exist")
         logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
@@ -887,6 +905,8 @@ class System_R(System):
 
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
+            elif key_loc == 'cell':
+                val = dict(**a)
             else:
                 val = a['arr_0']
 

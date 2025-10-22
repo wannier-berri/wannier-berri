@@ -358,3 +358,45 @@ def arr_to_string(arr, fmt="{:+9.6f}"):
         if i < len(arr) - 1:
             string += "\n"
     return string
+
+
+def group_numbers(lst, precision):
+    """
+    Group numbers that are equal up to a given precision.
+
+    Parameters
+    ----------
+    lst : list of float
+        List of numbers to group.
+    precision : float
+        Precision for grouping.
+
+    Returns
+    -------
+    list of float
+        numbers that are set to an average value within each group.
+    """
+    lst = np.array(lst)
+    srt = np.argsort(lst)
+    lst_sorted = lst[srt]
+    groups = []
+    groups_ind = []
+    current_group = [lst_sorted[0]]
+    current_group_ind = [srt[0]]
+    for ind, num in zip(srt[1:], lst_sorted[1:]):
+        if abs(num - current_group[-1]) < precision:
+            current_group.append(num)
+            current_group_ind.append(ind)
+        else:
+            groups.append(current_group)
+            groups_ind.append(current_group_ind)
+            current_group = [num]
+            current_group_ind = [ind]
+    groups.append(current_group)
+    groups_ind.append(current_group_ind)
+
+    lst_out = np.zeros(len(lst), dtype=float)
+    for group_ind, group_num in zip(groups_ind, groups):
+        avg_num = np.mean(group_num)
+        lst_out[group_ind] = avg_num
+    return lst_out

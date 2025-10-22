@@ -57,8 +57,9 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         # self.check_products_D()
         # self.check_products_dD()
         err = self.check(accuracy_threshold=accuracy_threshold)
-        print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
-              f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
+        if err > 1e-6:
+            print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
+                f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
 
 
     # def check_products_d(self):

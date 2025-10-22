@@ -5,7 +5,15 @@ import numpy as np
 from ..system.system import num_cart_dim
 from collections import defaultdict
 import copy
-from ..utility import cached_einsum
+
+
+def do_rotate_vector(key):
+    return True
+    # if key.startswith('dV_soc_wann_'):
+    #     return True
+    # if key == 'overlap_up_down':
+    #     return False
+    # return True
 
 
 class SymWann:
@@ -14,36 +22,18 @@ class SymWann:
 
     Parameters
     ----------
-    num_wann: int
-        Number of wannier functions.
-    lattice: array
-        Unit cell lattice constant.
-    positions: array
-        Positions of each atom.
-    atom_name: list
-        Name of each atom.
-    projections: list
-        Should be the same with projections card in relative Wannier90.win.
-
-        eg: ``['Te: s','Te:p']``
-
-        If there is hybrid orbital, grouping the other orbitals.
-
-        eg: ``['Fe':sp3d2;t2g]`` Please don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
-
-            ``['X':sp;p2]`` Please don't use ``['X':sp;pz,py]``
     iRvec: array
         List of R vectors.
-    XX_R: dic
-        Matrix before symmetrization.
-    soc: bool
-        Spin orbital coupling.
-    magmom: 2D array
-        Magnetic moment of each atom.
-    wannier_centers_cart: np.array(num_wann, 3)
-        Wannier centers in cartesian coordinates.
-    logile: file
-        Log file. 
+    symmetrizer: SymmetrizerSAWF
+        Symmetrizer object for both left and right. (if they are the same)
+    symmetrizer_left: SymmetrizerSAWF
+        Symmetrizer object for the left side. (if None it is set to symmetrizer)
+    symmetrizer_right: SymmetrizerSAWF
+        Symmetrizer object for the right side. (if None it is set to symmetrizer_left)
+    silent: bool
+        If True, suppresses output to the console.
+    use_symmetries_index: list of int
+        List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
 
     Returns
     -------
@@ -56,42 +46,63 @@ class SymWann:
 
     def __init__(
             self,
-            symmetrizer,
             iRvec,
-            wannier_centers_cart=None,
+            symmetrizer=None,
+            symmetrizer_left=None,
+            symmetrizer_right=None,
             silent=False,
             use_symmetries_index=None,
     ):
 
         self.silent = silent
-        self.wannier_centers_cart = wannier_centers_cart
+
+
+        if symmetrizer_left is None:
+            symmetrizer_left = symmetrizer
+        if symmetrizer_right is None:
+            symmetrizer_right = symmetrizer_left
+
         self.iRvec = [tuple(R) for R in iRvec]
         self.iRvec_index = {r: i for i, r in enumerate(self.iRvec)}
         self.nRvec = len(self.iRvec)
-        self.num_wann = symmetrizer.num_wann
-        self.spacegroup = symmetrizer.spacegroup
+        self.num_wann = symmetrizer_left.num_wann
+        self.spacegroup = symmetrizer_left.spacegroup
+        assert self.spacegroup.equals(symmetrizer_right.spacegroup, mod1=False), "Left and right symmetrizers must have the same spacegroup"
         self.lattice = self.spacegroup.lattice
+
         if use_symmetries_index is None:
             self.use_symmetries_index = list(range(len(self.spacegroup.symmetries)))
         else:
             self.use_symmetries_index = use_symmetries_index
 
-        self.symmetrizer = symmetrizer
-        self.num_blocks = len(symmetrizer.D_wann_block_indices)
-        self.num_orb_list = [symmetrizer.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks)]
-        self.num_points_list = [symmetrizer.atommap_list[i].shape[0] for i in range(self.num_blocks)]
-        self.num_points_tot = sum(self.num_points_list)
-        points_index = np.cumsum([0] + self.num_points_list)
-        self.points_index_start = points_index[:-1]
-        self.points_index_end = points_index[1:]
+        self.symmetrizer_left = symmetrizer_left
+        self.symmetrizer_right = symmetrizer_right
+        self.num_blocks_left = len(symmetrizer_left.D_wann_block_indices)
+        self.num_blocks_right = len(symmetrizer_right.D_wann_block_indices)
+        self.num_orb_list_left = [symmetrizer_left.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks_left)]
+        self.num_orb_list_right = [symmetrizer_right.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks_right)]
+        self.num_points_list_left = [symmetrizer_left.atommap_list[i].shape[0] for i in range(self.num_blocks_left)]
+        self.num_points_list_right = [symmetrizer_right.atommap_list[i].shape[0] for i in range(self.num_blocks_right)]
+        self.num_points_tot_left = sum(self.num_points_list_left)
+        self.num_points_tot_right = sum(self.num_points_list_right)
+        points_index_left = np.cumsum([0] + self.num_points_list_left)
+        points_index_right = np.cumsum([0] + self.num_points_list_right)
+        self.points_index_start_left = points_index_left[:-1]
+        self.points_index_end_left = points_index_left[1:]
+        self.points_index_start_right = points_index_right[:-1]
+        self.points_index_end_right = points_index_right[1:]
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
-                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR']
+                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
-                              'SS', 'SH', 'SA', 'SHA']
+                              'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
 
 
         # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
         self.parity_I = {
+            'overlap_up_down': 1,
+            'dV_soc_wann_0_0': 1,
+            'dV_soc_wann_0_1': 1,
+            'dV_soc_wann_1_1': 1,
             'Ham': 1,
             'AA': -1,
             'BB': -1,
@@ -106,6 +117,10 @@ class SymWann:
             'SHR': -1,
         }  #
         self.parity_TR = {
+            'overlap_up_down': 1,
+            'dV_soc_wann_0_0': -1,
+            'dV_soc_wann_0_1': -1,
+            'dV_soc_wann_1_1': -1,
             'Ham': 1,
             'AA': 1,
             'BB': 1,
@@ -154,8 +169,8 @@ class SymWann:
         """
         R_list = np.array(iRvec, dtype=int)
         R_map = R_list @ self.spacegroup.symmetries[isym].rotation.T
-        T1 = self.symmetrizer.T_list[block1][:, isym]
-        T2 = self.symmetrizer.T_list[block2][:, isym]
+        T1 = self.symmetrizer_left.T_list[block1][:, isym]
+        T2 = self.symmetrizer_right.T_list[block2][:, isym]
         return R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
 
     def find_irreducible_Rab(self, block1, block2):
@@ -176,10 +191,10 @@ class SymWann:
         logfile = self.logfile
         logfile.write("searching irreducible Rvectors for pairs of a,b\n")
 
-        np1 = self.num_points_list[block1]
-        np2 = self.num_points_list[block2]
-        map1 = self.symmetrizer.atommap_list[block1]
-        map2 = self.symmetrizer.atommap_list[block2]
+        np1 = self.num_points_list_left[block1]
+        np2 = self.num_points_list_right[block2]
+        map1 = self.symmetrizer_left.atommap_list[block1]
+        map2 = self.symmetrizer_right.atommap_list[block2]
         irreducible = np.ones((self.nRvec, np1, np2), dtype=bool)
         logfile.write(f"np1 = {np1}, np2 = {np2}\n")
 
@@ -258,21 +273,20 @@ class SymWann:
         full_matrix_dict_list = {}
         full_iRvec_list = {}
         full_iRvec_set = set()
-        for block1 in range(self.num_blocks):
-            ws1, we1 = self.symmetrizer.D_wann_block_indices[block1]
-            norb1 = self.num_orb_list[block1]
-            np1 = self.num_points_list[block1]
-            for block2 in range(self.num_blocks):
+        for block1 in range(self.num_blocks_left):
+            ws1, we1 = self.symmetrizer_left.D_wann_block_indices[block1]
+            norb1 = self.num_orb_list_left[block1]
+            np1 = self.num_points_list_left[block1]
+            for block2 in range(self.num_blocks_right):
                 logfile.write(f"Symmetrizing blocks {block1} and {block2}\n")
-                ws2, we2 = self.symmetrizer.D_wann_block_indices[block2]
-                norb2 = self.num_orb_list[block2]
-                np2 = self.num_points_list[block2]
+                ws2, we2 = self.symmetrizer_right.D_wann_block_indices[block2]
+                norb2 = self.num_orb_list_right[block2]
+                np2 = self.num_points_list_right[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
                 logfile.write(f"iRab_irred = {iRab_irred}\n")
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
                     v = np.copy(v1)[:, ws1:we1, ws2:we2]
-
                     # transforms a matrix X[iR, m,n,...] into a nested dictionary like
                     # {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
@@ -312,12 +326,12 @@ class SymWann:
 
         return_dic = {k: np.zeros((nRvec_new, self.num_wann, self.num_wann) + (3,) * num_cart_dim(k), dtype=complex)
                       for k in XX_R}
-        for block1 in range(self.num_blocks):
-            ws1, we1 = self.symmetrizer.D_wann_block_indices[block1]
-            for block2 in range(self.num_blocks):
-                ws2, we2 = self.symmetrizer.D_wann_block_indices[block2]
-                norb1 = self.num_orb_list[block1]
-                norb2 = self.num_orb_list[block2]
+        for block1 in range(self.num_blocks_left):
+            ws1, we1 = self.symmetrizer_left.D_wann_block_indices[block1]
+            for block2 in range(self.num_blocks_right):
+                ws2, we2 = self.symmetrizer_right.D_wann_block_indices[block2]
+                norb1 = self.num_orb_list_left[block1]
+                norb2 = self.num_orb_list_right[block2]
                 iRvec_block = full_iRvec_list[(block1, block2)]
                 iRvec_map = [iRvec_new_index[r] for i, r in enumerate(iRvec_block)]
                 for k in return_dic:
@@ -334,14 +348,24 @@ class SymWann:
                             return_dic[k][iRvec_map[iR], ws1a:we1a, ws2b:we2b] += XX_L
 
         logfile.write('Symmetrizing Finished\n')
+        return return_dic, np.array(iRvec_new)
 
-        logfile.write(f"wcc before symmetrization = \n {self.wannier_centers_cart}\n")
-        wcc = self.symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
-        logfile.write(f"wcc after symmetrization = \n {wcc}\n")
-        logfile.write('Symmetrizing WCC Finished\n')
-        return return_dic, np.array(iRvec_new), wcc
-
-
+    # def symmetrize_inplace_no_change_iRvec(self, XX_R_dict, iRvec, cutoff=-1, cutoff_dict=None):
+    #     XX_R_dict_new, iRvec_new = self.symmetrize(XX_R=XX_R_dict,
+    #                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+    #     iRvec_old = [tuple([int(x) for x in r]) for r in iRvec]
+    #     iRvec_new = [tuple([int(x) for x in r]) for r in iRvec_new]
+    #     assert len(iRvec_new) == len(iRvec), ("Number of R-vectors changed during symmetrization, this should not happen\n" +
+    #                                             f" old ({len(iRvec_old)}): \n{iRvec_old}, \n new ({len(iRvec_new)}):\n {iRvec_new}\n"+
+    #                                             f"extra vectors : {set(iRvec_new) - set(iRvec_old)}"+
+    #                                             f"missing vectors : {set(iRvec_old) - set(iRvec_new)}")
+    #     reorder = [self.index_R(r) for r in iRvec_new]
+    #     assert np.all(iRvec[reorder] == iRvec_new), f"iRvec reordering failed: {iRvec[reorder]} != {iRvec_new}"
+    #     for k in XX_R_dict:
+    #         XX_R_copy = XX_R_dict[k].copy()
+    #         XX_R_dict[k][reorder] = XX_R_dict_new[k][:]
+    #         print(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
+    #     return XX_R_dict
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         """
@@ -386,12 +410,15 @@ class SymWann:
         for isym in self.use_symmetries_index:
             symop = self.spacegroup.symmetries[isym]
             # T is the translation needed to return to the home unit cell after rotation
-            T1 = self.symmetrizer.T_list[block1][:, isym]
-            T2 = self.symmetrizer.T_list[block2][:, isym]
-            atommap1 = self.symmetrizer.atommap_list[block1][:, isym]
-            atommap2 = self.symmetrizer.atommap_list[block2][:, isym]
+            T1 = self.symmetrizer_left.T_list[block1][:, isym]
+            T2 = self.symmetrizer_right.T_list[block2][:, isym]
+            atommap1 = self.symmetrizer_left.atommap_list[block1][:, isym]
+            atommap2 = self.symmetrizer_right.atommap_list[block2][:, isym]
             logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
             R_map = iRvec_origin_array @ symop.rotation.T
+            R_map_round = np.rint(R_map).astype(int)
+            assert np.allclose(R_map, R_map_round), f"R_map not integer: {R_map}"
+            R_map = R_map_round
             atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
             # atom_R_map[iR, a, b] gives the new R vector to wich the original iR vector is mapped for atoms a and b
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
@@ -450,19 +477,22 @@ class SymWann:
         np.ndarray
             Rotated matrix
         """
-
-        n_cart = num_cart_dim(X)  # number of cartesian indices
-        symop = self.spacegroup.symmetries[isym]
-        rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
-        for _ in range(n_cart):
-            # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
-            # n_cart times puts dimensions on the right place
-            XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
-        if symop.inversion:
-            XX_L *= self.parity_I[X] * (-1)**n_cart
-        result = _rotate_matrix(XX_L, self.symmetrizer.rot_orb_dagger_list[block1][atom_a, isym], self.symmetrizer.rot_orb_list[block2][atom_b, isym])
-        if symop.time_reversal:
-            result = result.conj() * self.parity_TR[X]
+        if do_rotate_vector(X):
+            n_cart = num_cart_dim(X)  # number of cartesian indices
+            symop = self.spacegroup.symmetries[isym]
+            rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
+            for _ in range(n_cart):
+                # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
+                # n_cart times puts dimensions on the right place
+                XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
+            if symop.inversion:
+                XX_L *= self.parity_I[X] * (-1)**n_cart
+        result = _rotate_matrix(X=XX_L,
+                                L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
+                                R=self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
+        if do_rotate_vector(X):
+            if symop.time_reversal:
+                result = result.conj() * self.parity_TR[X]
         return result
 
 
@@ -475,20 +505,6 @@ def _rotate_matrix(X, L, R):
     _ = np.tensordot(L, X, axes=((1,), (0,)))
     _ = np.tensordot(R, _, axes=((0,), (1,)))
     return _.swapaxes(0, 1)
-
-
-def test_rotate_matrix():
-    for num_wann in 1, 2, 5, 7:
-        for num_cart in 0, 1, 2, 3:
-            shape_LR = (num_wann, num_wann)
-            shape_X = (num_wann,) * 2 + (3,) * num_cart
-            L = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
-            R = np.random.rand(*shape_LR) + 1j * np.random.rand(*shape_LR)
-            X = np.random.rand(*shape_X) + 1j * np.random.rand(*shape_X)
-            Y = _rotate_matrix(X, L, R)
-            assert Y.shape == X.shape
-            Z = cached_einsum("ij,jk...,kl->il...", L, X, R)
-            assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y - Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):

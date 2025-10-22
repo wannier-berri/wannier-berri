@@ -111,7 +111,9 @@ class Wannier90data:
                           ecut_sym=100,
                            unitary_params=None,
                           mp_grid=None,
-                          irred_bk_only=True,):
+                          irred_bk_only=True,
+                          include_paw=True,
+                          include_pseudo=True,):
         """
         Create a Wannier90data object from a bandstructure object
 
@@ -256,12 +258,15 @@ class Wannier90data:
                                read_w90=False,
                                write_npz="mmn" in write_npz_list,
                                bandstructure=bandstructure,
+
                                kwargs_bandstructure={"normalize": normalize,
                                                     #  "kpt_latt_grid": kpt_latt,
                                                     #  "kpt2kptirr": kpt2kptirr,
                                                      "symmetrizer": symmetrizer,
                                                      "irred_bk_only": irred_bk_only,
                                                      "irreducible": self.irreducible,
+                                                     "include_paw": include_paw,
+                                                     "include_pseudo": include_pseudo,
                                                     #  "kpt_from_kptirr_isym": kpt_from_kptirr_isym
                                                     } |
                                kwargs_bandstructure)
@@ -295,13 +300,19 @@ class Wannier90data:
                   unk_grid=None,
                   normalize=True,
                   irreducible=None,
+                  irred_bk_only=True,
+                  include_paw=True,
+                  include_pseudo=True,
                   select_grid=None,
                   ecut_sym=200,
                   ecut_pw=200,
                   spin_channel=0,
                   spacegroup=None,
                   mp_grid=None,
-                  unitary_params=None,
+                  unitary_params=dict(error_threshold=0.1,
+                                      warning_threshold=0.01,
+                                      nbands_upper_skip=8),
+
                   verbosity=0,):
         from irrep.bandstructure import BandStructure
         # from irrep.spacegroup import SpaceGroup
@@ -330,6 +341,9 @@ class Wannier90data:
                                 ecut_sym=ecut_sym,
                                 mp_grid=mp_grid,
                                 unitary_params=unitary_params,
+                                irred_bk_only=irred_bk_only,
+                                include_paw=include_paw,
+                                include_pseudo=include_pseudo
                                 )
         if "soc" in files:
             soc = SOC.from_gpaw(calculator)
@@ -828,6 +842,8 @@ class Wannier90data:
         wannierise(self,
                    irreducible=self.irreducible,
                    **kwargs)
+        chk = self.get_file('chk')
+        chk.to_npz(self.seedname + ".chk")
 
 
     def apply_window(self, *args, **kwargs):

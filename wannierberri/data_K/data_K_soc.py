@@ -15,11 +15,13 @@ class Data_K_soc(Data_K_R):
         self.data_K_up = Data_K_R(system=system.system_up, dK=dK, grid=grid,
                                   **parameters)
 
-        if system.up_down_same:
+        if system.nspin == 1:
             self.data_K_down = self.data_K_up
-        else:
+        elif system.nspin == 2:
             self.data_K_down = Data_K_R(system=system.system_down, dK=dK, grid=grid,
                                         **parameters)
+        else:
+            raise ValueError(f"Unsupported number of spins: {system.nspin}")
         self.has_soc = system.has_soc
         if self.has_soc:
             soc_r_dk = self.rvec.apply_expdK(system.get_R_mat('Ham_SOC'))
