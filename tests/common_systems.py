@@ -260,7 +260,11 @@ PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
 @pytest.fixture(scope="session")
 def soc_Fe_gpaw():
     """Create SOC object for Fe from GPAW calculation"""
-    return SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
+    selected_bands_up = np.load(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))['selected_bands']
+    selected_bands_down = np.load(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))['selected_bands']
+    soc = SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
+    soc.select_bands(selected_bands_up=selected_bands_up, selected_bands_down=selected_bands_down)
+    return soc
 
 
 

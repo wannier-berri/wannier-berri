@@ -98,6 +98,7 @@ def test_create_w90files_diamond_irred(select_grid):
                                                       select_grid=select_grid,
                                                       )
     path_tmp = os.path.join(OUTPUT_DIR, "diamond-create-w90-files-irred")
+    os.makedirs(path_tmp, exist_ok=True)
     prefix = "di-irred"
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]],
                             orbital='s',
