@@ -1,4 +1,3 @@
-import os
 from ..utility import group_numbers
 from .soc import SOC
 from .w90data import Wannier90data

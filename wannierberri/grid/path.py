@@ -168,7 +168,7 @@ class Path(GridAbstract):
         ]
         print("Done ")
         return K_list
-    
+
 
 
     def getKline(self, break_thresh=np.inf):
