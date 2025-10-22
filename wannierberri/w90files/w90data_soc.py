@@ -1,21 +1,22 @@
-import numpy as np
-
+import os
 from ..utility import group_numbers
 from .soc import SOC
 from .w90data import Wannier90data
 
 
-class Wannier90DataSOC(Wannier90data):
+class Wannier90dataSOC(Wannier90data):
     """Class to handle Wannier90 data with spin-orbit coupling (SOC)."""
 
     def __init__(self, data_up, data_down, soc=None, cell=None):
         self.data_up = data_up
         self.data_down = data_down
+        self.bands_were_selected = False
+        self._files = {}
         if data_down is None:
             self.nspin = 1
         else:
             self.nspin = 2
-        self.soc = soc
+        self.set_file("soc", soc)
         self.cell = cell
 
     @property
@@ -23,43 +24,71 @@ class Wannier90DataSOC(Wannier90data):
         return self.data_up.irreducible
 
     @classmethod
-    def from_gpaw(cls, calc,
+    def from_npz(cls, seedname, files=None, irreducible=False):
+        """Create Wannier90DataSOC from NPZ files."""
+
+        files_ud = [f for f in files if f != "soc"] if files is not None else None
+        data_up = Wannier90data().from_npz(seedname=seedname + "-spin-0",
+                                           files=files_ud,
+                                           irreducible=irreducible)
+        try:
+            data_down = Wannier90data().from_npz(seedname=seedname + "-spin-1",
+                                                 files=files_ud,
+                                                 irreducible=irreducible)
+        except FileNotFoundError:
+            data_down = None
+        try:
+            soc = SOC.from_npz(seedname + ".soc.npz")
+        except FileNotFoundError:
+            soc = None
+        return cls(data_up=data_up, data_down=data_down, soc=soc)
+
+    @classmethod
+    def from_gpaw(cls, calculator,
                   projections=None,
                   projections_up=None,
                   projections_down=None,
                   seedname="wannier_soc",
                   spacegroup=None,
                   mag_symprec=0.05,
+                  include_paw=True,
+                  include_pseudo=True,
+                  read_npz_list=None,
+                  write_npz_list=None,
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC."""
-        if isinstance(calc, str):
+        if isinstance(calculator, str):
             from gpaw import GPAW
-            calc = GPAW(calc, txt=None)
+            calculator = GPAW(calculator, txt=None)
         if spacegroup is None:
             from irrep.spacegroup import SpaceGroup
-            spacegroup = SpaceGroup.from_gpaw(calc)
+            spacegroup = SpaceGroup.from_gpaw(calculator)
 
         cell = {}
-        magmoms_on_axis = calc.get_magnetic_moments()
+        magmoms_on_axis = calculator.get_magnetic_moments()
         cell["magmoms_on_axis"] = group_numbers(magmoms_on_axis, precision=mag_symprec)
-        cell["typat"] = calc.atoms.get_atomic_numbers()
-        cell["positions"] = calc.atoms.get_scaled_positions()
+        cell["typat"] = calculator.atoms.get_atomic_numbers()
+        cell["positions"] = calculator.atoms.get_scaled_positions()
 
-        kwargs_w90data = dict(calculator=calc,
-                              mp_grid=(2, 2, 2),
-                              read_npz_list=[],
+        kwargs_w90data = dict(calculator=calculator,
                               spacegroup=spacegroup,
                               unitary_params=dict(error_threshold=0.1,
                                                   warning_threshold=0.01,
                                                   nbands_upper_skip=8),
+                              include_paw=include_paw,
+                              include_pseudo=include_pseudo,
+                              read_npz_list=read_npz_list,
+                              write_npz_list=write_npz_list
                               )
         kwargs_w90data.update(kwargs)
         assert projections is not None or (projections_up is not None), \
             "Either projections or projections_up/projections_down must be provided."
         if projections_up is None:
+            print("Using 'projections' for both spin up channel.")
             projections_up = projections
-        nspin = calc.get_number_of_spins()
+        nspin = calculator.get_number_of_spins()
         if nspin == 2 and projections_down is None:
+            print("No projections_down provided; using projections_up for both spin channels.")
             projections_down = projections_up
 
         data_up = Wannier90data().from_gpaw(spin_channel=0,
@@ -73,18 +102,26 @@ class Wannier90DataSOC(Wannier90data):
                                                 **kwargs_w90data)
         else:
             data_down = None
-        soc = SOC.from_gpaw(calc)
+        soc = None
+        if read_npz_list is None or "soc" in read_npz_list:
+            try:
+                soc = SOC.from_npz(seedname + ".soc.npz")
+            except FileNotFoundError:
+                soc = None
+        if soc is None:
+            soc = SOC.from_gpaw(calculator=calculator)
+        if write_npz_list is None or "soc" in write_npz_list:
+            soc.to_npz(seedname + ".soc.npz")
         return cls(data_up=data_up, data_down=data_down, soc=soc, cell=cell)
 
     def select_bands(self, **kwargs):
         """Select bands for both spin channels."""
-        selected_bands = self.data_up.select_bands(**kwargs)
+        selected_bands_up = self.data_up.select_bands(**kwargs)
         if self.data_down is not None:
-            selected_bands_2 = self.data_down.select_bands(selected_bands=selected_bands)
-            assert np.all(selected_bands == selected_bands_2), \
-                "Selected bands for spin-up and spin-down channels do not match."
-        if self.soc is not None:
-            self.soc.select_bands(selected_bands)
+            self.data_down.select_bands(selected_bands=selected_bands_up)
+        if self.has_file("soc"):
+            self.get_file("soc").select_bands(selected_bands_up, selected_bands_up)
+        self.bands_were_selected = True
 
     def wannierise(self, ispin=None, **kwargs):
         if ispin == 0:

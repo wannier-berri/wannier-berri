@@ -84,4 +84,5 @@ bands_dw.plot_path_fat(path=path,
 
 # plt.ylim(-0.6, 0.6)
 plt.ylim(-1.7, 1.7)
+plt.ylim(-15,40)
 plt.savefig("bands.png")

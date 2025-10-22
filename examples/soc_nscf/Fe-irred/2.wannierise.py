@@ -2,7 +2,7 @@ import numpy as np
 from gpaw import GPAW
 from irrep.spacegroup import SpaceGroup
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from wannierberri.w90files.w90data_soc import Wannier90DataSOC
+from wannierberri.w90files.w90data_soc import Wannier90dataSOC
 from wannierberri.system.system_soc import SystemSOC
 
 gpaw_calc = GPAW( "Fe-nscf-irred-444.gpw")
@@ -13,8 +13,8 @@ proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
 
 # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
 # os.makedirs(path, exist_ok=True)
-w90data = Wannier90DataSOC.from_gpaw(
-    calc=gpaw_calc,
+w90data = Wannier90dataSOC.from_gpaw(
+    calculator=gpaw_calc,
     projections=proj_set,
     mp_grid=(4,4,4),
     read_npz_list=[],

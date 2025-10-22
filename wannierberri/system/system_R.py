@@ -156,7 +156,7 @@ class System_R(System):
         for k in keys:
             if self.has_R_mat(k):
                 return True
-            
+
     def has_R_mat_all(self, keys):
         for k in keys:
             if not self.has_R_mat(k):

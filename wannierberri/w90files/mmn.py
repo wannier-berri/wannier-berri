@@ -1,4 +1,5 @@
 from collections import defaultdict
+import functools
 from itertools import islice
 import multiprocessing
 from time import time
@@ -268,6 +269,8 @@ class MMN(W90_file):
                            symmetrizer=None,
                            irreducible=False,
                            irred_bk_only=True,
+                           include_paw=True,
+                           include_pseudo=True,
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -375,7 +378,7 @@ class MMN(W90_file):
                         # if use_paw:
                         #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
                         isym = kpt_from_kptirr_isym[ik2]
-                        print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
+                        # print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
                         ik_origin = kpt2kptirr[ik2]
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
@@ -388,7 +391,7 @@ class MMN(W90_file):
         data = defaultdict(lambda: np.zeros((NNB, NB, NB), dtype=complex))
         if use_paw:
             wavefunc_all = Grid_PAW_all(kpoints_dict_all=kpoints_dict_all,
-                                        product=bandstructure.overlap_paw.product,
+                                        product=functools.partial(bandstructure.overlap_paw.product, include_paw=include_paw, include_pseudo=include_pseudo),
                                         identity_operation=identity_operation)
         else:
             wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)

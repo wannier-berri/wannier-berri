@@ -27,7 +27,6 @@ orbitals_sets_dic = {
     'pz': ['pz'],
     'sp3': ['sp3-1', 'sp3-2', 'sp3-3', 'sp3-4'],
     'sp3d2': ['sp3d2-1', 'sp3d2-2', 'sp3d2-3', 'sp3d2-4', 'sp3d2-5', 'sp3d2-6'],
-    'sp3d2_plus': ['sp3d2_plus-1', 'sp3d2_plus-2', 'sp3d2_plus-3', 'sp3d2_plus-4', 'sp3d2_plus-5', 'sp3d2_plus-6'],
     't2g': ['dxz', 'dyz', 'dxy'],
     'eg': ['dx2-y2', 'dz2'],
 }

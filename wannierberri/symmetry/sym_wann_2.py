@@ -67,7 +67,7 @@ class SymWann:
         self.nRvec = len(self.iRvec)
         self.num_wann = symmetrizer_left.num_wann
         self.spacegroup = symmetrizer_left.spacegroup
-        assert self.spacegroup == symmetrizer_right.spacegroup, "Left and right symmetrizers must have the same spacegroup"
+        assert self.spacegroup.equals(symmetrizer_right.spacegroup, mod1=False), "Left and right symmetrizers must have the same spacegroup"
         self.lattice = self.spacegroup.lattice
 
         if use_symmetries_index is None:
@@ -94,7 +94,7 @@ class SymWann:
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
                                 'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
-                              'SS', 'SH', 'SA', 'SHA']
+                              'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
 
 
         # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
@@ -350,17 +350,22 @@ class SymWann:
         logfile.write('Symmetrizing Finished\n')
         return return_dic, np.array(iRvec_new)
 
-    def symmetrize_inplace_no_change_iRvec(self, XX_R_dict, iRvec, cutoff=-1, cutoff_dict=None):
-        XX_R_dict_new, iRvec_new = self.symmetrize(XX_R=XX_R_dict,
-                                                   cutoff=cutoff, cutoff_dict=cutoff_dict)
-        assert len(iRvec_new) == len(iRvec), "Number of R-vectors changed during symmetrization, this should not happen"
-        reorder = [self.index_R(r) for r in iRvec_new]
-        assert np.all(iRvec[reorder] == iRvec_new), f"iRvec reordering failed: {iRvec[reorder]} != {iRvec_new}"
-        for k in XX_R_dict:
-            XX_R_copy = XX_R_dict[k].copy()
-            XX_R_dict[k][reorder] = XX_R_dict_new[k][:]
-            print(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
-        return XX_R_dict
+    # def symmetrize_inplace_no_change_iRvec(self, XX_R_dict, iRvec, cutoff=-1, cutoff_dict=None):
+    #     XX_R_dict_new, iRvec_new = self.symmetrize(XX_R=XX_R_dict,
+    #                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+    #     iRvec_old = [tuple([int(x) for x in r]) for r in iRvec]
+    #     iRvec_new = [tuple([int(x) for x in r]) for r in iRvec_new]
+    #     assert len(iRvec_new) == len(iRvec), ("Number of R-vectors changed during symmetrization, this should not happen\n" +
+    #                                             f" old ({len(iRvec_old)}): \n{iRvec_old}, \n new ({len(iRvec_new)}):\n {iRvec_new}\n"+
+    #                                             f"extra vectors : {set(iRvec_new) - set(iRvec_old)}"+
+    #                                             f"missing vectors : {set(iRvec_old) - set(iRvec_new)}")
+    #     reorder = [self.index_R(r) for r in iRvec_new]
+    #     assert np.all(iRvec[reorder] == iRvec_new), f"iRvec reordering failed: {iRvec[reorder]} != {iRvec_new}"
+    #     for k in XX_R_dict:
+    #         XX_R_copy = XX_R_dict[k].copy()
+    #         XX_R_dict[k][reorder] = XX_R_dict_new[k][:]
+    #         print(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
+    #     return XX_R_dict
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         """

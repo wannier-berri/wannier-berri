@@ -15,7 +15,7 @@ from irrep.spacegroup import SpaceGroup
 from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.w90files.w90data_soc import Wannier90DataSOC
+from wannierberri.w90files.w90data_soc import Wannier90dataSOC
 
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
@@ -438,8 +438,8 @@ def system_Fe_gpaw_soc_111_irred():
 
     # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
     # os.makedirs(path, exist_ok=True)
-    w90data = Wannier90DataSOC.from_gpaw(
-        calc=gpaw_calc,
+    w90data = Wannier90dataSOC.from_gpaw(
+        calculator=gpaw_calc,
         projections=proj_set,
         mp_grid=(2, 2, 2),
         read_npz_list=[],

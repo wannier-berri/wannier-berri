@@ -131,8 +131,9 @@ class SystemSOC(System_R):
 
         mp_grid = chk_up.mp_grid
 
-        selected_bands_list = [chk.get_selected_bands() for chk in [chk_up, chk_down]]
+        # selected_bands_list = [chk.get_selected_bands() for chk in [chk_up, chk_down]]
 
+        # print(f"setting the Rvectors with wannier centers (cart): \n {self.wannier_centers_cart}\n (red): \n {self.wannier_centers_red}")
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
 
@@ -146,14 +147,15 @@ class SystemSOC(System_R):
         rng = np.arange(self.num_wann_scalar) * 2
 
         for i1 in range(nspin):
-            sel_i = selected_bands_list[i1]
+            # sel_i = selected_bands_list[i1]
             for j1 in range(i1, nspin):
-                sel_j = selected_bands_list[j1]
+                # sel_j = selected_bands_list[j1]
                 dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
                 for ik, w in zip(kptirr, weights_k):
                     vt = chk_list[i1].v_matrix[ik].T.conj()
                     v = chk_list[j1].v_matrix[ik]
-                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
+                    # dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
+                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, :, :][:, :, :], v)
                 if i1 == j1:
                     assert np.allclose(dV_soc_wann_ik, dV_soc_wann_ik.transpose(0, 2, 1, 3).conj()), "The diagonal spin components of SOC should be Hermitian"
                     # dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
@@ -165,8 +167,9 @@ class SystemSOC(System_R):
             for ik, w in zip(kptirr, weights_k):
                 vt = chk_list[0].v_matrix[ik].T.conj()
                 v = chk_list[1].v_matrix[ik]
-                overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
-                overlap_ik[ik] = w * (vt @ overlap_loc @ v)
+                # overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
+                # overlap_ik[ik] = w * (vt @ overlap_loc @ v)
+                overlap_ik[ik] = w * (vt @ overlap_q_H[ik] @ v)
             overlap_Rud = self.rvec.q_to_R(overlap_ik, select_left=rng, select_right=rng + 1)
             self.set_R_mat('overlap_up_down', overlap_Rud)
         self.has_soc = True
@@ -265,7 +268,7 @@ class SystemSOC(System_R):
             system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
         else:
             system_down = None
-        system_soc =cls(system_up=system_up, system_down=system_down, silent=silent)
+        system_soc = cls(system_up=system_up, system_down=system_down, silent=silent)
         system_soc.load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
         if system_soc.has_soc_R:
             system_soc.has_soc = True
@@ -317,10 +320,7 @@ class SystemSOC(System_R):
             silent=silent,
             use_symmetries_index=use_symmetries_index,
         )
-        if self.nspin == 1:
-            symmetrize_wann_down_down = symmetrize_wann_up_up
-            symmetrize_wann_up_down = symmetrize_wann_up_up
-        else:
+        if self.nspin == 2:
             symmetrize_wann_down_down = SymWann(
                 symmetrizer_left=symmetrizer_down,
                 symmetrizer_right=symmetrizer_down,
@@ -343,21 +343,36 @@ class SystemSOC(System_R):
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
 
-        _XX_dict = {k: self.get_R_mat(k) for k in ['dV_soc_wann_0_1', 'overlap_up_down']}
-        # _XX_dict = {k: self.get_R_mat(k) for k in ['overlap_up_down']}
-        symmetrize_wann_up_down.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
-                                                                iRvec=self.rvec.iRvec,
-                                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+        iRvec_new_dict = {}
+        XX_new_dict = {}
 
-        _XX_dict = {k: self.get_R_mat(k) for k in ['dV_soc_wann_0_0']}
-        symmetrize_wann_up_up.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
-                                                                iRvec=self.rvec.iRvec,
-                                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+        def symmetrize_part(sym_wann, key_list):
+            _XX_dict = {k: self.get_R_mat(k) for k in key_list}
+            _XX_dict_new, iRvec_new = sym_wann.symmetrize(XX_R=_XX_dict,
+                                            cutoff=cutoff, cutoff_dict=cutoff_dict)
+            for k, v in _XX_dict_new.items():
+                XX_new_dict[k] = v
+                iRvec_new_dict[k] = iRvec_new
 
-        _XX_dict = {k: self.get_R_mat(k) for k in ['dV_soc_wann_1_1']}
-        symmetrize_wann_down_down.symmetrize_inplace_no_change_iRvec(XX_R_dict=_XX_dict,
-                                                                iRvec=self.rvec.iRvec,
-                                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
+        symmetrize_part(symmetrize_wann_up_up, ['dV_soc_wann_0_0'])
+        if self.nspin == 2:
+            symmetrize_part(symmetrize_wann_down_down, ['dV_soc_wann_1_1'])
+            symmetrize_part(symmetrize_wann_up_down, ['dV_soc_wann_0_1', 'overlap_up_down'])
+
+        iRvec_all = np.unique(np.vstack(list(iRvec_new_dict.values())), axis=0)
+        iRvec_index = {tuple(R): i for i, R in enumerate(iRvec_all)}
+
+        self.rvec.iRvec = iRvec_all
+        self.rvec.clear_cached()
+
+        for key in XX_new_dict:
+            reorder = np.array([iRvec_index[tuple(R)] for R in iRvec_new_dict[key]])
+            XX = XX_new_dict[key]
+            XX_new = np.zeros((len(iRvec_all),) + XX.shape[1:], dtype=XX.dtype)
+            XX_new[reorder] = XX
+            self.set_R_mat(key, XX_new, reset=True)
+
+
 
     @classmethod
     def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
@@ -368,7 +383,7 @@ class SystemSOC(System_R):
             system_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)
         kptirr, weights_k = w90data.data_up.kptirr_system
-        system_soc.set_soc_R(w90data.soc,
+        system_soc.set_soc_R(w90data.get_file("soc"),
                              chk_up=w90data.get_file_ud("up", "chk"),
                              chk_down=w90data.get_file_ud("down", "chk"),
                              kptirr=kptirr, weights_k=weights_k
