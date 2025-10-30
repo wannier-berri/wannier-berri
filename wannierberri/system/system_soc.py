@@ -72,6 +72,27 @@ class SystemSOC(System_R):
         else:
             self.cell = None
 
+    def swap_spin_channels(self):
+        if self.nspin ==1:
+            return self
+        self.system_up, self.system_down = self.system_down, self.system_up
+        self.wannier_centers_cart[::2], self.wannier_centers_cart[1::2] = self.wannier_centers_cart[1::2], self.wannier_centers_cart[::2].copy()
+        if self.has_R_mat('overlap_up_down'):
+            overlap = self.get_R_mat('overlap_up_down')
+            overlap = self.rvec.conj_XX_R(overlap)
+            self.set_R_mat('overlap_up_down', overlap, reset=True)
+        if self.has_R_mat_any(['dV_soc_wann_0_0', 'dV_soc_wann_1_0', 'dV_soc_wann_1_1']):
+            dV00 = self.get_R_mat('dV_soc_wann_0_0')
+            dV11 = self.get_R_mat('dV_soc_wann_1_1')
+            dV01 = self.get_R_mat('dV_soc_wann_0_1')
+            dV10 = self.rvec.conj_XX_R(dV01)
+            self.set_R_mat('dV_soc_wann_0_0', dV11, reset=True)
+            self.set_R_mat('dV_soc_wann_1_1', dV00, reset=True)
+            self.set_R_mat('dV_soc_wann_0_1', dV10, reset=True)
+        self.clear_R_mat(['Ham_SOC', 'SS'])
+        
+
+
     def set_cell(self, positions, typat, magmoms_on_axis):
         self.cell = dict(positions=np.array(positions),
                          typat=np.array(typat),
@@ -253,7 +274,7 @@ class SystemSOC(System_R):
         if self.nspin == 2:
             return self.has_R_mat_all(['dV_soc_wann_0_0', 'dV_soc_wann_1_1', 'dV_soc_wann_0_1', 'overlap_up_down'])
         else:
-            return self.has_R_mat(['dV_soc_wann_0_0'])
+            return self.has_R_mat_all(['dV_soc_wann_0_0'])
 
 
     @classmethod

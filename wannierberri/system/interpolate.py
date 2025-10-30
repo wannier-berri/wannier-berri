@@ -44,21 +44,21 @@ class SystemInterpolator:
 
         matrix_keys0 = set(self.system0._XX_R.keys())
         matrix_keys1 = set(self.system1._XX_R.keys())
-        # set of keys that are present in only one of the systems
+        # set of keys that are present in only one of the systemschk_up, system1.chk_up, use_pointgroup)
         # matrix_keys_common = matrix_keys0.intersection(matrix_keys1)
         matrix_keys_all = matrix_keys0.union(matrix_keys1)
         matrix_keys_exclude = matrix_keys_all - matrix_keys0.intersection(matrix_keys1)
         if len(matrix_keys_exclude) > 0:
             warnings.warn(f"The following matrix elements are present in only one of the systems: {matrix_keys_exclude} , they will be excluded from the interpolation")
         for sys, iRmap  in zip([self.system0, self.system1], [iRvec_map_0, iRvec_map_1]):
-            for key in sys._XX_R:
-                if key in matrix_keys_exclude:
+            for key in matrix_keys_exclude:
+                if key in sys._XX_R:
                     del sys._XX_R[key]
-                else:
-                    shape = sys._XX_R[key].shape
-                    new_matrix = np.zeros((len(iRvec_new_list),) + shape[1:], dtype=complex)
-                    new_matrix[iRmap] = sys._XX_R[key]
-                    sys._XX_R[key] = new_matrix
+            for key in sys._XX_R:
+                shape = sys._XX_R[key].shape
+                new_matrix = np.zeros((len(iRvec_new_list),) + shape[1:], dtype=complex)
+                new_matrix[iRmap] = sys._XX_R[key]
+                sys._XX_R[key] = new_matrix
             sys.rvec = Rvectors(lattice=sys.rvec.lattice, iRvec=iRvec_array, shifts_left_red=sys.rvec.shifts_left_red, shifts_right_red=sys.rvec.shifts_right_red)
             sys.clear_cached_R()
 
@@ -69,4 +69,46 @@ class SystemInterpolator:
         for key in self.system0._XX_R:
             new_system._XX_R[key] = (1 - alpha) * self.system0._XX_R[key] + alpha * self.system1._XX_R[key]
         new_system.set_pointgroup(pointgroup=self.pointgroup)
+        return new_system
+
+
+class SystemInterpolatorSOC(SystemInterpolator):
+    """
+    In terploates between two systems with SOC
+
+    Parameters
+    ----------
+    system0 : SystemSOC
+        The first system (corresponds to alpha = 0)
+    system1 : SystemSOC
+        The second system (corresponds to alpha = 1) 
+    use_pointgroup : int
+        If 0, the pointgroup of system0 will be used, if 1, the pointgroup of the system1 will be used. If -1, no pointgroup will be used. 
+    """
+
+    def __init__(self, system0, system1, use_pointgroup=1):
+        super().__init__(system0, system1, use_pointgroup)
+        if hasattr(self.system0, 'system_up'):
+            delattr(self.system0, 'system_up')
+        if hasattr(self.system0, 'system_down'):
+            delattr(self.system0, 'system_down')
+        if hasattr(self.system1, 'system_up'):
+            delattr(self.system1, 'system_up')
+        if hasattr(self.system1, 'system_down'):
+            delattr(self.system1, 'system_down')
+        self.interpolator_up = SystemInterpolator(system0.system_up, system1.system_up, use_pointgroup)
+        if system0.nspin ==1 and system1.nspin ==1:
+            self.interpolator_down = None
+        else:
+            self.interpolator_down = SystemInterpolator(system0.system_down, system1.system_down, use_pointgroup)            
+
+    def interpolate(self, alpha):
+        new_system = super().interpolate(alpha)
+        new_system.system_up = self.interpolator_up.interpolate(alpha)
+        if self.interpolator_down is not None:
+            new_system.system_down = self.interpolator_down.interpolate(alpha)
+            new_system.nspin = 2
+        else:
+            new_system.system_down = new_system.system_up
+            new_system.nspin = 1
         return new_system
