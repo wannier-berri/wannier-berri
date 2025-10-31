@@ -73,7 +73,7 @@ class SystemSOC(System_R):
             self.cell = None
 
     def swap_spin_channels(self):
-        if self.nspin ==1:
+        if self.nspin == 1:
             return self
         self.system_up, self.system_down = self.system_down, self.system_up
         self.wannier_centers_cart[::2], self.wannier_centers_cart[1::2] = self.wannier_centers_cart[1::2], self.wannier_centers_cart[::2].copy()
@@ -90,7 +90,7 @@ class SystemSOC(System_R):
             self.set_R_mat('dV_soc_wann_1_1', dV00, reset=True)
             self.set_R_mat('dV_soc_wann_0_1', dV10, reset=True)
         self.clear_R_mat(['Ham_SOC', 'SS'])
-        
+
 
 
     def set_cell(self, positions, typat, magmoms_on_axis):
@@ -233,8 +233,8 @@ class SystemSOC(System_R):
         if self.nspin == 2:
             overlap = self.get_R_mat('overlap_up_down')
             SS_R_W[:, 0::2, 1::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 0, 1, None, None, :]
-            overlap = self.rvec.conj_XX_R(overlap)
-            SS_R_W[:, 1::2, 0::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 1, 0, None, None, :]
+            overlap_conj = self.rvec.conj_XX_R(overlap)
+            SS_R_W[:, 1::2, 0::2, :] = overlap_conj[:, :, :, None] * pauli_rotated[None, 1, 0, None, None, :]
         elif self.nspin == 1:
             SS_R_W[iR0, rng, rng + 1, :] = pauli_rotated[None, 0, 1, None, None, :]
             SS_R_W[iR0, rng + 1, rng, :] = pauli_rotated[None, 1, 0, None, None, :]

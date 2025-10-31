@@ -97,10 +97,10 @@ class SystemInterpolatorSOC(SystemInterpolator):
         if hasattr(self.system1, 'system_down'):
             delattr(self.system1, 'system_down')
         self.interpolator_up = SystemInterpolator(system0.system_up, system1.system_up, use_pointgroup)
-        if system0.nspin ==1 and system1.nspin ==1:
+        if system0.nspin == 1 and system1.nspin == 1:
             self.interpolator_down = None
         else:
-            self.interpolator_down = SystemInterpolator(system0.system_down, system1.system_down, use_pointgroup)            
+            self.interpolator_down = SystemInterpolator(system0.system_down, system1.system_down, use_pointgroup)
 
     def interpolate(self, alpha):
         new_system = super().interpolate(alpha)
