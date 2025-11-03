@@ -58,7 +58,7 @@ class W90_file(SavableNPZ):
         elif bandstructure is not None:
             if kwargs_bandstructure is None:
                 kwargs_bandstructure = {}
-            obj = cls.from_bandstructure(bandstructure, **kwargs_bandstructure)
+            obj = cls.from_bandstructure(bandstructure=bandstructure, **kwargs_bandstructure)
         elif read_w90:
             obj = cls.from_w90_file(seedname, **kwargs_w90)
         if write_npz:

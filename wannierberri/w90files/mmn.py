@@ -5,7 +5,7 @@ import multiprocessing
 from time import time
 import numpy as np
 
-from .utility import convert, grid_from_kpoints
+from .utility import convert
 from .w90file import W90_file, auto_kptirr, check_shape
 from ..io import sparselist_to_dict
 from ..utility import cached_einsum
@@ -33,41 +33,26 @@ class MMN(W90_file):
         the reciprocal lattice vectors connecting the k-points
     """
 
-    npz_tags = ["NK", "bk_cart", "bk_latt", "wk"]
-    npz_keys_dict_int = ["data", "neighbours", "G", "bk_reorder"]
+    npz_tags = ["NK"]
+    npz_keys_dict_int = ["data", "bk_reorder"]
     extension = "mmn"
 
-    def __init__(self, data, neighbours, G, bk_latt, bk_cart, wk, bk_reorder=None, NK=None):
+    def __init__(self, data, bk_reorder=None, NK=None):
         super().__init__(data=data, NK=NK)
-        G = sparselist_to_dict(G)
-        neighbours = sparselist_to_dict(neighbours)
         shape = check_shape(self.data)
         assert len(shape) == 3, f"MMN data should have 4 dimensions, got {len(shape)}"
         assert shape[1] == shape[2], f"MMN data should have NB x NB shape, got {shape[1]} x {shape[2]}"
         self.NNB = shape[0]
         if bk_reorder is None:
-            bk_reorder = {ik: np.arange(self.NNB) for ik in G.keys()}
+            bk_reorder = {ik: np.arange(self.NNB) for ik in self.data.keys()}
         bk_reorder = sparselist_to_dict(bk_reorder)
         self.NB = shape[1]
-        self.neighbours = neighbours
-        assert check_shape(self.neighbours) == (self.NNB,)
-        self.G = G
-        assert check_shape(self.G) == (self.NNB, 3)
-        self.bk_latt = np.array(bk_latt, dtype=int)
-        assert self.bk_latt.shape == (self.NNB, 3), \
-            f"MMN bk_latt should have shape (NNB, 3), got {self.bk_latt.shape}"
-        self.bk_cart = np.array(bk_cart, dtype=float)
-        assert self.bk_cart.shape == (self.NNB, 3), \
-            f"MMN bk_cart should have shape (NNB, 3), got {self.bk_cart.shape}"
-        self.wk = np.array(wk, dtype=float)
-        assert self.wk.shape == (self.NNB,), \
-            f"MMN wk should have shape (NNB,), got {self.wk.shape}"
         if bk_reorder is None:
             bk_reorder = sparselist_to_dict([np.arange(self.NNB, dtype=int) for _ in range(self.NK)])
         self.bk_reorder = bk_reorder
 
     @classmethod
-    def from_w90_file(cls, seedname, kpt_latt, recip_lattice, npar=multiprocessing.cpu_count(), selected_kpoints=None):
+    def from_w90_file(cls, seedname, bkvec, npar=multiprocessing.cpu_count(), selected_kpoints=None):
         t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
@@ -82,7 +67,7 @@ class MMN(W90_file):
         # TODO: FIXME: npar = 0 does not work
         if npar > 0:
             pool = multiprocessing.Pool(npar)
-        # TODO : do trext conversion only for selected kpoints
+        # TODO : do text conversion only for selected kpoints
         for j in range(0, NNB * NK, npar * mult):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
             if len(x) == 0:
@@ -108,21 +93,13 @@ class MMN(W90_file):
         G = headstring[:, :, 2:]
         t2 = time()
         print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
-        bk_cart, bk_latt, wk, bk_reorder = MMN.get_bk(
-            G=G, neighbours=neighbours, NNB=NNB, NK=NK,
-            kpt_latt=kpt_latt, recip_lattice=recip_lattice)
+
+        bk_reorder = [None for _ in range(NK)]
         for ik in selected_kpoints:
-            srt = bk_reorder[ik]
-            data[ik][:] = data[ik][srt, :]
-            G[ik][:] = G[ik][srt]
-            neighbours[ik][:] = neighbours[ik][srt]
+            bk_reorder[ik] = bkvec.reorder_bk_vectors(ik, neighbours[ik], G[ik], data[ik])
+
 
         return MMN(data=data,
-                   neighbours=neighbours,
-                   G=G,
-                   bk_latt=bk_latt,
-                   bk_cart=bk_cart,
-                   wk=wk,
                    bk_reorder=bk_reorder,
                    NK=NK)
 
@@ -141,100 +118,102 @@ class MMN(W90_file):
     def select_bands(self, selected_bands):
         return super().select_bands(selected_bands, dimensions=(1, 2))
 
-    # TODO : combine with find_bk_vectors
-    @staticmethod
-    def get_bk(G, neighbours, NNB, NK, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-        mp_grid = np.array(grid_from_kpoints(kpt_latt))
-        bk_latt_all = np.array(
-            np.round(
-                [
-                    (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
-                    for nbrs, G in zip(neighbours.T, G.transpose(1, 0, 2))
-                ]).transpose(1, 0, 2),
-            dtype=int)
 
-        bk_latt = bk_latt_all[0]
+    # # TODO : combine with find_bk_vectors
+    # @staticmethod
+    # def get_bk(G, neighbours, NNB, NK, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+    #     mp_grid = np.array(grid_from_kpoints(kpt_latt))
+    #     bk_latt_all = np.array(
+    #         np.round(
+    #             [
+    #                 (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
+    #                 for nbrs, G in zip(neighbours.T, G.transpose(1, 0, 2))
+    #             ]).transpose(1, 0, 2),
+    #         dtype=int)
 
-        ## Reorder the bk_latt vectors to match the order of the first k-point
-        bk_latt_tuples_0 = [tuple(b) for b in bk_latt]
-        bk_reorder = []
-        for ik in range(NK):
-            bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
-            srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
-            assert len(srt) == NNB, f"Reordering failed for k-point {ik}. Expected {NNB} neighbours, got {len(srt)}"
-            assert np.all(bk_latt == bk_latt_all[ik, srt]), \
-                f"Reordering failed for k-point {ik}. Expected {bk_latt}, got {bk_latt_all[ik, srt]}"
-            bk_reorder.append(srt)
-        bk_reorder = np.array(bk_reorder, dtype=int)
+    #     bk_latt = bk_latt_all[0]
 
-        bk_cart = bk_latt.dot(recip_lattice / mp_grid[:, None])
-        bk_length = np.linalg.norm(bk_cart, axis=1)
-        srt = np.argsort(bk_length)
-        srt_inv = np.argsort(srt)
-        bk_length_srt = bk_length[srt]
-        brd = [
-            0,
-        ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
-            NNB,
-        ]
-        shell_mat = []
-        shell_mat = np.array([bk_cart[srt[b1:b2]].T.dot(bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
-        shell_mat_line = shell_mat.reshape(-1, 9)
-        u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-        s = 1. / s
-        weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-        check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
-        tol = np.linalg.norm(check_eye - np.eye(3))
-        if tol > bk_complete_tol:
-            raise RuntimeError(
-                f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
-                f"failed to be identity by an error of {tol}. Further debug information :  \n"
-                f"bk_latt={bk_latt} \n bk_cart={bk_cart} \n"
-                f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
-                f"weight_shell={weight_shell}, srt={srt}\n")
-        weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
-        wk = weight[srt_inv]
+    #     ## Reorder the bk_latt vectors to match the order of the first k-point
+    #     bk_latt_tuples_0 = [tuple(b) for b in bk_latt]
+    #     bk_reorder = []
+    #     for ik in range(NK):
+    #         bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
+    #         srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
+    #         assert len(srt) == NNB, f"Reordering failed for k-point {ik}. Expected {NNB} neighbours, got {len(srt)}"
+    #         assert np.all(bk_latt == bk_latt_all[ik, srt]), \
+    #             f"Reordering failed for k-point {ik}. Expected {bk_latt}, got {bk_latt_all[ik, srt]}"
+    #         bk_reorder.append(srt)
+    #     bk_reorder = np.array(bk_reorder, dtype=int)
 
-        return bk_cart, bk_latt, wk, bk_reorder
+    #     bk_cart = bk_latt.dot(recip_lattice / mp_grid[:, None])
+    #     bk_length = np.linalg.norm(bk_cart, axis=1)
+    #     srt = np.argsort(bk_length)
+    #     srt_inv = np.argsort(srt)
+    #     bk_length_srt = bk_length[srt]
+    #     brd = [
+    #         0,
+    #     ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
+    #         NNB,
+    #     ]
+    #     shell_mat = []
+    #     shell_mat = np.array([bk_cart[srt[b1:b2]].T.dot(bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
+    #     shell_mat_line = shell_mat.reshape(-1, 9)
+    #     u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
+    #     s = 1. / s
+    #     weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
+    #     check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
+    #     tol = np.linalg.norm(check_eye - np.eye(3))
+    #     if tol > bk_complete_tol:
+    #         raise RuntimeError(
+    #             f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
+    #             f"failed to be identity by an error of {tol}. Further debug information :  \n"
+    #             f"bk_latt={bk_latt} \n bk_cart={bk_cart} \n"
+    #             f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
+    #             f"weight_shell={weight_shell}, srt={srt}\n")
+    #     weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
+    #     wk = weight[srt_inv]
 
-    def reorder_bk(self,
-                   bk_reorder=None,
-                   bk_latt_new=None,
-                    ):
-        """
-        Reorder the bk vectors according to the given order
+    #     return bk_cart, bk_latt, wk, bk_reorder
 
-        Parameters
-        ----------
-        bk_reorder : list of int or None
-            the new order of the bk vectors. If None, the order is taken from bk_latt_new
-        bk_latt_new : list of tuple or None
-            the new list of bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid.
-            If None, the order is taken from self.bk_latt
-        """
-        assert (bk_reorder is not None) != (bk_latt_new is not None), \
-            "Either bk_reorder or bk_latt_new should be provided, but not both."
-        if bk_reorder is None:
-            bk_latt_new = np.array(bk_latt_new, dtype=int)
-            assert bk_latt_new.shape == (self.NNB, 3), \
-                f"bk_latt_new should have shape (NNB, 3), got {bk_latt_new.shape}"
-            bk_reorder = [np.where((self.bk_latt == b).all(axis=1))[0][0] for b in bk_latt_new]
-        print(f"Reordering bk vectors with {bk_reorder} ")
-        self.bk_latt = self.bk_latt[bk_reorder]
-        if bk_latt_new is not None:
-            assert np.all(self.bk_latt == bk_latt_new), \
-                f"Reordered bk_latt {self.bk_latt} does not match the provided bk_latt_new {bk_latt_new}"
-        self.bk_cart = self.bk_cart[bk_reorder]
-        self.wk = self.wk[bk_reorder]
+    # def reorder_bk(self,
+    #                bk_reorder=None,
+    #                bk_latt_new=None,
+    #                 ):
+    #     """
+    #     Reorder the bk vectors according to the given order
 
-        for ik, d in self.data.items():
-            self.data[ik] = d[bk_reorder, :]
-        for ik, g in self.G.items():
-            self.G[ik] = g[bk_reorder]
-        for ik, n in self.neighbours.items():
-            self.neighbours[ik] = n[bk_reorder]
-        for ik in self.bk_reorder.keys():
-            self.bk_reorder[ik] = self.bk_reorder[ik][bk_reorder]
+    #     Parameters
+    #     ----------
+    #     bk_reorder : list of int or None
+    #         the new order of the bk vectors. If None, the order is taken from bk_latt_new
+    #     bk_latt_new : list of tuple or None
+    #         the new list of bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid.
+    #         If None, the order is taken from self.bk_latt
+    #     """
+    #     assert (bk_reorder is not None) != (bk_latt_new is not None), \
+    #         "Either bk_reorder or bk_latt_new should be provided, but not both."
+    #     if bk_reorder is None:
+    #         bk_latt_new = np.array(bk_latt_new, dtype=int)
+    #         assert bk_latt_new.shape == (self.NNB, 3), \
+    #             f"bk_latt_new should have shape (NNB, 3), got {bk_latt_new.shape}"
+    #         bk_reorder = [np.where((self.bk_latt == b).all(axis=1))[0][0] for b in bk_latt_new]
+    #     print(f"Reordering bk vectors with {bk_reorder} ")
+    #     self.bk_latt = self.bk_latt[bk_reorder]
+    #     if bk_latt_new is not None:
+    #         assert np.all(self.bk_latt == bk_latt_new), \
+    #             f"Reordered bk_latt {self.bk_latt} does not match the provided bk_latt_new {bk_latt_new}"
+    #     self.bk_cart = self.bk_cart[bk_reorder]
+    #     self.wk = self.wk[bk_reorder]
+
+    #     for ik, d in self.data.items():
+    #         self.data[ik] = d[bk_reorder, :]
+    #     for ik, g in self.G.items():
+    #         self.G[ik] = g[bk_reorder]
+    #     for ik, n in self.neighbours.items():
+    #         self.neighbours[ik] = n[bk_reorder]
+    #     for ik in self.bk_reorder.keys():
+    #         self.bk_reorder[ik] = self.bk_reorder[ik][bk_reorder]
+
 
     def equals(self, other, tolerance=1e-8, check_reorder=True):
         iseq, message = super().equals(other, tolerance)
@@ -242,12 +221,12 @@ class MMN(W90_file):
             return iseq, message
         if self.NNB != other.NNB:
             return False, f"the number of neighbouring bands is not equal: {self.NNB} and {other.NNB} correspondingly"
-        if not np.all(self.bk_latt == other.bk_latt):
-            return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"
-        if not np.allclose(self.bk_cart, other.bk_cart):
-            return False, f"the bk_cart vectors are not equal: {self.bk_cart} and {other.bk_cart} correspondingly"
-        if not np.allclose(self.wk, other.wk):
-            return False, f"the wk valuesare not equal: {self.wk} and {other.wk} correspondingly"
+        # if not np.all(self.bk_latt == other.bk_latt):
+        #     return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"
+        # if not np.allclose(self.bk_cart, other.bk_cart):
+        #     return False, f"the bk_cart vectors are not equal: {self.bk_cart} and {other.bk_cart} correspondingly"
+        # if not np.allclose(self.wk, other.wk):
+        #     return False, f"the wk valuesare not equal: {self.wk} and {other.wk} correspondingly"
         if check_reorder:
             for ik in self.bk_reorder.keys():
                 if not np.all(self.bk_reorder[ik] == other.bk_reorder[ik]):
@@ -256,17 +235,17 @@ class MMN(W90_file):
 
 
     @classmethod
-    def from_bandstructure(cls, bandstructure,
+    def from_bandstructure(cls,
+                           bkvec,
+                           bandstructure,
+                           bandstructure_left=None,
                            normalize=False,
                            verbose=False,
-                           param_search_bk={},
                            selected_kpoints=None,
                            kptirr=None,
-                        #    kpt_from_kptirr_isym=None,
-                        #    kpt2kptirr=None,
                            NK=None,
-                        #    kpt_latt_grid=None,
                            symmetrizer=None,
+                           symmetrizer_left=None,
                            irreducible=False,
                            irred_bk_only=True,
                            include_paw=True,
@@ -282,8 +261,6 @@ class MMN(W90_file):
             the band structure object
         normalize : bool
             if True, the wavefunctions are normalised
-        return_object : bool
-            if True, return an MMN object, otherwise return the data as a numpy array
         param_search_bk : dict
             additional parameters for `:func:find_bk_vectors`
 
@@ -294,7 +271,8 @@ class MMN(W90_file):
         """
         if irreducible:
             assert symmetrizer is not None, "Symmetrizer should be provided if irreducible is True"
-        if irreducible:
+            if symmetrizer_left is None:
+                symmetrizer_left = symmetrizer
             if kptirr is None:
                 kptirr = symmetrizer.kptirr
             kpt2kptirr = symmetrizer.kpt2kptirr
@@ -302,8 +280,6 @@ class MMN(W90_file):
             kpt_latt_grid = symmetrizer.kpoints_all
         else:
             kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
-        mp_grid = np.array(grid_from_kpoints(kpt_latt_grid))
-        k_latt_int = np.rint(kpt_latt_grid * mp_grid[None, :]).astype(int)
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
@@ -321,35 +297,11 @@ class MMN(W90_file):
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
 
-        wk, bk_cart, bk_latt = find_bk_vectors(
-            recip_lattice=bandstructure.RecLattice,
-            mp_grid=mp_grid,
-            **param_search_bk
-        )
 
 
-        NNB = len(wk)
         NB = bandstructure.num_bands
+        NNB = bkvec.NNB
 
-        bk_red = bk_latt / mp_grid[None, :]
-
-        G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
-        neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
-        for kirr in kptirr:
-            for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[kirr] + bk_latt[ib]
-                for ik2 in range(NK):
-                    g = k_latt_int_nb - k_latt_int[ik2]
-                    if np.all(g % mp_grid == 0):
-                        neighbours[kirr][ib] = ik2
-                        G[kirr][ib] = g // mp_grid
-                        break
-                else:
-                    raise RuntimeError(
-                        f"Could not find a neighbour for k-point {kirr} with k-lattice {k_latt_int[kirr]} and "
-                        f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
-                        f"Check the parameters of `find_bk_vectors`."
-                    )
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
         if hasattr(bandstructure, "kpoints_paw"):
@@ -362,7 +314,7 @@ class MMN(W90_file):
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
         if symmetrizer is not None and irred_bk_only:
-            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bk_latt, neighbours)
+            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bkvec.bk_latt, bkvec.neighbours)
         else:
             bkirr = [np.arange(NNB) for _ in kptirr]
             bk2bkirr = np.array([np.arange(NNB) for _ in kptirr])
@@ -371,7 +323,7 @@ class MMN(W90_file):
 
 
         for ikirr, kirr in enumerate(kptirr):
-            for ib, ik2 in enumerate(neighbours[kirr]):
+            for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
                 if ib in bkirr[ikirr]:
                     ik2 = int(ik2)
                     if ik2 not in kpoints_dict_all:
@@ -394,11 +346,28 @@ class MMN(W90_file):
                                         product=functools.partial(bandstructure.overlap_paw.product, include_paw=include_paw, include_pseudo=include_pseudo),
                                         identity_operation=identity_operation)
         else:
-            wavefunc_all = Grid_ig_all(kpoints_dict_all, G, NB, nspinor, normalize=normalize)
+            wavefunc_all = Grid_ig_all(kpoints_dict_all, bkvec.G, NB, nspinor, normalize=normalize)
+
+        if bandstructure_left is not None:
+            if use_paw:
+                kpoints_in_left = bandstructure_left.kpoints_paw
+            else:
+                kpoints_in_left = bandstructure_left.kpoints
+            kpoints_sel_left = [kpoints_in_left[ik] for ik in selected_kpoints]
+            kpoints_dict_all_left = {ik: kpoints_sel_left[ik] for ik in kptirr}
+            if use_paw:
+                wavefunc_all_left = Grid_PAW_all(kpoints_dict_all=kpoints_dict_all_left,
+                                                product=functools.partial(bandstructure.overlap_paw.product, include_paw=include_paw, include_pseudo=include_pseudo),
+                                                identity_operation=identity_operation)
+            else:
+                wavefunc_all_left = Grid_ig_all(kpoints_dict_all_left, bkvec.G, NB, nspinor, normalize=normalize)
+        else:
+            wavefunc_all_left = wavefunc_all
+
 
         # but are needed for the finite-difference scheme (obtained by symmetry)
         for ikirr, kirr in enumerate(kptirr):
-            bra = wavefunc_all.get_WF(kirr, conj=True)
+            bra = wavefunc_all_left.get_WF(kirr, conj=True)
             # overlaps = wavefunc_all.product(bra, bra)
             # overlaps_err = np.max(abs((overlaps - np.eye(NB))))
             # print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
@@ -406,16 +375,16 @@ class MMN(W90_file):
             ib_is_set = np.zeros(NNB, dtype=bool)
             for ib in bkirr[ikirr]:  # only calculate for irreducible bk points
                 assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
-                ik2 = int(neighbours[kirr][ib])
-                ket = wavefunc_all.get_WF(ik2, conj=False, G=G[kirr][ib])
-                data[kirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bk_red[ib])
+                ik2 = int(bkvec.neighbours[kirr][ib])
+                ket = wavefunc_all.get_WF(ik2, conj=False, G=bkvec.G[kirr][ib])
+                data[kirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bkvec.bk_red[ib])
                 ib_is_set[ib] = True
 
-            for ib, ik2 in enumerate(neighbours[kirr]):
+            for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
                 if ib not in bkirr[ikirr]:
                     assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
                     ib_origin = bk2bkirr[ikirr][ib]
-                    ikb_origin = int(neighbours[kirr][ib_origin])
+                    ikb_origin = int(bkvec.neighbours[kirr][ib_origin])
                     isym = bk_from_bk_irr_isym[ikirr][ib]
                     assert symmetrizer.kptirr2kpt[ikirr, isym] == kirr
                     # print(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
@@ -423,16 +392,12 @@ class MMN(W90_file):
                     data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin],
                                                                         isym=isym, ikirr=ikirr, ib=ib_origin,
                                                                         ikb=ikb_origin,
-                                                                        bk_latt_map=bk_map, bk_cart=bk_cart)
+                                                                        bk_latt_map=bk_map, bk_cart=bkvec.bk_cart,
+                                                                        symmetrizer_left=symmetrizer_left)
                     ib_is_set[ib] = True
         return MMN(
             data=data,
             NK=NK,
-            neighbours=neighbours,
-            G=G,
-            bk_latt=bk_latt,
-            bk_cart=bk_cart,
-            wk=wk,
             bk_reorder=None
         )
 
@@ -496,125 +461,3 @@ class Grid_ig_all:
         bk is not used for the grid representation, but is kept for compatibility with the PAW representation
         """
         return cached_einsum('asijk,bsijk->ab', bra, ket)
-
-
-def find_bk_vectors(recip_lattice, mp_grid, kmesh_tol=1e-7, bk_complete_tol=1e-5, search_supercell=2):
-    """
-    Find the bk vectors for the finite-difference scheme
-
-    Parameters
-    ----------
-    recip_lattice : np.ndarray(shape=(3, 3), dtype=float)
-        the reciprocal lattice vectors
-    mp_grid : np.ndarray(shape=(3,), dtype=int)
-        the Monkhorst-Pack grid
-    kmesh_tol : float
-        the tolerance to distinguish the shells by the length of the reciprocal lattice vectors (in inverse Angstrom)
-    bk_complete_tol : float
-        the tolerance for the completeness of the shells
-    search_supercell : int
-        the number of supercells to search for the shells (in each direction)
-
-    Returns
-    -------
-    wk : np.ndarray(shape=(NNB,), dtype=float)
-        the weights of the bk vectors
-    bk_cart : np.ndarray(shape=(NNB, 3), dtype=float)
-        the bk vectors in cartesian coordinates
-    bk_latt : np.ndarray(shape=(NNB, 3), dtype=int)
-        the bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid
-    """
-    mp_grid = np.array(mp_grid, dtype=int)
-    basis = recip_lattice / mp_grid[:, None]
-    search_limit = search_supercell * np.array(mp_grid)
-    k_latt = np.array([(i, j, k) for i in range(-search_limit[0], search_limit[0] + 1)
-                       for j in range(-search_limit[1], search_limit[1] + 1)
-                       for k in range(-search_limit[2], search_limit[2] + 1)])
-    k_cart = k_latt @ basis
-    k_length = np.linalg.norm(k_cart, axis=1)
-    srt = np.argsort(k_length)[1:]  # skip the zero vector
-    k_latt = k_latt[srt]
-    k_cart = k_cart[srt]
-    k_length = k_length[srt]
-    brd = [0] + list(np.where(k_length[1:] - k_length[:-1] > kmesh_tol)[0] + 1) + [len(k_cart)]
-
-    shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])]
-    shell_klatt = [k_latt[b1:b2] for b1, b2 in zip(brd, brd[1:])]
-    num_shells = len(shell_kcart)
-    del brd, k_length, k_cart, k_latt
-
-    shells_selected = []
-    k_cart_selected = np.zeros((0, 3), dtype=float)
-    matrix_rank = 0
-    for i_shell in range(num_shells):
-        k_cart_selected_try = np.vstack([k_cart_selected, shell_kcart[i_shell]])
-        matrix_rank_try = np.linalg.matrix_rank(k_cart_selected_try)
-        if matrix_rank_try > matrix_rank:
-            # print(f"Adding shell {i_shell} with length {k_length_shell[i_shell]} and k_cart {shell_kcart[i_shell]}")
-            shells_selected.append(i_shell)
-            k_cart_selected = k_cart_selected_try
-            matrix_rank = matrix_rank_try
-        else:
-            # print(f"Skipping shell {i_shell} with length {k_length_shell[i_shell]} and k_cart {shell_kcart[i_shell]}")
-            continue
-        if matrix_rank == 3:
-            break
-
-    shell_kcart = [shell_kcart[i] for i in shells_selected]
-    shell_klatt = [shell_klatt[i] for i in shells_selected]
-    return get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=bk_complete_tol)
-
-
-def get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=1e-5):
-    """
-    get the weights of the shells of bk vectors for the finite-difference scheme
-
-    Parameters
-    ----------
-    shell_klatt : list of np.ndarray(shape=(NNB, 3), dtype=int)
-        the reciprocal lattice vectors of the shells (in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid)
-    shell_kcart : list of np.ndarray(shape=(NNB, 3), dtype=float)
-        the reciprocal lattice vectors of the shells (in cartesian coordinates)
-    bk_complete_tol : float
-        the tolerance for the check of completeness of the shells
-
-    Returns
-    -------
-    weight : np.ndarray(shape=(NNB,), dtype=float)
-        the weights of the bk vectors
-    bk_cart : np.ndarray(shape=(NNB, 3), dtype=float)
-        the cartesian coordinates of the bk vectors
-    bk_latt : np.ndarray(shape=(NNB, 3), dtype=int)
-        the reciprocal lattice vectors of the bk vectors (in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid)
-
-    """
-    shell_mat = np.array([kcart.T.dot(kcart) for kcart in shell_kcart])
-    shell_mat_line = shell_mat.reshape(-1, 9)
-    u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-    s = 1. / s
-    weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-    check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
-    tol = np.linalg.norm(check_eye - np.eye(3))
-    if tol > bk_complete_tol:
-        raise RuntimeError(
-            f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
-            f"failed to be identity by an error of {tol}. Further debug information :  \n"
-            f"shell_mat={shell_mat}\n"
-            f"weight_shell={weight_shell}\n"
-            f"shell_klatt={shell_klatt}\n"
-            f"shell_kcart={shell_kcart}\n")
-
-    print(f"Shells found with weights {weight_shell} and tolerance {tol}")
-    bk_latt = []
-    bk_cart = []
-    wk = []
-    for w, sh_klatt, sh_kcart in zip(weight_shell, shell_klatt, shell_kcart):
-        for kl, kc in zip(sh_klatt, sh_kcart):
-            bk_latt.append(kl)
-            bk_cart.append(kc)
-            wk.append(w)
-
-    wk = np.array(wk)
-    bk_cart = np.array(bk_cart)
-    bk_latt = np.array(bk_latt, dtype=int)
-    return wk, bk_cart, bk_latt
