@@ -12,10 +12,13 @@ from pathlib import Path
 from wannierberri import models as wb_models
 from irrep.spacegroup import SpaceGroup
 
+from wannierberri.system.needed_data import NeededData
 from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
+from wannierberri.w90files.w90data import Wannier90data
 from wannierberri.w90files.w90data_soc import Wannier90dataSOC
+
 
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
@@ -157,10 +160,16 @@ def system_Fe_W90(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False,
+    matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
+    w90data = Wannier90data().from_w90_files(
+        seedname=seedname,
+        readfiles=NeededData(**matrices).files,
         read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
         write_npz_formatted=True,
+    )
+    system = wberri.system.System_w90(
+        w90data=w90data,
+        **matrices,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
     return system
@@ -174,11 +183,15 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(
-        seedname, berry=True,
-        morb=True, SHCqiao=True, SHCryoo=True,
-        transl_inv_MV=False,
+    matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
+    w90data = Wannier90data().from_w90_files(
+        seedname=seedname,
+        readfiles=NeededData(**matrices).files,
         read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False,
+    )
+    system = wberri.system.System_w90(
+        w90data=w90data,
+        **matrices,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
     return system
@@ -216,8 +229,16 @@ def get_system_Fe_sym_W90(symmetrize=False,
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True,
-                                      OSD=True, SHCqiao=True,
+    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
+    w90data = Wannier90data().from_w90_files(
+        seedname=seedname,
+        readfiles=NeededData(**matrices).files,
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        write_npz_formatted=True,
+    )
+
+    system = wberri.system.System_w90(w90data=w90data,
+                                      **matrices,
                                       ws_dist_tol=1e-5,
                                       transl_inv_MV=True,  # legacy
                                       **kwargs)
@@ -480,9 +501,16 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True,
-                                      transl_inv_MV=True,
-                                      read_npz=False,
+    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
+    w90data = Wannier90data().from_w90_files(
+        seedname=seedname,
+        readfiles=NeededData(**matrices).files,
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        write_npz_formatted=True,
+    )
+    system = wberri.system.System_w90(w90data=w90data,
+                                      **matrices,
+                                      transl_inv_MV=True,  # legacy
                                       ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
@@ -495,10 +523,16 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True,
-                                      transl_inv_JM=True, spin=True,
-                                      OSD=True, SHCryoo=True,
-                                      read_npz=False,
+    matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
+    w90data = Wannier90data().from_w90_files(
+        seedname=seedname,
+        readfiles=NeededData(**matrices).files,
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        write_npz_formatted=True,
+    )
+    system = wberri.system.System_w90(w90data=w90data,
+                                      **matrices,
+                                      transl_inv_JM=True,
                                       ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
@@ -555,7 +589,13 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    system = wberri.system.System_w90(seedname,
+    w90data = Wannier90data().from_w90_files(
+        seedname=seedname,
+        readfiles=NeededData(**matrices).files,
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn"],
+        write_npz_formatted=True,
+    )
+    system = wberri.system.System_w90(w90data=w90data,
                                       transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,
                                       **matrices)

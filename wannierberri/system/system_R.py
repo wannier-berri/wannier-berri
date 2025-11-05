@@ -87,28 +87,9 @@ class System_R(System):
                  **parameters):
 
         super().__init__(**parameters)
-        self.needed_R_matrices = {'Ham'}
-
-        if morb:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC'])
-        if berry:
-            self.needed_R_matrices.add('AA')
-        if spin:
-            self.needed_R_matrices.add('SS')
-        if _getFF:
-            self.needed_R_matrices.add('FF')
-        if SHCryoo:
-            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SH'])
-        if SHCqiao:
-            self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
-        if OSD:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
-
-        if self.force_internal_terms_only:
-            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham', 'SS'])
 
         self._XX_R = dict()
-        self.ws_dist_tol = ws_dist_tol
+
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_red=None):
         """
@@ -129,18 +110,6 @@ class System_R(System):
             else:
                 self.wannier_centers_cart = np.zeros((self.num_wann, 3))
         self.clear_cached_wcc()
-
-    def need_R_any(self, keys):
-        """returns True is any of the listed matrices is needed in to be set
-
-        keys : str or list of str
-            'AA', 'BB', 'CC', etc
-        """
-        if not isinstance(keys, (list, tuple)):
-            keys = [keys]
-        for k in keys:
-            if k in self.needed_R_matrices:
-                return True
 
     def get_R_mat(self, key):
         try:
