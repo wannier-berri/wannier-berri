@@ -541,8 +541,8 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
 def get_system_GaAs_tb(symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=berry, ws_dist_tol=-1e-5,)
-    system.do_ws_dist(mp_grid=(2, 2, 2))
+    system = wberri.system.System_tb(seedname, berry=berry)
+    system.do_ws_dist(mp_grid=(2, 2, 2), ws_dist_tol=-1e-5)
 
     system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     if symmetrize:
@@ -846,8 +846,8 @@ def get_system_Mn3Sn_sym_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, ws_dist_tol=-1e-5)
-    system.do_ws_dist(mp_grid=(2, 2, 2))
+    system = wberri.system.System_tb(seedname, berry=True)
+    system.do_ws_dist(mp_grid=(2, 2, 2), ws_dist_tol=-1e-5)
     system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     system.symmetrize(
         positions=np.array([

@@ -303,7 +303,7 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     path = os.path.join(OUTPUT_DIR, name)
     system_GaAs_tb.save_npz(path)
     system = System_R()
-    system.load_npz(path, load_all_XX_R=True)
+    system.load_npz(path)
     check_system(
         system, "GaAs_tb",
         suffix="save-load",

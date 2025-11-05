@@ -836,7 +836,7 @@ class System_R(System):
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             logfile.write(" - Ok!\n")
 
-    def load_npz(self, path, load_all_XX_R=False, exclude_properties=(), legacy=False):
+    def load_npz(self, path, exclude_properties=(), legacy=False, matrices=None):
         """
         Save system to a directory of npz files
         Parameters
@@ -891,11 +891,10 @@ class System_R(System):
             logfile.write(" - Ok!\n")
             keys_processed.add(key)
 
-        if load_all_XX_R:
+        if matrices is None:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
-            R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
-            self.needed_R_matrices.update(R_matrices)
-        for key in self.needed_R_matrices:
+            matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
+        for key in matrices:
             logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
             if legacy:
