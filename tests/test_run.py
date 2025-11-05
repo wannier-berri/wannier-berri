@@ -401,7 +401,7 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
     path = os.path.join(OUTPUT_DIR, name)
     system_Fe_W90.save_npz(path, extra_properties=["recip_lattice"])
     system = wberri.system.system_R.System_R()
-    system.load_npz(path, load_all_XX_R=True)
+    system.load_npz(path)
 
     check_run(
         system,

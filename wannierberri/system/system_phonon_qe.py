@@ -28,12 +28,13 @@ def _str2array(s, dtype=float):
         raise ValueError(f"dtype = '{dtype}' is not supported by _str2array")
 
 
-def System_Phonon_QE(self,
-                 seedname,
-                 fftlib='fftw',
-                 npar=multiprocessing.cpu_count(),
-                 asr=True,
-                 **parameters):
+def System_Phonon_QE(
+        seedname,
+        fftlib='fftw',
+        npar=multiprocessing.cpu_count(),
+        asr=True,
+        ws_dist_tol=1e-5,
+        **parameters):
     """Class to represent dynamical matrices from QuantumEspresso
 
     reads the '*.dyn*.xml' files and
@@ -54,8 +55,8 @@ def System_Phonon_QE(self,
 
     if "name" not in parameters:
         parameters["name"] = os.path.split(seedname)[-1]
-    self = System_R(**parameters)
-    self.is_phonon = True
+    system = System_R(**parameters)
+    system.is_phonon = True
     with open(seedname + ".dyn0", "r") as f:
         mp_grid = np.array(f.readline().split(), dtype=int)
         nqirr = int(f.readline().strip())
@@ -71,29 +72,29 @@ def System_Phonon_QE(self,
                 number_of_types = int(geometry['number_of_types'])
                 masses_tp = np.array(
                     [float(geometry[f'mass.{i + 1}']) for i in range(number_of_types)])
-                self.real_lattice = _str2array(geometry['at'])
-                self.number_of_atoms = int(geometry['number_of_atoms'])
-                self.number_of_phonons = 3 * self.number_of_atoms
+                system.real_lattice = _str2array(geometry['at'])
+                system.number_of_atoms = int(geometry['number_of_atoms'])
+                system.number_of_phonons = 3 * system.number_of_atoms
                 atom_positions_cart = np.array(
                     [geometry[f'atom.{i + 1}']['@tau'].split()
-                     for i in range(self.number_of_atoms)], dtype=float)
-                self.atom_positions = atom_positions_cart.dot(np.linalg.inv(self.real_lattice))
+                     for i in range(system.number_of_atoms)], dtype=float)
+                system.atom_positions = atom_positions_cart.dot(np.linalg.inv(system.real_lattice))
                 types = np.array(
-                    [geometry[f'atom.{i + 1}']['@index'] for i in range(self.number_of_atoms)],
+                    [geometry[f'atom.{i + 1}']['@index'] for i in range(system.number_of_atoms)],
                     dtype=int) - 1
                 masses = masses_tp[types]
-                self.num_wann = self.number_of_phonons
-                self.set_wannier_centers(
-                    wannier_centers_red=np.array([atom for atom in self.atom_positions for _ in range(3)])
+                system.num_wann = system.number_of_phonons
+                system.set_wannier_centers(
+                    wannier_centers_red=np.array([atom for atom in system.atom_positions for _ in range(3)])
                 )
             number_of_q = int(geometry['number_of_q'])
             for iq in range(number_of_q):
                 dynamical = data[f'dynamical_mat_.{iq + 1}']
                 q = _str2array(dynamical['q_point']).reshape(3)
-                q = self.real_lattice.dot(q)  # converting from cartisean(2pi/alatt) to reduced coordinates
-                dyn_mat = np.zeros((3 * self.number_of_atoms, 3 * self.number_of_atoms), dtype=complex)
-                for i in range(self.number_of_atoms):
-                    for j in range(self.number_of_atoms):
+                q = system.real_lattice.dot(q)  # converting from cartisean(2pi/alatt) to reduced coordinates
+                dyn_mat = np.zeros((3 * system.number_of_atoms, 3 * system.number_of_atoms), dtype=complex)
+                for i in range(system.number_of_atoms):
+                    for j in range(system.number_of_atoms):
                         phi = _str2array(dynamical[f'phi.{i + 1}.{j + 1}'], dtype=complex
                                      ).reshape(3, 3, order='F')
                         dyn_mat[i * 3:i * 3 + 3, j * 3:j * 3 + 3] = phi
@@ -101,40 +102,41 @@ def System_Phonon_QE(self,
                 dynamical_mat.append(dyn_mat)
                 q_points.append(q)
 
-    self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
-    self.wannier_centers_cart = self.wannier_centers_red.dot(self.real_lattice)
+    system.wannier_centers_cart = system.wannier_centers_red.dot(system.real_lattice)
+    system.wannier_centers_cart = system.wannier_centers_red.dot(system.real_lattice)
 
 
 
-    self.rvec = Rvectors(lattice=self.real_lattice,
-                         shifts_left_red=self.wannier_centers_red,
+    system.rvec = Rvectors(lattice=system.real_lattice,
+                         shifts_left_red=system.wannier_centers_red,
                          )
-    self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=self.ws_dist_tol)
-    self.rvec.set_fft_q_to_R(
+    system.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
+    system.rvec.set_fft_q_to_R(
         kpt_red=q_points,
         fftlib=fftlib,
         numthreads=npar,
     )
 
     qpoints_found = np.zeros(mp_grid, dtype=float)
-    for iq in self.rvec.kpt_mp_grid[i]:
+    for iq in system.rvec.kpt_mp_grid[i]:
         qpoints_found[iq] = True
     assert np.all(qpoints_found), ('some qpoints were not found in the files:\n' + '\n'.join(str(x))
                                    for x in np.where(np.logical_not(qpoints_found)))
 
-    Ham_R = self.rvec.q_to_R(np.array(dynamical_mat))
+    Ham_R = system.rvec.q_to_R(np.array(dynamical_mat))
 
-    self.set_R_mat('Ham', Ham_R * Ry_eV ** 2)
+    system.set_R_mat('Ham', Ham_R * Ry_eV ** 2)
 
-    self.do_at_end_of_init()
+    system.do_at_end_of_init()
 
-    iR0 = self.rvec.iR0
+    iR0 = system.rvec.iR0
     if asr:
         for i in range(3):
             for j in range(3):
-                for a in range(self.number_of_atoms):
-                    self.Ham_R[iR0, 3 * a + i, 3 * a + j] -= self.Ham_R[:, 3 * a + i, j::3].sum()
+                for a in range(system.number_of_atoms):
+                    system.Ham_R[iR0, 3 * a + i, 3 * a + j] -= system.Ham_R[:, 3 * a + i, j::3].sum()
 
-    for i in range(self.number_of_atoms):
-        for j in range(self.number_of_atoms):
-            self.Ham_R[:, 3 * i:3 * i + 3, 3 * j:3 * j + 3] /= np.sqrt(masses[i] * masses[j]) * AMU_RY
+    for i in range(system.number_of_atoms):
+        for j in range(system.number_of_atoms):
+            system.Ham_R[:, 3 * i:3 * i + 3, 3 * j:3 * j + 3] /= np.sqrt(masses[i] * masses[j]) * AMU_RY
+    return system

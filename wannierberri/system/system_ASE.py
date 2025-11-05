@@ -38,7 +38,7 @@ def System_ASE(
 
     if "name" not in parameters:
         parameters["name"] = "ASE"
-    system = System_R(**parameters)
+    system = System_R(force_internal_terms_only=True, **parameters)
     ase_wannier.translate_all_to_cell()
     system.set_real_lattice(np.array(ase_wannier.unitcell_cc))
     mp_grid = ase_wannier.kptgrid

@@ -841,10 +841,10 @@ class System_R(System):
         Save system to a directory of npz files
         Parameters
         ----------
+        matrices : list of str
+            list of the R matrices, e.g. ```['Ham','AA',...]``` to be loaded. if None: all R-matrices will be loaded
         path : str
             path to saved files. If does not exist - will be created (unless overwrite=False)
-        load_all_XX_R : list of str
-            load all matrices which were saved
         exclude_properties : list of str
             dp not save certain properties - duse on your own risk
         legacy : bool

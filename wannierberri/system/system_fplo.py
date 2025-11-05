@@ -46,7 +46,7 @@ def System_fplo(hamdata="+hamdata",
     if "name" not in parameters:
         parameters["name"] = "ASE"
 
-    system = System_R(**parameters)
+    system = System_R(force_internal_terms_only=True, **parameters)
     needed_data = NeededData(**parameters, force_internal_terms_only=True)
     need_SS = needed_data.need_any('SS')
     f = open(hamdata, "r")
