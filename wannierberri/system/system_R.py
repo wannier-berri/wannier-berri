@@ -576,7 +576,7 @@ class System_R(System):
         logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
 
-    def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
+    def do_ws_dist(self, mp_grid, wannier_centers_cart=None, ws_dist_tol=1e-5):
         logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
@@ -588,7 +588,7 @@ class System_R(System):
             wannier_centers_cart = self.wannier_centers_cart
         iRvec_old = self.rvec.iRvec
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
-        self.rvec.set_Rvec(mp_grid, ws_tolerance=self.ws_dist_tol)
+        self.rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)
         for key, val in self._XX_R.items():
             logfile.write(f"using new ws_dist for {key}\n")
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
