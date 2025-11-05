@@ -195,6 +195,7 @@ class Rvectors:
         assert (select_left is None) == (select_right is None), "select_left and select_right should be both None or both not None"
 
         mapx, mapy, mapz, weights = self.get_remapper_XX_from_grid_to_list_R
+        print (f"remapping {XX_R_grid.shape} , {self.nRvec=}, \n mapx shape {mapx.shape}, mapy shape {mapy.shape}, mapz shape {mapz.shape}, weights shape {weights.shape}")
         if select_left is None:
             nl = self.nshifts_left
             nr = self.nshifts_right
@@ -372,7 +373,8 @@ class Rvectors:
         clear_cached(self, ['diff_wcc_cart', 'cRvec_p_wcc', 'diff_wcc_red',
                             "wannier_centers_red", 'cRvec', 'cRvec_p_wcc', 'iR0',
                             'reverseR', 'index_R', 'shifts_diff_red', 'shifts_diff_cart',
-                            'shifts_left_cart', 'shifts_right_cart', 'cRvec_shifted'])
+                            'shifts_left_cart', 'shifts_right_cart', 'cRvec_shifted',
+                            'get_remapper_XX_from_grid_to_list_R'])
 
     @cached_property
     def shifts_left_cart(self):

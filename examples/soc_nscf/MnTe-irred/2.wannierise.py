@@ -34,6 +34,7 @@ w90data = Wannier90dataSOC.from_gpaw(
     projections_up=proj_set_up,
     projections_down=proj_set_down,
     mp_grid=(6, 6, 4),
+    files=["mmn", "eig", "amn", "symmetrizer", "soc", "mmn_ud", "mmn_du"],
     # read_npz_list=[],
     spacegroup=sg,
 )
@@ -53,6 +54,7 @@ w90data.wannierise(
 theta = 90
 phi = 90
 
-system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False)
+system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False, SHC=True, theta=theta, phi=phi)
 system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0, units='degrees')
+system.set_soc_SHC(theta=theta, phi=phi, units='degrees', w90data_soc=w90data)
 system.save_npz("system_soc")

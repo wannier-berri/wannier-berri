@@ -228,7 +228,7 @@ class CheckPoint(SavableNPZ):
         return np.array(np.round(self.kpt_latt * self.mp_grid[None, :]), dtype=int)
 
 
-    def wannier_gauge(self, mat, ik1, ik2):
+    def wannier_gauge(self, mat, ik1, ik2, chk_right=None):
         """
         Returns the matrix elements in the Wannier gauge
 
@@ -245,11 +245,13 @@ class CheckPoint(SavableNPZ):
             the matrix elements in the Wannier gauge
         """
         # data should be of form NBxNBx ...   - any form later
+        if chk_right is None:
+            chk_right = self
         if len(mat.shape) == 1:
             mat = np.diag(mat)
         assert mat.shape[:2] == (self.num_bands,) * 2, f"mat.shape={mat.shape}, num_bands={self.num_bands}"
         v1 = self.v_matrix[ik1].conj().T
-        v2 = self.v_matrix[ik2]
+        v2 = chk_right.v_matrix[ik2]
         return np.tensordot(np.tensordot(v1, mat, axes=(1, 0)), v2, axes=(1, 0)).transpose(
             (0, -1) + tuple(range(1, mat.ndim - 1)))
 
@@ -494,15 +496,13 @@ class CheckPoint(SavableNPZ):
             SH = spn.data[ik][:, :, :]
             if eig is not None:
                 SH = SH * eig.data[ik][None, :, None]
-            SHW = self.wannier_gauge(SH, ik, ik)
             for ib in range(bkvec.NNB):
                 iknb = bkvec.neighbours[ik][ib]
                 SHM = np.tensordot(SH, mmn.data[ik][ib], axes=((1,), (0,))).swapaxes(-1, -2)
                 SHRW = self.wannier_gauge(SHM, ik, iknb)
                 if phase is not None:
                     SHRW = SHRW * phase[:, :, ib, None]
-                SHRW = SHRW - SHW
-                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * bkvec.wk[ib] * bkvec.bk_cart[ib, None, None, :, None] * weight
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * bkvec.wk[ib] * bkvec.bk_cart[ib, None, None, :, None] * weight   # spin index last
         return SHR_q
 
 

@@ -19,7 +19,7 @@ w90data = Wannier90dataSOC.from_gpaw(
     mp_grid=(4,4,4),
     # read_npz_list=[],
     spacegroup=sg,
-    files=["mmn", "eig", "amn", "symmetrizer","soc", "mmn_ud"],
+    files=["mmn", "eig", "amn", "symmetrizer","soc", "mmn_ud", "mmn_du"],
 )
 
 w90data.select_bands(win_min=-100,
@@ -28,7 +28,7 @@ w90data.select_bands(win_min=-100,
 w90data.wannierise(
     froz_min=-np.inf,
     froz_max=17,
-    num_iter=500,
+    num_iter=50,
     print_progress_every=10,
     sitesym=True,
     localise=True,

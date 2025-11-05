@@ -44,7 +44,7 @@ class Kpoint_and_neighbours:
         self.nnb = nnb
         self.Mmn = Mmn
         assert Mmn.shape[2] == nb
-        assert len(frozen) == nb
+        assert len(frozen) == nb, f"frozen shape {frozen.shape} does not match nb {nb}"
         assert frozen_nb.shape == (nnb, nb), f"frozen_nb shape {frozen_nb.shape} does not match nnb {nnb} and nb {nb}"
         self.amn = amn
         self.num_wann = amn.shape[1]

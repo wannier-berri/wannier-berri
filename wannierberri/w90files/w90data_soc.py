@@ -1,3 +1,5 @@
+import os
+from wannierberri.w90files.bkvectors import BKVectors
 from wannierberri.w90files.mmn import MMN
 from ..utility import group_numbers
 from .soc import SOC
@@ -79,8 +81,9 @@ class Wannier90dataSOC(Wannier90data):
                               include_pseudo=include_pseudo,
                               read_npz_list=read_npz_list,
                               write_npz_list=write_npz_list,
-                              files=[f for f in files if f not in ["soc", "mmn_ud"]],
+                              files=[f for f in files if f not in ["soc", "mmn_ud", "mmn_du"]],
                               )
+        
         kwargs_w90data.update(kwargs)
         assert projections is not None or (projections_up is not None), \
             "Either projections or projections_up/projections_down must be provided."
@@ -98,14 +101,18 @@ class Wannier90dataSOC(Wannier90data):
                                           projections=projections_up,
                                           return_bandstructure=return_bandstructure,
                                           **kwargs_w90data)
+
         if return_bandstructure:
             data_up, bandstructure_up = data_up
+
+        bkvec = data_up.get_file("bkvec")
 
         if nspin == 2:
             data_down = Wannier90data.from_gpaw(spin_channel=1,
                                                 seedname=seedname + "-spin-1",
                                                 projections=projections_down,
                                                 return_bandstructure=return_bandstructure,
+                                                bkvec=bkvec,
                                                 **kwargs_w90data)
             if return_bandstructure:
                 data_down, bandstructure_down = data_down
@@ -113,6 +120,8 @@ class Wannier90dataSOC(Wannier90data):
             data_down = None
 
         data = cls(data_up=data_up, data_down=data_down, cell=cell)
+        data.set_file("bkvec", bkvec)
+        bkvec.to_npz(seedname + ".bkvec.npz")
 
         if "soc" in files:
             soc = None
@@ -135,7 +144,8 @@ class Wannier90dataSOC(Wannier90data):
                 except FileNotFoundError:
                     mmn_ud = None
             if mmn_ud is None:
-                mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
+                mmn_ud = MMN.from_bandstructure(bkvec=bkvec,
+                                                bandstructure_left=bandstructure_up,
                                                 bandstructure=bandstructure_down,
                                                 irreducible=data_up.irreducible,
                                                 symmetrizer_left=data_up.get_file("symmetrizer"),
@@ -144,6 +154,7 @@ class Wannier90dataSOC(Wannier90data):
             if write_npz_list is None or "mmn_ud" in write_npz_list:
                 mmn_ud.to_npz(seedname + ".mmn_ud.npz")
 
+        if "mmn_du" in files and nspin == 2:
             mmn_du = None
             if read_npz_list is None or "mmn_du" in read_npz_list:
                 try:
@@ -151,9 +162,15 @@ class Wannier90dataSOC(Wannier90data):
                 except FileNotFoundError:
                     mmn_du = None
             if mmn_du is None:
-                mmn_du = MMN.from_bandstructure(bandstructure_left=bandstructure_down,
-                                                bandstructure=bandstructure_up)
+                mmn_du = MMN.from_bandstructure(bkvec=bkvec,
+                                                bandstructure_left=bandstructure_down,
+                                                bandstructure=bandstructure_up,
+                                                irreducible=data_up.irreducible,
+                                                symmetrizer_left=data_down.get_file("symmetrizer"),
+                                                symmetrizer=data_up.get_file("symmetrizer"))
             data.set_file("mmn_du", mmn_du)
+            if write_npz_list is None or "mmn_du" in write_npz_list:
+                mmn_du.to_npz(seedname + ".mmn_du.npz")
         return data
 
 
@@ -166,6 +183,8 @@ class Wannier90dataSOC(Wannier90data):
             self.get_file("soc").select_bands(selected_bands_up, selected_bands_up)
         if self.has_file("mmn_ud"):
             self.get_file("mmn_ud").select_bands(selected_bands_up, selected_bands_down=selected_bands_up)
+        if self.has_file("mmn_du"):
+            self.get_file("mmn_du").select_bands(selected_bands_up, selected_bands_down=selected_bands_up)
         self.bands_were_selected = True
 
     def wannierise(self, ispin=None, **kwargs):

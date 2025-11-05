@@ -116,6 +116,7 @@ class Wannier90data:
                            unitary_params=None,
                           mp_grid=None,
                           irred_bk_only=True,
+                          bkvec=None,
                           include_paw=True,
                           include_pseudo=True,):
         """
@@ -229,7 +230,9 @@ class Wannier90data:
                         "NK": NK}
 
 
-        if "bkvec" in read_npz_list and os.path.exists(seedname + ".bkvec.npz"):
+        if bkvec is not None:
+            bkvec.to_npz(seedname + ".bkvec.npz")
+        elif "bkvec" in read_npz_list and os.path.exists(seedname + ".bkvec.npz"):
             bkvec = BKVectors.from_npz(seedname + ".bkvec.npz")
         else:
             bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
@@ -324,6 +327,7 @@ class Wannier90data:
                   spin_channel=0,
                   spacegroup=None,
                   mp_grid=None,
+                  bkvec=None,
                   unitary_params=dict(error_threshold=0.1,
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
@@ -358,11 +362,12 @@ class Wannier90data:
                                 unitary_params=unitary_params,
                                 irred_bk_only=irred_bk_only,
                                 include_paw=include_paw,
-                                include_pseudo=include_pseudo
+                                include_pseudo=include_pseudo,
+                                bkvec=bkvec
                                 )
-        if "soc" in files:
-            soc = SOC.from_gpaw(calculator)
-            self.set_file('soc', soc)
+        # if "soc" in files:
+        #     soc = SOC.from_gpaw(calculator)
+        #     self.set_file('soc', soc)
         if return_bandstructure:
             return self, bandstructure
         else:
@@ -505,6 +510,10 @@ class Wannier90data:
     @property
     def num_wann(self):
         return self.chk.num_wann
+    
+    @property
+    def num_bands(self):
+        return self.chk.num_bands
 
     @property
     def mp_grid(self):
@@ -737,6 +746,19 @@ class Wannier90data:
         if key not in self._files:
             raise RuntimeError(f"file '{key}' was not set. Note : implicit set of files is not allowed anymore. Please use set_file() method of the `readfiles` parameter of the constructor")
         return self._files[key]
+    
+    def get_mmn_Wright(self, ik, mmn=None, phase=None):
+        bkvec = self.get_file("bkvec")
+        NNB = bkvec.NNB
+        if phase is None:
+            phase = np.exp(1j * cached_einsum('ba,ja->jb', bkvec.bk_cart, self.wannier_centers_cart))
+        if mmn is None: 
+            mmn = self.get_file("mmn")
+        mmn_W = np.zeros((self.chk.num_bands, self.num_wann, 3), dtype=complex)
+        for ib in range(NNB):
+            mmn_W += bkvec.wk[ib] * bkvec.bk_cart[ib,None,None,:] * (
+                (mmn.data[ik][ib] @ self.chk.v_matrix[bkvec.neighbours[ik][ib]]) * phase[None,:,ib])[:,:, None]
+        return 1j* mmn_W
 
     def check_conform(self, key, this):
         """
@@ -755,7 +777,7 @@ class Wannier90data:
             if the file `this` does not conform with the other files
         """
         for key2, other in self._files.items():
-            for attr in ['NK', 'NB', 'NW', 'NNB']:
+            for attr in ['NB', 'NW', 'NNB']:
                 if hasattr(this, attr) and hasattr(other, attr):
                     a = getattr(this, attr)
                     b = getattr(other, attr)

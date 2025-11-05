@@ -67,6 +67,7 @@ class SystemSOC(System_R):
         self.rvec = None
         self._XX_R = dict()
         self.has_soc = False
+        self.has_SHC = False
         if cell is not None:
             self.set_cell(**cell)
         else:
@@ -155,7 +156,7 @@ class SystemSOC(System_R):
                     vt = chk_list[i1].v_matrix[ik].T.conj()
                     v = chk_list[j1].v_matrix[ik]
                     # dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
-                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, :, :][:, :, :], v)
+                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1], v)
                 if i1 == j1:
                     assert np.allclose(dV_soc_wann_ik, dV_soc_wann_ik.transpose(0, 2, 1, 3).conj()), "The diagonal spin components of SOC should be Hermitian"
                     # dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
@@ -177,14 +178,9 @@ class SystemSOC(System_R):
 
 
     def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians"):
-        units = units.lower()
-        if units.startswith("r"):
-            pass
-        elif units.startswith("d"):
-            theta = np.deg2rad(theta)
-            phi = np.deg2rad(phi)
-        else:
-            raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
+        if self.has_SHC:
+            raise RuntimeError("Cannot set SOC axis when SHC matrices are present. Please set the SOC axis before setting SHC matrices.")
+        theta, phi = to_radians(theta, phi, units)
         assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
         pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
 
@@ -222,6 +218,33 @@ class SystemSOC(System_R):
 
         self.set_R_mat('SS', SS_R_W, reset=True)
 
+        if self.has_SHC:
+            if self.nspin == 2:
+                raise NotImplementedError("set_soc_axis with SHC is not implemented for nspin=2 systems yet")
+            SH = np.zeros((nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+            for i in range(2):
+                for j in range(2):
+                    SH[:, i::2, j::2, :, :] = cached_einsum("rmn,c->rmnc", self.get_R_mat(f'SH0_uu'), pauli_rotated[i,j])
+                    for k in range(2):
+                        SH[:, i::2, j::2, :, :] += cached_einsum("rmnc,d,c->rmnd", self.get_R_mat(f'SH_uu'), pauli_rotated[i,k], pauli_rotated[k,j])                        
+            self.set_R_mat('SH', SH, reset=True)
+            
+            SR = np.zeros((nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+            for i in range(2):
+                for j in range(2):
+                    SR[:, i::2, j::2, :, :] += cached_einsum("rmnd,c->rmndc", self.get_R_mat(f'SR_uu'), pauli_rotated[i,j])
+            self.set_R_mat('SH', SH, reset=True)
+            
+            SHR = np.zeros((nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+            for i in range(2):
+                for j in range(2):
+                    SHR[:, i::2, j::2, :, :] += cached_einsum("rmna,c->rmnac", self.get_R_mat(f'SH0_uu'), pauli_rotated[i,j])
+                    for k in range(2):
+                        SHR[:, i::2, j::2, :, :] += cached_einsum("rmnac,d,c->rmnad", self.get_R_mat(f'SH_uu'), pauli_rotated[i,k],pauli_rotated[k,j])
+            self.set_R_mat('SHR', SHR, reset=True)
+
+
+            
         if self.cell is not None:
             axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
             magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
@@ -235,6 +258,65 @@ class SystemSOC(System_R):
             self.set_pointgroup(spacegroup=mag_group)
 
         return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
+
+
+    def set_soc_SHC_R(self, w90data_soc):
+        """
+        set the matrix elements needed for spin Hall conductivity calculations in the Qiao scheme
+        """
+        assert self.has_soc, "SOC matrix must be set before setting the SOC SHC matrices"
+        kptirr, weights_k = w90data_soc.data_up.kptirr_system
+        if self.nspin == 2:
+            raise NotImplementedError("set_soc_SHC_R is not implemented for nspin=2 systems yet")
+        SRq = dict()
+        SHq = dict()
+        SH0q = dict()
+        SHRq = dict()
+        SH0Rq = dict()
+        # 'SR', 'SH', 'SHR'
+        chk_up = w90data_soc.data_up.chk
+            
+        for ik in kptirr:
+            mmn_W_uu = w90data_soc.data_up.get_mmn_Wright(ik)
+            v1 = chk_up.v_matrix[ik]
+            s_W_uu = v1.conj().T
+            dVsoc = w90data_soc.get_file("soc").data[ik]
+            H0_uu = np.diag(w90data_soc.data_up.eig.data[ik])
+            H_uu =  dVsoc[0,0]
+            H0_uu_W = H0_uu @ v1
+            H_uu_W = cached_einsum("ijc,jk->ikc", H_uu, v1)
+
+            SH0q[ik]  = cached_einsum("ij,jk->ik", s_W_uu, H0_uu_W)
+            SHq[ik]   = cached_einsum("ij,jkc->ikc", s_W_uu, H_uu_W)
+            SRq[ik]   = cached_einsum("ij,jkd->ikd", s_W_uu, mmn_W_uu)
+            SH0Rq[ik] = cached_einsum("ij,jk,kld->ild", s_W_uu, H0_uu_W, mmn_W_uu) # spin index last
+            SHRq[ik]  = cached_einsum("ij,jkc,kld->ildc", s_W_uu, H_uu_W, mmn_W_uu) # spin index last
+
+        NK = w90data_soc.bkvec.NK
+        for key, data in zip( ['SH0', 'SH','SR', 'SH0R', 'SHR'], [SH0q, SHq, SRq, SH0Rq, SHRq]):
+            print (f"Transforming {key} from q-space to R-space")
+            if key in ["SH0"]:
+                ndim=0
+            elif key in ["SH","SR", "SH0R"]:
+                ndim=1
+            elif key in ["SHR"]:
+                ndim=2
+            else:
+                raise ValueError(f"Unknown key {key} for SOC SHC matrices")
+            tmp = np.zeros( (NK, self.num_wann, self.num_wann) + (3,)*ndim, dtype=complex)
+            for ik, wk in zip(kptirr, weights_k):
+                tmp[ik] = wk * data[ik]
+            data_R = self.rvec.q_to_R(tmp)
+            self.set_R_mat(key+"_uu", data_R)
+        self.has_SHC = True
+        return self
+        
+        
+
+
+
+        
+
 
     @cached_property
     def essential_properties(self):
@@ -253,7 +335,7 @@ class SystemSOC(System_R):
         if self.nspin == 2:
             return self.has_R_mat_all(['dV_soc_wann_0_0', 'dV_soc_wann_1_1', 'dV_soc_wann_0_1', 'overlap_up_down'])
         else:
-            return self.has_R_mat(['dV_soc_wann_0_0'])
+            return self.has_R_mat('dV_soc_wann_0_0')
 
 
     @classmethod
@@ -375,7 +457,8 @@ class SystemSOC(System_R):
 
 
     @classmethod
-    def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
+    def from_wannier90data_soc(cls, w90data, theta=0, phi=0, units="radians", alpha_soc=1.0, symmetrize=True, SHC=False, **kwargs):
+        theta, phi = to_radians(theta, phi, units)
         system_up = System_w90(w90data=w90data.data_up, **kwargs)
         if w90data.nspin == 2:
             system_down = System_w90(w90data=w90data.data_down, **kwargs)
@@ -383,15 +466,36 @@ class SystemSOC(System_R):
             system_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)
         kptirr, weights_k = w90data.data_up.kptirr_system
+        
         system_soc.set_soc_R(w90data.get_file("soc"),
                              chk_up=w90data.get_file_ud("up", "chk"),
                              chk_down=w90data.get_file_ud("down", "chk"),
                              kptirr=kptirr, weights_k=weights_k
         )
+        if SHC:
+            system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+            system_soc.set_soc_SHC(w90data_soc=w90data,
+                                   theta=theta, phi=phi, alpha_soc=alpha_soc,
+                                   units="radians")
+            system_soc.has_SHC = SHC
+        else:
+            system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+            system_soc.has_SHC = False
+            
         if w90data.is_irreducible:
             symmetrize = True
         if symmetrize:
             system_soc.symmetrize2(symmetrizer_up=w90data.get_file_ud('up', 'symmetrizer'),
                            symmetrizer_down=w90data.get_file_ud('down', 'symmetrizer'))
-        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        
         return system_soc
+
+
+def to_radians(theta, phi, units):
+    units = units.lower()
+    if units.startswith("r"):
+        return theta, phi
+    elif units.startswith("d"):
+        return np.deg2rad(theta), np.deg2rad(phi)
+    else:
+        raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
