@@ -21,7 +21,7 @@ import warnings
 from .utility import remove_file
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
-from .parallel import Serial
+from .parallel import Parallel, Serial
 from .result import ResultDict
 
 
@@ -121,7 +121,7 @@ def run(
         file_Klist=None,
         restart=False,
         Klist_part=10,
-        parallel=None,  # serial by default
+        parallel=True,  # will fall into Serial() if False or None or ray is not installed/initialized
         print_Kpoints=False,
         adpt_mesh=2,
         adpt_fac=1,
@@ -146,8 +146,10 @@ def run(
         the size of the refinement grid (usuallay no need to change)
     adpt_fac : int
         number of K-points to be refined per quantity and criteria.
-    parallel : :class:`~wannierberri.parallel.Parallel`
-        object describing parallelization scheme
+    parallel : :class:`~wannierberri.parallel.Parallel` or bool
+        object describing parallelization scheme or a boolean to enable/disable parallel execution
+        if `True` -- use :class:`~wannierberri.parallel.Parallel` with default parameters (requires ray to be installed and initialized)
+        if `False` or `None` -- use :class:`~wannierberri.parallel.Serial`
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
@@ -180,7 +182,18 @@ def run(
     -----
     Results are also printed to ASCII files
     """
-    if parallel is None:
+    if parallel is True:
+        try:
+            import ray
+        except ImportError:
+            warnings.warn("ray package not found, running in serial mode")
+            parallel = False
+        if ray.is_initialized():
+            parallel = Parallel(ignore_initialized=True)
+        else:
+            warnings.warn("ray package found, but ray is not initialized, running in serial mode")
+            parallel = False
+    if parallel in [None, False]:
         parallel = Serial()
 
     cprint("Starting run()", 'red', attrs=['bold'])

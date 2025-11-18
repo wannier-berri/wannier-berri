@@ -26,30 +26,35 @@ class Parallel():
         ray_init=None,  # add extra parameters for ray.init()
         cluster=False,  # add parameters for ray.init() for the slurm cluster
         progress_step_percent=1,
+        ignore_initialized=False,
     ):
-
         self.method = "ray"
-        self.progress_step_percent = progress_step_percent
-        if ray_init is None:
-            ray_init = {}
-        ray_init_loc = {}
-        if cluster:
-            # The follwoing is done for testing, when __init__ is called with `cluster = True`,
-            # but no actual ray cluster was initialized (and hence the needed environmental variables are not set
-            def set_opt(opt, def_val):
-                if opt not in ray_init:
-                    ray_init_loc[opt] = def_val()
-                else:
-                    warnings.warn(f"the ray cluster will use '{ray_init[opt]}' provided in ray_init")
-            set_opt('address', lambda: 'auto')
-            set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
-            set_opt('_redis_password', lambda: os.environ["redis_password"])
-
-        ray_init_loc.update(ray_init)
-        ray_init_loc['num_cpus'] = num_cpus
         import ray
-        print("initializing ray with ", ray_init_loc)
-        ray.init(**ray_init_loc)
+        if ray.is_initialized():
+            if not ignore_initialized:
+                warnings.warn("Ray is already initialized, using the existing initialization, ignoring the parameters passed to Parallel()")
+        else:
+        
+            if ray_init is None:
+                ray_init = {}
+            ray_init_loc = {}
+            if cluster:
+                # The follwoing is done for testing, when __init__ is called with `cluster = True`,
+                # but no actual ray cluster was initialized (and hence the needed environmental variables are not set
+                def set_opt(opt, def_val):
+                    if opt not in ray_init:
+                        ray_init_loc[opt] = def_val()
+                    else:
+                        warnings.warn(f"the ray cluster will use '{opt}={ray_init[opt]}' provided in ray_init")
+                set_opt('address', lambda: 'auto')
+                set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
+                set_opt('_redis_password', lambda: os.environ["redis_password"])
+
+            ray_init_loc.update(ray_init)
+            ray_init_loc['num_cpus'] = num_cpus
+            print("initializing ray with ", ray_init_loc)
+            ray.init(**ray_init_loc)
+        self.progress_step_percent = progress_step_percent
         self.num_cpus = int(round(ray.available_resources()['CPU']))
         self.ray = ray
         _, self.npar_k = pool(npar_k)
