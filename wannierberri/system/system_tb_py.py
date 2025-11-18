@@ -16,6 +16,7 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .system_R import System_R
+from packaging import version
 # from .Rvec import Rvec
 
 
@@ -60,19 +61,36 @@ class System_tb_py(System_R):
             positions = model.pos
             iRvec = np.array([R[0] for R in model.hop.items()], dtype=int)
         elif module == 'pythtb':
-            real = model._lat
-            positions = model._orb
+            import pythtb
+            version1 = (version.parse(pythtb.__version__) < version.parse("2.0.0"))
+            if version1:
+                real = model._lat
+                positions = model._orb
+                norb_loc = model._norb
+                hoppings = model._hoppings
+            else:
+                real = model.lat_vecs
+                positions = model.get_orb_vecs(cartesian=False)
+                norb_loc = model.norb
+                hoppings = model.hoppings
+            
             if model._nspin == 1:
                 self.spinors = False
-                self.num_wann = model._norb
+                self.num_wann = norb_loc
             elif model._nspin == 2:
                 self.spinors = True
-                self.num_wann = model._norb * 2
+                self.num_wann = norb_loc * 2
                 positions = np.array(sum(([p, p] for p in positions), []))
             else:
                 raise Exception("\n\nWrong value of nspin!")
             print("number of wannier functions:", self.num_wann)
-            iRvec = np.array([R[-1] for R in model._hoppings], dtype=int)
+            if version1:
+                iRvec = np.array([hop[-1] for hop in hoppings], dtype=int)
+            else:
+                iRvec = []
+                for hop in hoppings:
+                    if "lattice_vector" in hop:
+                        iRvec.append(hop["lattice_vector"])
         else:
             raise ValueError(f"unknown tight-binding module {module}")
 
@@ -115,22 +133,33 @@ class System_tb_py(System_R):
                 Ham_R[iR] += hops
                 Ham_R[inR] += np.conjugate(hops.T)
         elif module == 'pythtb':
-            for nhop in model._hoppings:
-                i = nhop[1]
-                j = nhop[2]
-                iR = np.argwhere(np.all((nhop[-1] - self.rvec.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
-                inR = np.argwhere(np.all((-nhop[-1] - self.rvec.iRvec[:, :self.dimr]) == 0, axis=1))[0][0]
+            for nhop in hoppings:
+                R = np.zeros(3, dtype=int)
+                if version1:
+                    i = nhop[1]
+                    j = nhop[2]
+                    R[:self.dimr] = nhop[-1]
+                    amplitude = nhop[0]
+                else:
+                    i = nhop["from_orbital"]
+                    j = nhop["to_orbital"]
+                    if "lattice_vector" in nhop:
+                        R[: self.dimr] = nhop["lattice_vector"]
+                    amplitude = nhop["amplitude"]
+                    
+                iR = self.rvec.iR(R)
+                inR = self.rvec.iR(-R)
                 if model._nspin == 1:
-                    Ham_R[iR, i, j] += nhop[0]
-                    Ham_R[inR, j, i] += np.conjugate(nhop[0])
+                    Ham_R[iR, i, j] += amplitude
+                    Ham_R[inR, j, i] += np.conjugate(amplitude)
                 elif model._nspin == 2:
-                    print("hopping :", nhop[0].shape, Ham_R.shape, iR,
+                    print("hopping :", amplitude.shape, Ham_R.shape, iR,
                           Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape)
-                    Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += nhop[0]
-                    Ham_R[inR, 2 * j:2 * j + 2, 2 * i:2 * i + 2] += np.conjugate(nhop[0].T)
+                    Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += amplitude 
+                    Ham_R[inR, 2 * j:2 * j + 2, 2 * i:2 * i + 2] += np.conjugate(amplitude.T)
 
             # Set the onsite energies at H(R=[000])
-            for i in range(model._norb):
+            for i in range(norb_loc):
                 if model._nspin == 1:
                     Ham_R[index0, i, i] = model._site_energies[i]
                 elif model._nspin == 2:
