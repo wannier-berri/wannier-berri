@@ -62,13 +62,13 @@ class Path(GridAbstract):
 #        self.findif = None
         self.breaks = breaks
 
-        if k_list == 'sphere':
-            self.K_list = self.sphere(r1, r1, ntheta, nphi, origin)
-            self.labels = ['sphere']
-        elif k_list == 'spheroid':
-            self.K_list = self.sphere(r1, r2, ntheta, nphi, origin)
-            self.labels = ['spheroid']
-
+        if isinstance(k_list, str):
+            if k_list == 'sphere':
+                self.K_list = self.sphere(r1, r1, ntheta, nphi, origin)
+                self.labels = ['sphere']
+            elif k_list == 'spheroid':
+                self.K_list = self.sphere(r1, r2, ntheta, nphi, origin)
+                self.labels = ['spheroid']
         elif k_list is None:
             if nodes is None:
                 raise ValueError("need to specify either 'k_list' of 'nodes'")
@@ -127,7 +127,9 @@ class Path(GridAbstract):
         self.div = np.shape(self.K_list)[0]
         self.breaks = np.array(self.breaks, dtype=int)
 
-    def sphere(self, r1, r2, ntheta, nphi, origin):
+    def sphere(self, r1, r2, ntheta, nphi, origin=None):
+        if origin is None:
+            origin = np.array([0.0, 0.0, 0.0])
         theta = np.linspace(0, np.pi, ntheta, endpoint=True)
         phi = np.linspace(0, 2 * np.pi, nphi, endpoint=True)
         theta_grid, phi_grid = np.meshgrid(theta, phi)
