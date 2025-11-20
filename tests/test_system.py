@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import os
 from packaging import version
-    
+
 from .common import OUTPUT_DIR, REF_DIR
 
 from .common_systems import model_1d_pythtb

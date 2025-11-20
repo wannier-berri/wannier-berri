@@ -461,12 +461,14 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
                     )
 
     results_tab = wberri.run(system,
+                             parallel=False,
                     grid=grid,
                     calculators=calculators,
                     use_irred_kpt=False,
                         symmetrize=False,)
 
     results_tab_sym = wberri.run(system,
+                                parallel=False,
                     grid=grid,
                     calculators=calculators,
                     use_irred_kpt=True,
