@@ -38,9 +38,9 @@ def check_symmetry(check_run):
 
         for quant in calculators.keys():
             diff = abs(result_full_k.results[quant].data - result_irr_k.results[quant].data).max()
-            try:
+            if quant in extra_precision:
                 prec = extra_precision[quant]
-            except KeyError:
+            else:
                 prec = precision
             if prec < 0:
                 req_precision = -prec * (abs(result_full_k.results[quant].data) + abs(result_irr_k.results[quant].data)).max() / 2
@@ -195,7 +195,8 @@ def test_GaAs_sym_tb(check_symmetry, system_GaAs_sym_tb):
     param = {'Efermi': Efermi_GaAs}
     calculators = {}
     calculators.update({k: v(**param) for k, v in calculators_GaAs_internal.items()})
-    check_symmetry(system=system_GaAs_sym_tb, calculators=calculators)
+    check_symmetry(system=system_GaAs_sym_tb, calculators=calculators,
+                   precision=-1e-7,)
 
 
 def test_GaAs_random(check_symmetry, system_random_GaAs_load_sym):

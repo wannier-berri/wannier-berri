@@ -40,8 +40,8 @@ def check_sawf():
 
         for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
             blockref, blocknew = blockpair
-            assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
-            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+            assert blockref.shape == blocknew.shape, f"rot_orb differs for block {i} between reference and new SymmetrizerSAWF\n"
+            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
 
 
         for isym in range(sawf_ref.Nsym):
@@ -144,9 +144,14 @@ def test_create_w90files_diamond_irred(select_grid):
 @pytest.mark.parametrize("include_TR", [True, False])
 def test_create_sawf_Fe(check_sawf, include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-
+    spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
     bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=200,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
+                                normalize=False, magmom=[[0, 0, 1]],
+                                # include_TR=include_TR
+                                spacegroup=spacegroup)
+    # spacegroup = bandstructure.spacegroup
+    # np.savez(os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}_spacegroup.npz"),
+    #          **spacegroup.as_dict())
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure, ecut=100)
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
@@ -164,9 +169,11 @@ def test_create_sawf_Fe(check_sawf, include_TR):
 @pytest.mark.parametrize("irr_bs", [False, True])
 def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-
+    spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
     bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR,
+                                normalize=False, magmom=[[0, 0, 1]],
+                                spacegroup=spacegroup,
+                                # include_TR=include_TR,
                                   irreducible=irr_bs)
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure, irreducible=True, ecut=None)
     pos = [[0, 0, 0]]

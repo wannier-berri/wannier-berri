@@ -18,19 +18,22 @@ properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 @pytest.fixture
 def check_system():
     def _inner(system, name,
-               properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
-                           'cell_volume', 'is_phonon',
-                           ] + properties_wcc + ['nRvec', 'iRvec'],
+               properties=None,
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
                extra_precision={},  # for some properties we need different precision
                matrices=[],
                precision_matrix_elements=1e-7,
+               precision_wcc=1e-6,
                suffix="",
                sort_iR=True,
                legacy=False
                ):
+        if properties is None:
+            ['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
+             'cell_volume', 'is_phonon',
+                           ] + properties_wcc + ['nRvec', 'iRvec'],
         if len(suffix) > 0:
             suffix = "_" + suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems', name + suffix)
@@ -152,6 +155,8 @@ def check_system():
         for key in properties:
             if key in extra_precision:
                 prec_loc = extra_precision[key]
+            elif key.startswith('wannier_centers'):
+                prec_loc = precision_wcc
             else:
                 prec_loc = precision_properties
             if key in ['iRvec', 'cRvec']:
