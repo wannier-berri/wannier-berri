@@ -530,7 +530,8 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
     )
 
 
-def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_ray):
+@pytest.mark.parametrize("auto", [True, False])
+def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_ray, auto):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     check_run(
@@ -540,13 +541,13 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
         grid_param=grid_param_Fe,
 
         suffix="paral-ray-4",
-        parallel=parallel_ray,
+        parallel=True if auto else parallel_ray,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
-    parallel_ray.shutdown()
+    # parallel_ray.shutdown()
 
 
 @pytest.mark.parametrize("adpt_num_iter_list", [(3,), (1, 2), (0, 2, 1)])

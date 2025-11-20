@@ -2,6 +2,8 @@
 import numpy as np
 import pytest
 import os
+from packaging import version
+
 from .common import OUTPUT_DIR, REF_DIR
 
 from .common_systems import model_1d_pythtb
@@ -467,8 +469,13 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
 def test_system_pythtb_spinor():
     model1, model2 = model_1d_pythtb()
     k = np.linspace(0, 1, 20, endpoint=False)
-    e1 = model1.solve_all(k)
-    e2 = model1.solve_all(k)
+    import pythtb
+    if version.parse(pythtb.__version__) < version.parse("2.0.0"):
+        e1 = model1.solve_all(k)
+        e2 = model1.solve_all(k)
+    else:
+        e1 = model1.solve_ham(k).T
+        e2 = model2.solve_ham(k).T
     assert e1 == pytest.approx(e2), ("models defined in pythtb using spinors and in scalar way gave energies"
                                      f"different by {abs(e1 - e2).max()}")
 
