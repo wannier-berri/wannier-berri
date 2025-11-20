@@ -108,7 +108,7 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
             pass
 
     _link("chk")
-    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu"]:
+    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu", "bkvec"]:
         _link(ext + ".npz")
     return data_dir_new
 
@@ -159,7 +159,7 @@ def system_Fe_W90(create_files_Fe_W90):
     seedname = os.path.join(data_dir, "Fe")
     system = wberri.system.System_w90(
         seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu", "bkvec"],
         write_npz_formatted=True,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)

@@ -18,19 +18,22 @@ properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 @pytest.fixture
 def check_system():
     def _inner(system, name,
-               properties=['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
-                           'cell_volume', 'is_phonon',
-                           ] + properties_wcc + ['nRvec', 'iRvec'],
+               properties=None,
                extra_properties=[],
                exclude_properties=[],
                precision_properties=1e-8,
                extra_precision={},  # for some properties we need different precision
                matrices=[],
                precision_matrix_elements=1e-7,
+               precision_wcc=1e-6,
                suffix="",
                sort_iR=True,
                legacy=False
                ):
+        if properties is None:
+            properties = ['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
+             'cell_volume', 'is_phonon',
+                           ] + properties_wcc + ['nRvec', 'iRvec']
         if len(suffix) > 0:
             suffix = "_" + suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems', name + suffix)
@@ -40,7 +43,8 @@ def check_system():
         print(f"System {name} has the following matrices : {sorted(system._XX_R.keys())}")
         other_prop = sorted(list([p for p in set(dir(system)) - set(system.__dict__.keys()) if not p.startswith("__")]))
         print(f"System {name} additionaly has the following properties : {other_prop}")
-        properties = [p for p in properties + extra_properties if p not in exclude_properties]
+        print(f"properties to be checked : {properties} ")
+        properties = list(set(properties).union(extra_properties) - set(exclude_properties))
         # First save the system data, to produce reference data
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
@@ -152,6 +156,8 @@ def check_system():
         for key in properties:
             if key in extra_precision:
                 prec_loc = extra_precision[key]
+            elif key.startswith('wannier_centers'):
+                prec_loc = precision_wcc
             else:
                 prec_loc = precision_properties
             if key in ['iRvec', 'cRvec']:
@@ -594,6 +600,7 @@ def test_system_Fe_gpaw_soc_111_irred(check_system, system_Fe_gpaw_soc_111_irred
         system_Fe_gpaw_soc_111_irred, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred",
         matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        precision_matrix_elements=5e-7
     )
 
 

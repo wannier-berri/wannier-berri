@@ -311,7 +311,7 @@ class CheckPoint(SavableNPZ):
     # matrix elements for Wannier interpolation, independently of the
     # finite-difference scheme used.
 
-    def get_AABB_q_ib(self, mmn, kptirr, weights_k, ib,
+    def get_AABB_q_ib(self, bkvec, mmn, kptirr, weights_k, ib,
                     transl_inv=False, eig=None, phase=None):
         """
         Returns the matrix elements AA or BB(if eig is not Flase) in the Wannier gauge
@@ -339,18 +339,18 @@ class CheckPoint(SavableNPZ):
         assert (not transl_inv) or eig is None, "transl_inv cannot be used for BB matrix elements"
         AA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3), dtype=complex)
         for ik, w in zip(kptirr, weights_k):
-            iknb = mmn.neighbours[ik][ib]
+            iknb = bkvec.neighbours[ik][ib]
             # Matrix < u_k | u_k+b > (mmn)
             data = mmn.data[ik][ib]                   # Hamiltonian gauge
             if eig is not None:
                 data = data * eig.data[ik][:, None]  # Hamiltonian gauge (add energies)
             AAW = self.wannier_gauge(data, ik, iknb)  # Wannier gauge
             # Matrix for finite-difference schemes
-            AA_qb[ik] = 1.j * AAW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :] * w
+            AA_qb[ik] = 1.j * AAW[:, :, None] * bkvec.wk[ib] * bkvec.bk_cart[ib, None, None, :] * w
             # Marzari & Vanderbilt formula for band-diagonal matrix elements
             if transl_inv:
                 AA_qb[ik][range(self.num_wann), range(self.num_wann)] = -np.log(
-                    AAW.diagonal()).imag[:, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, :]
+                    AAW.diagonal()).imag[:, None] * bkvec.wk[ib] * bkvec.bk_cart[ib, None, :]
             if phase is not None:
                 AA_qb[ik] *= phase[:, :, ib, None]
         return AA_qb
@@ -359,16 +359,16 @@ class CheckPoint(SavableNPZ):
     # --- A_a(q,b) matrix --- #
 
 
-    def get_AA_q(self, mmn, kptirr, weights_k,):
+    def get_AA_q(self, bkvec, mmn, kptirr, weights_k,):
         """	
          A wrapper for get_AABB_qb with eig=None
          see :meth:`~wannierberri.w90files.CheckPoint.get_AABB_qb` for more details  
          """
-        return sum(self.get_AABB_q_ib(mmn, kptirr=kptirr, weights_k=weights_k, ib=ib, transl_inv=True, eig=None, phase=None)
-                   for ib in range(mmn.NNB))
+        return sum(self.get_AABB_q_ib(bkvec, mmn, kptirr=kptirr, weights_k=weights_k, ib=ib, transl_inv=True, eig=None, phase=None)
+                   for ib in range(bkvec.NNB))
 
 
-    def get_wannier_centers(self, mmn, spreads=False):
+    def get_wannier_centers(self, bkvec, mmn, spreads=False):
         """
         calculate wannier centers  with the Marzarri-Vanderbilt translational invariant formula
         and optionally the spreads
@@ -391,14 +391,14 @@ class CheckPoint(SavableNPZ):
         if spreads:
             r2 = np.zeros(self.num_wann, dtype=float)
         for ik in range(mmn.NK):
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik][ib]
+            for ib in range(bkvec.NNB):
+                iknb = bkvec.neighbours[ik][ib]
                 mmn_loc = self.wannier_gauge(mmn.data[ik][ib], ik, iknb)
                 mmn_loc = mmn_loc.diagonal()
                 log_loc = np.angle(mmn_loc)
-                wcc += -log_loc[:, None] * mmn.wk[ib] * mmn.bk_cart[ib][None, :]
+                wcc += -log_loc[:, None] * bkvec.wk[ib] * bkvec.bk_cart[ib][None, :]
                 if spreads:
-                    r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * mmn.wk[ib]
+                    r2 += (1 - np.abs(mmn_loc) ** 2 + log_loc ** 2) * bkvec.wk[ib]
         wcc /= mmn.NK
         if spreads:
             return wcc, r2 / mmn.NK - np.sum(wcc**2, axis=1)
@@ -406,7 +406,7 @@ class CheckPoint(SavableNPZ):
             return wcc
 
 
-    def get_CCOOGG_ib(self, mmn, uhu, kptirr, weights_k, ib1, ib2, antisym=True):
+    def get_CCOOGG_ib(self, bkvec, uhu, kptirr, weights_k, ib1, ib2, antisym=True):
         """
         Returns the matrix elements CC, OO or GG in the Wannier gauge
 
@@ -433,8 +433,8 @@ class CheckPoint(SavableNPZ):
         shape = (self.num_kpts, self.num_wann, self.num_wann) + (3,) * nd_cart
         CC_qb = np.zeros(shape, dtype=complex)
         for ik, weight in zip(kptirr, weights_k):
-            iknb1 = mmn.neighbours[ik][ib1]
-            iknb2 = mmn.neighbours[ik][ib2]
+            iknb1 = bkvec.neighbours[ik][ib1]
+            iknb2 = bkvec.neighbours[ik][ib2]
             # Matrix < u_k+b1 | H_k | u_k+b2 > (uHu)
             data = uhu.data[ik][ib1, ib2]                 # Hamiltonian gauge
             CCW = self.wannier_gauge(data, iknb1, iknb2)  # Wannier gauge
@@ -442,15 +442,15 @@ class CheckPoint(SavableNPZ):
             if antisym:
                 # Matrix for finite-difference schemes (takes antisymmetric piece only)
                 CC_q_ik_ib = 1.j * CCW[:, :, None] * (
-                    mmn.wk[ib1] * mmn.wk[ib2] * (
-                        mmn.bk_cart[ib1, alpha_A] * mmn.bk_cart[ib2, beta_A] -
-                        mmn.bk_cart[ib1, beta_A] * mmn.bk_cart[ib2, alpha_A]))[None, None, :]
+                    bkvec.wk[ib1] * bkvec.wk[ib2] * (
+                        bkvec.bk_cart[ib1, alpha_A] * bkvec.bk_cart[ib2, beta_A] -
+                        bkvec.bk_cart[ib1, beta_A] * bkvec.bk_cart[ib2, alpha_A]))[None, None, :]
             else:
                 # Matrix for finite-difference schemes (takes symmetric piece only)
                 CC_q_ik_ib = CCW[:, :, None, None] * (
-                    mmn.wk[ib1] * mmn.wk[ib2] * (
-                        mmn.bk_cart[ib1, :, None] *
-                        mmn.bk_cart[ib2, None, :]))[None, None, :, :]
+                    bkvec.wk[ib1] * bkvec.wk[ib2] * (
+                        bkvec.bk_cart[ib1, :, None] *
+                        bkvec.bk_cart[ib2, None, :]))[None, None, :, :]
             CC_qb[ik] = CC_q_ik_ib * weight
         return CC_qb
 
@@ -468,21 +468,21 @@ class CheckPoint(SavableNPZ):
             SH_q[ik, :, :, :] = self.wannier_gauge(spn.data[ik][:, :, :] * eig.data[ik][None, :, None], ik, ik) * weight
         return SH_q
 
-    def get_SHA_q(self, shu, mmn, kptirr, weights_k, ib):
+    def get_SHA_q(self, bkvec, shu, kptirr, weights_k, ib):
         """
         SHA or SA (if siu is used instead of shu)
         """
         SHA_qb = np.zeros((self.num_kpts, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        assert shu.NNB == mmn.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={mmn.NNB} - mismatch"
+        assert shu.NNB == bkvec.NNB, f"shu.NNB={shu.NNB}, mmn.NNB={bkvec.NNB} - mismatch"
         for ik, weight in zip(kptirr, weights_k):
-            iknb = mmn.neighbours[ik][ib]
+            iknb = bkvec.neighbours[ik][ib]
             SHAW = self.wannier_gauge(shu.data[ik][ib], ik, iknb)
-            SHA_qb[ik] = 1.j * SHAW[:, :, None, :] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None] * weight
+            SHA_qb[ik] = 1.j * SHAW[:, :, None, :] * bkvec.wk[ib] * bkvec.bk_cart[ib, None, None, :, None] * weight
         return SHA_qb
 
 
 
-    def get_SHR_q(self, spn, mmn, kptirr, weights_k,
+    def get_SHR_q(self, bkvec, spn, mmn, kptirr, weights_k,
                   eig=None, phase=None):
         """
         SHR or SR(if eig is None)
@@ -495,14 +495,14 @@ class CheckPoint(SavableNPZ):
             if eig is not None:
                 SH = SH * eig.data[ik][None, :, None]
             SHW = self.wannier_gauge(SH, ik, ik)
-            for ib in range(mmn.NNB):
-                iknb = mmn.neighbours[ik][ib]
+            for ib in range(bkvec.NNB):
+                iknb = bkvec.neighbours[ik][ib]
                 SHM = np.tensordot(SH, mmn.data[ik][ib], axes=((1,), (0,))).swapaxes(-1, -2)
                 SHRW = self.wannier_gauge(SHM, ik, iknb)
                 if phase is not None:
                     SHRW = SHRW * phase[:, :, ib, None]
                 SHRW = SHRW - SHW
-                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * mmn.wk[ib] * mmn.bk_cart[ib, None, None, :, None] * weight
+                SHR_q[ik, :, :, :, :] += 1.j * SHRW[:, :, None] * bkvec.wk[ib] * bkvec.bk_cart[ib, None, None, :, None] * weight
         return SHR_q
 
 

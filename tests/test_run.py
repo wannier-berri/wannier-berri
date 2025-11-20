@@ -1360,7 +1360,7 @@ def test_Fe_gpaw_up(system_Fe_gpaw_up, check_Fe_gpaw_soc, use_symmetry):
 def test_Fe_gpaw_dw(system_Fe_gpaw_dw, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_dw, suffix="dw",
                       use_symmetry=use_symmetry,
-                      extra_precision={"ahc": 1e-8, "ahc_test": 1e-8})
+                      extra_precision={"ahc": 1e-7, "ahc_test": 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])

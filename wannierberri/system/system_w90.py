@@ -104,7 +104,7 @@ class System_w90(System_R):
             npar=None,
             wannier_centers_from_chk=True,
             read_npz=True,
-            write_npz_list=("eig", "mmn"),
+            write_npz_list=("eig", "mmn", "bkvec"),
             write_npz_formatted=True,
             overwrite_npz=False,
             formatted=tuple(),
@@ -209,7 +209,7 @@ class System_w90(System_R):
         if w90data.has_file('mmn'):
             NNB = w90data.mmn.NNB
             if transl_inv_JM:
-                bk_cart = w90data.mmn.bk_cart
+                bk_cart = w90data.bkvec.bk_cart
                 phaseR = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * self.rvec.cRvec)
                 expiRphase1 = np.exp(1j * phaseR)[:, None, None, :]
                 expiRphase2 = expiRphase1[:, :, :, :, None] * expiRphase1[:, :, :, None, :]
@@ -252,7 +252,7 @@ class System_w90(System_R):
                     XX_R[:] += self.rvec.q_to_R(getter_from_chk(**db) * phase_loc_j[:, :, :, *ib]) * phase_loc_i[:, :, :, *ib]
                 return XX_R
 
-            bk_cart = w90data.mmn.bk_cart
+            bk_cart = w90data.bkvec.bk_cart
 
             if transl_inv_JM:
                 _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
@@ -267,6 +267,7 @@ class System_w90(System_R):
             if self.need_R_any('AA'):
                 print("setting AA..")
                 getter_from_chk = functools.partial(chk.get_AABB_q_ib,
+                                                    bkvec=w90data.bkvec,
                                                     mmn=w90data.mmn,
                                                     transl_inv=transl_inv_MV,
                                                     **kwargs_kpt)
@@ -281,6 +282,7 @@ class System_w90(System_R):
             if 'BB' in self.needed_R_matrices:
                 print("setting BB...")
                 getter_from_chk = functools.partial(chk.get_AABB_q_ib,
+                                                    bkvec=w90data.bkvec,
                                                     mmn=w90data.mmn,
                                                     eig=w90data.eig,
                                                     **kwargs_kpt)
@@ -292,7 +294,8 @@ class System_w90(System_R):
             if 'CC' in self.needed_R_matrices:
                 print("setting CC..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                    mmn=w90data.mmn,
+                                                    bkvec=w90data.bkvec,
+                                                    # mmn=w90data.mmn,
                                                     uhu=w90data.uhu,
                                                     antisym=True,
                                                     **kwargs_kpt)
@@ -306,7 +309,8 @@ class System_w90(System_R):
             if 'OO' in self.needed_R_matrices:
                 print("setting OO..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                    mmn=w90data.mmn,
+                                                    bkvec=w90data.bkvec,
+                                                    # mmn=w90data.mmn,
                                                     uhu=w90data.uiu,
                                                     antisym=True,
                                                     **kwargs_kpt)
@@ -320,7 +324,8 @@ class System_w90(System_R):
             if 'GG' in self.needed_R_matrices:
                 print("setting GG..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                    mmn=w90data.mmn,
+                                                    bkvec=w90data.bkvec,
+                                                    # mmn=w90data.mmn,
                                                     uhu=w90data.uiu,
                                                     antisym=False,
                                                     **kwargs_kpt)
@@ -336,7 +341,8 @@ class System_w90(System_R):
 
             if self.need_R_any('SR'):
                 print("setting SR..")
-                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
+                self.set_R_mat('SR', self.rvec.q_to_R(chk.get_SHR_q(bkvec=w90data.bkvec,
+                                                                    spn=w90data.spn, mmn=w90data.mmn,
                                                                     **kwargs_kpt, phase=expjphase1)))
                 print("setting SR - Ok")
             if self.need_R_any('SH'):
@@ -347,6 +353,7 @@ class System_w90(System_R):
                 print("setting SHR..")
                 self.set_R_mat('SHR', self.rvec.q_to_R(
                     chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
+                                  bkvec=w90data.bkvec,
                                   **kwargs_kpt,
                                   eig=w90data.eig, phase=expjphase1)))
                 print("setting SHR - OK")
@@ -355,7 +362,8 @@ class System_w90(System_R):
                 print("setting SA..")
                 getter_from_chk = functools.partial(chk.get_SHA_q,
                                                     shu=w90data.siu,
-                                                    mmn=w90data.mmn,
+                                                    bkvec=w90data.bkvec,
+                                                    # mmn=w90data.mmn,
                                                     **kwargs_kpt)
                 self.set_R_mat('SA',
                                sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
@@ -365,7 +373,8 @@ class System_w90(System_R):
                 print("setting SHA..")
                 getter_from_chk = functools.partial(chk.get_SHA_q,
                                                     shu=w90data.shu,
-                                                    mmn=w90data.mmn,
+                                                    # mmn=w90data.mmn,
+                                                    bkvec=w90data.bkvec,
                                                     **kwargs_kpt)
                 self.set_R_mat('SHA',
                                sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))

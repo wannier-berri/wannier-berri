@@ -34,7 +34,7 @@ class Parallel():
             if not ignore_initialized:
                 warnings.warn("Ray is already initialized, using the existing initialization, ignoring the parameters passed to Parallel()")
         else:
-        
+
             if ray_init is None:
                 ray_init = {}
             ray_init_loc = {}

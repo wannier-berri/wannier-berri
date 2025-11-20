@@ -121,7 +121,7 @@ def run(
         file_Klist=None,
         restart=False,
         Klist_part=10,
-        parallel=False,  # will fall into Serial() if False or None or ray is not installed/initialized
+        parallel=True,  # will fall into Serial() if False or None or ray is not installed/initialized
         print_Kpoints=False,
         adpt_mesh=2,
         adpt_fac=1,
@@ -193,7 +193,7 @@ def run(
         except ImportError:
             warnings.warn("ray package not found, running in serial mode")
             parallel = False
-        
+
     if parallel in [None, False]:
         parallel = Serial()
 
