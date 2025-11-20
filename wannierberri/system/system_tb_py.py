@@ -73,7 +73,7 @@ class System_tb_py(System_R):
                 positions = model.get_orb_vecs(cartesian=False)
                 norb_loc = model.norb
                 hoppings = model.hoppings
-            
+
             if model._nspin == 1:
                 self.spinors = False
                 self.num_wann = norb_loc
@@ -146,7 +146,7 @@ class System_tb_py(System_R):
                     if "lattice_vector" in nhop:
                         R[: self.dimr] = nhop["lattice_vector"]
                     amplitude = nhop["amplitude"]
-                    
+
                 iR = self.rvec.iR(R)
                 inR = self.rvec.iR(-R)
                 if model._nspin == 1:
@@ -155,7 +155,7 @@ class System_tb_py(System_R):
                 elif model._nspin == 2:
                     print("hopping :", amplitude.shape, Ham_R.shape, iR,
                           Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape)
-                    Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += amplitude 
+                    Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += amplitude
                     Ham_R[inR, 2 * j:2 * j + 2, 2 * i:2 * i + 2] += np.conjugate(amplitude.T)
 
             # Set the onsite energies at H(R=[000])

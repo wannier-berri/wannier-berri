@@ -193,7 +193,7 @@ def run(
         except ImportError:
             warnings.warn("ray package not found, running in serial mode")
             parallel = False
-        
+
     if parallel in [None, False]:
         parallel = Serial()
 

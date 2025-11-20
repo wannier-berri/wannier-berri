@@ -33,7 +33,7 @@ def check_system():
         if properties is None:
             properties = ['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
              'cell_volume', 'is_phonon',
-                           ] + properties_wcc + ['nRvec', 'iRvec'],
+                           ] + properties_wcc + ['nRvec', 'iRvec']
         if len(suffix) > 0:
             suffix = "_" + suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems', name + suffix)
@@ -43,7 +43,8 @@ def check_system():
         print(f"System {name} has the following matrices : {sorted(system._XX_R.keys())}")
         other_prop = sorted(list([p for p in set(dir(system)) - set(system.__dict__.keys()) if not p.startswith("__")]))
         print(f"System {name} additionaly has the following properties : {other_prop}")
-        properties = [p for p in properties + extra_properties if p not in exclude_properties]
+        print(f"properties to be checked : {properties} ")
+        properties = list(set(properties).union(extra_properties) - set(exclude_properties))
         # First save the system data, to produce reference data
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to

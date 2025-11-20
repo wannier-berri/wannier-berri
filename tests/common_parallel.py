@@ -42,7 +42,7 @@ def parallel_ray():
 
 
     return Parallel(
-        num_cpus=4,
+        num_cpus=None,  # use all available CPUs
         npar_k=0,
         ray_init=ray_init,  # add extra parameters for ray.init()
         cluster=False,  # add parameters for ray.init() for the slurm cluster
