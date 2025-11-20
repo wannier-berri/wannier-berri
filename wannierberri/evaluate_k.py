@@ -132,7 +132,7 @@ def evaluate_k_path(system, nodes=None, labels=None, length=500, path=None,
                     tabulators=None,
                     ibands=None,
                     quantities=(),
-                    parallel=None,
+                    parallel=True,
                     return_path=None,
                     **kwargs
                     ):

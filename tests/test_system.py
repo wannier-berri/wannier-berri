@@ -31,7 +31,7 @@ def check_system():
                legacy=False
                ):
         if properties is None:
-            ['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
+            properties = ['num_wann', 'recip_lattice', 'real_lattice', 'periodic',
              'cell_volume', 'is_phonon',
                            ] + properties_wcc + ['nRvec', 'iRvec'],
         if len(suffix) > 0:
@@ -599,6 +599,7 @@ def test_system_Fe_gpaw_soc_111_irred(check_system, system_Fe_gpaw_soc_111_irred
         system_Fe_gpaw_soc_111_irred, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred",
         matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        precision_matrix_elements=5e-7
     )
 
 
