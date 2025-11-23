@@ -1302,9 +1302,9 @@ def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
 
 @pytest.fixture
 def check_Fe_gpaw_soc(check_run, compare_any_result):
-    def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}):
+    def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}, tetra=False):
         Efermi_Fe_gpaw = np.linspace(8.5, 10, 16)
-        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': False}
+        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': tetra}
         calculators = {}
         for k, v in calculators_Fe.items():
             if (suffix in ['up', 'dw']) and (k in ["spin"]):
@@ -1320,7 +1320,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
             system,
             calculators,
             precision=precision,
-            fout_name=f"Fe_gpaw_soc_{suffix}",
+            fout_name=f"Fe_gpaw_soc_{suffix}" + ("" if not tetra else "-tetra"),
             suffix=("" if use_symmetry else "nosym"),
             use_symmetry=use_symmetry,
             extra_precision=extra_precision,
@@ -1334,7 +1334,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
             for quant in calculators.keys():
                 prec = -5e-5
                 compare_any_result(
-                    fout_name=f"Fe_gpaw_soc_{suffix}",
+                    fout_name=f"Fe_gpaw_soc_{suffix}" + ("" if not tetra else "-tetra"),
                     suffix=quant + ("" if use_symmetry else "-nosym"),
                     adpt_num_iter=0,
                     fout_name_ref=f"Fe_gpaw_soc_{suffix_ref}",
@@ -1373,6 +1373,10 @@ def test_Fe_gpaw_soc_z(system_Fe_gpaw_soc_z, check_Fe_gpaw_soc, use_symmetry):
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Fe_gpaw_soc_z_symmetrized(system_Fe_gpaw_soc_z_symmetrized, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_z_symmetrized, suffix="z_symmetrized", use_symmetry=use_symmetry)
+
+
+def test_Fe_gpaw_soc_z_symmetrized_tetra(system_Fe_gpaw_soc_z_symmetrized, check_Fe_gpaw_soc):
+    check_Fe_gpaw_soc(system_Fe_gpaw_soc_z_symmetrized, suffix="z_symmetrized", use_symmetry=True, tetra=True)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])

@@ -5,7 +5,6 @@ from wannierberri.parallel import Parallel, Serial
 @pytest.fixture(scope="session")
 def parallel_serial():
     return Serial(
-        npar_k=0,
         progress_step_percent=1,
     )
 
@@ -28,7 +27,6 @@ def parallel_ray():
 
     parallel = Parallel(
         num_cpus=None,
-        npar_k=0,
         ray_init=ray_init,  # add extra parameters for ray.init()
         cluster=True,  # add parameters for ray.init() for the slurm cluster
         progress_step_percent=1,
@@ -43,7 +41,6 @@ def parallel_ray():
 
     return Parallel(
         num_cpus=None,  # use all available CPUs
-        npar_k=0,
         ray_init=ray_init,  # add extra parameters for ray.init()
         cluster=False,  # add parameters for ray.init() for the slurm cluster
         progress_step_percent=1,

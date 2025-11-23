@@ -9,8 +9,6 @@ class Parallel():
     -----------
     num_cpus : int
         number of parallel processes. If `None` - automatically chose by `Ray` (1 per CPU)
-    npar_k : int
-        additional parallelisation over k-points inside the FFT grid
     cluster : bool
         set to `True` to use a multi-node ray cluster ( see also `wannierberri.cluster <file:///home/stepan/github/wannier-berri-org/html/docs/parallel.html#multi-node-mode>`__  module)
     ray_init : dict
@@ -22,7 +20,6 @@ class Parallel():
     def __init__(
         self,
         num_cpus=None,
-        npar_k=0,
         ray_init=None,  # add extra parameters for ray.init()
         cluster=False,  # add parameters for ray.init() for the slurm cluster
         progress_step_percent=1,
@@ -57,8 +54,7 @@ class Parallel():
         self.progress_step_percent = progress_step_percent
         self.num_cpus = int(round(ray.available_resources()['CPU']))
         self.ray = ray
-        _, self.npar_k = pool(npar_k)
-        self.npar_K = int(round(self.num_cpus / self.npar_k))
+        self.npar_K = self.num_cpus
 
     def progress_step(self, n_tasks, npar):
         return max(1, npar, int(round(n_tasks * self.progress_step_percent / 100)))
@@ -68,24 +64,18 @@ class Parallel():
 
 
 class Serial(Parallel):
-    """ a class defining the serial execution (although `npar_k` is allowed)
+    """ a class defining the serial execution
 
     Parameters
     -----------
-    npar_k : int
-        additional parallelisation ove k-points inside the FFT grid
     progress_step_percent : int or float
         progress (and estimated time to end) will be printed after each percent is completed
 """
 
-    def __init__(self, npar_k=None, progress_step_percent=1):
+    def __init__(self, progress_step_percent=1):
         self.progress_step_percent = progress_step_percent
         self.method = "serial"
         self.num_cpus = 1
-        if npar_k is None:
-            _, self.npar_k = pool(0)
-        else:
-            self.npar_k = npar_k
         self.npar_K = 1
 
     def shutdown(self):
@@ -93,13 +83,13 @@ class Serial(Parallel):
 
 
 
-def pool(npar):
-    if npar > 1:
-        try:
-            from multiprocessing import Pool
-            pool = Pool(npar).imap
-            print(f'created a pool of {npar} workers')
-            return pool, npar
-        except Exception as err:
-            print(f'failed to create a pool of {npar} workers : {err}\n doing in serial')
-    return (lambda fun, lst: [fun(x) for x in lst]), 1
+# def pool(npar):
+#     if npar > 1:
+#         try:
+#             from multiprocessing import Pool
+#             pool = Pool(npar).imap
+#             print(f'created a pool of {npar} workers')
+#             return pool, npar
+#         except Exception as err:
+#             print(f'failed to create a pool of {npar} workers : {err}\n doing in serial')
+#     return (lambda fun, lst: [fun(x) for x in lst]), 1

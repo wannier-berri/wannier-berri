@@ -242,22 +242,22 @@ def run(
 
     print(f"The set of k points is a {grid.str_short}")
 
-    remote_parameters = {'_system': system, '_grid': grid, 'npar_k': parallel.npar_k, '_calculators': calculators}
+    remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators}
     if parallel.method == 'ray':
         ray = parallel.ray
         remote_parameters = {k: ray.put(v) for k, v in remote_parameters.items()}
 
         @ray.remote
-        def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
+        def paralfunc(Kpoint, _system, _grid, _calculators):
             # import sys
             # print("Worker sys.path:", sys.path)
             # from wannierberri.system.rvectors import Rvectors
-            with get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
+            with get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
                 resultdic = {k: v(data) for k, v in _calculators.items()}
             return ResultDict(resultdic)
     else:
-        def paralfunc(Kpoint, _system, _grid, _calculators, npar_k):
-            with get_data_k(_system, Kpoint.Kp_fullBZ, npar_k=npar_k, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
+        def paralfunc(Kpoint, _system, _grid, _calculators):
+            with get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
                 resultdic = {k: v(data) for k, v in _calculators.items()}
             return ResultDict(resultdic)
 

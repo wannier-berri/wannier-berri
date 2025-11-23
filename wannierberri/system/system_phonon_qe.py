@@ -115,7 +115,6 @@ class System_Phonon_QE(System_w90):
         self.rvec.set_fft_q_to_R(
             kpt_red=q_points,
             fftlib=fftlib,
-            numthreads=npar,
         )
 
         qpoints_found = np.zeros(mp_grid, dtype=float)
