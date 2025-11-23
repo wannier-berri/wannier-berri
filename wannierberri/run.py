@@ -21,11 +21,11 @@ import warnings
 from .utility import remove_file
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
-from .parallel import Parallel, Serial
+from .parallel import get_ray_cpus_count
 from .result import ResultDict
 
 
-def print_progress(count, total, t0, tprev, print_progress_step):
+def print_progress(count, total, t0, tprev, progress_step_time):
     t = time() - t0
     if count == 0:
         t_remain = "unknown"
@@ -34,13 +34,13 @@ def print_progress(count, total, t0, tprev, print_progress_step):
         t_rem_s = t / count * (total - count)
         t_remain = f"{t_rem_s:22.1f}"
         t_est_tot = f"{t_rem_s + t:22.1f}"
-    if t - tprev > print_progress_step:
+    if t - tprev > progress_step_time:
         print(f"{count:20d}{t:17.1f}{t_remain:>22s}{t_est_tot:>22s}", flush=True)
         tprev = t
     return tprev
 
 
-def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None, print_progress_step=5):
+def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None, progress_step_time=5, progress_step_percent=1):
     if remote_parameters is None:
         remote_parameters = {}
     # print(f"pointgroup : {pointgroup}")
@@ -54,15 +54,17 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
         return 0
 
     print(f"processing {len(dK_list)} K points :", end=" ")
-    if parallel.method == 'serial':
+    nproc_loc = get_ray_cpus_count()
+    if nproc_loc == 1:
         print("in serial.")
     else:
-        print(f"using  {parallel.npar_K} processes.")
+        print(f"using  {nproc_loc} processes.")
 
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)", flush=True)
     res = []
-    nstep_print = parallel.progress_step(numK, parallel.npar_K)
-    if parallel.method == 'serial':
+    nstep_print = max(1, nproc_loc, int(round(numK * progress_step_percent / 100)))
+
+    if not parallel:
         for count, Kp in enumerate(dK_list):
             res.append(paralfunc(Kp, **remote_parameters))
             if (count + 1) % nstep_print == 0:
@@ -70,13 +72,14 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
                                               total=numK,
                                               t0=t0,
                                               tprev=t_print_prev,
-                                              print_progress_step=print_progress_step)
-    elif parallel.method == 'ray':
+                                              progress_step_time=progress_step_time)
+    else:
+        import ray
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
         num_remotes = len(remotes)
         num_remotes_calculated = 0
         while True:
-            remotes_calculated, _ = parallel.ray.wait(
+            remotes_calculated, _ = ray.wait(
                 remotes, num_returns=min(num_remotes_calculated + nstep_print, num_remotes),
                 timeout=60)  # even, if the required number of remotes had not finished,
             # the progress will be printed every minute
@@ -87,10 +90,8 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
                                           total=numK,
                                           t0=t0,
                                           tprev=t_print_prev,
-                                          print_progress_step=print_progress_step)
-        res = parallel.ray.get(remotes)
-    else:
-        raise RuntimeError(f"unsupported parallel method : '{parallel.method}'")
+                                          progress_step_time=progress_step_time)
+        res = ray.get(remotes)
 
     if not (pointgroup is None):
         res = [pointgroup.symmetrize(r) for r in res]
@@ -98,13 +99,9 @@ def process(paralfunc, K_list, parallel, pointgroup=None, remote_parameters=None
         K_list[ik].set_res(res[i])
 
     t = time() - t0
-    if parallel.method == 'serial':
-        print(f"time for processing {numK:6d} K-points in serial: ", end="")
-        nproc_ = 1
-    else:
-        print(f"time for processing {numK:6d} K-points on {parallel.npar_K:3d} processes: ", end="")
-        nproc_ = parallel.npar_K
-    print(f"{t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_ / numK:15.4f}", flush=True)
+
+    print(f"time for processing {numK:6d} K-points on {nproc_loc:3d} processes: ", end="")
+    print(f"{t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_loc / numK:15.4f}", flush=True)
     return len(dK_list)
 
 
@@ -121,12 +118,13 @@ def run(
         file_Klist=None,
         restart=False,
         Klist_part=10,
-        parallel=True,  # will fall into Serial() if False or None or ray is not installed/initialized
+        parallel=True,  # will fall into serial if ray is not installed/initialized
         print_Kpoints=False,
         adpt_mesh=2,
         adpt_fac=1,
         fast_iter=True,
-        print_progress_step=5,
+        print_progress_step_time=5,
+        print_progress_step_percent=1,
 ):
     """
     The function to run a calculation. Substitutes the old (obsolete and removed) `integrate()` and `tabulate()`
@@ -146,10 +144,8 @@ def run(
         the size of the refinement grid (usuallay no need to change)
     adpt_fac : int
         number of K-points to be refined per quantity and criteria.
-    parallel : :class:`~wannierberri.parallel.Parallel` or bool
-        object describing parallelization scheme or a boolean to enable/disable parallel execution
-        if `True` -- use :class:`~wannierberri.parallel.Parallel` with default parameters (requires ray to be installed and initialized)
-        if `False` or `None` -- use :class:`~wannierberri.parallel.Serial`
+    parallel : bool
+        wether to use parallelization with ray or not. if True - ray should be initialized before.
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
@@ -171,8 +167,9 @@ def run(
         parameters to be passed to :class:`~wannierberri.data_K.Data_K` class
     fast_iter : bool
         if under iterations appear peaks that arte not further removed, set this parameter to False.
-    print_progress_step : float or int
-        intervals to print progress
+    print_progress_step_time : float or int
+        minimal intervals (in seconds) to print progress
+
 
     Returns
     --------
@@ -182,20 +179,16 @@ def run(
     -----
     Results are also printed to ASCII files
     """
-    if parallel is True:
+    assert isinstance(parallel, bool), "parallel should be True or False"
+    if parallel:
         try:
             import ray
-            if ray.is_initialized():
-                parallel = Parallel(ignore_initialized=True)
-            else:
+            if not ray.is_initialized():
                 warnings.warn("ray package found, but ray is not initialized, running in serial mode")
                 parallel = False
         except ImportError:
             warnings.warn("ray package not found, running in serial mode")
             parallel = False
-
-    if parallel in [None, False]:
-        parallel = Serial()
 
     cprint("Starting run()", 'red', attrs=['bold'])
     if parameters_K is None:
@@ -243,8 +236,7 @@ def run(
     print(f"The set of k points is a {grid.str_short}")
 
     remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators}
-    if parallel.method == 'ray':
-        ray = parallel.ray
+    if parallel:
         remote_parameters = {k: ray.put(v) for k, v in remote_parameters.items()}
 
         @ray.remote
@@ -342,7 +334,7 @@ def run(
             K_list,
             parallel,
             pointgroup=system.pointgroup if symmetrize else None,
-            print_progress_step=print_progress_step,
+            progress_step_time=print_progress_step_time,
             remote_parameters=remote_parameters)
 
         nk = len(K_list)

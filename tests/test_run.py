@@ -33,13 +33,13 @@ grid_param_Fe = {
 
 
 @pytest.fixture
-def check_run(parallel_serial, compare_any_result):
+def check_run(compare_any_result):
     def _inner(
             system,
             calculators={},
             fout_name="berry",
             compare_zero=False,
-            parallel=parallel_serial,
+            parallel=True,
             grid_param={
                 'NK': [6, 6, 6],
                 'NKFFT': [3, 3, 3]
@@ -530,8 +530,7 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
     )
 
 
-@pytest.mark.parametrize("auto", [True, False])
-def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_ray, auto):
+def test_Fe_parallel_serial(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     check_run(
@@ -541,13 +540,12 @@ def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_
         grid_param=grid_param_Fe,
 
         suffix="paral-ray-4",
-        parallel=True if auto else parallel_ray,
+        parallel=False,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
-    # parallel_ray.shutdown()
 
 
 @pytest.mark.parametrize("adpt_num_iter_list", [(3,), (1, 2), (0, 2, 1)])

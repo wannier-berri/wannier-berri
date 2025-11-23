@@ -1,12 +1,11 @@
 import functools
 from matplotlib import pyplot as plt
+import wannierberri as wberri
 from wannierberri.grid import Path
 from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.system.system_soc import SystemSOC
-from wannierberri.parallel import Parallel, Serial
 
-# parallel = Parallel(num_cpus=16)
-parallel = Serial()
+wberri.ray_init()
 
 system_soc = SystemSOC.from_npz("system_soc")
 theta = 90
@@ -37,7 +36,6 @@ path = Path(system_soc,
 evaluate_k_path_loc = functools.partial(
     evaluate_k_path,
     path=path,
-    parallel=parallel,
 )
 
 

@@ -1,9 +1,9 @@
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
-import wannierberri as WB
+import wannierberri as wb
 
 path_data = "../../tests/data/Fe-222-pw/"
-w90data = WB.w90files.Wannier90data().from_w90_files(seedname=path_data + "Fe", readfiles=["mmn", "eig", "win", ], read_npz=True)
+w90data = wb.w90files.Wannier90data().from_w90_files(seedname=path_data + "Fe", readfiles=["mmn", "eig", "win", ], read_npz=True)
 
 
 bandstructure = BandStructure(code='espresso',
@@ -16,7 +16,7 @@ spacegroup = bandstructure.spacegroup
 spacegroup.show()
 # exit()
 # symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={False}.sawf.npz")
-symmetrizer = WB.symmetry.sawf.SymmetrizerSAWF().from_irrep(bandstructure)
+symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF().from_irrep(bandstructure)
 
 projection_s = Projection(orbital='s', position_num=[0, 0, 0], spacegroup=spacegroup)
 projection_p = Projection(orbital='p', position_num=[0, 0, 0], spacegroup=spacegroup)
@@ -28,7 +28,7 @@ projection_t2g = Projection(orbital='t2g', position_num=[0, 0, 0], spacegroup=sp
 projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
 
 symmetrizer.set_D_wann_from_projections(projections_set)
-amn = WB.w90files.amn_from_bandstructure(bandstructure, projections=projections_set)
+amn = wb.w90files.amn_from_bandstructure(bandstructure, projections=projections_set)
 w90data.set_symmetrizer(symmetrizer)
 w90data.set_file("amn", amn)
 

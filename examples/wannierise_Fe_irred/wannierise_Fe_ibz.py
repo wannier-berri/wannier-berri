@@ -2,12 +2,9 @@ from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as wberri
 
-path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
-parallel = None
-# for parallel execution, uncomment the following lines
-# from wannierberri import Parallel
-# parallel = Parallel(num_cpus=4)
+wberri.ray_init()
+path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
 bandstructure = BandStructure(code='espresso',
                             prefix=path_data + "/Fe",

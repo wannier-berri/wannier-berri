@@ -1,15 +1,8 @@
-import pytest
-from wannierberri.parallel import Parallel, Serial
+import ray
+from wannierberri.parallel import ray_init_cluster
 
 
-@pytest.fixture(scope="session")
-def parallel_serial():
-    return Serial(
-        progress_step_percent=1,
-    )
 
-
-@pytest.fixture(scope="session")
 def parallel_ray():
     # If multiple ray parallel setups are tested in a single session, the
     # parallel object needs to be shutdown before changing the setup.
@@ -25,23 +18,15 @@ def parallel_ray():
     ray_init['_redis_password'] = 'some_password'
     ray_init['num_gpus'] = 0  # otherwise failing with NVIDIA-555 driver.
 
-    parallel = Parallel(
+    ray_init_cluster(
         num_cpus=None,
-        ray_init=ray_init,  # add extra parameters for ray.init()
-        cluster=True,  # add parameters for ray.init() for the slurm cluster
-        progress_step_percent=1,
+        ignore_initialized=True,
+        **ray_init,
     )
 
-    parallel.shutdown()
+
+    ray.shutdown()
 
     # Now create a proper parallel environment to be used
     ray_init = {}
     ray_init['num_gpus'] = 0  # otherwise failing with NVIDIA-555 driver.
-
-
-    return Parallel(
-        num_cpus=None,  # use all available CPUs
-        ray_init=ray_init,  # add extra parameters for ray.init()
-        cluster=False,  # add parameters for ray.init() for the slurm cluster
-        progress_step_percent=1,
-    )

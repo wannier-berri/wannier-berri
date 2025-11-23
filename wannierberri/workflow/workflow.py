@@ -11,7 +11,6 @@ from ..w90files.w90data import FILES_CLASSES
 # from ..symmetry.sawf import SymmetrizerSAWF
 from ..symmetry.projections import ORBITALS, ProjectionsSet
 from ..w90files import WIN, Wannier90data
-from .. parallel import Serial as wbSerial
 from .ase import write_espresso_in
 from ..grid import Path
 from ..system import System_w90
@@ -45,9 +44,8 @@ class Executables:
         Number of parallel processes for k-points
     mpi: str
         Command to run mpi
-    parallel_wb: wannierberri.parallel.Parallel
-        Object to run the wannier-berri calculations in parallel
-
+    parallel_wb: bool
+        If True, run the wannier-berri calculations in parallel
     Attributes
     ----------
     pwx: str
@@ -58,15 +56,15 @@ class Executables:
         Path to wannier90.x
     bandsx: str
         Path to bands.x
-    parallel_wb: wannierberri.parallel.Parallel
-        Object to run the wannier-berri calculations in parallel
+    parallel_wb: bool
+        If True, run the wannier-berri calculations in parallel
     """
 
 
 
     def __init__(self, path_to_pw='', path_to_w90='',
                  parallel=False, npar=1, npar_k=None, mpi="mpirun",
-                 parallel_wb=None):
+                 parallel_wb=True):
         self.pwx = os.path.join(path_to_pw, 'pw.x')
         self.pw2wanx = os.path.join(path_to_pw, 'pw2wannier90.x')
         self.wannierx = os.path.join(path_to_w90, 'wannier90.x')
@@ -81,8 +79,6 @@ class Executables:
             self.pw2wanx = f'{mpi} -np {npar} {self.pw2wanx} '
             self.bandsx = f'{mpi} -np {npar} {self.bandsx}'
         self.parallel_wb = parallel_wb
-        if parallel_wb is None:
-            self.parallel_wb = wbSerial()
 
 
         print("pw.x : ", self.pwx)
@@ -611,7 +607,7 @@ class WorkflowQE:
             plt.show()
 
 
-def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=None):
+def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=True):
     """
     Calculate or (try to) read the band structure using wannierberri
 
@@ -629,8 +625,6 @@ def get_wannier_band_structure(system, k_nodes, length=1000, npar=0, parallel=No
     wb.reslut.TABresult object
     """
     path = Path(system, nodes=k_nodes, length=length)
-    if parallel is None:
-        parallel = parallel.Serial()
     calculators = dict(tabulate=wbcalculators.TabulatorAll(tabulators={}, mode='path'))
     result = wbrun(system, grid=path, calculators=calculators, parallel=parallel)
     return path, result.results['tabulate']
