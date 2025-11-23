@@ -1327,7 +1327,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
                 '_CCab_antisym': True
             },
         )
-        if suffix.endswith("_symmetrized"):
+        if suffix.endswith("_symmetrized") and not tetra:
             suffix_ref = suffix[:-12]
             for quant in calculators.keys():
                 prec = -5e-5

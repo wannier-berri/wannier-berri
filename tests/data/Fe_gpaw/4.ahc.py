@@ -69,7 +69,6 @@ for system, name in zip(
     print(f"Running {name}...")
     wb.run(system,
            grid=grid,
-           parallel=parallel,
            fout_name=f"results/{name}",
            calculators=calculators,
            adpt_num_iter=100,
