@@ -15,7 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
-__version__ = "1.6.2"
+__version__ = "1.6.3"
 
 from .run import run
 from .symmetry import point_symmetry

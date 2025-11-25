@@ -244,6 +244,8 @@ class SHC(DynamicCalculator):
         return cfac / 2
 
 
+
+
 # ===============
 #  Shift current
 # ===============

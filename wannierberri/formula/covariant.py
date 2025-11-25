@@ -791,6 +791,9 @@ class SpinVelocity(Matrix_ln):
         if spin_current_type == "simple":
             # tight-binding case
             super().__init__(self._J_H_simple(data_K, external_terms=external_terms))
+        if spin_current_type == "orb_loc":
+            # tight-binding case
+            super().__init__(self._J_H_orb_loc(data_K, external_terms=external_terms))
         elif spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
             super().__init__(self._J_H_qiao(data_K, external_terms=external_terms))
@@ -806,6 +809,14 @@ class SpinVelocity(Matrix_ln):
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         S = data_K.Xbar('SS')
+        V = Velocity(data_K, external_terms=external_terms).matrix
+        J = cached_einsum("klms,kmna->klnas", S, V)
+        return (J + J.swapaxes(1, 2).conj()) / 2
+
+    def _J_H_orb_loc(self, data_K, external_terms=True):
+        # Spin current operator, J. Qiao et al PRB (2019)
+        # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
+        S = data_K.Xbar('LL')
         V = Velocity(data_K, external_terms=external_terms).matrix
         J = cached_einsum("klms,kmna->klnas", S, V)
         return (J + J.swapaxes(1, 2).conj()) / 2
@@ -840,6 +851,8 @@ class SpinVelocity(Matrix_ln):
         return (J + J.swapaxes(1, 2).conj()) / 2
 
 
+
+
 class SpinOmega(Formula_ln):
     """spin Berry curvature"""
 
@@ -871,7 +884,7 @@ class SpinOmega(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
-
+    
 
 ####################################
 #                                  #

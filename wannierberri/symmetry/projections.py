@@ -2,6 +2,7 @@ import copy
 from functools import cached_property
 import itertools
 import numpy as np
+import scipy
 
 from wannierberri.utility import cached_einsum
 from ..symmetry.orbitals import orbitals_sets_dic
@@ -25,6 +26,12 @@ from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shift
 
 ORBITALS = Orbitals()
 
+
+orbital_moment_matrix = {
+    's' : np.zeros( (1,1) ),
+    'p' : np.zeros( (3,3) ),
+    'd' : np.zeros( (5,5) ),
+}
 
 class Projection:
     """	
@@ -147,6 +154,26 @@ class Projection:
         else:
             self.basis_list = [np.eye(3, dtype=float)] * self.num_points
 
+    def get_orbital_moment_matrix(self):
+        L_list = []
+        for orb in self.orbitals:
+            if orb in orbital_moment_matrix:
+                L_list.append(orbital_moment_matrix[orb])
+            else:
+                raise KeyError(f"orbital {orb} does not have a known orbital moment matrix defined")
+        # make a block diagonal matrix
+        L_mat_atom = scipy.linalg.block_diag(*L_list)
+        print (f"L_mat_atom for {self.orbitals} {L_mat_atom}")
+        L_list = []
+        for basis in self.basis_list:
+            if np.allclose(basis, np.eye(3)):
+                L_rotated = L_mat_atom
+            else:
+                raise NotImplementedError("rotation of orbital moment matrix is not implemented yet for non-trivial basis")
+            L_list.append(L_rotated)
+        return scipy.linalg.block_diag(*L_list)
+
+
     @property
     def positions(self):
         return self.wyckoff_position.positions
@@ -258,6 +285,20 @@ class ProjectionsSet:
             self.spinor = spinor
         else:
             assert self.spinor == spinor, f"spinor should be the same for all projections. Previously set to {self.spinor}, now trying to set to {spinor}"
+
+    def get_orbital_moment_matrix(self):
+        L_list = []
+        for p in self.projections:
+            L_list.append(p.get_orbital_moment_matrix())
+        L_scalar =  scipy.linalg.block_diag(*L_list)
+        if self.spinor:
+            L = np.zeros( (2*L_scalar.shape[0], 2*L_scalar.shape[1]) )
+            L[0::2,0::2] = L_scalar
+            L[1::2,1::2] = L_scalar
+            return L
+        else:
+            return L_scalar
+
 
     @property
     def num_proj(self):

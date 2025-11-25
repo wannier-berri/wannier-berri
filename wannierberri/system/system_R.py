@@ -223,6 +223,10 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def set_LL_from_projections(self, projections_set):
+        LL = projections_set.get_orbital_moment_matrix()
+        self.set_R_mat('LL', LL, R=[0,0,0], reset=True)
+
     def spin_block2interlace(self, backward=False):
         """
         Convert the spin ordering from block (like in the amn file old versions of VASP) to interlace (like in the amn file of QE and new versions of VASP)
