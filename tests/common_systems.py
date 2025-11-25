@@ -447,6 +447,7 @@ def system_Fe_gpaw_soc_111_irred():
         projections=proj_set,
         mp_grid=(2, 2, 2),
         read_npz_list=[],
+        files=["mmn", "eig", "amn", "symmetrizer", "soc", "mmn_ud"],
         spacegroup=sg,
     )
 

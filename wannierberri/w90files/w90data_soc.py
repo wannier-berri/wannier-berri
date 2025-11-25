@@ -102,10 +102,12 @@ class Wannier90dataSOC(Wannier90data):
             data_up, bandstructure_up = data_up
 
         if nspin == 2:
+            bkvec = data_up.get_file('bkvec')
             data_down = Wannier90data.from_gpaw(spin_channel=1,
                                                 seedname=seedname + "-spin-1",
                                                 projections=projections_down,
                                                 return_bandstructure=return_bandstructure,
+                                                bkvec=bkvec,
                                                 **kwargs_w90data)
             if return_bandstructure:
                 data_down, bandstructure_down = data_down
@@ -135,11 +137,13 @@ class Wannier90dataSOC(Wannier90data):
                 except FileNotFoundError:
                     mmn_ud = None
             if mmn_ud is None:
+                bkvec = data_up.get_file('bkvec')
                 mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
                                                 bandstructure=bandstructure_down,
-                                                irreducible=data_up.irreducible,
+                                                irreducible=data.is_irreducible,
                                                 symmetrizer_left=data_up.get_file("symmetrizer"),
-                                                symmetrizer=data_down.get_file("symmetrizer"))
+                                                symmetrizer=data_down.get_file("symmetrizer"),
+                                                bkvec=bkvec)
             data.set_file("mmn_ud", mmn_ud)
             if write_npz_list is None or "mmn_ud" in write_npz_list:
                 mmn_ud.to_npz(seedname + ".mmn_ud.npz")
@@ -152,7 +156,11 @@ class Wannier90dataSOC(Wannier90data):
                     mmn_du = None
             if mmn_du is None:
                 mmn_du = MMN.from_bandstructure(bandstructure_left=bandstructure_down,
-                                                bandstructure=bandstructure_up)
+                                                bandstructure=bandstructure_up,
+                                                irreducible=data.is_irreducible,
+                                                symmetrizer_left=data_down.get_file("symmetrizer"),
+                                                symmetrizer=data_up.get_file("symmetrizer"),
+                                                bkvec=bkvec,)
             data.set_file("mmn_du", mmn_du)
         return data
 
@@ -165,7 +173,9 @@ class Wannier90dataSOC(Wannier90data):
         if self.has_file("soc"):
             self.get_file("soc").select_bands(selected_bands_up, selected_bands_up)
         if self.has_file("mmn_ud"):
-            self.get_file("mmn_ud").select_bands(selected_bands_up, selected_bands_down=selected_bands_up)
+            self.get_file("mmn_ud").select_bands(selected_bands=selected_bands_up)
+        if self.has_file("mmn_du"):
+            self.get_file("mmn_du").select_bands(selected_bands=selected_bands_up)
         self.bands_were_selected = True
 
     def wannierise(self, ispin=None, **kwargs):

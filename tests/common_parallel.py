@@ -3,7 +3,7 @@ from wannierberri.parallel import ray_init_cluster
 
 
 
-def parallel_ray():
+def init_parallel_ray():
     # If multiple ray parallel setups are tested in a single session, the
     # parallel object needs to be shutdown before changing the setup.
     # To do so, one needs to change the scope to function, use yield instead
@@ -30,3 +30,4 @@ def parallel_ray():
     # Now create a proper parallel environment to be used
     ray_init = {}
     ray_init['num_gpus'] = 0  # otherwise failing with NVIDIA-555 driver.
+    ray.init(**ray_init)
