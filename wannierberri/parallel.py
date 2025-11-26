@@ -6,7 +6,7 @@ def get_ray_cpus_count():
     try:
         import ray
         if ray.is_initialized():
-            return int(round(ray.available_resources()['CPU']))
+            return int(round(ray.cluster_resources()['CPU']))
         else:
             return 1
     except ImportError:
