@@ -19,11 +19,13 @@ import os
 import warnings
 import numpy as np
 
+
 from ..utility import cached_einsum
 from ..wannierise import wannierise
 from ..symmetry.sawf import SymmetrizerSAWF
 from .utility import grid_from_kpoints
 
+from .bkvectors import BKVectors
 from .soc import SOC
 from .win import WIN
 from .eig import EIG
@@ -44,6 +46,7 @@ FILES_CLASSES = {'win': WIN,
                 'shu': SHU,
                 'spn': SPN,
                 'unk': UNK,
+                'bkvec': BKVectors,
                 'chk': CheckPoint,
                 }
 
@@ -101,9 +104,10 @@ class Wannier90data:
         self.irreducible = False
         self._files = {}
 
-    def from_bandstructure(self, bandstructure,
+    @classmethod
+    def from_bandstructure(cls, bandstructure,
                           seedname="wannier90",
-                          files=("mmn", "eig", "amn", "symmetrizer"),
+                          files=("mmn", "eig", "amn", "symmetrizer", "bkvec"),
                           read_npz_list=None,
                           write_npz_list=None,
                           projections=None,
@@ -142,6 +146,7 @@ class Wannier90data:
             the Wannier90data object containing the files specified in `files`
 
         """
+        self = cls()
         print(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files}, read_npz_list={read_npz_list}, write_npz_list={write_npz_list}, projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
@@ -226,6 +231,15 @@ class Wannier90data:
                         "NK": NK}
 
 
+        if "bkvec" in read_npz_list and os.path.exists(seedname + ".bkvec.npz"):
+            bkvec = BKVectors.from_npz(seedname + ".bkvec.npz")
+        else:
+            bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
+                                           mp_grid=mp_grid,
+                                           kpoints_red=kpt_latt,
+                                           kptirr=kptirr)
+            bkvec.to_npz(seedname + ".bkvec.npz")
+        self.set_file('bkvec', bkvec)
 
         if "chk" in read_npz_list and os.path.exists(seedname + ".chk.npz"):
             chk = CheckPoint.from_npz(seedname + ".chk.npz")
@@ -260,7 +274,6 @@ class Wannier90data:
                                read_w90=False,
                                write_npz="mmn" in write_npz_list,
                                bandstructure=bandstructure,
-
                                kwargs_bandstructure={"normalize": normalize,
                                                     #  "kpt_latt_grid": kpt_latt,
                                                     #  "kpt2kptirr": kpt2kptirr,
@@ -269,6 +282,7 @@ class Wannier90data:
                                                      "irreducible": self.irreducible,
                                                      "include_paw": include_paw,
                                                      "include_pseudo": include_pseudo,
+                                                     "bkvec": bkvec,
                                                     #  "kpt_from_kptirr_isym": kpt_from_kptirr_isym
                                                     } |
                                kwargs_bandstructure)
@@ -292,7 +306,8 @@ class Wannier90data:
             self.set_file('unk', unk)
         return self
 
-    def from_gpaw(self,
+    @classmethod
+    def from_gpaw(cls,
                   calculator,
                   seedname="wannier",
                   files=("mmn", "eig", "amn", "symmetrizer"),
@@ -314,7 +329,7 @@ class Wannier90data:
                   unitary_params=dict(error_threshold=0.1,
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
-
+                  return_bandstructure=False,
                   verbosity=0,):
         from irrep.bandstructure import BandStructure
         # from irrep.spacegroup import SpaceGroup
@@ -331,7 +346,7 @@ class Wannier90data:
 
 
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
-        self.from_bandstructure(bandstructure,
+        self = cls.from_bandstructure(bandstructure,
                                 seedname=seedname,
                                 files=files_from_bandstructure,
                                 read_npz_list=read_npz_list,
@@ -350,12 +365,20 @@ class Wannier90data:
         if "soc" in files:
             soc = SOC.from_gpaw(calculator)
             self.set_file('soc', soc)
-        return self
+        if return_bandstructure:
+            return self, bandstructure
+        else:
+            return self
 
     def from_npz(self,
                 seedname="wannier90",
                 files=("mmn", "eig", "amn"),
                 irreducible=False):
+        files = copy(files)
+        if set(["mmn", "uHu", "uIu", "sHu", "sIu"]).intersection(set(files)):
+            if "bkvec" not in files:
+                files.append("bkvec")
+        print(f"files = {files}")
         for f in files:
             try:
                 if f == "symmetrizer":
@@ -364,6 +387,7 @@ class Wannier90data:
                     val = FILES_CLASSES[f].from_npz(seedname + "." + f + ".npz")
                 else:
                     raise ValueError(f"file {f} is not a valid w90 file")
+                print(f"setting file {f} from npz {seedname}.{f}.npz as {val}")
                 self.set_file(f, val=val)
             except FileNotFoundError as e:
                 warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
@@ -377,6 +401,11 @@ class Wannier90data:
                     NK = ff.num_kpts
                 else:
                     continue
+            elif f == "bkvec":
+                nkeys1 = len(ff.neighbours.keys())
+                nkeys = len(ff.G.keys())
+                assert nkeys1 == nkeys, "number of keys in G and neighbours is different"
+                NK = ff.NK
             else:
                 nkeys = len(ff.data.keys())
                 NK = ff.NK
@@ -445,6 +474,8 @@ class Wannier90data:
         if write_npz_formatted:
             self.write_npz_list.update(formatted)
             self.write_npz_list.update(['mmn', 'eig', 'amn'])
+            if set(['uiu', 'uhu', 'siu', 'shu']).intersection(set(formatted)):
+                self.write_npz_list.update(['bkvec'])
         self.formatted_list = formatted
 
         _read_files_loc = [f.lower() for f in readfiles]
@@ -458,8 +489,16 @@ class Wannier90data:
             _read_files_loc.remove('chk')
         else:
             self.set_chk(read=False)
+        bkvec, bk_was_read = BKVectors.autoread(seedname=seedname,
+                         params=dict(recip_lattice=self.chk.recip_lattice,
+                                     mp_grid=self.chk.mp_grid,
+                                     kpoints_red=self.chk.kpt_latt,
+                                     kptirr=None), read_npz=read_npz,
+            write_npz=('bkvec' in self.write_npz_list)
+        )
+        self.set_file('bkvec', bkvec)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn', kwargs_w90=dict(kpt_latt=self.chk.kpt_latt, recip_lattice=self.chk.recip_lattice), read_npz=read_npz)
+            self.set_file('mmn', kwargs_w90=dict(bkvec=bkvec), read_npz=(read_npz and bk_was_read))
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             self.set_file(f, read_npz=read_npz)
@@ -593,6 +632,7 @@ class Wannier90data:
             kwargs_w90 = copy(kwargs_w90)
             if key in ['uhu', 'uiu', 'shu', 'siu']:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
+                assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
                 kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
             if key in ["spn", "uhu", "uiu", "shu", "siu", ]:
@@ -800,6 +840,13 @@ class Wannier90data:
         Returns the UNK files
         """
         return self.get_file('unk')
+
+    @property
+    def bkvec(self):
+        """
+        Returns the BKVectors file
+        """
+        return self.get_file('bkvec')
 
     @property
     def iter_kpts(self):

@@ -160,7 +160,7 @@ def System_w90(
     if w90data.has_file('mmn'):
         NNB = w90data.mmn.NNB
         if transl_inv_JM:
-            bk_cart = w90data.mmn.bk_cart
+            bk_cart = w90data.bkvec.bk_cart
             phaseR = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * system.rvec.cRvec)
             expiRphase1 = np.exp(1j * phaseR)[:, None, None, :]
             expiRphase2 = expiRphase1[:, :, :, :, None] * expiRphase1[:, :, :, None, :]
@@ -203,7 +203,7 @@ def System_w90(
                 XX_R[:] += system.rvec.q_to_R(getter_from_chk(**db) * phase_loc_j[:, :, :, *ib]) * phase_loc_i[:, :, :, *ib]
             return XX_R
 
-        bk_cart = w90data.mmn.bk_cart
+        bk_cart = w90data.get_file("bkvec").bk_cart
 
         if transl_inv_JM:
             _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
@@ -219,6 +219,7 @@ def System_w90(
             print("setting AA..")
             getter_from_chk = functools.partial(chk.get_AABB_q_ib,
                                                 mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                 transl_inv=transl_inv_MV,
                                                 **kwargs_kpt)
             system.set_R_mat('AA',
@@ -233,6 +234,7 @@ def System_w90(
             print("setting BB...")
             getter_from_chk = functools.partial(chk.get_AABB_q_ib,
                                                 mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                 eig=w90data.eig,
                                                 **kwargs_kpt)
             system.set_R_mat('BB', sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1))
@@ -243,7 +245,7 @@ def System_w90(
         if needed_data.need_any('CC'):
             print("setting CC..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                 uhu=w90data.uhu,
                                                 antisym=True,
                                                 **kwargs_kpt)
@@ -257,8 +259,8 @@ def System_w90(
         if needed_data.need_any('OO'):
             print("setting OO..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                mmn=w90data.mmn,
                                                 uhu=w90data.uiu,
+                                                bkvec=w90data.bkvec,
                                                 antisym=True,
                                                 **kwargs_kpt)
             system.set_R_mat('OO',
@@ -271,7 +273,7 @@ def System_w90(
         if needed_data.need_any('GG'):
             print("setting GG..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                 uhu=w90data.uiu,
                                                 antisym=False,
                                                 **kwargs_kpt)
@@ -288,6 +290,7 @@ def System_w90(
         if needed_data.need_any('SR'):
             print("setting SR..")
             system.set_R_mat('SR', system.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                                 **kwargs_kpt, phase=expjphase1)))
             print("setting SR - Ok")
         if needed_data.need_any('SH'):
@@ -298,6 +301,7 @@ def System_w90(
             print("setting SHR..")
             system.set_R_mat('SHR', system.rvec.q_to_R(
                 chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                               **kwargs_kpt,
                               eig=w90data.eig, phase=expjphase1)))
             print("setting SHR - OK")
@@ -306,7 +310,7 @@ def System_w90(
             print("setting SA..")
             getter_from_chk = functools.partial(chk.get_SHA_q,
                                                 shu=w90data.siu,
-                                                mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                 **kwargs_kpt)
             system.set_R_mat('SA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
@@ -316,7 +320,7 @@ def System_w90(
             print("setting SHA..")
             getter_from_chk = functools.partial(chk.get_SHA_q,
                                                 shu=w90data.shu,
-                                                mmn=w90data.mmn,
+                                                bkvec=w90data.bkvec,
                                                 **kwargs_kpt)
             system.set_R_mat('SHA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))

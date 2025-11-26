@@ -111,7 +111,7 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
             pass
 
     _link("chk")
-    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu"]:
+    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu", "bkvec"]:
         _link(ext + ".npz")
     return data_dir_new
 
@@ -164,7 +164,7 @@ def system_Fe_W90(create_files_Fe_W90):
     w90data = Wannier90data().from_w90_files(
         seedname=seedname,
         readfiles=NeededData(**matrices).files,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
+        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu","mmn","eig", "bkvec"],
         write_npz_formatted=True,
     )
     system = wberri.system.System_w90(
