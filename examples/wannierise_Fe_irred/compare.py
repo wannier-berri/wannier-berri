@@ -1,4 +1,3 @@
-from wannierberri import Parallel
 import wannierberri as wberri
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 import os
@@ -9,8 +8,7 @@ from irrep.bandstructure import BandStructure
 ROOT_DIR = "../../tests/"
 
 
-parallel = Parallel(num_cpus=16)
-
+wberri.ray_init()
 
 path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
 nkfull = 8
@@ -183,7 +181,6 @@ grid = wberri.Grid(system=system_irr, NK=50, NKFFT=4)
 
 kwargs_run = dict(
     grid=grid,
-    parallel=parallel,
     adpt_num_iter=0,
     calculators=calculators,
 )

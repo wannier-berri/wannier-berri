@@ -1,13 +1,9 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import wannierberri as wb
 from wannierberri.system.system_R import System_R
-from wannierberri.grid import Path
-from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.w90files.soc import SOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.parallel import Parallel, Serial
 from irrep.spacegroup import SpaceGroup
 from irrep.bandstructure import BandStructure
 
@@ -31,10 +27,6 @@ system_spinor.set_pointgroup(spacegroup=mg)
 # system_up.set_pointgroup([])
 # system_dw.set_pointgroup([])
 
-# print(system_spinor.pointgroup)
-
-parallel = Parallel(num_cpus=24)
-# _interlaced()
 
 
 phi_deg = 0
@@ -72,7 +64,7 @@ tetra = True
 calculators["ahc_int"] = wb.calculators.static.AHC(Efermi=Efermi, tetra=tetra, kwargs_formula={"external_terms": False})
 # calculators["ahc_ext"] = wb.calculators.static.AHC(Efermi=Efermi,tetra=tetra, kwargs_formula={"internal_terms":False})
 
-
+wb.ray_init()
 # for name in ["up", "dw"]:
 for name in ["soc", "spinor"]:
     system = {"up": system_up,
@@ -84,10 +76,9 @@ for name in ["soc", "spinor"]:
     print(f"Running {name}...")
     wb.run(system,
            grid=grid,
-           parallel=parallel,
            fout_name=f"results/{name}",
            calculators=calculators,
            adpt_num_iter=100,
            restart=False,
-           print_progress_step=5,
+           print_progress_step_time=5,
            )

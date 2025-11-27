@@ -15,7 +15,6 @@
 import functools
 import warnings
 import numpy as np
-import multiprocessing
 
 from .needed_data import NeededData
 
@@ -30,7 +29,6 @@ def System_w90(
     transl_inv_JM=False,
     transl_inv_MV=False,
     fftlib='fftw',
-    npar=None,
     wannier_centers_from_chk=True,
     symmetrize=False,  # temporary set to False, because there is a bug when the basis at different atoms is rotated # TODO FIXME
     ws_dist_tol=1e-5,
@@ -53,8 +51,6 @@ def System_w90(
 
     wannier_centers_from_chk : bool
         If True, the centers of the Wannier functions are read from the ``.chk`` file. If False, the centers are recalculated from the ``.mmn`` file.
-    npar : int
-        number of processes used in the constructor
     fft : str
         library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
         anyway mostly time of the constructor is consumed by reading the input files)
@@ -82,8 +78,6 @@ def System_w90(
         warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
                       "Use transl_inv_JM instead.")
     system = System_R(**parameters)
-    if npar is None:
-        npar = multiprocessing.cpu_count()
     needed_data = NeededData(**parameters)
 
     if transl_inv_JM:
@@ -118,7 +112,6 @@ def System_w90(
 
     system.rvec.set_fft_q_to_R(
         kpt_red=w90data.kpt_latt,
-        numthreads=npar,
         fftlib=fftlib,
     )
 

@@ -16,7 +16,6 @@ import abc
 from functools import cached_property
 
 from ..utility import cached_einsum, clear_cached
-from ..parallel import pool
 from ..system.system import System
 from ..grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from .. import formula
@@ -24,9 +23,6 @@ from ..grid import KpointBZparallel, KpointBZtetra
 from ..symmetry.point_symmetry import transform_ident, transform_odd
 from .sdct_K import SDCT_K
 
-
-def _rotate_matrix(X):
-    return X[1].T.conj().dot(X[0]).dot(X[1])
 
 
 def get_transform_Inv(name, der=0):
@@ -101,7 +97,6 @@ class Data_K(System, abc.ABC):
                  Emin=-np.inf,
                  Emax=np.inf,
                  fftlib='fftw',
-                 npar_k=1,
                  random_gauge=False,
                  degen_thresh_random_gauge=1e-4
                  ):
@@ -109,7 +104,6 @@ class Data_K(System, abc.ABC):
         self.Emin = Emin
         self.Emax = Emax
         self.fftlib = fftlib
-        self.npar_k = npar_k
         self.random_gauge = random_gauge
         self.degen_threshold_random_gauge = degen_thresh_random_gauge
         self.force_internal_terms_only = system.force_internal_terms_only
@@ -120,8 +114,6 @@ class Data_K(System, abc.ABC):
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
-
-        self.poolmap = pool(self.npar_k)[0]
 
         self.dK = dK
         self._bar_quantities = {}
@@ -146,12 +138,7 @@ class Data_K(System, abc.ABC):
 
     def _rotate(self, mat):
         assert mat.ndim > 2
-        if mat.ndim == 3:
-            return np.array(self.poolmap(_rotate_matrix, zip(mat, self.UU_K)))
-        else:
-            for i in range(mat.shape[-1]):
-                mat[..., i] = self._rotate(mat[..., i])
-            return mat
+        return cached_einsum('kba,kbc...,kcd->kad...', self.UU_K.conj(), mat, self.UU_K)
 
     #####################
     #  Basic variables  #
@@ -216,11 +203,11 @@ class Data_K(System, abc.ABC):
 
     @cached_property
     def E_K(self):
-        EUU = self.poolmap(np.linalg.eigh, self.HH_K)
-        E_K = self.phonon_freq_from_square(np.array([euu[0] for euu in EUU]))
+        E, UU = np.linalg.eigh(self.HH_K)
+        E_K = self.phonon_freq_from_square(E)
         #        print ("E_K = ",E_K.min(), E_K.max(), E_K.mean())
         self.select_bands(E_K)
-        self._UU = np.array([euu[1] for euu in EUU])[self.select_K, :][:, self.select_B]
+        self._UU = UU[self.select_K, :][:, self.select_B]
         return E_K[self.select_K, :][:, self.select_B]
 
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method

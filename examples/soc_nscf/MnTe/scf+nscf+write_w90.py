@@ -1,13 +1,12 @@
-from gpaw import GPAW
+import numpy as np
+from ase import Atoms
+from gpaw import GPAW, PW, MixerSum
 
 do_scf = False
 do_nscf = False
 do_write_w90 = True
 seed = "mnte"
 
-from gpaw import GPAW, PW, MixerSum
-from ase import Atoms
-import numpy as np
 
 
 

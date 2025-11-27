@@ -1,7 +1,6 @@
 import os.path
 
 import numpy as np
-import multiprocessing
 import xmltodict
 
 from ..fourier.rvectors import Rvectors
@@ -31,7 +30,6 @@ def _str2array(s, dtype=float):
 def System_Phonon_QE(
         seedname,
         fftlib='fftw',
-        npar=multiprocessing.cpu_count(),
         asr=True,
         ws_dist_tol=1e-5,
         **parameters):
@@ -114,7 +112,6 @@ def System_Phonon_QE(
     system.rvec.set_fft_q_to_R(
         kpt_red=q_points,
         fftlib=fftlib,
-        numthreads=npar,
     )
 
     qpoints_found = np.zeros(mp_grid, dtype=float)

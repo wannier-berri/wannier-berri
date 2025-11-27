@@ -115,11 +115,12 @@ class Wannier90data:
                           normalize=True,
                           irreducible=None,
                           ecut_sym=100,
-                           unitary_params=None,
+                          unitary_params=None,
                           mp_grid=None,
                           irred_bk_only=True,
                           include_paw=True,
-                          include_pseudo=True,):
+                          include_pseudo=True,
+                          bkvec=None):
         """
         Create a Wannier90data object from a bandstructure object
 
@@ -230,14 +231,16 @@ class Wannier90data:
                         selected_kpoints, "kptirr": kptirr,
                         "NK": NK}
 
-
-        if "bkvec" in read_npz_list and os.path.exists(seedname + ".bkvec.npz"):
-            bkvec = BKVectors.from_npz(seedname + ".bkvec.npz")
+        if bkvec is None:
+            if "bkvec" in read_npz_list and os.path.exists(seedname + ".bkvec.npz"):
+                bkvec = BKVectors.from_npz(seedname + ".bkvec.npz")
+            else:
+                bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
+                                            mp_grid=mp_grid,
+                                            kpoints_red=kpt_latt,
+                                            kptirr=kptirr)
+                bkvec.to_npz(seedname + ".bkvec.npz")
         else:
-            bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
-                                           mp_grid=mp_grid,
-                                           kpoints_red=kpt_latt,
-                                           kptirr=kptirr)
             bkvec.to_npz(seedname + ".bkvec.npz")
         self.set_file('bkvec', bkvec)
 
@@ -326,6 +329,7 @@ class Wannier90data:
                   spin_channel=0,
                   spacegroup=None,
                   mp_grid=None,
+                  bkvec=None,
                   unitary_params=dict(error_threshold=0.1,
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
@@ -360,7 +364,8 @@ class Wannier90data:
                                 unitary_params=unitary_params,
                                 irred_bk_only=irred_bk_only,
                                 include_paw=include_paw,
-                                include_pseudo=include_pseudo
+                                include_pseudo=include_pseudo,
+                                bkvec=bkvec
                                 )
         if "soc" in files:
             soc = SOC.from_gpaw(calculator)

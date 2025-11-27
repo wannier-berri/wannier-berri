@@ -137,7 +137,7 @@ class SystemSOC(System_R):
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
 
-        self.rvec.set_fft_q_to_R(chk_up.kpt_latt, numthreads=1, fftlib='fftw')
+        self.rvec.set_fft_q_to_R(chk_up.kpt_latt, fftlib='fftw')
         NK = chk_up.num_kpts
 
         if kptirr is None:

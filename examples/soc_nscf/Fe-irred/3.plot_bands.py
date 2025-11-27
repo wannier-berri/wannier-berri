@@ -1,17 +1,15 @@
 import functools
 from matplotlib import pyplot as plt
-import numpy as np
+import wannierberri as wberri
 from wannierberri.grid import Path
 from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.system.system_soc import SystemSOC
-from wannierberri.parallel import Parallel, Serial
 
-# parallel = Parallel(num_cpus=16)
-parallel = Serial()
+wberri.ray_init()
 
 system_soc = SystemSOC.from_npz("system_soc")
-theta=0
-phi=0
+theta = 0
+phi = 0
 system_soc.set_soc_axis(theta=theta, phi=phi, units="degrees")
 
 path = Path(system_soc,
@@ -33,7 +31,6 @@ path = Path(system_soc,
 evaluate_k_path_loc = functools.partial(
     evaluate_k_path,
     path=path,
-    parallel=parallel,
 )
 
 
@@ -48,7 +45,7 @@ bands_soc.plot_path_fat(path=path,
                        quantity="spin",
                        component="z",
                        mode="color",
-                       label=f"soc_nscf, Sz, th={theta}, phi={phi}", 
+                       label=f"soc_nscf, Sz, th={theta}, phi={phi}",
                        axes=axes[1],
                        fatmax=4,
                         linecolor="orange",
@@ -84,5 +81,5 @@ bands_dw.plot_path_fat(path=path,
 
 # plt.ylim(-0.6, 0.6)
 plt.ylim(-1.7, 1.7)
-plt.ylim(-15,40)
+plt.ylim(-15, 40)
 plt.savefig("bands.png")

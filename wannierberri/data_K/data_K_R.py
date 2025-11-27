@@ -19,7 +19,6 @@ class Data_K_R(Data_K, System_R):
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
             self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
-                            numthreads=self.npar_k if self.npar_k > 0 else 1,
                                 fftlib=self.fftlib,
                                 dK=dK)
 
@@ -101,7 +100,7 @@ class Data_K_R(Data_K, System_R):
         for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[:, None, None]
             _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
-            _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+            _Ecorners[:, iv, :] = np.linalg.eigvalsh(_HH_K)
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
         for iv, _exp in enumerate(expdK):
@@ -126,7 +125,7 @@ class Data_K_R(Data_K, System_R):
                     _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
                     _Ham_R = self.Ham_R[:, :, :] * _expdK[:, None, None]
                     _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
-                    E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K))
+                    E = np.linalg.eigvalsh(_HH_K)
                     Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         return Ecorners

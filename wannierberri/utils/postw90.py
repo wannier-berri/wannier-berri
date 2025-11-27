@@ -30,7 +30,8 @@
 
 import numpy as np
 import sys
-from .. import run, Grid, calculators, System_w90, Parallel
+from .. import run, Grid, calculators, System_w90
+from ..parallel import ray_init
 from ..w90files.win import parse_win_raw
 
 # default parameters
@@ -77,20 +78,18 @@ def main(argv):
                         transl_inv_MV=parameters["transl_inv"]
                         )
     grid = Grid(system, NK=parameters["berry_kmesh"])
-    parallel = Parallel(ray_init={"num_gpus": 0})  # parallel with  "ray",num_cpus - auto
 
+
+    ray_init()
     run(system,
         grid=grid,
         calculators=calc,
-        parallel=parallel,
         adpt_num_iter=0,
         fout_name='Fe',
         suffix="",
         parameters_K={"fftlib": parameters["__wb_fft_lib"]},
         restart=False,
         )
-
-    parallel.shutdown()
 
 
 if __name__ == "__main__":

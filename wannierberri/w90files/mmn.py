@@ -115,8 +115,8 @@ class MMN(W90_file):
                         f_mmn_out.write(f"{self.data[ik][ib, n, m].real} {self.data[ik][ib, n, m].imag}\n")
         f_mmn_out.close()
 
-    def select_bands(self, selected_bands):
-        return super().select_bands(selected_bands, dimensions=(1, 2))
+    def select_bands(self, selected_bands, var_select=False):
+        return super().select_bands(selected_bands, dimensions=(1, 2), var_select=var_select)
 
 
     # # TODO : combine with find_bk_vectors
