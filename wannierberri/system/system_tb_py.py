@@ -91,25 +91,25 @@ def System_tb_py(model,
             iRvec = []
             for hop in hoppings:
                 if "lattice_vector" in hop:
-                    iRvec.append(hop["lattice_vector"])           
+                    iRvec.append(hop["lattice_vector"])
     else:
         raise ValueError(f"unknown tight-binding module {module}")
     dimr = real.shape[0]
-    iRvec = np.array(iRvec, dtype = int)
-    Rzero = np.zeros((1,dimr), dtype=int)
-    iRvec = np.vstack( (Rzero, iRvec, -iRvec)  )
+    iRvec = np.array(iRvec, dtype=int)
+    Rzero = np.zeros((1, dimr), dtype=int)
+    iRvec = np.vstack((Rzero, iRvec, -iRvec))
     iRvec = np.unique(iRvec, axis=0)
-    iRvec = np.hstack( (iRvec, np.zeros( (iRvec.shape[0], 3-dimr))))
+    iRvec = np.hstack((iRvec, np.zeros((iRvec.shape[0], 3 - dimr))))
 
     real_lattice = np.eye(3)
     real_lattice[:dimr, :dimr] = real
 
     system.real_lattice = real_lattice
     wannier_centers_red = positions % 1.0
-    wannier_centers_red = np.hstack( (wannier_centers_red, np.zeros((wannier_centers_red.shape[0], 3-dimr))))
+    wannier_centers_red = np.hstack((wannier_centers_red, np.zeros((wannier_centers_red.shape[0], 3 - dimr))))
 
     system.set_wannier_centers(wannier_centers_red=wannier_centers_red)
-    system.periodic = np.array([True]*dimr + [False]*(3-dimr))
+    system.periodic = np.array([True] * dimr + [False] * (3 - dimr))
     system.rvec = Rvectors(lattice=system.real_lattice,
                         iRvec=iRvec,
                         shifts_left_red=wannier_centers_red,
@@ -149,7 +149,7 @@ def System_tb_py(model,
                 Ham_R[inR, j, i] += np.conjugate(amplitude)
             elif model._nspin == 2:
                 print("hopping :", amplitude.shape, Ham_R.shape, iR,
-                        Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape)
+                      Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape)
                 Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += amplitude
                 Ham_R[inR, 2 * j:2 * j + 2, 2 * i:2 * i + 2] += np.conjugate(amplitude.T)
 

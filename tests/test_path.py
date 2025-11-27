@@ -155,7 +155,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
     path = wberri.Path(system_Haldane_PythTB, nodes=nodes, dk=1.0)
     print("k-points", path.K_list)
     # print (f"forcing internal terms: {system_Haldane_PythTB.force_internal_terms_only}")
-    
+
 
     result = check_run(
         system=system_Haldane_PythTB,

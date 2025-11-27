@@ -156,9 +156,9 @@ def System_w90(
 
     # Wannier centers
     centers = system.wannier_centers_cart
-    # Unique set of nearest-neighbor vectors (cartesian)
-    if w90data.has_file('mmn'):
-        NNB = w90data.mmn.NNB
+    if needed_data.need_any(['AA', 'BB', 'CC', 'OO', 'GG', 'SR', 'SH', 'SHR', 'SA', 'SHA']):
+        assert w90data.has_file('bkvec'), "bkvec file is needed to calculate the position operator matrix elements"
+        NNB = w90data.bkvec.NNB
         if transl_inv_JM:
             bk_cart = w90data.bkvec.bk_cart
             phaseR = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * system.rvec.cRvec)
@@ -301,7 +301,7 @@ def System_w90(
             print("setting SHR..")
             system.set_R_mat('SHR', system.rvec.q_to_R(
                 chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
-                                                bkvec=w90data.bkvec,
+                              bkvec=w90data.bkvec,
                               **kwargs_kpt,
                               eig=w90data.eig, phase=expjphase1)))
             print("setting SHR - OK")

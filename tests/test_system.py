@@ -109,7 +109,7 @@ def check_system():
                 if XX or print_missed:
                     if n_missed < data.size / 10:
                         err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])}"
+                            f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {np.round(data[i] / data_ref[i], 8) if abs(data_ref[i]) > 1e-12 else 'inf'} "
                             for i in zip(*missed)) + "\n\n")
                     else:
                         all_i = np.where(abs(data - data_ref) >= -np.inf)
@@ -120,7 +120,7 @@ def check_system():
                         ratio[np.logical_not(select)] = None
                         if XX:
                             err_msg += "\n" + ("\n".join(
-                                f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
+                                f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision}  "
                                 for i in zip(*all_i)) + "\n\n")
                             XX_R_sumR = data.sum(axis=2)
                             XX_R_sumR_ref = data_ref.sum(axis=2)
