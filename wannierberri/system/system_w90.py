@@ -99,10 +99,19 @@ def System_w90(
     w90data.check_wannierised(msg="creation of System_w90")
     if w90data.irreducible:
         symmetrize = True
+    print (f"irreducible : {w90data.irreducible}, symmetrize set to {symmetrize}")
     chk = w90data.chk
     system.real_lattice, system.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
     system.set_pointgroup(spacegroup=w90data.get_spacegroup())
-    system.wannier_centers_cart = chk.wannier_centers_cart
+
+    if wannier_centers_from_chk:
+        system.wannier_centers_cart = w90data.wannier_centers_cart
+    else:
+        assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
+        AA_q = chk.get_AA_q(w90data.mmn, kptirr=kptirr, weights_k=weights_k)
+        AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
+        system.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
+
 
     mp_grid = w90data.mp_grid
     system._NKFFT_recommended = mp_grid
@@ -138,13 +147,6 @@ def System_w90(
     if needed_data.need_any('SS'):
         system.set_R_mat('SS', system.rvec.q_to_R(chk.get_SS_q(w90data.spn, kptirr=kptirr, weights_k=weights_k)))
 
-    if wannier_centers_from_chk:
-        system.wannier_centers_cart = w90data.wannier_centers_cart
-    else:
-        assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
-        AA_q = chk.get_AA_q(w90data.mmn, kptirr=kptirr, weights_k=weights_k)
-        AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
-        system.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
 
 
     # Wannier centers
