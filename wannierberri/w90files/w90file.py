@@ -87,7 +87,7 @@ class W90_file(SavableNPZ):
         """
         raise NotImplementedError("{cls.__name__}.from_bandstructure method is not implemented ")
 
-    def select_bands(self, selected_bands, dimensions=(0,)):
+    def select_bands(self, selected_bands, dimensions=(0,), var_select=False):
         """
         abstract method to select the bands from the data
 
@@ -101,9 +101,10 @@ class W90_file(SavableNPZ):
         if selected_bands is not None:
             for ik in self.data.keys():
                 data = self.data[ik]
-                for d in dimensions:
+                for id, d in enumerate(dimensions):
+                    selected = selected_bands[id] if var_select else selected_bands
                     data = data.swapaxes(d, 0)
-                    data = data[selected_bands]
+                    data = data[selected]
                     data = data.swapaxes(0, d)
                 self.data[ik] = data
             self.NB = len(selected_bands)

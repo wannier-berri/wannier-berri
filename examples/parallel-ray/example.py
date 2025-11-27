@@ -31,15 +31,13 @@ generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system, NKdiv=16, NKFFT=16)
 
-parallel = wberri.Parallel(cluster=True)
-
+wberri.ray_init()
 
 wberri.run(system,
            grid=grid,
            calculators={
                "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False),
            },
-           parallel=parallel,
            adpt_num_iter=0,
            fout_name='Fe',
            suffix="w90-ray",

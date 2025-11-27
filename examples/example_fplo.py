@@ -31,23 +31,15 @@ system = wberri.System_fplo('../tests/data/Fe_FPLO/+hamdata', berry=False, spin=
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system, length=300, length_FFT=50)
-parallel = wberri.parallel.Parallel(num_cpus=num_proc)
 
-
+wberri.ray_init()
 wberri.run(system,
            grid=grid,
            calculators={
                "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False),
            },
-           parallel=parallel,
            adpt_num_iter=0,
            fout_name='Fe',
            suffix="fplo",
            restart=False,
             )
-
-
-
-# This line is not actually needed here and is added just for illustrative purpose.
-# It is needed only when one wants to close and reopen a new parallel object.
-parallel.shutdown()

@@ -167,7 +167,6 @@ class System_w90(System_R):
 
         self.rvec.set_fft_q_to_R(
             kpt_red=w90data.kpt_latt,
-            numthreads=npar,
             fftlib=fftlib,
         )
 

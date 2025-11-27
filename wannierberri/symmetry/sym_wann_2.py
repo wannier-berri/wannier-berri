@@ -207,14 +207,13 @@ class SymWann:
             atom_R_map = self.get_atom_R_map(self.iRvec, isym, block1, block2)
             for a, a1 in enumerate(map1[:, isym]):
                 for b, b1 in enumerate(map2[:, isym]):
-                    logfile.write(f"a = {a}, b = {b}, a1 = {a1}, b1 = {b1}, (a1, b1) >= (a, b) = {(a1, b1) >= (a, b)}\n")
+                    # logfile.write(f"a = {a}, b = {b}, a1 = {a1}, b1 = {b1}, (a1, b1) >= (a, b) = {(a1, b1) >= (a, b)}\n")
                     if (a1, b1) >= (a, b):
                         for iR in range(self.nRvec):
                             if irreducible[iR, a, b]:
                                 iR1 = self.index_R(atom_R_map[iR, a, b])
                                 if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                     irreducible[iR1, a1, b1] = False
-            logfile.write(f"irreducible = {irreducible}\n")
 
         logfile.write(
             f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec * np1 * np2} ({self.nRvec}*{np1}*{np2})")
