@@ -29,8 +29,8 @@ mg = SpaceGroup.from_cell(real_lattice=lattice, positions=positions, typat=typea
 pointgroup = PointGroup(spacegroup=mg)
 
 
-system_dw = System_R().load_npz("system_dw", load_all_XX_R=True)
-system_up = System_R().load_npz("system_up", load_all_XX_R=True)
+system_dw = System_R().load_npz("system_dw")
+system_up = System_R().load_npz("system_up")
 
 
 wb.ray_init()

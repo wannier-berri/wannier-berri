@@ -82,7 +82,7 @@ from .test_cluster import check_command_output
 from .test_run import check_run
 
 from .common_parallel import init_parallel_ray
-init_parallel_ray()
+# init_parallel_ray()
 
 
 @pytest.fixture(scope="session", autouse=True)

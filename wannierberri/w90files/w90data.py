@@ -858,7 +858,7 @@ class Wannier90data:
         """
         return range(self.chk.num_kpts)
 
-    @cached_property
+    @property
     def wannier_centers_cart(self):
         """
         Returns the Wannier centers stored in the checkpoint file
