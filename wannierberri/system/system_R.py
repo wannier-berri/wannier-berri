@@ -75,16 +75,7 @@ class System_R(System):
 
     half_wann_matrices = set()
 
-    def __init__(self,
-                 berry=False,
-                 morb=False,
-                 spin=False,
-                 SHCryoo=False,
-                 SHCqiao=False,
-                 OSD=False,
-                 _getFF=False,
-                 ws_dist_tol=0.05,
-                 **parameters):
+    def __init__(self, **parameters):
 
         super().__init__(**parameters)
 

@@ -46,10 +46,11 @@ def System_tb_py(model,
     """
 
     names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
+    parameters, param_needed_data = NeededData.get_parameters(**parameters)
+    needed_data = NeededData(**param_needed_data)
     system = System_R(force_internal_terms_only=True,
                      name=f'model_{names[module]}',
                      **parameters)
-    needed_data = NeededData(**parameters)  # to set needed_R_matrices
 
     if module == 'tbmodels':
         # Extract the parameters from the model

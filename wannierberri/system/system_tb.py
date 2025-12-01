@@ -47,8 +47,9 @@ def System_tb(tb_file="wannier90_tb.dat",
 
     if "name" not in parameters:
         parameters["name"] = os.path.splitext(os.path.split(tb_file)[-1])[0]
+    parameters, param_needed_data = NeededData.get_parameters(**parameters)
+    needed_data = NeededData(**param_needed_data)
     system = System_R(**parameters)
-    needed_data = NeededData(**parameters)
     for key in needed_data.matrices:
         if key not in ['Ham', 'AA']:
             raise ValueError(f"System_tb class cannot be used for evaluation of {key}_R")

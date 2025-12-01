@@ -77,8 +77,10 @@ def System_w90(
     if transl_inv_MV:
         warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
                       "Use transl_inv_JM instead.")
+    parameters, param_needed_data = NeededData.get_parameters(**parameters)
+    needed_data = NeededData(**param_needed_data)
     system = System_R(**parameters)
-    needed_data = NeededData(**parameters)
+
 
     if transl_inv_JM:
         unknown = needed_data.not_in_list(
@@ -99,11 +101,13 @@ def System_w90(
     w90data.check_wannierised(msg="creation of System_w90")
     if w90data.irreducible:
         symmetrize = True
-    print (f"irreducible : {w90data.irreducible}, symmetrize set to {symmetrize}")
+    print(f"irreducible : {w90data.irreducible}, symmetrize set to {symmetrize}")
     chk = w90data.chk
     system.real_lattice, system.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
     system.set_pointgroup(spacegroup=w90data.get_spacegroup())
-
+    kptirr, weights_k = w90data.kptirr_system
+    mp_grid = w90data.mp_grid
+    
     if wannier_centers_from_chk:
         system.wannier_centers_cart = w90data.wannier_centers_cart
     else:
@@ -113,7 +117,6 @@ def System_w90(
         system.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
 
 
-    mp_grid = w90data.mp_grid
     system._NKFFT_recommended = mp_grid
     system.rvec = Rvectors(lattice=system.real_lattice, shifts_left_red=system.wannier_centers_red)
     system.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
@@ -137,8 +140,6 @@ def System_w90(
 
 
     # H(R) matrix
-
-    kptirr, weights_k = w90data.kptirr_system
 
     HHq = chk.get_HH_q(w90data.eig, kptirr=kptirr, weights_k=weights_k)
 

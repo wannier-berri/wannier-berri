@@ -29,8 +29,9 @@ def SystemRandom(num_wann,
 
     if "name" not in parameters:
         parameters["name"] = "random"
+    parameters, param_needed_data = NeededData.get_parameters(**parameters)
+    needed_data = NeededData(**param_needed_data)
     self = System_R(**parameters)
-    needed_data = NeededData(**parameters)  # to set needed_R_matrices
     if real_lattice is None:
         while True:
             real_lattice = np.random.random((3, 3))

@@ -215,7 +215,7 @@ def system_Fe_WB_irreducible():
         files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer', "bkvec"],
     )
     return wberri.system.System_w90(
-        w90data=w90data, berry=True, spin=True, SHCqiao=True)
+        w90data=w90data, berry=True, spin=True, SHCqiao=True, ws_dist_tol=0.05)
 
 
 
@@ -986,18 +986,14 @@ def model_1d_pythtb():
 def system_random():
     system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
                                         berry=True, morb=True, spin=True,
-                                        SHCryoo=True, SHCqiao=True, OSD=True,
-                                        ws_dist_tol=-1e-5,)
+                                        SHCryoo=True, SHCqiao=True, OSD=True,)
     # system.save_npz("randomsys")
     return system
 
 
 @pytest.fixture(scope="session")
 def system_random_load_bare():
-    system = wberri.system.System_R(berry=True, morb=True, spin=True,
-                                    SHCryoo=True, SHCqiao=True, OSD=True,
-                                    ws_dist_tol=-1e-5)
-    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"), legacy=True)
+    system = wberri.system.System_R().load_npz(path=os.path.join(ROOT_DIR, "data", "random"), legacy=True)
     return system
 
 
@@ -1006,13 +1002,11 @@ def system_random_GaAs():
     return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
                                       berry=True, spin=True, SHCryoo=True,
-                                      ws_dist_tol=-1e-5,
                                       )
 
 
 def get_system_random_GaAs_load_sym(sym=False, use_ws=True):
-    system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True, ws_dist_tol=-1e-5)
-    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"), legacy=True)
+    system = wberri.system.System_R().load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"), legacy=True)
     if use_ws:
         system.do_ws_dist(mp_grid=6)
     if sym:
@@ -1043,7 +1037,6 @@ def system_random_GaAs_load_sym():
 @pytest.fixture(scope="session")
 def system_Te_QE():
     """Create system for Te using QE data"""
-    system = wberri.system.System_R(berry=True, morb=True, spin=True,
-                                    ).load_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"), legacy=True)
+    system = wberri.system.System_R().load_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"), legacy=True)
     system.set_pointgroup(symmetries_Te)
     return system

@@ -15,6 +15,26 @@ class NeededData:
     needed_files['SA'] = ['siu', 'mmn']
     needed_files['SHA'] = ['shu', 'mmn']
 
+    @classmethod
+    def get_parameters(cls, **parameters):
+        """selects the parameters needed for this class from a dictionary of parameters,
+        and removes them from the dictionary"""
+
+        remove_keys = []
+        return_dict = {}
+        for key, val in parameters.items():
+            if key in ["berry", "morb", "spin",
+                       "SHCryoo", "SHCqiao",
+                       "OSD", "_getFF",
+                       "force_internal_terms_only",
+                       "chk"]:
+                return_dict[key] = val
+                if key not in ["force_internal_terms_only"]:
+                    remove_keys.append(key)
+        for key in remove_keys:
+            del parameters[key]
+        return parameters, return_dict
+
     def __init__(self,
                  berry=False,
                  morb=False,
