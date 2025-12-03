@@ -183,6 +183,13 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def clear_R_mat(self, keys):
+        if not isinstance(keys, (list, tuple)):
+            keys = [keys]
+        for key in keys:
+            if key in self._XX_R:
+                del self._XX_R[key]
+
     def spin_block2interlace(self, backward=False):
         """
         Convert the spin ordering from block (like in the amn file old versions of VASP) to interlace (like in the amn file of QE and new versions of VASP)
@@ -770,8 +777,11 @@ class System_R(System):
     def optional_properties(self):
         return ["positions", "magnetic_moments", "atom_labels"]
 
-    def _R_mat_npz_filename(self, key):
-        return "_XX_R_" + key + ".npz"
+    def _R_mat_npz_filename(self, key, xxr=True):
+        if xxr:
+            return "_XX_R_" + key + ".npz"
+        else:
+            return key + ".npz"
 
     def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         """
@@ -888,6 +898,7 @@ class System_R(System):
         for key in matrices:
             logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
+
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
