@@ -229,16 +229,22 @@ class Wannier90data:
                         selected_kpoints, "kptirr": kptirr,
                         "NK": NK}
 
+        do_write_bk_npz = True
         if bkvec is None:
             if "bkvec" in read_npz_list and os.path.exists(seedname + ".bkvec.npz"):
                 bkvec = BKVectors.from_npz(seedname + ".bkvec.npz")
+                do_write_bk_npz = False
+            elif os.path.exists(seedname + ".nnkp"):
+                bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
+                                            kmesh_tol=1e-5,
+                                            bk_complete_tol=1e-5,
+                                            kptirr=kptirr)
             else:
                 bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
                                             mp_grid=mp_grid,
                                             kpoints_red=kpt_latt,
                                             kptirr=kptirr)
-                bkvec.to_npz(seedname + ".bkvec.npz")
-        else:
+        if do_write_bk_npz:
             bkvec.to_npz(seedname + ".bkvec.npz")
         self.set_file('bkvec', bkvec)
 

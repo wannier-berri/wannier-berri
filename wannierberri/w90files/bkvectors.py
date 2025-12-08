@@ -1,5 +1,7 @@
 import os
 import numpy as np
+
+from .utility import get_mp_grid
 from ..io import sparselist_to_dict
 from .w90file import W90_file, check_shape
 
@@ -107,6 +109,46 @@ class BKVectors(W90_file):
                    kpt_latt=kpt_latt,
                    mp_grid=mp_grid, wk=wk, bk_latt=bk_latt, G=G, neighbours=neighbours, kptirr=kptirr)
 
+    @classmethod
+    def from_nnkp(filename, kmesh_tol=1e-5,
+                bk_complete_tol=1e-5,
+                kptirr=None):
+        """Create BKVectors from a NNKP file
+
+        Parameters
+        ----------
+        filename : str
+            the path to the NNKP file
+
+        Returns
+        -------
+        BKVectors
+            the BKVectors object
+        """
+        cls = BKVectors
+        from wannier90io import parse_nnkp_raw
+        nnkp = parse_nnkp_raw(open(filename).read())
+        nnkpts = np.array([b for b in nnkp["nnkpts"] if b[0] == 1])
+
+        kpoints_red = np.array(nnkp["kpoints"]["kpoints"])
+        bk_red = kpoints_red[nnkpts[:, 1] - 1] + nnkpts[:, 2:5] - kpoints_red[0, None, :]
+        recip_lattice = nnkp["reciprocal_lattice"]
+        recip_lattice = np.array([recip_lattice[i] for i in ["b1", "b2", "b3"]])
+        bk_cart = bk_red @ recip_lattice
+        mp_grid = get_mp_grid(kpoints_red)
+        bk_latt = np.round(bk_red * np.array(mp_grid)[None, :]).astype(int)
+        shell_klatt, shell_kcart = cls.k_to_shells(bk_latt, bk_cart, kmesh_tol=kmesh_tol)
+        wk, bk_cart, bk_latt = cls.get_shell_weights(shell_kcart=shell_kcart,
+                                                    shell_klatt=shell_klatt,
+                                                    bk_complete_tol=bk_complete_tol)
+        G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_latt, mp_grid, kptirr=kptirr)
+        kpt_latt = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
+
+        return cls(recip_lattice=recip_lattice,
+                   kpt_latt=kpt_latt,
+                   mp_grid=mp_grid, wk=wk, bk_latt=bk_latt, G=G, neighbours=neighbours, kptirr=kptirr)
+
+
     def reorder_bk_vectors(self, ik, neighbours, G, data):
         bk_latt_new = self.kpt_latt[neighbours] - self.kpt_latt[ik, None, :] + G * self.mp_grid[None, :]
         bk_latt_new_tuples = [tuple(bl) for bl in bk_latt_new]
@@ -196,17 +238,9 @@ class BKVectors(W90_file):
                         for j in range(-search_limit[1], search_limit[1] + 1)
                         for k in range(-search_limit[2], search_limit[2] + 1)])
         k_cart = k_latt @ basis
-        k_length = np.linalg.norm(k_cart, axis=1)
-        srt = np.argsort(k_length)[1:]  # skip the zero vector
-        k_latt = k_latt[srt]
-        k_cart = k_cart[srt]
-        k_length = k_length[srt]
-        brd = [0] + list(np.where(k_length[1:] - k_length[:-1] > kmesh_tol)[0] + 1) + [len(k_cart)]
-
-        shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])]
-        shell_klatt = [k_latt[b1:b2] for b1, b2 in zip(brd, brd[1:])]
+        shell_klatt, shell_kcart = cls.k_to_shells(k_latt, k_cart, kmesh_tol=kmesh_tol)
         num_shells = len(shell_kcart)
-        del brd, k_length, k_cart, k_latt
+        del k_cart, k_latt
 
         shells_selected = []
         k_cart_selected = np.zeros((0, 3), dtype=float)
@@ -283,3 +317,20 @@ class BKVectors(W90_file):
         bk_cart = np.array(bk_cart)
         bk_latt = np.array(bk_latt, dtype=int)
         return wk, bk_cart, bk_latt
+
+    @classmethod
+    def k_to_shells(cls, k_latt, k_cart, kmesh_tol=1e-7):
+        k_length = np.linalg.norm(k_cart, axis=1)
+        select_nonzero = k_length > kmesh_tol
+        k_latt = k_latt[select_nonzero]
+        k_cart = k_cart[select_nonzero]
+        k_length = k_length[select_nonzero]
+        srt = np.argsort(k_length)  # skip the zero vector
+        k_latt = k_latt[srt]
+        k_cart = k_cart[srt]
+        k_length = k_length[srt]
+        brd = [0] + list(np.where(k_length[1:] - k_length[:-1] > kmesh_tol)[0] + 1) + [len(k_cart)]
+
+        shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])]
+        shell_klatt = [k_latt[b1:b2] for b1, b2 in zip(brd, brd[1:])]
+        return shell_klatt, shell_kcart
