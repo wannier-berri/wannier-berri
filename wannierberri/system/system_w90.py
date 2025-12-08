@@ -107,7 +107,7 @@ def System_w90(
     system.set_pointgroup(spacegroup=w90data.get_spacegroup())
     kptirr, weights_k = w90data.kptirr_system
     mp_grid = w90data.mp_grid
-    
+
     if wannier_centers_from_chk:
         system.wannier_centers_cart = w90data.wannier_centers_cart
     else:
