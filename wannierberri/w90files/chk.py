@@ -170,7 +170,7 @@ class CheckPoint(SavableNPZ):
                 if win_max[ik] < num_bands - 1:
                     assert np.all(np.logical_not(lwindow[ik, win_max[ik] + 1:]))
         u_matrix = readcomplex().reshape((num_kpts, num_wann, num_wann)).swapaxes(1, 2)
-        readcomplex().reshape((num_kpts, nntot, num_wann, num_wann)).swapaxes(2, 3)  # m_matrix
+        FIN.skip_record()  # skip m_matrix
         if have_disentangled:
             v_matrix = np.zeros((num_kpts, num_bands, num_wann), dtype=complex)
             for ik in range(num_kpts):
