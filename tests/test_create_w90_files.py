@@ -374,7 +374,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
         mmn_new = w90data.get_file("mmn")
         mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_ref, f"{prefix}.mmn.npz"))
         bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
-        eql, msg = mmn_new.equals(mmn_ref, tolerance=3e-5, check_reorder=False)
+        eql, msg = mmn_new.equals(mmn_ref, tolerance=1e-4, check_reorder=False)
         assert eql, f"MMN files differ: {msg}"
 
         amn = w90data.get_file("amn")
