@@ -148,7 +148,7 @@ class CheckPoint(SavableNPZ):
         assert len(mp_grid) == 3
         assert num_kpts == np.prod(mp_grid), f"the number of k-points is not consistent with the mesh {num_kpts}!={np.prod(mp_grid)}"
         kpt_latt = readfloat().reshape((num_kpts, 3))
-        nntot = readint()[0]
+        _ = readint()[0]  # nntot
         num_wann = readint()[0]
         readstr(FIN)  # checkpoint string
         have_disentangled = bool(readint()[0])
