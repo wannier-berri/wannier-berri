@@ -259,12 +259,14 @@ class BKVectors(W90_file):
 
         shell_list_cart = []
         shell_list_latt = []
+        projector_list_cart = []
         for i_shell in range(num_shells):
             shell_new_cart = shell_kcart[i_shell]
             shell_new_latt = shell_klatt[i_shell]
-            if is_parallel_shell(shell_list_latt, shell_new_latt, tol=kmesh_tol):
+            if is_parallel_shell(projector_list_cart, shell_new_latt, tol=kmesh_tol):
                 # print(f"Skipping shell {i_shell} with k_cart {shell_new_cart} because it is parallel to previously selected shells {shell_list_cart}")
                 continue
+            projector_list_cart.append(cls.get_projector_shell_cart(shell_new_cart))
             shell_list_cart.append(shell_new_cart)
             shell_list_latt.append(shell_new_latt)
             wkbk = cls.get_shell_weights(shell_list_latt, shell_list_cart, bk_complete_tol=bk_complete_tol,
@@ -331,6 +333,23 @@ class BKVectors(W90_file):
         bk_cart = np.array(bk_cart)
         bk_latt = np.array(bk_latt, dtype=int)
         return wk, bk_cart, bk_latt
+    
+    @classmethod
+    def get_projector_shell_cart(cls, shell_kcart):
+        # SVD approach (most robust for dependent vectors)
+        U, s, Vh = np.linalg.svd(shell_kcart.T, full_matrices=False)
+        
+        # Keep only significant singular vectors (filter small singular values)
+        threshold = 1e-10
+        rank = np.sum(s > threshold)
+        U_reduced = U[:, :rank]
+        
+        # Now projector projects onto the xy plane (2D subspace)
+        projector = U_reduced @ U_reduced.T
+        # print (f"Projector before subtracting identity:\n{projector}")
+        projector -= np.eye(3)  # We want to subtract the identity, to check if a new vector is in the span
+        return projector
+        
 
     @classmethod
     def k_to_shells(cls, k_latt, k_cart, kmesh_tol=1e-7):
@@ -350,26 +369,22 @@ class BKVectors(W90_file):
         return shell_klatt, shell_kcart
 
 
-def is_parallel_shell(shells_old_latt, shell_new_latt, tol=1e-5):
+def is_parallel_shell(projector_list_cart, shell_new_cart, tol=1e-5):
     """Check if two sets of shells are parallel to each other
 
     Parameters
     ----------
-    shells_old_latt : list of np.ndarray(shape=(NNB_shell, 3), dtype=int)
-        the reciprocal lattice vectors of the old shells (in lattice coordinates)
-    shells_new_latt : np.ndarray(shape=(NNB_shell, 3), dtype=int)
-        the reciprocal lattice vectors of the new shells (in lattice coordinates)
+    projector_list_cart : list of np.ndarray(shape=(3, 3), dtype=float)
+        the list of projectors for the existing shells
+    shell_new_cart : np.ndarray(shape=(NNB, 3), dtype=float)
+        the cartesian coordinates of the new shell to check
     tol : float
-        the tolerance for the check of parallelism
-
-    Returns
-    -------
-    bool
-        True if the two sets of shells are parallel to each other, False otherwise
+        the tolerance to consider two vectors as parallel
     """
-    for shell_old in shells_old_latt:
-        for v1 in shell_old:
-            for v2 in shell_new_latt:
-                cross = np.cross(v1, v2)
-                if np.linalg.norm(cross) > tol:
-                    return False
+    for projector in projector_list_cart:
+        # Project the new shell vectors onto the subspace spanned by the existing shell
+        projected = shell_new_cart @ projector.T
+        # If all projected vectors are close to zero, they are in the span (i.e., parallel)
+        if np.all(np.linalg.norm(projected, axis=1) < tol):
+            return True
+    return False
