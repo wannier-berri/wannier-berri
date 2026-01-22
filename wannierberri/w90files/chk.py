@@ -148,7 +148,7 @@ class CheckPoint(SavableNPZ):
         assert len(mp_grid) == 3
         assert num_kpts == np.prod(mp_grid), f"the number of k-points is not consistent with the mesh {num_kpts}!={np.prod(mp_grid)}"
         kpt_latt = readfloat().reshape((num_kpts, 3))
-        nntot = readint()[0]
+        _ = readint()[0]  # nntot
         num_wann = readint()[0]
         readstr(FIN)  # checkpoint string
         have_disentangled = bool(readint()[0])
@@ -170,7 +170,7 @@ class CheckPoint(SavableNPZ):
                 if win_max[ik] < num_bands - 1:
                     assert np.all(np.logical_not(lwindow[ik, win_max[ik] + 1:]))
         u_matrix = readcomplex().reshape((num_kpts, num_wann, num_wann)).swapaxes(1, 2)
-        readcomplex().reshape((num_kpts, nntot, num_wann, num_wann)).swapaxes(2, 3)  # m_matrix
+        FIN.skip_record()  # skip m_matrix
         if have_disentangled:
             v_matrix = np.zeros((num_kpts, num_bands, num_wann), dtype=complex)
             for ik in range(num_kpts):
