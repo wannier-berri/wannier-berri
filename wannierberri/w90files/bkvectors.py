@@ -333,23 +333,23 @@ class BKVectors(W90_file):
         bk_cart = np.array(bk_cart)
         bk_latt = np.array(bk_latt, dtype=int)
         return wk, bk_cart, bk_latt
-    
+
     @classmethod
     def get_projector_shell_cart(cls, shell_kcart):
         # SVD approach (most robust for dependent vectors)
         U, s, Vh = np.linalg.svd(shell_kcart.T, full_matrices=False)
-        
+
         # Keep only significant singular vectors (filter small singular values)
         threshold = 1e-10
         rank = np.sum(s > threshold)
         U_reduced = U[:, :rank]
-        
+
         # Now projector projects onto the xy plane (2D subspace)
         projector = U_reduced @ U_reduced.T
         # print (f"Projector before subtracting identity:\n{projector}")
         projector -= np.eye(3)  # We want to subtract the identity, to check if a new vector is in the span
         return projector
-        
+
 
     @classmethod
     def k_to_shells(cls, k_latt, k_cart, kmesh_tol=1e-7):
