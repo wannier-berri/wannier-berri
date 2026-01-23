@@ -1,5 +1,7 @@
 import os
 import numpy as np
+
+from .utility import get_mp_grid
 from ..io import sparselist_to_dict
 from .w90file import W90_file, check_shape
 
@@ -60,6 +62,9 @@ class BKVectors(W90_file):
             obj = cls.from_npz(f_npz)
             write_npz = False  # do not write npz again if it was read
             was_read = True
+        elif os.path.exists(f"{seedname}.nnkp"):
+            obj = cls.from_nnkp(f"{seedname}.nnkp", params=params)
+            was_read = True
         else:
             obj = cls.from_kpoints(**params)
             was_read = False
@@ -70,7 +75,13 @@ class BKVectors(W90_file):
 
 
     @classmethod
-    def from_kpoints(cls, recip_lattice, mp_grid, kpoints_red, kmesh_tol=1e-7, bk_complete_tol=1e-5, search_supercell=2,
+    def from_kpoints(cls,
+                     recip_lattice,
+                     mp_grid,
+                     kpoints_red,
+                     kmesh_tol=1e-7,
+                     bk_complete_tol=1e-5,
+                     search_supercell=2,
                      kptirr=None):
         """
         Create BKVectors from given k-points in the Monkhorst-Pack grid
@@ -107,6 +118,53 @@ class BKVectors(W90_file):
                    kpt_latt=kpt_latt,
                    mp_grid=mp_grid, wk=wk, bk_latt=bk_latt, G=G, neighbours=neighbours, kptirr=kptirr)
 
+    @classmethod
+    def from_nnkp(cls, filename, kmesh_tol=1e-5,
+                bk_complete_tol=1e-5,
+                kptirr=None,
+                params=None):
+        """Create BKVectors from a NNKP file
+
+        Parameters
+        ----------
+        filename : str
+            the path to the NNKP file
+
+        Returns
+        -------
+        BKVectors
+            the BKVectors object
+        """
+        cls = BKVectors
+        from wannier90io import parse_nnkp_raw
+        nnkp = parse_nnkp_raw(open(filename).read())
+        nnkpts = np.array([b for b in nnkp["nnkpts"] if b[0] == 1])
+
+        kpoints_red = np.array(nnkp["kpoints"]["kpoints"])
+        bk_red = kpoints_red[nnkpts[:, 1] - 1] + nnkpts[:, 2:5] - kpoints_red[0, None, :]
+        if params is not None and "recip_lattice" in params:
+            recip_lattice = params["recip_lattice"]
+        else:
+            recip_lattice = nnkp["reciprocal_lattice"]
+            recip_lattice = np.array([recip_lattice[i] for i in ["b1", "b2", "b3"]])
+        mp_grid = get_mp_grid(kpoints_red)
+        bk_latt = np.round(bk_red * np.array(mp_grid)[None, :]).astype(int)
+        bk_red = bk_latt / np.array(mp_grid)[None, :]  # this is done to avoid numerical issues
+        # due to limited precision of kpoints in the nnkp file
+        bk_cart = bk_red @ recip_lattice
+
+        shell_klatt, shell_kcart = cls.k_to_shells(bk_latt, bk_cart, kmesh_tol=kmesh_tol)
+        wk, bk_cart, bk_latt = cls.get_shell_weights(shell_kcart=shell_kcart,
+                                                    shell_klatt=shell_klatt,
+                                                    bk_complete_tol=bk_complete_tol)
+        G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_latt, mp_grid, kptirr=kptirr)
+        kpt_latt = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
+
+        return cls(recip_lattice=recip_lattice,
+                   kpt_latt=kpt_latt,
+                   mp_grid=mp_grid, wk=wk, bk_latt=bk_latt, G=G, neighbours=neighbours, kptirr=kptirr)
+
+
     def reorder_bk_vectors(self, ik, neighbours, G, data):
         bk_latt_new = self.kpt_latt[neighbours] - self.kpt_latt[ik, None, :] + G * self.mp_grid[None, :]
         bk_latt_new_tuples = [tuple(bl) for bl in bk_latt_new]
@@ -131,7 +189,6 @@ class BKVectors(W90_file):
         bkvec.bk_latt = bkvec.bk_latt[srt_ref]
         bkvec.bk_cart = bkvec.bk_cart[srt_ref]
         bkvec.wk = bkvec.wk[srt_ref]
-
 
 
     @classmethod
@@ -196,41 +253,31 @@ class BKVectors(W90_file):
                         for j in range(-search_limit[1], search_limit[1] + 1)
                         for k in range(-search_limit[2], search_limit[2] + 1)])
         k_cart = k_latt @ basis
-        k_length = np.linalg.norm(k_cart, axis=1)
-        srt = np.argsort(k_length)[1:]  # skip the zero vector
-        k_latt = k_latt[srt]
-        k_cart = k_cart[srt]
-        k_length = k_length[srt]
-        brd = [0] + list(np.where(k_length[1:] - k_length[:-1] > kmesh_tol)[0] + 1) + [len(k_cart)]
-
-        shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])]
-        shell_klatt = [k_latt[b1:b2] for b1, b2 in zip(brd, brd[1:])]
+        shell_klatt, shell_kcart = cls.k_to_shells(k_latt, k_cart, kmesh_tol=kmesh_tol)
         num_shells = len(shell_kcart)
-        del brd, k_length, k_cart, k_latt
+        del k_cart, k_latt
 
-        shells_selected = []
-        k_cart_selected = np.zeros((0, 3), dtype=float)
-        matrix_rank = 0
+        shell_list_cart = []
+        shell_list_latt = []
+        projector_list_cart = []
         for i_shell in range(num_shells):
-            k_cart_selected_try = np.vstack([k_cart_selected, shell_kcart[i_shell]])
-            matrix_rank_try = np.linalg.matrix_rank(k_cart_selected_try)
-            if matrix_rank_try > matrix_rank:
-                # print(f"Adding shell {i_shell} with length {k_length_shell[i_shell]} and k_cart {shell_kcart[i_shell]}")
-                shells_selected.append(i_shell)
-                k_cart_selected = k_cart_selected_try
-                matrix_rank = matrix_rank_try
-            else:
-                # print(f"Skipping shell {i_shell} with length {k_length_shell[i_shell]} and k_cart {shell_kcart[i_shell]}")
+            shell_new_cart = shell_kcart[i_shell]
+            shell_new_latt = shell_klatt[i_shell]
+            if is_parallel_shell(projector_list_cart, shell_new_latt, tol=kmesh_tol):
+                # print(f"Skipping shell {i_shell} with k_cart {shell_new_cart} because it is parallel to previously selected shells {shell_list_cart}")
                 continue
-            if matrix_rank == 3:
-                break
-
-        shell_kcart = [shell_kcart[i] for i in shells_selected]
-        shell_klatt = [shell_klatt[i] for i in shells_selected]
-        return cls.get_shell_weights(shell_klatt, shell_kcart, bk_complete_tol=bk_complete_tol)
+            projector_list_cart.append(cls.get_projector_shell_cart(shell_new_cart))
+            shell_list_cart.append(shell_new_cart)
+            shell_list_latt.append(shell_new_latt)
+            wkbk = cls.get_shell_weights(shell_list_latt, shell_list_cart, bk_complete_tol=bk_complete_tol,
+                                         none_if_fail=True)
+            if wkbk is not None:
+                return wkbk
+        raise RuntimeError(
+            f"Could not find a complete set of bk vectors up to {num_shells} shells. ")
 
     @classmethod
-    def get_shell_weights(cls, shell_klatt, shell_kcart, bk_complete_tol=1e-5):
+    def get_shell_weights(cls, shell_klatt, shell_kcart, bk_complete_tol=1e-5, none_if_fail=False):
         """
         get the weights of the shells of bk vectors for the finite-difference scheme
 
@@ -261,13 +308,16 @@ class BKVectors(W90_file):
         check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
         tol = np.linalg.norm(check_eye - np.eye(3))
         if tol > bk_complete_tol:
-            raise RuntimeError(
-                f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
-                f"failed to be identity by an error of {tol}. Further debug information :  \n"
-                f"shell_mat={shell_mat}\n"
-                f"weight_shell={weight_shell}\n"
-                f"shell_klatt={shell_klatt}\n"
-                f"shell_kcart={shell_kcart}\n")
+            if none_if_fail:
+                return None
+            else:
+                raise RuntimeError(
+                    f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
+                    f"failed to be identity by an error of {tol}. Further debug information :  \n"
+                    f"shell_mat={shell_mat}\n"
+                    f"weight_shell={weight_shell}\n"
+                    f"shell_klatt={shell_klatt}\n"
+                    f"shell_kcart={shell_kcart}\n")
 
         print(f"Shells found with weights {weight_shell} and tolerance {tol}")
         bk_latt = []
@@ -283,3 +333,58 @@ class BKVectors(W90_file):
         bk_cart = np.array(bk_cart)
         bk_latt = np.array(bk_latt, dtype=int)
         return wk, bk_cart, bk_latt
+
+    @classmethod
+    def get_projector_shell_cart(cls, shell_kcart):
+        # SVD approach (most robust for dependent vectors)
+        U, s, Vh = np.linalg.svd(shell_kcart.T, full_matrices=False)
+
+        # Keep only significant singular vectors (filter small singular values)
+        threshold = 1e-10
+        rank = np.sum(s > threshold)
+        U_reduced = U[:, :rank]
+
+        # Now projector projects onto the xy plane (2D subspace)
+        projector = U_reduced @ U_reduced.T
+        # print (f"Projector before subtracting identity:\n{projector}")
+        projector -= np.eye(3)  # We want to subtract the identity, to check if a new vector is in the span
+        return projector
+
+
+    @classmethod
+    def k_to_shells(cls, k_latt, k_cart, kmesh_tol=1e-7):
+        k_length = np.linalg.norm(k_cart, axis=1)
+        select_nonzero = k_length > kmesh_tol
+        k_latt = k_latt[select_nonzero]
+        k_cart = k_cart[select_nonzero]
+        k_length = k_length[select_nonzero]
+        srt = np.argsort(k_length)  # skip the zero vector
+        k_latt = k_latt[srt]
+        k_cart = k_cart[srt]
+        k_length = k_length[srt]
+        brd = [0] + list(np.where(k_length[1:] - k_length[:-1] > kmesh_tol)[0] + 1) + [len(k_cart)]
+
+        shell_kcart = [k_cart[b1:b2] for b1, b2 in zip(brd, brd[1:])]
+        shell_klatt = [k_latt[b1:b2] for b1, b2 in zip(brd, brd[1:])]
+        return shell_klatt, shell_kcart
+
+
+def is_parallel_shell(projector_list_cart, shell_new_cart, tol=1e-5):
+    """Check if two sets of shells are parallel to each other
+
+    Parameters
+    ----------
+    projector_list_cart : list of np.ndarray(shape=(3, 3), dtype=float)
+        the list of projectors for the existing shells
+    shell_new_cart : np.ndarray(shape=(NNB, 3), dtype=float)
+        the cartesian coordinates of the new shell to check
+    tol : float
+        the tolerance to consider two vectors as parallel
+    """
+    for projector in projector_list_cart:
+        # Project the new shell vectors onto the subspace spanned by the existing shell
+        projected = shell_new_cart @ projector.T
+        # If all projected vectors are close to zero, they are in the span (i.e., parallel)
+        if np.all(np.linalg.norm(projected, axis=1) < tol):
+            return True
+    return False
