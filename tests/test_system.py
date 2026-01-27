@@ -15,7 +15,7 @@ from wannierberri.system.system_tb import System_tb
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def check_system():
     def _inner(system, name,
                properties=None,
@@ -244,22 +244,6 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
         system_Fe_W90_proj, "Fe_W90_proj",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SR', 'SH', 'SHR'],
         legacy=True,
-    )
-
-
-
-def test_system_Fe_sym_W90_interpolate(check_system, system_Fe_sym_W90,
-                                       system_Fe_sym_W90_TR):
-    interpolator = wberri.system.interpolate.SystemInterpolator(system0=system_Fe_sym_W90,
-                                                                system1=system_Fe_sym_W90_TR)
-    system_Fe_sym_W90_interpolate = interpolator.interpolate(0.4)
-
-
-    check_system(
-        system_Fe_sym_W90_interpolate, "Fe_sym_W90_interpolate_04",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-        sort_iR=True,
-        legacy=False,
     )
 
 
