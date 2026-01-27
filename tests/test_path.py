@@ -65,6 +65,74 @@ def test_path_4(system_Haldane_PythTB):
     assert path_npy.K_list == approx(path.K_list), "path.K_list is wrong"
 
 
+def test_path_sphere(system_Haldane_PythTB):
+    # Test the construction of Path class with spherical k-list
+    recip_lattice = system_Haldane_PythTB.recip_lattice
+    path = wberri.Path(system_Haldane_PythTB, k_list='sphere', r1=0.5, ntheta=3, nphi=5)
+    assert path.K_list.shape == (15, 3), "path.K_list shape is wrong"
+    print(repr(np.round(path.K_list, 10)))
+    k_cart = path.K_list.dot(recip_lattice)
+    assert (np.allclose(np.linalg.norm(k_cart, axis=1), 0.5)), "k-points are not on the sphere of radius r1"
+    expected_points = np.array([[0., 0., 0.07957747],
+                                [0.07957747, 0.03978874, 0.],
+                                [0., 0., -0.07957747],
+                                [0., 0., 0.07957747],
+                                [0., 0.06891611, 0.],
+                                [0., 0., -0.07957747],
+                                [0., 0., 0.07957747],
+                                [-0.07957747, -0.03978874, 0.],
+                                [-0., -0., -0.07957747],
+                                [0., 0., 0.07957747],
+                                [-0., -0.06891611, 0.],
+                                [-0., -0., -0.07957747],
+                                [0., 0., 0.07957747],
+                                [0.07957747, 0.03978874, 0.],
+                                [0., 0., -0.07957747]])
+    assert np.allclose(path.K_list, expected_points), "path.K_list is wrong"
+    # # Check some known points on the sphere
+    # for point in expected_points:
+    #     assert any(np.allclose(kpt, point) for kpt in path.K_list), f"Expected point {point} not found in K_list"
+
+
+def test_path_spheroid(system_Haldane_PythTB):
+    # Test the construction of Path class with spheroidal k-list
+    recip_lattice = system_Haldane_PythTB.recip_lattice
+
+    r1_cart = 0.5
+    r2_cart = 1.0
+    path = wberri.Path(system_Haldane_PythTB, k_list='spheroid', r1=r1_cart, r2=r2_cart, ntheta=3, nphi=4)
+    assert path.K_list.shape == (12, 3), "path.K_list shape is wrong"
+    print(repr(np.round(path.K_list, 10)))
+    k_cart = path.K_list.dot(recip_lattice)
+    for i, kpt in enumerate(k_cart):
+        theta = np.arccos(kpt[2] / np.linalg.norm(kpt))
+        expected_radius = np.sqrt((r1_cart * np.sin(theta))**2 + (r2_cart * np.cos(theta))**2)
+        radius = np.linalg.norm(kpt)
+        assert np.isclose(radius, expected_radius), f"k-point [{i}]= {kpt} is not on the spheroid surface. Expected radius: {expected_radius}, got: {radius}"
+    expected_points = np.array([[0., 0., 0.15915494],
+                                [0.07957747, 0.03978874, 0.],
+                                [0., 0., -0.15915494],
+                                [0., 0., 0.15915494],
+                                [-0.03978874, 0.03978874, 0.],
+                                [-0., 0., -0.15915494],
+                                [0., 0., 0.15915494],
+                                [-0.03978874, -0.07957747, 0.],
+                                [-0., -0., -0.15915494],
+                                [0., 0., 0.15915494],
+                                [0.07957747, 0.03978874, 0.],
+                                [0., 0., -0.15915494]])
+    assert np.allclose(path.K_list, expected_points), "path.K_list is wrong"
+    # # Check some known points on the spheroid
+
+
+def test_path_list(system_Haldane_PythTB):
+    # Test the construction of Path class with spherical k-list
+    kpoints = np.random.rand(10, 3)
+    path = wberri.Path(system_Haldane_PythTB, k_list=kpoints)
+    assert path.K_list.shape == (10, 3), "path.K_list shape is wrong"
+    assert np.allclose(path.K_list, kpoints), "path.K_list is wrong"
+
+
 def test_tabulate_path(system_Haldane_PythTB, check_run):
     param_tab = {'degen_thresh': 5e-2, }
 
@@ -85,7 +153,8 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
 
     nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     path = wberri.Path(system_Haldane_PythTB, nodes=nodes, dk=1.0)
-    print("k-pointsd", path.K_list)
+    print("k-points", path.K_list)
+    # print (f"forcing internal terms: {system_Haldane_PythTB.force_internal_terms_only}")
 
 
     result = check_run(

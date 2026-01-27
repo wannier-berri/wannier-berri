@@ -78,7 +78,7 @@ class Data_K_soc(Data_K_R):
             if self.has_soc:
                 _Ham_R = self.get_R_mat('soc') * expdK[iv][:, None, None]
                 _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
-            _Ecorners[:, iv, :] = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K_full))
+            _Ecorners[:, iv, :] = np.linalg.eigvalsh(_HH_K_full)
         self.select_bands(_Ecorners)
         Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
         for iv in range(4):
@@ -110,7 +110,7 @@ class Data_K_soc(Data_K_R):
                         _Ham_R = self.get_R_mat('soc') * _expdK[:, None, None]
                         _HH_K_full += self.rvec.R_to_k(_Ham_R, hermitian=True)
                     # calculate eigenvalues
-                    E = np.array(self.poolmap(np.linalg.eigvalsh, _HH_K_full))
+                    E = np.linalg.eigvalsh(_HH_K_full)
                     Ecorners[:, ix, iy, iz, :] = E
         self.select_bands(Ecorners)
         Ecorners = Ecorners[self.select_K, :, :, :, :][:, :, :, :, self.select_B]

@@ -737,7 +737,7 @@ class SymmetrizerSAWF:
 
 
 
-    def check_mmn(self, mmn, warning_precision=1e-5, ignore_upper_bands=-4, ignore_lower_bands=0, verbose=False):
+    def check_mmn(self, bkvec, mmn, warning_precision=1e-5, ignore_upper_bands=-4, ignore_lower_bands=0, verbose=False):
         """
         Check the symmetry of data in the mmn file (not working)
 
@@ -760,8 +760,8 @@ class SymmetrizerSAWF:
         print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
-        nnb = len(mmn.bk_latt)
-        bk_latt = mmn.bk_latt
+        nnb = len(bkvec.bk_latt)
+        bk_latt = bkvec.bk_latt
 
         bk_latt_map = self.get_bk_map(bk_latt)
 
@@ -770,7 +770,7 @@ class SymmetrizerSAWF:
         for ikirr in range(self.NKirr):
             ik = self.kptirr[ikirr]
             for ib in range(nnb):
-                ikb = mmn.neighbours[ik][ib]
+                ikb = bkvec.neighbours[ik][ib]
 
                 M = mmn.data[ik][ib]
                 for isym in range(self.Nsym):
@@ -780,7 +780,7 @@ class SymmetrizerSAWF:
                     if ik_sym not in mmn.data:
                         continue
                     # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
-                    M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_latt_map=bk_latt_map, bk_cart=mmn.bk_cart)
+                    M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_latt_map=bk_latt_map, bk_cart=bkvec.bk_cart)
                     M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
 
                     M_loc = M_loc[b1:b2, b1:b2]
@@ -791,7 +791,7 @@ class SymmetrizerSAWF:
 
                     if err > warning_precision or verbose:
                         print(("CORRECT :" if err < warning_precision else "ERROR   :") +
-                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {mmn.neighbours[ik_sym][ib_sym]}: err = {err}"
+                              f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {bkvec.neighbours[ik_sym][ib_sym]}: err = {err}"
                             #   "\n M_ref   = \n" + arr_to_string(M_ref) +
                             #     "\n M'  = \n" + arr_to_string(M_loc) +
                             #     "\n diff = \n" + arr_to_string(diff)
@@ -801,7 +801,10 @@ class SymmetrizerSAWF:
                     maxerr = max(maxerr, err)
         return maxerr
 
-    def transform_Mmn_kb(self, M, isym, ikirr, ib, ikb, bk_latt_map, bk_cart):
+    def transform_Mmn_kb(self, M, isym, ikirr, ib, ikb, bk_latt_map, bk_cart,
+                         symmetrizer_left=None,):
+        if symmetrizer_left is None:
+            symmetrizer_left = self
         M_loc = M.copy()
         kpoints_red = self.kpoints_all
 
@@ -830,8 +833,8 @@ class SymmetrizerSAWF:
             M_loc = M_loc.conj()
 
         M_loc = rotate_block_matrix(M_loc,
-                        lblocks=self.d_band_blocks[ikirr][isym],
-                        lindices=self.d_band_block_indices[ikirr],
+                        lblocks=symmetrizer_left.d_band_blocks[ikirr][isym],
+                        lindices=symmetrizer_left.d_band_block_indices[ikirr],
                         rblocks=rblocks,
                         rindices=rindices, )
 

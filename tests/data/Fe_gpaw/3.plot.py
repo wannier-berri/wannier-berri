@@ -1,12 +1,12 @@
 from matplotlib import pyplot as plt
 import numpy as np
+import wannierberri as wb
 from wannierberri.system.system_R import System_R
 from wannierberri.grid import Path
 from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.w90files.soc import SOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.parallel import Parallel
 
 system_dw = System_R().load_npz("system_dw")
 system_up = System_R().load_npz("system_up")
@@ -19,8 +19,7 @@ theta_deg = 0
 soc = SOC.from_gpaw("Fe-nscf.gpw")
 soc.to_npz("Fe-soc.npz")
 
-parallel = Parallel(num_cpus=16)
-
+wb.ray_init()
 chk_up = CHK.from_npz("system_up.chk.npz")
 chk_dw = CHK.from_npz("system_dw.chk.npz")
 system_soc = SystemSOC(system_up=system_up, system_down=system_dw,)

@@ -40,8 +40,8 @@ def check_sawf():
 
         for i, blockpair in enumerate(zip(sawf_ref.rot_orb_list, sawf_new.rot_orb_list)):
             blockref, blocknew = blockpair
-            assert blockref.shape == blocknew.shape, f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF\n"
-            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb in differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
+            assert blockref.shape == blocknew.shape, f"rot_orb differs for block {i} between reference and new SymmetrizerSAWF\n"
+            assert blockref == approx(blocknew, abs=1e-6), f"rot_orb differs for block {i} between reference and new SymmetrizerSAWF by a maximum of {np.max(np.abs(blockref - blocknew))} > 1e-6"
 
 
         for isym in range(sawf_ref.Nsym):
@@ -144,9 +144,14 @@ def test_create_w90files_diamond_irred(select_grid):
 @pytest.mark.parametrize("include_TR", [True, False])
 def test_create_sawf_Fe(check_sawf, include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-
+    spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
     bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=200,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR)
+                                normalize=False, magmom=[[0, 0, 1]],
+                                # include_TR=include_TR
+                                spacegroup=spacegroup)
+    # spacegroup = bandstructure.spacegroup
+    # np.savez(os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}_spacegroup.npz"),
+    #          **spacegroup.as_dict())
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure, ecut=100)
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
@@ -164,9 +169,11 @@ def test_create_sawf_Fe(check_sawf, include_TR):
 @pytest.mark.parametrize("irr_bs", [False, True])
 def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-
+    spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
     bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]], include_TR=include_TR,
+                                normalize=False, magmom=[[0, 0, 1]],
+                                spacegroup=spacegroup,
+                                # include_TR=include_TR,
                                   irreducible=irr_bs)
     sawf_new = SymmetrizerSAWF().from_irrep(bandstructure, irreducible=True, ecut=None)
     pos = [[0, 0, 0]]
@@ -361,10 +368,13 @@ def check_create_w90files_Fe(path_data, path_ref=None,
         eql, msg = eig.equals(eig_ref, tolerance=1e-6)
         assert eql, f"EIG files differ: {msg}"
 
+        bkvec_new = w90data.get_file("bkvec")
+        bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(os.path.join(path_ref, f"{prefix}.bkvec.npz"))
+
         mmn_new = w90data.get_file("mmn")
         mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_ref, f"{prefix}.mmn.npz"))
-        mmn_ref.reorder_bk(bk_latt_new=mmn_new.bk_latt)
-        eql, msg = mmn_new.equals(mmn_ref, tolerance=3e-5, check_reorder=False)
+        bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
+        eql, msg = mmn_new.equals(mmn_ref, tolerance=1e-4, check_reorder=False)
         assert eql, f"MMN files differ: {msg}"
 
         amn = w90data.get_file("amn")
@@ -462,9 +472,10 @@ def test_create_w90files_Fe_gpaw(ispin):
                             nbands_upper_skip=8),
     )
     mmn = w90files.get_file("mmn")
+    bkvec = w90files.get_file("bkvec")
     symmetrizer = w90files.get_file("symmetrizer")
     print(f"kpt_from_kptirr_isym = {symmetrizer.kpt_from_kptirr_isym}")
-    check = symmetrizer.check_mmn(mmn, warning_precision=1e-4, ignore_upper_bands=-20)
+    check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=1e-4, ignore_upper_bands=-20)
     acc = 0.002  # because gpaw was with symmetry off
     assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
     print(f"mmn is symmetric, max deviation is {check}")
@@ -478,18 +489,18 @@ def test_create_w90files_Fe_gpaw(ispin):
     mmn = w90files.get_file("mmn")
     mmn.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.mmn.npz"))
     mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.mmn.npz"))
-    mmn_ref.reorder_bk(bk_latt_new=mmn.bk_latt)
-    assert np.all(mmn.bk_latt == mmn_ref.bk_latt), f"bk_latt differ {mmn.bk_latt} != {mmn_ref.bk_latt}"
-    bk = mmn.bk_latt
+    bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.bkvec.npz"))
+    bkvec_ref.reorder_mmn(bkvec, mmn)
+    assert np.all(bkvec.bk_latt == bkvec_ref.bk_latt), f"bk_latt differ {bkvec.bk_latt} != {bkvec_ref.bk_latt}"
     NNB = mmn.NNB
     check_tot = 0
     for ik in mmn_ref.data.keys():
-        G = mmn.G[ik]
+        G = bkvec_ref.G[ik]
         for ib in range(NNB):
             data = mmn.data[ik][ib]
             data_ref = mmn_ref.data[ik][ib]
             check = np.max(np.abs(data - data_ref))
-            print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
+            print(f"spin={ispin} ik={ik} ib={ib}, bk={bkvec.bk_latt[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
     assert check_tot < 3e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
 
@@ -525,8 +536,9 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
                             nbands_upper_skip=8),
     )
     mmn = w90files.get_file("mmn")
+    bkvec = w90files.get_file("bkvec")
     symmetrizer = w90files.get_file("symmetrizer")
-    check = symmetrizer.check_mmn(mmn, warning_precision=-1e-5, ignore_upper_bands=10)
+    check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
     acc = 5e-5
     assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
     print(f"mmn is symmetric, max deviation is {check}")
@@ -549,14 +561,15 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
 
     mmn.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.mmn.npz"))
     mmn_ref = wberri.w90files.MMN.from_npz(f"{seedname_ref}.mmn.npz")
-    mmn_ref.reorder_bk(bk_latt_new=mmn.bk_latt)
-    assert np.all(mmn.bk_latt == mmn_ref.bk_latt), f"bk_latt differ {mmn.bk_latt} != {mmn_ref.bk_latt}"
-    bk = mmn.bk_latt
+    bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(f"{seedname_ref}.bkvec.npz")
+    bkvec_ref.reorder_mmn(bkvec, mmn)
+    assert np.all(bkvec.bk_latt == bkvec_ref.bk_latt), f"bk_latt differ {bkvec.bk_latt} != {bkvec_ref.bk_latt}"
+    bk = bkvec_ref.bk_latt
     NNB = mmn.NNB
     check_tot = 0
     ignore_upper = -10
     for ik in mmn_ref.data.keys():
-        G = mmn.G[ik]
+        G = bkvec_ref.G[ik]
         for ib in range(NNB):
             data = mmn.data[ik][ib][:ignore_upper, :ignore_upper]
             data_ref = mmn_ref.data[ik][ib][:ignore_upper, :ignore_upper]

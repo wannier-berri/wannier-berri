@@ -4,7 +4,6 @@ from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.parallel import Parallel
 from irrep.spacegroup import SpaceGroup
 from irrep.bandstructure import BandStructure
 
@@ -19,17 +18,15 @@ mg.show()
 
 
 
-system_dw = System_R().load_npz("system_dw", load_all_XX_R=True)
-system_up = System_R().load_npz("system_up", load_all_XX_R=True)
-system_spinor = System_R().load_npz("system_spinor", load_all_XX_R=True)
+system_dw = System_R().load_npz("system_dw")
+system_up = System_R().load_npz("system_up")
+system_spinor = System_R().load_npz("system_spinor")
 system_spinor.set_spin_pairs([[2 * i, 2 * i + 1] for i in range(9)])
 system_spinor.set_pointgroup(spacegroup=mg)
 
 # print(system_spinor.pointgroup)
 
-parallel = Parallel(num_cpus=24)
-# _interlaced()
-
+wb.ray_init()
 
 phi_deg = 33
 theta_deg = 62
@@ -72,9 +69,8 @@ for system, name in zip(
     print(f"Running {name}...")
     wb.run(system,
            grid=grid,
-           parallel=parallel,
            fout_name=f"results/{name}",
            calculators=calculators,
            adpt_num_iter=100,
-           print_progress_step=5,
+           print_progress_step_time=5,
            )

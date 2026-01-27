@@ -8,6 +8,8 @@ from gpaw import GPAW
 from ase.dft.wannier import Wannier
 from matplotlib import pyplot as plt
 import numpy as np
+import wannierberri as wberri
+
 
 # you may set some of those flags to False to speed-up further runs
 do_gpaw = False
@@ -50,11 +52,9 @@ else:
 k1 = k2 = 1. / 3
 
 if do_wberri:
-    import wannierberri as wberri
     system = wberri.System_ASE(wan, berry=True)
+    wberri.ray_init()
 
-    parallel = wberri.parallel.Parallel(num_cpus=4)
-#    parallel = wberri.parallel.Serial()
 
     path = wberri.Path(
         system, nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]], labels=["K<-", "H", "->K"], length=500)
@@ -111,7 +111,6 @@ if do_wberri:
                 "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False, kwargs_formula={"external_terms": False}),
                 "dos": wberri.calculators.static.DOS(Efermi=Efermi, tetra=False),
             },
-            parallel=parallel,
             adpt_num_iter=0,
             fout_name='Fe',
             suffix="run",

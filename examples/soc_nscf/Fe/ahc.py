@@ -3,16 +3,13 @@ from matplotlib import pyplot as plt
 import numpy as np
 import wannierberri as wb
 from wannierberri.system.system_R import System_R
-from wannierberri.grid import Path
-from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.w90files.soc import SOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.parallel import Parallel, Serial
 from irrep.spacegroup import SpaceGroup
 from irrep.bandstructure import BandStructure
 
-
+wb.ray_init()
 bandstructure = BandStructure(code="gpaw",
                               calculator_gpaw="Fe-gs.gpw",
                               onlysym=True,)
@@ -23,19 +20,15 @@ mg.show()
 
 
 
-system_dw = System_R().load_npz("system_dw", load_all_XX_R=True)
-system_up = System_R().load_npz("system_up", load_all_XX_R=True)
-system_spinor = System_R().load_npz("system_spinor", load_all_XX_R=True)
+system_dw = System_R().load_npz("system_dw")
+system_up = System_R().load_npz("system_up")
+system_spinor = System_R().load_npz("system_spinor")
 system_spinor.set_spin_pairs([[2 * i, 2 * i + 1] for i in range(9)])
 system_spinor.set_pointgroup(spacegroup=mg)
 # system_spinor.set_pointgroup([])
 # system_up.set_pointgroup([])
 # system_dw.set_pointgroup([])
 
-# print(system_spinor.pointgroup)
-
-parallel = Parallel(num_cpus=24)
-# _interlaced()
 
 
 phi_deg = 0
@@ -73,7 +66,7 @@ tetra = False
 calculators["ahc_int"] = wb.calculators.static.AHC(Efermi=Efermi, tetra=tetra, kwargs_formula={"external_terms": False})
 # calculators["ahc_ext"] = wb.calculators.static.AHC(Efermi=Efermi, tetra=tetra, kwargs_formula={"internal_terms": False})
 
-
+wb.ray_init()
 results = {}
 os.makedirs("results", exist_ok=True)
 # for name in ["up", "dw"]:
@@ -87,20 +80,19 @@ for name in ["soc", "spinor"]:
     print(f"Running {name}...")
     results[name] = wb.run(system,
            grid=grid,
-           parallel=parallel,
            fout_name=f"results/{name}",
            calculators=calculators,
            adpt_num_iter=100,
            restart=False,
-           print_progress_step=5,
+           print_progress_step_time=5,
            )
 
 
 ahc_spinor = results["spinor"].results["ahc_int"].data
 ahc_soc = results["soc"].results["ahc_int"].data
 
-plt.plot(Efermi - EF, ahc_spinor[:,2]/100, label="spinor")
-plt.plot(Efermi - EF, ahc_soc[:,2]/100, label="soc")
+plt.plot(Efermi - EF, ahc_spinor[:, 2] / 100, label="spinor")
+plt.plot(Efermi - EF, ahc_soc[:, 2] / 100, label="soc")
 plt.legend()
 plt.xlabel("E-EF (eV)")
 plt.ylabel("AHC (S/cm)")

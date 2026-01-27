@@ -32,7 +32,7 @@ setuptools.setup(
                         'scipy>=1.13',
                         'colorama',
                         'termcolor',
-                        'numba>=0.55.2',
+                        'numba>=0.60.0',
                         'packaging>=20.8',
                         'fortio>=0.4',
                         'wannier90io',
@@ -40,7 +40,7 @@ setuptools.setup(
                         'matplotlib',
                         'sympy', 
                         'spglib>=2', 
-                        'irrep>=2.4.1', 
+                        'irrep>=2.5.0', 
                         'spgrep'
                       ],
      extras_require=extras_require,
