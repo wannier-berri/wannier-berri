@@ -80,6 +80,7 @@ from .common_comparers import (
 
 from .test_cluster import check_command_output
 from .test_run import check_run
+from .test_system import check_system
 
 from .common_parallel import init_parallel_ray
 # init_parallel_ray()

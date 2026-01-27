@@ -15,7 +15,7 @@ from wannierberri.system.system_tb import System_tb
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def check_system():
     def _inner(system, name,
                properties=None,
