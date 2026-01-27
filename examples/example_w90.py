@@ -35,12 +35,11 @@ generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system, length=30, length_FFT=15)
 
-# parallel=wberri.Serial() # serial execution
-parallel = wberri.Parallel()  # parallel with  "ray",num_cpus - auto)
+
 param_tabulate = {'ibands': np.arange(4, 10)}
 
 
-
+wberri.ray_init()
 wberri.run(system,
            grid=grid,
            calculators={
@@ -54,11 +53,8 @@ wberri.run(system,
                #                 "shc_ryoo" : wberri.calculators.dynamic.SHC(Efermi=Efermi,omega=omega),
                #                  "SHC": wberri.fermiocean_dynamic.SHC(Efermi=Efermi,omega=omega,SHC_type="qiao")
            },
-           parallel=parallel,
            adpt_num_iter=0,
            fout_name='Fe',
            suffix="run",
            restart=False,
             )
-
-parallel.shutdown()

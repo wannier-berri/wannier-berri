@@ -107,7 +107,7 @@ def wannierise(w90data,
         kptirr = w90data.symmetrizer.kptirr
         symmetrizer = w90data.symmetrizer
         include_k = np.zeros(NK, dtype=bool)
-        neighbours = w90data.mmn.neighbours
+        neighbours = w90data.bkvec.neighbours
         for ik in kptirr:
             include_k[ik] = True
             include_k[neighbours[ik]] = True
@@ -138,20 +138,20 @@ def wannierise(w90data,
     else:
         raise ValueError("init should be 'amn' or 'random'")
 
-    neighbours_all = w90data.mmn.neighbours
-    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ikb] for ikb in w90data.mmn.neighbours[ik]]
+    neighbours_all = w90data.bkvec.neighbours
+    neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ikb] for ikb in w90data.bkvec.neighbours[ik]]
                                        for ik in kptirr])
 
-    # wk = w90data.mmn.wk_unique
-    bk_cart = w90data.mmn.bk_cart
+    # wk = w90data.bkvec.wk_unique
+    bk_cart = w90data.bkvec.bk_cart
     t1 = time()
     wannierizer = Wannierizer(parallel=parallel, symmetrizer=symmetrizer)
     for ik, kpt in enumerate(kptirr):
         wannierizer.add_kpoint(Mmn=w90data.mmn.data[kpt],
                             frozen=frozen[ik],
                             frozen_nb=frozen[neighbours_irreducible[ik]],
-                            wb=w90data.mmn.wk,
-                            bk=w90data.mmn.bk_cart,
+                            wb=w90data.bkvec.wk,
+                            bk=w90data.bkvec.bk_cart,
                             symmetrizer_Zirr=get_symmetrizer_Zirr(symmetrizer, ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),
                             symmetrizer_Uirr=get_symmetrizer_Uirr(symmetrizer, ik),
                             ikirr=ik,
@@ -205,7 +205,7 @@ def wannierise(w90data,
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
     update_chk(w90data=w90data, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads, print_wcc=print_wcc_chk)
     if not irreducible:
-        wcc_chk, spreads_chk = w90data.chk.get_wannier_centers(w90data.mmn, spreads=True)
+        wcc_chk, spreads_chk = w90data.chk.get_wannier_centers(w90data.bkvec, w90data.mmn, spreads=True)
         print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")
         if not np.allclose(wcc, wcc_chk, atol=1e-6):
             warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")

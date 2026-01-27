@@ -2,16 +2,16 @@
 
 Parallel execution
 ===================
-To perform execution in parallel, first one needs to create a :class:`~wannierberri.parallel.Parallel` object 
-that will describe the parameters of the calculation.
+To perform execution in parallel, first one needs to initialize Ray. e.g.
 
-.. autoclass:: wannierberri.parallel.Parallel
-   :undoc-members:
-   :show-inheritance:
+```python
+import ray
+ray.init(num_cpus=4)  # specify the number of cpus you want to use
+```
 
-.. autoclass:: wannierberri.parallel.Serial
-   :undoc-members:
-   :show-inheritance:
+Pleas refer to ray `documentation <https://docs.ray.io/en/latest/>`__ for more options of 
+
+Then, when calling ``wbrun`` function, please set the argument ``parallel=True``. e.g.
 
 **NOTE**: 
 Ray will produce a lot of temorary files during running. `/tmp` is the default directory for temporary data files. More information about `temorary files <https://docs.ray.io/en/stable/tempfile.html>`__.

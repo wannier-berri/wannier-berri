@@ -1,6 +1,6 @@
 # this test only checks that printing of options is done without Exceptions
-import wannierberri as WB
+import wannierberri as wb
 
 
 def test_print():
-    WB.welcome()
+    wb.welcome()

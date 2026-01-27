@@ -440,7 +440,7 @@ class Rvectors:
         else:
             self.logfile.write(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, numthreads, fftlib='fftw', dK=(0, 0, 0)):
+    def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0)):
         """
         set the FFT for the R to k conversion
 
@@ -450,8 +450,6 @@ class Rvectors:
             The number of k-points in the Monkhorst-Pack grid
         num_wann : int
             The number of Wannier functions
-        numthreads : int
-            The number of threads to paralize the FFT (if possible)
         fftlib : str
             The FFT library to use ('fftw' or 'numpy' or 'slow')
         dK : tuple of 3 floats in range [0,1)
@@ -461,10 +459,9 @@ class Rvectors:
         self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
 
         self.fft_R_to_k = FFT_R_to_k(
-            self.iRvec,
-            NK,
-            num_wann,
-            numthreads,
+            iRvec=self.iRvec,
+            NKFFT=NK,
+            num_wann=num_wann,
             fftlib=fftlib)
         self.fft_R2k_set = True
 
@@ -497,7 +494,7 @@ class Rvectors:
             XX_R = self.derivative(XX_R)
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
-    def set_fft_q_to_R(self, kpt_red, numthreads=1, fftlib='fftw'):
+    def set_fft_q_to_R(self, kpt_red, fftlib='fftw'):
         """
         set the FFT for the q to R conversion
 
@@ -505,8 +502,6 @@ class Rvectors:
         ----------
         kpt_red : list
             The k-point of Monkhorst-Pack grid in reduced coordinates
-        numthreads : int
-            The number of threads for the FFT
         fftlib : str
             The FFT library to use ('fftw' or 'numpy' or 'slow')
         """
@@ -522,7 +517,6 @@ class Rvectors:
             )
         assert len(self.kpt_mp_grid) == np.prod(self.mp_grid), f"the grid of k-points read from .chk file is not {self.mp_grid} kpoints"
         assert len(self.kpt_mp_grid) == len(set(self.kpt_mp_grid)), "the grid of k-points read from .chk file has duplicates"
-        self.fft_num_threads = numthreads
         self.fftlib_q2R = fftlib
         self.fft_q2R_set = True
 
@@ -533,7 +527,7 @@ class Rvectors:
         AA_q_mp = np.zeros(tuple(self.mp_grid) + shapeA, dtype=complex)
         for i, k in enumerate(self.kpt_mp_grid):
             AA_q_mp[k] = AA_q[i]
-        AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
+        AA_q_mp = execute_fft(AA_q_mp, axes=(0, 1, 2), fftlib=self.fftlib_q2R, destroy=False) / np.prod(self.mp_grid)
         AA_q_mp = self.remap_XX_from_grid_to_list_R(AA_q_mp, select_left=select_left, select_right=select_right)
         return AA_q_mp
 
@@ -544,8 +538,8 @@ class Rvectors:
         for i, k1 in enumerate(self.kpt_mp_grid):
             for j, k2 in enumerate(self.kpt_mp_grid):
                 AA_qq_mp[k1 + k2] = AA_qq[i, j]
-        AA_qq_mp = execute_fft(AA_qq_mp, axes=(0, 1, 2), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=True) / np.prod(self.mp_grid)
-        AA_qq_mp = execute_fft(AA_qq_mp, axes=(3, 4, 5), numthreads=self.fft_num_threads, fftlib=self.fftlib_q2R, destroy=False, inverse=False) / np.prod(self.mp_grid)
+        AA_qq_mp = execute_fft(AA_qq_mp, axes=(0, 1, 2), fftlib=self.fftlib_q2R, destroy=False, inverse=True) / np.prod(self.mp_grid)
+        AA_qq_mp = execute_fft(AA_qq_mp, axes=(3, 4, 5), fftlib=self.fftlib_q2R, destroy=False, inverse=False) / np.prod(self.mp_grid)
         return self.remap_XX_from_grid_to_list_RR(AA_qq_mp)
 
 

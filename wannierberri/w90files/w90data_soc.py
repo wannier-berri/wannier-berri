@@ -1,3 +1,4 @@
+from wannierberri.w90files.mmn import MMN
 from ..utility import group_numbers
 from .soc import SOC
 from .w90data import Wannier90data
@@ -6,7 +7,7 @@ from .w90data import Wannier90data
 class Wannier90dataSOC(Wannier90data):
     """Class to handle Wannier90 data with spin-orbit coupling (SOC)."""
 
-    def __init__(self, data_up, data_down, soc=None, cell=None):
+    def __init__(self, data_up, data_down, cell=None):
         self.data_up = data_up
         self.data_down = data_down
         self.bands_were_selected = False
@@ -15,7 +16,6 @@ class Wannier90dataSOC(Wannier90data):
             self.nspin = 1
         else:
             self.nspin = 2
-        self.set_file("soc", soc)
         self.cell = cell
 
     @property
@@ -54,6 +54,7 @@ class Wannier90dataSOC(Wannier90data):
                   include_pseudo=True,
                   read_npz_list=None,
                   write_npz_list=None,
+                  files=["mmn", "eig", "amn", "symmetrizer", "soc"],
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC."""
         if isinstance(calculator, str):
@@ -77,7 +78,8 @@ class Wannier90dataSOC(Wannier90data):
                               include_paw=include_paw,
                               include_pseudo=include_pseudo,
                               read_npz_list=read_npz_list,
-                              write_npz_list=write_npz_list
+                              write_npz_list=write_npz_list,
+                              files=[f for f in files if f not in ["soc", "mmn_ud"]],
                               )
         kwargs_w90data.update(kwargs)
         assert projections is not None or (projections_up is not None), \
@@ -89,29 +91,79 @@ class Wannier90dataSOC(Wannier90data):
         if nspin == 2 and projections_down is None:
             print("No projections_down provided; using projections_up for both spin channels.")
             projections_down = projections_up
+        return_bandstructure = "mmn_ud" in files and nspin == 2
 
-        data_up = Wannier90data().from_gpaw(spin_channel=0,
-                                            seedname=seedname + "-spin-0",
-                                            projections=projections_up,
-                                            **kwargs_w90data)
+        data_up = Wannier90data.from_gpaw(spin_channel=0,
+                                          seedname=seedname + "-spin-0",
+                                          projections=projections_up,
+                                          return_bandstructure=return_bandstructure,
+                                          **kwargs_w90data)
+        if return_bandstructure:
+            data_up, bandstructure_up = data_up
+
         if nspin == 2:
-            data_down = Wannier90data().from_gpaw(spin_channel=1,
+            bkvec = data_up.get_file('bkvec')
+            data_down = Wannier90data.from_gpaw(spin_channel=1,
                                                 seedname=seedname + "-spin-1",
                                                 projections=projections_down,
+                                                return_bandstructure=return_bandstructure,
+                                                bkvec=bkvec,
                                                 **kwargs_w90data)
+            if return_bandstructure:
+                data_down, bandstructure_down = data_down
         else:
             data_down = None
-        soc = None
-        if read_npz_list is None or "soc" in read_npz_list:
-            try:
-                soc = SOC.from_npz(seedname + ".soc.npz")
-            except FileNotFoundError:
-                soc = None
-        if soc is None:
-            soc = SOC.from_gpaw(calculator=calculator)
-        if write_npz_list is None or "soc" in write_npz_list:
-            soc.to_npz(seedname + ".soc.npz")
-        return cls(data_up=data_up, data_down=data_down, soc=soc, cell=cell)
+
+        data = cls(data_up=data_up, data_down=data_down, cell=cell)
+
+        if "soc" in files:
+            soc = None
+            if read_npz_list is None or "soc" in read_npz_list:
+                try:
+                    soc = SOC.from_npz(seedname + ".soc.npz")
+                except FileNotFoundError:
+                    soc = None
+            if soc is None:
+                soc = SOC.from_gpaw(calculator=calculator)
+            if write_npz_list is None or "soc" in write_npz_list:
+                soc.to_npz(seedname + ".soc.npz")
+            data.set_file("soc", soc)
+
+        if "mmn_ud" in files and nspin == 2:
+            mmn_ud = None
+            if read_npz_list is None or "mmn_ud" in read_npz_list:
+                try:
+                    mmn_ud = MMN.from_npz(seedname + ".mmn_ud.npz")
+                except FileNotFoundError:
+                    mmn_ud = None
+            if mmn_ud is None:
+                bkvec = data_up.get_file('bkvec')
+                mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
+                                                bandstructure=bandstructure_down,
+                                                irreducible=data.is_irreducible,
+                                                symmetrizer_left=data_up.get_file("symmetrizer"),
+                                                symmetrizer=data_down.get_file("symmetrizer"),
+                                                bkvec=bkvec)
+            data.set_file("mmn_ud", mmn_ud)
+            if write_npz_list is None or "mmn_ud" in write_npz_list:
+                mmn_ud.to_npz(seedname + ".mmn_ud.npz")
+
+            mmn_du = None
+            if read_npz_list is None or "mmn_du" in read_npz_list:
+                try:
+                    mmn_du = MMN.from_npz(seedname + ".mmn_du.npz")
+                except FileNotFoundError:
+                    mmn_du = None
+            if mmn_du is None:
+                mmn_du = MMN.from_bandstructure(bandstructure_left=bandstructure_down,
+                                                bandstructure=bandstructure_up,
+                                                irreducible=data.is_irreducible,
+                                                symmetrizer_left=data_down.get_file("symmetrizer"),
+                                                symmetrizer=data_up.get_file("symmetrizer"),
+                                                bkvec=bkvec,)
+            data.set_file("mmn_du", mmn_du)
+        return data
+
 
     def select_bands(self, **kwargs):
         """Select bands for both spin channels."""
@@ -120,6 +172,10 @@ class Wannier90dataSOC(Wannier90data):
             self.data_down.select_bands(selected_bands=selected_bands_up)
         if self.has_file("soc"):
             self.get_file("soc").select_bands(selected_bands_up, selected_bands_up)
+        if self.has_file("mmn_ud"):
+            self.get_file("mmn_ud").select_bands(selected_bands=selected_bands_up)
+        if self.has_file("mmn_du"):
+            self.get_file("mmn_du").select_bands(selected_bands=selected_bands_up)
         self.bands_were_selected = True
 
     def wannierise(self, ispin=None, **kwargs):

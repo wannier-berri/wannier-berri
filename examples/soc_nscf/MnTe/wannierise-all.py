@@ -44,10 +44,10 @@ def get_wannierised(prefix, spin_channel, save_name=None):
 
     proj_Mn1_d = Projection(position_num=positions_Mn[0], orbital='d', spacegroup=sg)
     proj_Mn2_d = Projection(position_num=positions_Mn[1], orbital='d', spacegroup=sg)
-    proj_Mn1_s = Projection(position_num=positions_Mn[0], orbital='s', spacegroup=sg)
-    proj_Mn2_s = Projection(position_num=positions_Mn[1], orbital='s', spacegroup=sg)
-    proj_Mn1_p = Projection(position_num=positions_Mn[0], orbital='p', spacegroup=sg)
-    proj_Mn2_p = Projection(position_num=positions_Mn[1], orbital='p', spacegroup=sg)
+    # proj_Mn1_s = Projection(position_num=positions_Mn[0], orbital='s', spacegroup=sg)
+    # proj_Mn2_s = Projection(position_num=positions_Mn[1], orbital='s', spacegroup=sg)
+    # proj_Mn1_p = Projection(position_num=positions_Mn[0], orbital='p', spacegroup=sg)
+    # proj_Mn2_p = Projection(position_num=positions_Mn[1], orbital='p', spacegroup=sg)
     proj_Te_s = Projection(position_num=positions_Te, orbital='s', spacegroup=sg)
     proj_Te_p = Projection(position_num=positions_Te, orbital='p', spacegroup=sg)
 
@@ -69,7 +69,7 @@ def get_wannierised(prefix, spin_channel, save_name=None):
     else:
         raise ValueError("spin_channel must be 0 or 1")
 
-    
+
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     try:
         symmetrizer = SAWF().from_npz(f"symmetrizer-spin-{spin_channel}.npz")

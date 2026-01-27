@@ -23,9 +23,9 @@ def test_fourier(system_Fe_W90):
 
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
 
-    data_fftw = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='fftw')
-    data_slow = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='slow')
-    data_numpy = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='numpy')
+    data_fftw = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='fftw')
+    data_slow = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='slow')
+    data_numpy = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='numpy')
 
     test_fields = ["E_K", "D_H", "A_H", "dEig_inv"]
 

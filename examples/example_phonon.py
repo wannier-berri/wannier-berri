@@ -26,9 +26,7 @@ generators = ["C4z", "C4x", "TimeReversal"]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system, length=10, NKFFT=4)
 
-# parallel=wberri.Serial() # serial execution
-parallel = wberri.Parallel(num_cpus=4)  # parallel with  "ray",num_cpus - auto)
-
+wberri.ray_init()
 
 t0 = time()
 wberri.run(system,
@@ -38,7 +36,6 @@ wberri.run(system,
                "dos_tetra": wberri.calculators.static.DOS(Efermi=omega, tetra=True),
                "cumdos_tetra": wberri.calculators.static.CumDOS(Efermi=omega, tetra=True),
            },
-           parallel=parallel,
            use_irred_kpt=False,
            symmetrize=True,
            adpt_num_iter=0,
@@ -55,7 +52,6 @@ wberri.run(system,
                "dos_tetra": wberri.calculators.static.DOS(Efermi=omega, tetra=True),
                "cumdos_tetra": wberri.calculators.static.CumDOS(Efermi=omega, tetra=True),
            },
-           parallel=parallel,
            use_irred_kpt=True,
            symmetrize=True,
            adpt_num_iter=0,
@@ -83,7 +79,6 @@ result = wberri.run(system,
                     "Energy": wberri.calculators.tabulate.Energy(),
                 }, mode="path"),
             },
-    parallel=parallel,
     use_irred_kpt=True,
     symmetrize=True,
     adpt_num_iter=0,
@@ -106,6 +101,3 @@ path_result.plot_path_fat(path,
               show_fig=False,
               label="WB"
               )
-
-
-parallel.shutdown()

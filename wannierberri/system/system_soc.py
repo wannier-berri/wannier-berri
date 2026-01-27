@@ -158,7 +158,7 @@ class SystemSOC(System_R):
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
 
-        self.rvec.set_fft_q_to_R(chk_up.kpt_latt, numthreads=1, fftlib='fftw')
+        self.rvec.set_fft_q_to_R(chk_up.kpt_latt, fftlib='fftw')
         NK = chk_up.num_kpts
 
         if kptirr is None:
@@ -278,19 +278,19 @@ class SystemSOC(System_R):
 
 
     @classmethod
-    def from_npz(cls, path, silent=True, load_all_XX_R=True, exclude_properties=()):
+    def from_npz(cls, path, silent=True, exclude_properties=(), matrices=None):
         if not silent:
             print(f"Loading SystemSOC from {path}")
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
-        system_up = System_R().load_npz(path=os.path.join(path, "system_up"), load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        system_up = System_R().load_npz(path=os.path.join(path, "system_up"), exclude_properties=exclude_properties, matrices=matrices)
         path_down = os.path.join(path, "system_down")
         if os.path.exists(path_down):
-            system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+            system_down = System_R().load_npz(path=path_down, exclude_properties=exclude_properties, matrices=matrices)
         else:
             system_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, silent=silent)
-        system_soc.load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        system_soc.load_npz(path, exclude_properties=exclude_properties, matrices=matrices)
         if system_soc.has_soc_R:
             system_soc.has_soc = True
         return system_soc

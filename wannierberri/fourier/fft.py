@@ -12,7 +12,7 @@ except Exception as err:
     warnings.warn(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
 
 
-def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
+def fft_W(inp, axes, inverse=False, destroy=True):
     try:
         assert inp.dtype == complex
         fft_in = pyfftw.empty_aligned(inp.shape, dtype='complex128')
@@ -22,8 +22,7 @@ def fft_W(inp, axes, inverse=False, destroy=True, numthreads=1):
             fft_out,
             axes=axes,
             flags=('FFTW_ESTIMATE',) + (('FFTW_DESTROY_INPUT',) if destroy else ()),
-            direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD',
-            threads=numthreads)
+            direction='FFTW_BACKWARD' if inverse else 'FFTW_FORWARD')
         fft_object(inp)
         return fft_out
     except RuntimeError as err:
@@ -42,12 +41,12 @@ def fft_np(inp, axes, inverse=False):
         return np.fft.fftn(inp, axes=axes)
 
 
-def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='fftw'):
+def execute_fft(inp, axes, inverse=False, destroy=True, fftlib='fftw'):
     fftlib = fftlib.lower()
     if fftlib == 'fftw' and not PYFFTW_IMPORTED:
         fftlib = 'numpy'
     if fftlib == 'fftw':
-        return fft_W(inp, axes, inverse=inverse, destroy=destroy, numthreads=numthreads)
+        return fft_W(inp, axes, inverse=inverse, destroy=destroy)
     elif fftlib == 'numpy':
         return fft_np(inp, axes, inverse=inverse)
     else:
@@ -56,7 +55,7 @@ def execute_fft(inp, axes, inverse=False, destroy=True, numthreads=1, fftlib='ff
 
 class FFT_R_to_k:
 
-    def __init__(self, iRvec, NKFFT, num_wann, numthreads=1, fftlib='fftw', name=None):
+    def __init__(self, iRvec, NKFFT, num_wann, fftlib='fftw', name=None):
         t0 = time()
         self.NKFFT = tuple(NKFFT)
         self.num_wann = num_wann
@@ -75,8 +74,7 @@ class FFT_R_to_k:
                 fft_out,
                 axes=(0, 1, 2),
                 flags=('FFTW_ESTIMATE', 'FFTW_DESTROY_INPUT'),
-                direction='FFTW_BACKWARD',
-                threads=numthreads)
+                direction='FFTW_BACKWARD')
         self.iRvec = iRvec % self.NKFFT
         self.nRvec = iRvec.shape[0]
         self.time_init = time() - t0

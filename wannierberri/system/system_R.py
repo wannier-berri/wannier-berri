@@ -75,40 +75,12 @@ class System_R(System):
 
     half_wann_matrices = set()
 
-    def __init__(self,
-                 berry=False,
-                 morb=False,
-                 spin=False,
-                 SHCryoo=False,
-                 SHCqiao=False,
-                 OSD=False,
-                 _getFF=False,
-                 ws_dist_tol=0.05,
-                 **parameters):
+    def __init__(self, **parameters):
 
         super().__init__(**parameters)
-        self.needed_R_matrices = {'Ham'}
-
-        if morb:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC'])
-        if berry:
-            self.needed_R_matrices.add('AA')
-        if spin:
-            self.needed_R_matrices.add('SS')
-        if _getFF:
-            self.needed_R_matrices.add('FF')
-        if SHCryoo:
-            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SH'])
-        if SHCqiao:
-            self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
-        if OSD:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
-
-        if self.force_internal_terms_only:
-            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham', 'SS'])
 
         self._XX_R = dict()
-        self.ws_dist_tol = ws_dist_tol
+
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_red=None):
         """
@@ -129,18 +101,6 @@ class System_R(System):
             else:
                 self.wannier_centers_cart = np.zeros((self.num_wann, 3))
         self.clear_cached_wcc()
-
-    def need_R_any(self, keys):
-        """returns True is any of the listed matrices is needed in to be set
-
-        keys : str or list of str
-            'AA', 'BB', 'CC', etc
-        """
-        if not isinstance(keys, (list, tuple)):
-            keys = [keys]
-        for k in keys:
-            if k in self.needed_R_matrices:
-                return True
 
     def get_R_mat(self, key):
         try:
@@ -614,7 +574,7 @@ class System_R(System):
         logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
 
 
-    def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
+    def do_ws_dist(self, mp_grid, wannier_centers_cart=None, ws_dist_tol=1e-5):
         logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
@@ -626,7 +586,7 @@ class System_R(System):
             wannier_centers_cart = self.wannier_centers_cart
         iRvec_old = self.rvec.iRvec
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
-        self.rvec.set_Rvec(mp_grid, ws_tolerance=self.ws_dist_tol)
+        self.rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)
         for key, val in self._XX_R.items():
             logfile.write(f"using new ws_dist for {key}\n")
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
@@ -877,15 +837,15 @@ class System_R(System):
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             logfile.write(" - Ok!\n")
 
-    def load_npz(self, path, load_all_XX_R=False, exclude_properties=(), legacy=False):
+    def load_npz(self, path, exclude_properties=(), legacy=False, matrices=None):
         """
         Save system to a directory of npz files
         Parameters
         ----------
+        matrices : list of str
+            list of the R matrices, e.g. ```['Ham','AA',...]``` to be loaded. if None: all R-matrices will be loaded
         path : str
             path to saved files. If does not exist - will be created (unless overwrite=False)
-        load_all_XX_R : list of str
-            load all matrices which were saved
         exclude_properties : list of str
             dp not save certain properties - duse on your own risk
         legacy : bool
@@ -932,11 +892,10 @@ class System_R(System):
             logfile.write(" - Ok!\n")
             keys_processed.add(key)
 
-        if load_all_XX_R:
+        if matrices is None:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
-            R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
-            self.needed_R_matrices.update(R_matrices)
-        for key in self.needed_R_matrices:
+            matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
+        for key in matrices:
             logfile.write(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
 
