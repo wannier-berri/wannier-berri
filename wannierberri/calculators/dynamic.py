@@ -154,6 +154,9 @@ class JDOS(DynamicCalculator):
         self.Formula = Formula_dyn_ident
         self.dtype = float
 
+    def factor_Efermi(self, E1, E2):
+        return self.FermiDirac(E1) - self.FermiDirac(E2)
+
     def factor_omega(self, E1, E2):
         return self.smear(E2 - E1 - self.omega)
 
