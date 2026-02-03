@@ -12,11 +12,11 @@ print("calculating symmetrizer")
 path = "pwscf/"
 
 try:
-    symmetrizer = SAWF().from_npz("Ni4W.sawf.npz")
+    symmetrizer = SAWF.from_npz("Ni4W.sawf.npz")
 except FileNotFoundError:
     bandstructure = BandStructure(prefix=path + "Ni4W", code="espresso",
                                 Ecut=100, include_TR=False)
-    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.to_npz("Ni4W.sawf.npz")
 
 eig = symmetrizer.eig_irr

@@ -78,12 +78,12 @@ def test_create_sawf_diamond(check_sawf):
                             orbital='s',
                             spacegroup=bandstructure.spacegroup
                             )
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure)
+    sawf_new = SymmetrizerSAWF.from_irrep(bandstructure)
     sawf_new.set_D_wann_from_projections([projection])
 
     tmp_sawf_path = os.path.join(OUTPUT_DIR, "diamond")
     sawf_new.to_npz(tmp_sawf_path + ".sawf.npz")
-    sawf_ref = SymmetrizerSAWF().from_npz(data_dir + "/diamond.sawf.npz")
+    sawf_ref = SymmetrizerSAWF.from_npz(data_dir + "/diamond.sawf.npz")
     check_sawf(sawf_new, sawf_ref)
 
 
@@ -105,16 +105,16 @@ def test_create_w90files_diamond_irred(select_grid):
                             spacegroup=bandstructure.spacegroup
                             )
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[projection])
-    w90data = wberri.w90files.Wannier90data(
-    ).from_bandstructure(bandstructure,
-                         files=["mmn", "eig", "amn", "unk", "symmetrizer"],
-                         write_npz_list=[],
-                         read_npz_list=[],
-                         seedname=os.path.join(path_tmp, prefix),
-                         projections=proj_set,
-                         normalize=False,
-                         irreducible=True,
-                         )
+    w90data = wberri.w90files.Wannier90data.from_bandstructure(
+                        bandstructure,
+                        files=["mmn", "eig", "amn", "unk", "symmetrizer"],
+                        write_npz_list=[],
+                        read_npz_list=[],
+                        seedname=os.path.join(path_tmp, prefix),
+                        projections=proj_set,
+                        normalize=False,
+                        irreducible=True,
+                        )
     w90data.wannierise(
         froz_min=-8,
         froz_max=20,
@@ -152,7 +152,7 @@ def test_create_sawf_Fe(check_sawf, include_TR):
     # spacegroup = bandstructure.spacegroup
     # np.savez(os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}_spacegroup.npz"),
     #          **spacegroup.as_dict())
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure, ecut=100)
+    sawf_new = SymmetrizerSAWF.from_irrep(bandstructure, ecut=100)
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
     proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
@@ -161,7 +161,7 @@ def test_create_sawf_Fe(check_sawf, include_TR):
     fname = f"Fe_TR={include_TR}.sawf.npz"
     tmp_sawf_path = os.path.join(OUTPUT_DIR, fname)
     sawf_new.to_npz(tmp_sawf_path)
-    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", fname))
+    sawf_ref = SymmetrizerSAWF.from_npz(os.path.join(REF_DIR, "sawf", fname))
     check_sawf(sawf_new, sawf_ref)
 
 
@@ -175,7 +175,7 @@ def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
                                 spacegroup=spacegroup,
                                 # include_TR=include_TR,
                                   irreducible=irr_bs)
-    sawf_new = SymmetrizerSAWF().from_irrep(bandstructure, irreducible=True, ecut=None)
+    sawf_new = SymmetrizerSAWF.from_irrep(bandstructure, irreducible=True, ecut=None)
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
     proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
@@ -185,7 +185,7 @@ def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
     tmp_sawf_path = os.path.join(OUTPUT_DIR, fname)
     sawf_new.to_npz(tmp_sawf_path)
     fname = f"Fe_TR={include_TR}-irr.sawf.npz"
-    sawf_ref = SymmetrizerSAWF().from_npz(os.path.join(REF_DIR, "sawf", fname))
+    sawf_ref = SymmetrizerSAWF.from_npz(os.path.join(REF_DIR, "sawf", fname))
     check_sawf(sawf_new, sawf_ref)
 
 
@@ -219,8 +219,8 @@ def test_irreducible_vs_full_Fe():
         read_npz_list=[],
         normalize=False)
 
-    w90data_full = wberri.w90files.Wannier90data().from_bandstructure(bandstructure_full, **kwargs_w90file)
-    w90data_irr = wberri.w90files.Wannier90data().from_bandstructure(bandstructure_irr, **kwargs_w90file)
+    w90data_full = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_full, **kwargs_w90file)
+    w90data_irr = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_irr, **kwargs_w90file)
     assert w90data_full.irreducible is False, "w90data_full should not be irreducible"
     assert w90data_irr.irreducible is True, "w90data_irr should be irreducible"
     nkp_full = len(w90data_full.mmn.data)
@@ -328,17 +328,17 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
 
-    w90data = wberri.w90files.Wannier90data(
-    ).from_bandstructure(bandstructure,
-                         files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
-                         write_npz_list=[],
-                         read_npz_list=[],
-                         seedname=os.path.join(path_tmp, prefix),
-                         projections=proj_set,
-                         normalize=False,
-                         unk_grid=(18,) * 3,
-                         irreducible=irreducible,
-                         )
+    w90data = wberri.w90files.Wannier90data.from_bandstructure(
+                        bandstructure,
+                        files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
+                        write_npz_list=[],
+                        read_npz_list=[],
+                        seedname=os.path.join(path_tmp, prefix),
+                        projections=proj_set,
+                        normalize=False,
+                        unk_grid=(18,) * 3,
+                        irreducible=irreducible,
+                        )
     print(f"kpoints in w90data: {w90data.get_file('mmn').data.keys()} irreducible={w90data.irreducible} /{irreducible}")
 
 
@@ -456,7 +456,7 @@ def test_create_w90files_Fe_gpaw(ispin):
     proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
     proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
     proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
-    w90files = wberri.w90files.Wannier90data().from_gpaw(
+    w90files = wberri.w90files.Wannier90data.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
@@ -520,7 +520,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
     seedname = os.path.join(path_output, f"Fe-irred-spin-{ispin}")
     seedname_ref = os.path.join(path_data, f"Fe-irred-spin-{ispin}")
-    w90files = wberri.w90files.Wannier90data().from_gpaw(
+    w90files = wberri.w90files.Wannier90data.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
@@ -552,7 +552,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     amn_ref = wberri.w90files.AMN.from_npz(f"{seedname_ref}.amn.npz")  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
     assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
 
-    symmetrizer_ref = SymmetrizerSAWF().from_npz(f"{seedname_ref}.symmetrizer.npz")
+    symmetrizer_ref = SymmetrizerSAWF.from_npz(f"{seedname_ref}.symmetrizer.npz")
     check_sawf(symmetrizer, symmetrizer_ref)
 
     # for ik, E in eig_ref.data.items():
@@ -595,7 +595,7 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     proj_set = ProjectionsSet(projections=[proj_s])
     seedname = os.path.join(path_output, "diamond-irred")
     # seedname_ref = os.path.join(path_data, "diamond-irred")
-    w90data = wberri.w90files.Wannier90data().from_gpaw(
+    w90data = wberri.w90files.Wannier90data.from_gpaw(
         calculator=calc,
         spin_channel=0,
         projections=proj_set,

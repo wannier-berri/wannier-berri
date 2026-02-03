@@ -28,7 +28,7 @@
 
 #     # def from_dict(self, dic):
 #     #     t0 = time()
-#     #     super().from_dict(dic)
+#     #     super.from_dict(dic)
 #     #     # for k in self.npz_tags:
 #     #     #     self.__setattr__(k, dic[k])
 #     #     t01 = time()

@@ -185,12 +185,12 @@ class Wannier90data:
             symmetrizer_read_ok = False
             if "symmetrizer" in read_npz_list:
                 try:
-                    symmetrizer = SymmetrizerSAWF().from_npz(fname)
+                    symmetrizer = SymmetrizerSAWF.from_npz(fname)
                     symmetrizer_read_ok = True
                 except Exception as e:
                     warnings.warn(f"Failed to read symmetrizer from {fname}: {e}")
             if not symmetrizer_read_ok:
-                symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure,
+                symmetrizer = SymmetrizerSAWF.from_irrep(bandstructure,
                                                            grid=mp_grid,
                                                            irreducible=irreducible,
                                                            ecut=ecut_sym,
@@ -379,10 +379,12 @@ class Wannier90data:
         else:
             return self
 
-    def from_npz(self,
+    @classmethod
+    def from_npz(cls,
                 seedname="wannier90",
                 files=("mmn", "eig", "amn"),
                 irreducible=False):
+        self = cls()
         files = copy(files)
         if set(["mmn", "uHu", "uIu", "sHu", "sIu"]).intersection(set(files)):
             if "bkvec" not in files:
@@ -391,7 +393,7 @@ class Wannier90data:
         for f in files:
             try:
                 if f == "symmetrizer":
-                    val = SymmetrizerSAWF().from_npz(seedname + ".symmetrizer.npz")
+                    val = SymmetrizerSAWF.from_npz(seedname + ".symmetrizer.npz")
                 elif f in FILES_CLASSES:
                     val = FILES_CLASSES[f].from_npz(seedname + "." + f + ".npz")
                 else:
@@ -466,8 +468,8 @@ class Wannier90data:
         weight = self.symmetrizer.kptirr_weights
         return kptirr, weight
 
-
-    def from_w90_files(self, seedname="wannier90",
+    @classmethod
+    def from_w90_files(cls, seedname="wannier90",
                      read_npz=True,
                      write_npz_list=('mmn', 'eig', 'amn'),
                      write_npz_formatted=True,
@@ -475,6 +477,7 @@ class Wannier90data:
                      formatted=tuple(),
                      readfiles=tuple(),
                      ):
+        self = cls()
         assert not (read_npz and overwrite_npz), "cannot read and overwrite npz files"
         self.seedname = copy(seedname)
         # self.read_npz = read_npz
@@ -674,9 +677,9 @@ class Wannier90data:
             raise RuntimeError("chk file was already set")
         if val is None:
             if read:
-                val = CheckPoint().from_w90_file(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+                val = CheckPoint.from_w90_file(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
             else:
-                val = CheckPoint().from_win(win=self.win)
+                val = CheckPoint.from_win(win=self.win)
 
         self._files['chk'] = val
         self.wannierised = read

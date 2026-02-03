@@ -37,10 +37,10 @@ def test_wannierise(outer_window):
         shutil.copy(os.path.join(data_dir, f"UNK{i + 1:05d}.1"),
                     os.path.join(tmp_dir, f"UNK{i + 1:05d}.1"))
     print("prefix = ", prefix)
-    symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
+    symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
         w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
@@ -137,9 +137,9 @@ spreads_Fe_spd_444_nowin = np.array([1.4903928, 1.45260483, 1.62040443, 1.586837
 @pytest.mark.parametrize("use_window", [True, False])
 def test_sitesym_Fe(include_TR, use_window):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
-    symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
+    symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
     if use_window:
         w90data.select_bands(win_min=-8, win_max=50)

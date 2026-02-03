@@ -10,8 +10,8 @@ import wannierberri as wberri
 
 wberri.ray_init()
 
-system_dw = System_R().load_npz("system_dw")
-system_up = System_R().load_npz("system_up")
+system_dw = System_R.from_npz("system_dw")
+system_up = System_R.from_npz("system_up")
 
 \
 

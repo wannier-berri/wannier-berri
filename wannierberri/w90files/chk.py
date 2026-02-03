@@ -119,9 +119,9 @@ class CheckPoint(SavableNPZ):
     def NK(self):
         return self.num_kpts
 
-
-    def from_w90_file(self, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-
+    @classmethod
+    def from_w90_file(cls, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
+        
         kmesh_tol = kmesh_tol  # will be used in set_bk
         bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
@@ -142,7 +142,7 @@ class CheckPoint(SavableNPZ):
         assert len(exclude_bands) == num_exclude_bands, f"read exclude_bands are {exclude_bands}, length={len(exclude_bands)} while num_exclude_bands={num_exclude_bands}"
         real_lattice = readfloat().reshape((3, 3), order='F')
         recip_lattice = readfloat().reshape((3, 3), order='F')
-        assert np.linalg.norm(real_lattice.dot(recip_lattice.T) / (2 * np.pi) - np.eye(3)) < 1e-14, f"the read real and reciprocal lattices are not consistent {self.real_lattice.dot(self.recip_lattice.T) / (2 * np.pi)}!=identiy"
+        assert np.linalg.norm(real_lattice.dot(recip_lattice.T) / (2 * np.pi) - np.eye(3)) < 1e-14, f"the read real and reciprocal lattices are not consistent {real_lattice.dot(recip_lattice.T) / (2 * np.pi)}!=identiy"
         num_kpts = readint()[0]
         mp_grid = readint()
         assert len(mp_grid) == 3
@@ -154,7 +154,7 @@ class CheckPoint(SavableNPZ):
         have_disentangled = bool(readint()[0])
         # print(f"have_disentangled={have_disentangled}")
         if have_disentangled:
-            self.omega_invariant = readfloat()[0]
+            _ = readfloat()[0] # omega_invariant
             lwindow = np.array(readint().reshape((num_kpts, num_bands)), dtype=bool)
             ndimwin = readint()
             # print(f"ndimwin={ndimwin}")
@@ -184,14 +184,13 @@ class CheckPoint(SavableNPZ):
         wannier_centers_cart = readfloat().reshape((num_wann, 3))
         wannier_spreads = readfloat().reshape((num_wann))
         print(f"Time to read .chk : {time() - t0}")
-        self.__init__(real_lattice=real_lattice,
+        return cls(real_lattice=real_lattice,
                       v_matrix=v_matrix,
                       wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
                       kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
                       kpt_latt=kpt_latt, mp_grid=mp_grid,
         )
 
-        return self
 
     @property
     def wannierised(self):
@@ -507,8 +506,8 @@ class CheckPoint(SavableNPZ):
 
 
 
-
-    def from_win(self, win):
+    @classmethod
+    def from_win(cls, win):
         print("creating empty CheckPoint from Win file")
         mp_grid = np.array(win.data["mp_grid"])
         kpt_latt = win.get_kpoints()
@@ -521,12 +520,11 @@ class CheckPoint(SavableNPZ):
             num_bands = win["num_bands"]
         except KeyError:
             num_bands = None
-        self.__init__(real_lattice=real_lattice,
+        return cls(real_lattice=real_lattice,
                       num_wann=num_wann,
                       num_bands=num_bands,
                       kpt_latt=kpt_latt,
                       mp_grid=mp_grid,)
-        return self
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:

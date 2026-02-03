@@ -35,8 +35,8 @@ if True:
     # projections_set = ProjectionsSet(projections=projections_spd)
 
 
-    w90data = wberri.w90files.Wannier90data(
-    ).from_bandstructure(bandstructure,
+    w90data = wberri.w90files.Wannier90data.from_bandstructure(
+                        bandstructure,
                         seedname="./Fe",
                         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
                         projections=projections_set,
@@ -60,7 +60,7 @@ if True:
 
 else:
     # for further runs just load the data
-    w90data = wberri.w90files.Wannier90data().from_npz(seedname="./Fe_wan",
+    w90data = wberri.w90files.Wannier90data.from_npz(seedname="./Fe_wan",
                                                    files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
 system = wberri.system.System_w90(w90data=w90data, spin=True, berry=True)

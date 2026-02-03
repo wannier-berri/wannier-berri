@@ -18,13 +18,13 @@ t0 = time()
 path_data = Path("./pwscf/")  # adjust path if needed to point to the data in the tests fo wannier-berri repository
 
 includeTR = False
-w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=str(path_data / "Ni4W"), readfiles=["amn", "mmn", "eig", "win"])
+w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=str(path_data / "Ni4W"), readfiles=["amn", "mmn", "eig", "win"])
 t1 = time()
 sitesym = True
 
 if sitesym:
     try:
-        symmetrizer = SAWF().from_npz("Ni4W.sawf.npz")
+        symmetrizer = SAWF.from_npz("Ni4W.sawf.npz")
         assert symmetrizer.num_wann == 34
     except (FileNotFoundError, AssertionError) as e:
         print(f"SAWF file not found ({e}), creating it")
@@ -33,7 +33,7 @@ if sitesym:
                                     prefix=os.path.join(path_data, "Ni4W"),
                                     Ecut=100,
                                     normalize=False, include_TR=includeTR)
-        symmetrizer = SAWF().from_irrep(bandstructure)
+        symmetrizer = SAWF.from_irrep(bandstructure)
         spacegroup = symmetrizer.spacegroup
 
 

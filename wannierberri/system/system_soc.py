@@ -283,10 +283,10 @@ class SystemSOC(System_R):
             print(f"Loading SystemSOC from {path}")
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
-        system_up = System_R().load_npz(path=os.path.join(path, "system_up"), exclude_properties=exclude_properties, matrices=matrices)
+        system_up = System_R.from_npz(path=os.path.join(path, "system_up"), exclude_properties=exclude_properties, matrices=matrices)
         path_down = os.path.join(path, "system_down")
         if os.path.exists(path_down):
-            system_down = System_R().load_npz(path=path_down, exclude_properties=exclude_properties, matrices=matrices)
+            system_down = System_R.from_npz(path=path_down, exclude_properties=exclude_properties, matrices=matrices)
         else:
             system_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, silent=silent)
