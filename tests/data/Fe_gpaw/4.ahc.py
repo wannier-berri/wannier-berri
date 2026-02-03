@@ -18,9 +18,9 @@ mg.show()
 
 
 
-system_dw = System_R().load_npz("system_dw")
-system_up = System_R().load_npz("system_up")
-system_spinor = System_R().load_npz("system_spinor")
+system_dw = System_R.from_npz("system_dw")
+system_up = System_R.from_npz("system_up")
+system_spinor = System_R.from_npz("system_spinor")
 system_spinor.set_spin_pairs([[2 * i, 2 * i + 1] for i in range(9)])
 system_spinor.set_pointgroup(spacegroup=mg)
 

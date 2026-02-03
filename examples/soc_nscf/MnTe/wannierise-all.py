@@ -72,16 +72,16 @@ def get_wannierised(prefix, spin_channel, save_name=None):
 
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     try:
-        symmetrizer = SAWF().from_npz(f"symmetrizer-spin-{spin_channel}.npz")
+        symmetrizer = SAWF.from_npz(f"symmetrizer-spin-{spin_channel}.npz")
     except FileNotFoundError:
-        symmetrizer = SAWF().from_irrep(bandstructure,
+        symmetrizer = SAWF.from_irrep(bandstructure,
                                         unitary_params={'error_threshold': 0.1,
                                                         'warning_threshold': 0.01,
                                                         'nbands_upper_skip': 8})
         symmetrizer.to_npz(f"symmetrizer-spin-{spin_channel}.npz")
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = Wannier90data().from_w90_files(prefix, readfiles=["win", "eig", "mmn"],
+    w90data = Wannier90data.from_w90_files(prefix, readfiles=["win", "eig", "mmn"],
                                              read_npz=True)
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)

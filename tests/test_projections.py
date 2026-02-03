@@ -282,12 +282,12 @@ def test_create_amn_diamond_s_bond():
         shutil.copy(os.path.join(data_dir, prefix + "." + ext),
                     os.path.join(tmp_dir, prefix + "." + ext))
     print("prefix = ", prefix)
-    symmetrizer = SAWF().from_npz(prefix + ".sawf.npz")
+    symmetrizer = SAWF.from_npz(prefix + ".sawf.npz")
     # try:
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
     print("amn.shape = ", amn.data[0].shape)
     print("mmn.shape = ", w90data.mmn.data[0].shape)
     print("eig.shape = ", w90data.eig.data[0].shape)
@@ -343,7 +343,7 @@ def test_create_amn_diamond_p_bond():
 
     print("positions_cart = ", projection.positions @ lattice)
 
-    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections([projection])
 
     lattice = symmetrizer.spacegroup.lattice
@@ -373,7 +373,7 @@ def test_create_amn_diamond_p_bond():
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data().from_w90_files(
+    w90data = wberri.w90files.Wannier90data.from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
         readfiles=["mmn", "eig", "win", "unk"])
 
@@ -442,7 +442,7 @@ def test_create_amn_diamond_sp3():
 
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections=projections,
                            normalize=True, return_object=True)
-    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections(projections)
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
@@ -461,7 +461,7 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
     w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)

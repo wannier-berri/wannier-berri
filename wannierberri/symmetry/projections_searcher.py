@@ -161,6 +161,7 @@ class EBRsearcher:
                 for j in range(self.num_trial_projections):
                     debug_msg(f"  j={j} {self.irreps_per_projection_vectors[i][j]}")
 
+
     def find_combinations(self, num_wann_min=0, num_wann_max=None, fixed=[]):
         """
         find all possible combinations of trial projections that cover all the irreps inside the frozen window

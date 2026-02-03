@@ -86,8 +86,8 @@ class SymmetrizerSAWF:
         self.kptirr = np.zeros(0, dtype=int)
         self.kptirr2kpt = np.zeros((0, 0), dtype=int)
 
-
-    def from_irrep(self, bandstructure: BandStructure,
+    @classmethod
+    def from_irrep(cls, bandstructure: BandStructure,
                  grid=None, degen_thresh=1e-2, store_eig=True,
                  ecut=None,  # not used, but kept for compatibility
                  irreducible=False,
@@ -117,6 +117,7 @@ class SymmetrizerSAWF:
                                      degen_thresh=degen_thresh,
                                      unitary=True,
                                      unitary_params=unitary_params)
+        self = cls()
         self.grid = data["grid"]
         self.kpoints_all = data["kpoints"]
         self.kpt2kptirr = data["kpt2kptirr"]
@@ -724,13 +725,17 @@ class SymmetrizerSAWF:
         return self.symmetrize_amn(amn)
 
     def to_npz(self, f_npz):
+        if f_npz is None:
+            return self
         dic = self.as_dict()
         print(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
         return self
 
-    def from_npz(self, f_npz):
+    @classmethod
+    def from_npz(cls, f_npz):
         dic = np.load(f_npz)
+        self = cls()
         self.from_dict(dic)
         self.sym_product_table, self.translations_diff, self.spinor_factors = self.spacegroup.get_product_table(get_diff=True)
         return self

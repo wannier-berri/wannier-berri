@@ -349,9 +349,12 @@ class System_R(System):
                                 magmom=magmom, include_TR=True,
                                 spinor=soc,)
         else:
-            spacegroup = SpaceGroup.from_cell(cell=(self.real_lattice, positions, atom_num),
-                                magmom=magmom, include_TR=True,
-                                spinor=soc,)
+            spacegroup = SpaceGroup.from_cell(real_lattice=self.real_lattice,
+                                              positions=positions,
+                                              typat=atom_num,
+                                              magmom=magmom,
+                                              include_TR=True,
+                                              spinor=soc,)
         spacegroup.show()
 
         assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
@@ -836,6 +839,26 @@ class System_R(System):
             logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             logfile.write(" - Ok!\n")
+
+    @classmethod
+    def from_npz(cls, path, exclude_properties=(), legacy=False, matrices=None):
+        """
+        Load system from a directory of npz files
+        Parameters
+        ----------
+        matrices : list of str
+            list of the R matrices, e.g. ```['Ham','AA',...]``` to be loaded. if None: all R-matrices will be loaded
+        path : str
+            path to saved files. If does not exist - will be created (unless overwrite=False)
+        exclude_properties : list of str
+            dp not save certain properties - duse on your own risk
+        legacy : bool
+            if True, the order of indices in the XX_R matrices will be expected as in older verisons of wannierberri : [m,n,iR, ...]
+            in the newer versions the order is [iR, m ,n,...]
+        """
+        system = cls()
+        system.load_npz(path, exclude_properties=exclude_properties, legacy=legacy, matrices=matrices)
+        return system
 
     def load_npz(self, path, exclude_properties=(), legacy=False, matrices=None):
         """

@@ -27,13 +27,13 @@ class Wannier90dataSOC(Wannier90data):
         """Create Wannier90DataSOC from NPZ files."""
 
         files_ud = [f for f in files if f != "soc"] if files is not None else None
-        data_up = Wannier90data().from_npz(seedname=seedname + "-spin-0",
-                                           files=files_ud,
-                                           irreducible=irreducible)
+        data_up = Wannier90data.from_npz(seedname=seedname + "-spin-0",
+                                         files=files_ud,
+                                         irreducible=irreducible)
         try:
-            data_down = Wannier90data().from_npz(seedname=seedname + "-spin-1",
-                                                 files=files_ud,
-                                                 irreducible=irreducible)
+            data_down = Wannier90data.from_npz(seedname=seedname + "-spin-1",
+                                               files=files_ud,
+                                               irreducible=irreducible)
         except FileNotFoundError:
             data_down = None
         try:

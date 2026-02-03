@@ -63,13 +63,13 @@ for data_dir in ['diamond']:
         else:
             raise ValueError(f"Unknown system name: {projname}")
 
-        symmetrizer = SymmetrizerSAWF().from_irrep(bandstructure)
+        symmetrizer = SymmetrizerSAWF.from_irrep(bandstructure)
         symmetrizer.set_D_wann_from_projections(projections=projset)
         print("D_wann\n", symmetrizer.D_wann_blocks)
 
         amn = amn_from_bandstructure(bandstructure, projections=projset)
 
-        w90data = wberri.w90files.Wannier90data().from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond', readfiles=['mmn', 'eig', 'win'], read_npz=False)
+        w90data = wberri.w90files.Wannier90data.from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond', readfiles=['mmn', 'eig', 'win'], read_npz=False)
         w90data.set_file("amn", amn)
         w90data.set_symmetrizer(symmetrizer)
         w90data.select_bands(win_min=win_min, win_max=win_max)

@@ -20,17 +20,17 @@ positions = np.array(
         [2 / 3, 1 / 3, 3 / 4],
     ]
 )
-typeat = [1, 1, 2, 2]
+typat = [1, 1, 2, 2]
 magmom = [[0, 1, 0], [0, -1, 0], [0, 0, 0], [0, 0, 0]]
 
-mg = SpaceGroup.from_cell(real_lattice=lattice, positions=positions, typat=typeat,
+mg = SpaceGroup.from_cell(real_lattice=lattice, positions=positions, typat=typat,
                           magmom=magmom)
 
 pointgroup = PointGroup(spacegroup=mg)
 
 
-system_dw = System_R().load_npz("system_dw")
-system_up = System_R().load_npz("system_up")
+system_dw = System_R.from_npz("system_dw")
+system_up = System_R.from_npz("system_up")
 
 
 wb.ray_init()

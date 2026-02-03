@@ -47,8 +47,8 @@ kwargs_w90file = dict(
     read_npz_list=[],
     normalize=False)
 
-w90data_full = wberri.w90files.Wannier90data().from_bandstructure(bandstructure_full, **kwargs_w90file)
-w90data_irr = wberri.w90files.Wannier90data().from_bandstructure(bandstructure_irr, irreducible=True, **kwargs_w90file)
+w90data_full = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_full, **kwargs_w90file)
+w90data_irr = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_irr, irreducible=True, **kwargs_w90file)
 assert w90data_full.irreducible is False, "w90data_full should not be irreducible"
 assert w90data_irr.irreducible is True, "w90data_irr should be irreducible"
 nkp_full = len(w90data_full.mmn.data)
