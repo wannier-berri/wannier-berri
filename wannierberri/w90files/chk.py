@@ -121,7 +121,7 @@ class CheckPoint(SavableNPZ):
 
     @classmethod
     def from_w90_file(cls, seedname, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-        
+
         kmesh_tol = kmesh_tol  # will be used in set_bk
         bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
@@ -154,7 +154,7 @@ class CheckPoint(SavableNPZ):
         have_disentangled = bool(readint()[0])
         # print(f"have_disentangled={have_disentangled}")
         if have_disentangled:
-            _ = readfloat()[0] # omega_invariant
+            _ = readfloat()[0]  # omega_invariant
             lwindow = np.array(readint().reshape((num_kpts, num_bands)), dtype=bool)
             ndimwin = readint()
             # print(f"ndimwin={ndimwin}")
@@ -185,10 +185,10 @@ class CheckPoint(SavableNPZ):
         wannier_spreads = readfloat().reshape((num_wann))
         print(f"Time to read .chk : {time() - t0}")
         return cls(real_lattice=real_lattice,
-                      v_matrix=v_matrix,
-                      wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
-                      kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
-                      kpt_latt=kpt_latt, mp_grid=mp_grid,
+                   v_matrix=v_matrix,
+                   wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
+                   kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
+                   kpt_latt=kpt_latt, mp_grid=mp_grid,
         )
 
 
@@ -521,10 +521,10 @@ class CheckPoint(SavableNPZ):
         except KeyError:
             num_bands = None
         return cls(real_lattice=real_lattice,
-                      num_wann=num_wann,
-                      num_bands=num_bands,
-                      kpt_latt=kpt_latt,
-                      mp_grid=mp_grid,)
+                   num_wann=num_wann,
+                   num_bands=num_bands,
+                   kpt_latt=kpt_latt,
+                   mp_grid=mp_grid,)
 
     def select_bands(self, selected_bands):
         if selected_bands is not None:

@@ -3,7 +3,7 @@ from termcolor import cprint
 from ..symmetry.Dwann import Dwann
 from ..utility import select_window_degen
 from ..symmetry.orbitals import OrbitalRotator
-from .sawf import SymmetrizerSAWF as SAWF
+
 
 class EBRsearcher:
     """
@@ -161,24 +161,6 @@ class EBRsearcher:
                 for j in range(self.num_trial_projections):
                     debug_msg(f"  j={j} {self.irreps_per_projection_vectors[i][j]}")
 
-    @classmethod
-    def from_bandstructure(cls,
-            bandstructure,
-            froz_min=np.inf, froz_max=-np.inf,
-            outer_min=-np.inf, outer_max=np.inf,
-            symmetrizer_tmp_file=None):
-        spacegroup = bandstructure.spacegroup
-        symmetrizer = None
-        if symmetrizer_tmp_file is not None:
-            try:
-                symmetrizer = SAWF.from_npz(symmetrizer_tmp_file)
-            except FileNotFoundError as err:
-                Warning(f"Symmetrizer file {symmetrizer_tmp_file} not found, calculating symmetrizer from bandstructure")   
-            if symmetrizer is None:
-                symmetrizer = SAWF.from_irrep(bandstructure)
-
-                symmetrizer.to_npz(symmetrizer_tmp_file)
-        
 
     def find_combinations(self, num_wann_min=0, num_wann_max=None, fixed=[]):
         """

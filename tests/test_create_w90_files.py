@@ -106,15 +106,15 @@ def test_create_w90files_diamond_irred(select_grid):
                             )
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[projection])
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
-                        bandstructure,
-                        files=["mmn", "eig", "amn", "unk", "symmetrizer"],
-                        write_npz_list=[],
-                        read_npz_list=[],
-                        seedname=os.path.join(path_tmp, prefix),
-                        projections=proj_set,
-                        normalize=False,
-                        irreducible=True,
-                        )
+        bandstructure,
+        files=["mmn", "eig", "amn", "unk", "symmetrizer"],
+        write_npz_list=[],
+        read_npz_list=[],
+        seedname=os.path.join(path_tmp, prefix),
+        projections=proj_set,
+        normalize=False,
+        irreducible=True,
+    )
     w90data.wannierise(
         froz_min=-8,
         froz_max=20,
@@ -329,16 +329,16 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
 
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
-                        bandstructure,
-                        files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
-                        write_npz_list=[],
-                        read_npz_list=[],
-                        seedname=os.path.join(path_tmp, prefix),
-                        projections=proj_set,
-                        normalize=False,
-                        unk_grid=(18,) * 3,
-                        irreducible=irreducible,
-                        )
+        bandstructure,
+        files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
+        write_npz_list=[],
+        read_npz_list=[],
+        seedname=os.path.join(path_tmp, prefix),
+        projections=proj_set,
+        normalize=False,
+        unk_grid=(18,) * 3,
+        irreducible=irreducible,
+    )
     print(f"kpoints in w90data: {w90data.get_file('mmn').data.keys()} irreducible={w90data.irreducible} /{irreducible}")
 
 

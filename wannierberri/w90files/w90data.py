@@ -191,10 +191,10 @@ class Wannier90data:
                     warnings.warn(f"Failed to read symmetrizer from {fname}: {e}")
             if not symmetrizer_read_ok:
                 symmetrizer = SymmetrizerSAWF.from_irrep(bandstructure,
-                                                           grid=mp_grid,
-                                                           irreducible=irreducible,
-                                                           ecut=ecut_sym,
-                                                           unitary_params=unitary_params,)
+                                                         grid=mp_grid,
+                                                         irreducible=irreducible,
+                                                         ecut=ecut_sym,
+                                                         unitary_params=unitary_params,)
                 if projections is not None:
                     symmetrizer.set_D_wann_from_projections(projections)
             self.set_symmetrizer(symmetrizer)

@@ -349,10 +349,10 @@ class System_R(System):
                                 magmom=magmom, include_TR=True,
                                 spinor=soc,)
         else:
-            spacegroup = SpaceGroup.from_cell(real_lattice=self.real_lattice, 
-                                              positions=positions, 
+            spacegroup = SpaceGroup.from_cell(real_lattice=self.real_lattice,
+                                              positions=positions,
                                               typat=atom_num,
-                                              magmom=magmom, 
+                                              magmom=magmom,
                                               include_TR=True,
                                               spinor=soc,)
         spacegroup.show()
