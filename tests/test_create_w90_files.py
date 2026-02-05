@@ -1,17 +1,19 @@
-from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
-from .test_wannierise import spreads_Fe_spd_444_nowin as spreads_Fe_spd_444
+import pytest
+from pytest import approx, fixture
+import sys
+import numpy as np
+import os
 from gpaw import GPAW
 import irrep
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroup
-import pytest
-from pytest import approx, fixture
+from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
+from .test_wannierise import spreads_Fe_spd_444_nowin as spreads_Fe_spd_444
 import wannierberri as wberri
-import numpy as np
-import os
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from wannierberri.w90files.eig import EIG
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
+
 
 
 
@@ -631,36 +633,70 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     assert wannier_centers == approx(pos @ w90data.chk.real_lattice, abs=1e-6)
 
 
-@pytest.mark.parametrize("projname", ['s_bond', 'p_bond', 'sp_bond', 'sp3'])
-def test_create_Amn(projname):
-    from irrep.bandstructure import BandStructure
-    path_data = os.path.join(ROOT_DIR,  "data", "diamond")
-    bandstructure = BandStructure(code='espresso',
-                                prefix= os.path.join(path_data, "di"),
-                                # Ecut=200,
-                                normalize=False, include_TR=False)
+
+
+def get_diamond_projections():
+    """Generate and return the diamond projections dictionary.
+    
+    Returns:
+        dict: Dictionary with projection names as keys and Projection/ProjectionsSet objects as values.
+    """
+    bandstructure = BandStructure(code='espresso', prefix=os.path.join(ROOT_DIR,  "data", "diamond", "di"),
+                                normalize=False,
+                                onlysym=True)
     spacegroup = bandstructure.spacegroup
-
-    pos_bond = [[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]]  # but it is allowed to specify all 4 to preserve the order and selection of the unit cell
-
+    pos_bond = [[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]]
     pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
     zaxis_bond = (pos_atom[1] - pos_atom[0]) @ spacegroup.lattice
-    proj_s_bond = Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup)
-    proj_sp3 = Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True)
-    proj_p_bond = Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True)
 
-    if projname == 's_bond':
-        projset = ProjectionsSet([proj_s_bond])
-    elif projname == 'sp3':
-        projset = ProjectionsSet([proj_sp3])
-    elif projname == 'sp_bond':
-        projset = ProjectionsSet([proj_p_bond, proj_s_bond])
-    elif projname == 'p_bond':
-        projset = ProjectionsSet([proj_p_bond])
-    else:
-        raise ValueError(f"Unknown system name: {projname}")
+    projections = {
+        "s_bond": Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup),
+        "sp3": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True),
+        "sp3_norotated": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=False),
+        "pz_norotated": Projection(position_num=pos_atom, orbital='pz', spacegroup=spacegroup, rotate_basis=False),
+        "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True),
+        "pz_norotated_atom": Projection(position_num=pos_atom, orbital='pz', spacegroup=spacegroup, rotate_basis=False),
+        "p_atom_norotated": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup, rotate_basis=False),
+        "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup),
+    }
+
+    projections["sp_bond"] = ProjectionsSet([projections["p_bond"], projections["s_bond"]])
+    projections["sp_atom_norotated"] = ProjectionsSet([projections["p_atom_norotated"], projections["s_atom"]])
+    
+    return projections
+
+projections_diamond = get_diamond_projections()
+
+@pytest.mark.parametrize("projname", list(projections_diamond.keys()))
+def test_create_Amn(projname):
+    path_data = os.path.join(ROOT_DIR,  "data", "diamond")
+    amnfiles_path = os.path.join(path_data, "amnfiles")
+    projections = projections_diamond
+    projset = projections[projname]
+    if isinstance(projset, Projection):
+        projset = ProjectionsSet([projset])
+    file_amn_path = os.path.join(amnfiles_path, f"diamond-{projname}.amn.npz")
+    if not os.path.exists(file_amn_path):
+        os.chdir(amnfiles_path)
+        file_win = open("template.win").read()
+        proj_str = projset.write_wannier90(basis=True)
+        with open("diamond.win", "w") as f:
+            f.write(proj_str + "\n" + file_win)
+        os.system(f"wannier90.x -pp diamond")
+        os.system(f"pw2wannier90.x < diamond.pw2wan")
+        # copy amn file
+        os.system(f"mv diamond.amn diamond-{projname}.amn")
+        os.system(f"mv diamond.win diamond-{projname}.win")
+        os.system(f"mv diamond.nnkp diamond-{projname}.nnkp")
+        os.chdir(ROOT_DIR)
+
     amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(path_data, "amnfiles", f"diamond-{projname}"))
+    bandstructure = BandStructure(code='espresso',
+                                prefix=os.path.join(path_data, "di"),
+                                normalize=False, include_TR=False)
     amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset)
+    amn_wb.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-wb.amn.npz"))
+    amn_w90.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-w90.amn.npz"))
     assert amn_w90.NK == amn_wb.NK, f"Number of k-points differ for {projname}: {amn_w90.NK} != {amn_wb.NK} for projname {projname}"
     assert amn_w90.NB == amn_wb.NB, f"Number of bands differ for {projname}: {amn_w90.NB} != {amn_wb.NB} for projname {projname}"
     assert amn_w90.NW == amn_wb.NW, f"Number of Wannier functions differ for {projname}: {amn_w90.NW} != {amn_wb.NW} for projname {projname}"   

@@ -214,8 +214,8 @@ class Projection:
                     basis_loc = self.basis_list[i]
                     zaxis = basis_loc[2, :]
                     xaxis = basis_loc[0, :]
-                    s1 += f":zaxis={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
-                    s1 += f":xaxis={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
+                    s1 += f":z={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
+                    s1 += f":x={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
                 string += f"{s1}\n"
         return string
 
