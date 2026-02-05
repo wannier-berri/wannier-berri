@@ -272,7 +272,8 @@ class Projector:
     a class to calculate the projection of the wavefunctions on the plane vectors
     """
 
-    def __init__(self, gk, bessel, a0=bohr_radius_angstrom):
+    def __init__(self, gk, bessel, spread=1, unit=bohr_radius_angstrom):
+        a0 = unit * spread
         self.gk = gk
         self.projectors = {}
         gk_abs = np.linalg.norm(gk, axis=1)
@@ -289,18 +290,16 @@ class Projector:
         self.bessel_l = {}
         self.coef = 4 * np.pi * a0**(3 / 2)
 
-    def get_bessel_l(self, l):
-        if l not in self.bessel_l:
-            self.bessel_l[l] = self.bessel(l, self.gka_abs) * (-1j)**l
-        return self.bessel_l[l]
+    @lru_cache
+    def get_bessel_l(self, l, radial_nodes=0):
+        return self.bessel(l=l, k=self.gka_abs, n=radial_nodes + 1) * (-1j)**l
 
-
-    def __call__(self, orbital, basis=None):
+    def __call__(self, orbital, basis=None, radial_nodes=0):
         if orbital in hybrids_coef and orbital not in basis_orbital_list:
-            return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
+            return sum(self(orb, basis, radial_nodes) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
-            bessel_j_radial_int = self.get_bessel_l(l)
+            bessel_j_radial_int = self.get_bessel_l(l, radial_nodes)
             spherical = self.sph(orbital, basis)
             return bessel_j_radial_int * spherical * self.coef
 
@@ -330,7 +329,7 @@ def radial_function_tilde(n, r):
     elif n == 2:
         return np.exp(-r) * (1 - r) / np.sqrt(2)
     elif n == 3:
-        return np.exp(-r) * (1 - 2 * r + 2 * r**2 / 3) * 2 / np.sqrt(27)
+        return np.exp(-r) * (1 - 2 * r + (2 / 3) * r**2) * 2 / np.sqrt(27)
     else:
         raise ValueError(f"radial function for n={n} nodes is not defined")
 
@@ -344,7 +343,7 @@ class Bessel_j_radial_int:
 
     def __init__(self,
                 k0=5, kmax=100, dk=0.01, dtk=0.2, kmin=1e-3,
-                 x0=20, xmax=100, dx=0.01, dtx=0.1,
+                 x0=20, xmax=200, dx=0.01, dtx=0.1,
                  ):
         self.splines = {}
         self.kmax = kmax
@@ -364,11 +363,27 @@ class Bessel_j_radial_int:
             t += dt
         return np.array(xgrid)
 
-    def set_spline(self, l, n=1):
-        if (l, n) not in self.splines:
-            self.splines[(l, n)] = self.get_spline(l, n)
-        return self.splines[(l, n)]
+    # @classmethod
+    # def _get_grid_wannier90(cls, x0, xmax, dx, dtx):
+    #     xmin=-6
+    #     dx=0.025
+    #     rmax = 10
+    #     mesh_r = int((np.log(rmax)-xmin)/dx) +1
+    #     r = np.zeros(mesh_r)
+    #     rij = np.zeros(mesh_r)
+    #     for ir in range(mesh_r):
+    #         x = xmin + ir*dx
+    #         r[ir] = np.exp(x)
 
+
+
+        # def set_spline(self, l, n=1):
+        #     if (l, n) not in self.splines:
+        #         self.splines[(l, n)] = self.get_spline(l, n)
+        #     return self.splines[(l, n)]
+
+
+    @lru_cache
     def get_spline(self, l, n=1):
         fourier = []
         radial = radial_function_tilde(n, self.xgrid) * self.xgrid**2
@@ -381,9 +396,8 @@ class Bessel_j_radial_int:
         fourier = np.array(fourier) * n**3
         return CubicSpline(self.kgrid, fourier)
 
-
     def __call__(self, l, k, n=1):
-        spline = self.set_spline(l, n)
+        spline = self.get_spline(l, n)
         res = np.zeros(len(k))
         select = (k <= self.kmax)
         res[select] = spline(k[select])

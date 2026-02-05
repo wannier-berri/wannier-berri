@@ -93,47 +93,6 @@ class AMN(W90_file):
         data[:, :, self.NW // 2:] = self.data[:, :, 1::2]
         self.data = data
 
-    # def write(self, seedname, comment="written by WannierBerri"):
-    #     comment = comment.strip()
-    #     f_amn_out = open(seedname + ".amn", "w")
-    #     print(f"writing {seedname}.amn: " + comment + "\n")
-    #     f_amn_out.write(comment + "\n")
-    #     f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
-    #     for ik in range(self.NK):
-    #         f_amn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
-    #             ib + 1, iw + 1, ik + 1, self.data[ik, ib, iw].real, self.data[ik, ib, iw].imag)
-    #             for iw in range(self.NW) for ib in range(self.NB)))
-    #     f_amn_out.close()
-
-
-    # def from_bandstructure_s_delta(self, bandstructure, positions, normalize=True):
-    #     """
-    #     Create an AMN object from a BandStructure object
-    #     NOTE!!: Only for delta-localised s-orbitals
-
-    #     more complete implementation is in from_bandstructure()
-
-    #     Parameters
-    #     ----------
-    #     bandstructure : irrep.bandstructure.BandStructure
-    #         the band structure object
-    #     positions : array( (N, 3), dtype=float)
-    #         the positions of the orbitals
-    #     normalize : bool
-    #         if True, the wavefunctions are normalised
-    #     """
-    #     data = []
-    #     pos = np.array(positions)
-    #     for kp in bandstructure.kpoints:
-    #         igk = kp.ig[:3, :] + kp.k[:, None]
-    #         exppgk = np.exp(-2j * np.pi * (pos @ igk))
-    #         wf = kp.WF.conj()
-    #         if normalize:
-    #             wf /= np.linalg.norm(wf, axis=1)[:, None]
-    #         data.append(wf @ exppgk.T)
-    #     self.data = np.array(data)
-    #     return self
-
 
     @classmethod
     def from_bandstructure(cls, bandstructure, projections: ProjectionsSet,
@@ -160,12 +119,16 @@ class AMN(W90_file):
 
         positions = []
         orbitals = []
+        radial_nodes_list = []
         basis_list = []
+        spread_list = []
         print(f"Creating amn. Using projections_set \n{projections}")
         for proj in projections.projections:
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
             orbitals += orb
+            radial_nodes_list += [proj.radial_nodes] * proj.num_wann
+            spread_list += [proj.spread] * proj.num_wann
             basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
             if verbose:
                 print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
@@ -196,8 +159,15 @@ class AMN(W90_file):
                 wf_down = wf[:, :, 1]
 
             gk = igk @ rec_latt
-            projector = Projector(gk, bessel)
-            prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
+            print(f"{gk.shape=}, {expgk.shape=}, {wf.shape=}, {pos.shape=}")
+            prj = []
+            projector_dict = {}
+            for orb, basis, radial_nodes, spread in zip(orbitals, basis_list, radial_nodes_list, spread_list):
+                if spread not in projector_dict:
+                    projector_dict[spread] = Projector(gk, bessel, spread=spread)
+                projector = projector_dict[spread]
+                prj.append(projector(orb, basis, radial_nodes))
+            # prj = list([projector(orb, basis, radial_nodes) for orb, basis, radial_nodes in zip(orbitals, basis_list, radial_nodes_list)])
             # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
             # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
             proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)

@@ -42,6 +42,10 @@ class Projection:
     spacegroup : irrep.spacegroup.SpaceGroup
         The spacegroup of the structure. All points equivalent to the given ones are also added 
         (not needed if wyckoff_position is provided)
+    radial_nodes : int
+        number of nodes in the radial function (e.g. 0 is equivalent to r=1 in wannier90 projections)
+    spread : float
+        spread of the radial function (in Bohr). The radial function is proportional exp(-r/((nodes+1)*spread))
     void : bool
         if true, create an empty object, to be filled later
     wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
@@ -99,6 +103,8 @@ class Projection:
                  spinor=None,
                  rotate_basis=False,
                  basis_list=None,
+                 radial_nodes=0,
+                 spread=1.0,
                  zaxis=None,
                  xaxis=None,
                  do_not_split_projections=False):
@@ -108,6 +114,8 @@ class Projection:
             self.orbitals = [orbital]
         else:
             self.orbitals = orbital.split(";")
+        self.radial_nodes = radial_nodes
+        self.spread = spread
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
@@ -216,6 +224,10 @@ class Projection:
                     xaxis = basis_loc[0, :]
                     s1 += f":z={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
                     s1 += f":x={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
+                    if self.radial_nodes > 0:
+                        s1 += f":r={self.radial_nodes + 1}"
+                    if abs(self.spread - 1.0) > 1e-6:
+                        s1 += f":zona={1. / self.spread:.6f}"
                 string += f"{s1}\n"
         return string
 

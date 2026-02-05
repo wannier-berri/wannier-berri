@@ -654,6 +654,16 @@ def get_diamond_projections():
         "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True),
         "d_atom": Projection(position_num=pos_atom, orbital='d', spacegroup=spacegroup),
         "p_atom": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup),
+        "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True),
+        "s_atom_spread2": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread=2),
+        "s_atom_spread0.5": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread=0.5),
+
+        "s_atom_0node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=0),
+        "s_atom_1node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=1),
+        "s_atom_2node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=2),
+        "sp3_0node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True, radial_nodes=0),
+        "sp3_1node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True, radial_nodes=1),
+        "sp3_2node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True, radial_nodes=2),
     }
     projections["sp_bond"] = ProjectionsSet([projections["p_bond"], projections["s_bond"]])
 
@@ -665,30 +675,31 @@ projections_diamond = get_diamond_projections()
 
 @pytest.mark.parametrize("projname", list(projections_diamond.keys()))
 def test_create_Amn(projname):
+    pw2wann = "/home/stepan/github/q-e/build/bin/pw2wannier90.x"  # patched pw2wannier90 executable
     path_data = os.path.join(ROOT_DIR, "data", "diamond")
     amnfiles_path = os.path.join(path_data, "amnfiles")
     projections = projections_diamond
     projset = projections[projname]
     if isinstance(projset, Projection):
         projset = ProjectionsSet([projset])
-    file_amn_path = os.path.join(amnfiles_path, f"diamond-{projname}.amn.npz")
+    file_amn_path = os.path.join(amnfiles_path, f"{projname}.amn")
     if not os.path.exists(file_amn_path):
         os.chdir(amnfiles_path)
-        file_win = open("template.win").read()
+        file_win = open("template.win_").read()
         proj_str = projset.write_wannier90(basis=True)
         with open("diamond.win", "w") as f:
             f.write(proj_str + "\n" + file_win)
         os.system("wannier90.x -pp diamond")
-        os.system("pw2wannier90.x < diamond.pw2wan")
+        os.system(f"{pw2wann} < diamond.pw2wan | tee {projname}-pw2wan.log")
         # copy amn file
-        os.system(f"mv diamond.amn diamond-{projname}.amn")
-        os.system(f"mv diamond.win diamond-{projname}.win")
-        os.system(f"mv diamond.nnkp diamond-{projname}.nnkp")
+        os.system(f"mv diamond.amn {projname}.amn")
+        os.system(f"mv diamond.win {projname}.win")
+        os.system(f"mv diamond.nnkp {projname}.nnkp")
         os.chdir(ROOT_DIR)
 
-    amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(path_data, "amnfiles", f"diamond-{projname}"))
+    amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(amnfiles_path, f"{projname}"))
     bandstructure = BandStructure(code='espresso',
-                                prefix=os.path.join(path_data, "di"),
+                                prefix=os.path.join(amnfiles_path, "di"),
                                 normalize=False, include_TR=False)
     amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)
     amn_wb.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-wb.amn.npz"))
