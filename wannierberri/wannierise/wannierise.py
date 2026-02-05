@@ -123,7 +123,7 @@ def wannierise(w90data,
 
     frozen = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
-    
+
     if isinstance(frozen_states, list):
         for ib in frozen_states:
             frozen[:, ib] = True

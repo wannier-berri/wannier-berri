@@ -287,7 +287,7 @@ class Projector:
         self.sph = SphericalHarmonics(costheta=g_costheta, phi=g_phi)
         self.bessel = bessel
         self.bessel_l = {}
-        self.coef = 4*np.pi * a0**(3/2)
+        self.coef = 4 * np.pi * a0**(3 / 2)
 
     def get_bessel_l(self, l):
         if l not in self.bessel_l:
@@ -297,7 +297,7 @@ class Projector:
 
     def __call__(self, orbital, basis=None):
         if orbital in hybrids_coef and orbital not in basis_orbital_list:
-            return sum(self(orb, basis) for orb, coef in hybrids_coef[orbital].items())
+            return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
             bessel_j_radial_int = self.get_bessel_l(l)
@@ -319,7 +319,7 @@ def radial_function_tilde(n, r):
      int_0^/infty R_tilde_m(r) * R_tilde_n (r) * r^2 dr = delta_mn
 
      the function returns R_tilde_n (r)
-    
+
     :param n: int
         number of nodes + 1
     :param r: Description
@@ -328,11 +328,12 @@ def radial_function_tilde(n, r):
     if n == 1:
         return 2 * np.exp(-r)
     elif n == 2:
-        return np.exp(-r) * (1 - r) / np.sqrt(2) 
+        return np.exp(-r) * (1 - r) / np.sqrt(2)
     elif n == 3:
         return np.exp(-r) * (1 - 2 * r + 2 * r**2 / 3) * 2 / np.sqrt(27)
     else:
         raise ValueError(f"radial function for n={n} nodes is not defined")
+
 
 class Bessel_j_radial_int:
     r"""
@@ -342,7 +343,7 @@ class Bessel_j_radial_int:
     """
 
     def __init__(self,
-                k0=5,  kmax=100, dk=0.01, dtk=0.2, kmin=1e-3,
+                k0=5, kmax=100, dk=0.01, dtk=0.2, kmin=1e-3,
                  x0=20, xmax=100, dx=0.01, dtx=0.1,
                  ):
         self.splines = {}
@@ -368,7 +369,7 @@ class Bessel_j_radial_int:
             self.splines[(l, n)] = self.get_spline(l, n)
         return self.splines[(l, n)]
 
-    def get_spline(self, l, n=1):        
+    def get_spline(self, l, n=1):
         fourier = []
         radial = radial_function_tilde(n, self.xgrid) * self.xgrid**2
         for k in self.kgrid:
@@ -377,7 +378,7 @@ class Bessel_j_radial_int:
             else:
                 j = spherical_jn(l, k * self.xgrid * n)
                 fourier.append(trapezoid(y=j * radial, x=self.xgrid))
-        fourier = np.array(fourier)* n**3
+        fourier = np.array(fourier) * n**3
         return CubicSpline(self.kgrid, fourier)
 
 

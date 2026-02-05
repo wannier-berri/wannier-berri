@@ -68,5 +68,3 @@ def test_rotate_matrix():
             assert Y.shape == X.shape
             Z = cached_einsum("ij,jk...,kl->il...", L, X, R)
             assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y - Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
-
-

@@ -1,6 +1,5 @@
 import pytest
 from pytest import approx, fixture
-import sys
 import numpy as np
 import os
 from gpaw import GPAW
@@ -333,7 +332,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
-        write_npz_list=[],
+        write_npz_list=None,
         read_npz_list=[],
         seedname=os.path.join(path_tmp, prefix),
         projections=proj_set,
@@ -637,11 +636,11 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
 
 def get_diamond_projections():
     """Generate and return the diamond projections dictionary.
-    
+
     Returns:
         dict: Dictionary with projection names as keys and Projection/ProjectionsSet objects as values.
     """
-    bandstructure = BandStructure(code='espresso', prefix=os.path.join(ROOT_DIR,  "data", "diamond", "di"),
+    bandstructure = BandStructure(code='espresso', prefix=os.path.join(ROOT_DIR, "data", "diamond", "di"),
                                 normalize=False,
                                 onlysym=True)
     spacegroup = bandstructure.spacegroup
@@ -652,24 +651,21 @@ def get_diamond_projections():
     projections = {
         "s_bond": Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup),
         "sp3": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True),
-        "sp3_norotated": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=False),
-        "pz_norotated": Projection(position_num=pos_atom, orbital='pz', spacegroup=spacegroup, rotate_basis=False),
         "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True),
-        "pz_norotated_atom": Projection(position_num=pos_atom, orbital='pz', spacegroup=spacegroup, rotate_basis=False),
-        "p_atom_norotated": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup, rotate_basis=False),
-        "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup),
+        "d_atom": Projection(position_num=pos_atom, orbital='d', spacegroup=spacegroup),
+        "p_atom": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup),
     }
-
     projections["sp_bond"] = ProjectionsSet([projections["p_bond"], projections["s_bond"]])
-    projections["sp_atom_norotated"] = ProjectionsSet([projections["p_atom_norotated"], projections["s_atom"]])
-    
+
     return projections
+
 
 projections_diamond = get_diamond_projections()
 
+
 @pytest.mark.parametrize("projname", list(projections_diamond.keys()))
 def test_create_Amn(projname):
-    path_data = os.path.join(ROOT_DIR,  "data", "diamond")
+    path_data = os.path.join(ROOT_DIR, "data", "diamond")
     amnfiles_path = os.path.join(path_data, "amnfiles")
     projections = projections_diamond
     projset = projections[projname]
@@ -682,8 +678,8 @@ def test_create_Amn(projname):
         proj_str = projset.write_wannier90(basis=True)
         with open("diamond.win", "w") as f:
             f.write(proj_str + "\n" + file_win)
-        os.system(f"wannier90.x -pp diamond")
-        os.system(f"pw2wannier90.x < diamond.pw2wan")
+        os.system("wannier90.x -pp diamond")
+        os.system("pw2wannier90.x < diamond.pw2wan")
         # copy amn file
         os.system(f"mv diamond.amn diamond-{projname}.amn")
         os.system(f"mv diamond.win diamond-{projname}.win")
@@ -694,12 +690,12 @@ def test_create_Amn(projname):
     bandstructure = BandStructure(code='espresso',
                                 prefix=os.path.join(path_data, "di"),
                                 normalize=False, include_TR=False)
-    amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset)
+    amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)
     amn_wb.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-wb.amn.npz"))
     amn_w90.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-w90.amn.npz"))
     assert amn_w90.NK == amn_wb.NK, f"Number of k-points differ for {projname}: {amn_w90.NK} != {amn_wb.NK} for projname {projname}"
     assert amn_w90.NB == amn_wb.NB, f"Number of bands differ for {projname}: {amn_w90.NB} != {amn_wb.NB} for projname {projname}"
-    assert amn_w90.NW == amn_wb.NW, f"Number of Wannier functions differ for {projname}: {amn_w90.NW} != {amn_wb.NW} for projname {projname}"   
+    assert amn_w90.NW == amn_wb.NW, f"Number of Wannier functions differ for {projname}: {amn_w90.NW} != {amn_wb.NW} for projname {projname}"
     for ik in amn_wb.data.keys():
         assert amn_wb.data[ik].shape == amn_w90.data[ik].shape, f"Shape of AMN data differ for {projname} at k-point {ik}: {amn_wb.data[ik].shape} != {amn_w90.data[ik].shape} for projname {projname}"
         assert amn_wb.data[ik] == approx(amn_w90.data[ik], abs=0.01), f"AMN data differ for {projname} at k-point {ik}, max diff is {np.max(np.abs(amn_wb.data[ik] - amn_w90.data[ik]))} > 0.01 for projname {projname}"
