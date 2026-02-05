@@ -44,8 +44,9 @@ class Projection:
         (not needed if wyckoff_position is provided)
     radial_nodes : int
         number of nodes in the radial function (e.g. 0 is equivalent to r=1 in wannier90 projections)
-    spread : float
-        spread of the radial function (in Bohr). The radial function is proportional exp(-r/((nodes+1)*spread))
+    spread_factor : float
+        multiplier for the spread of the radial function (in Bohr). The radial function is proportional exp(-r/((nodes+1)*spread_factor))
+        equivalent to zona=1/spread_factor in wannier90 projections
     void : bool
         if true, create an empty object, to be filled later
     wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
@@ -104,7 +105,7 @@ class Projection:
                  rotate_basis=False,
                  basis_list=None,
                  radial_nodes=0,
-                 spread=1.0,
+                 spread_factor=1.0,
                  zaxis=None,
                  xaxis=None,
                  do_not_split_projections=False):
@@ -115,7 +116,7 @@ class Projection:
         else:
             self.orbitals = orbital.split(";")
         self.radial_nodes = radial_nodes
-        self.spread = spread
+        self.spread_factor = spread_factor
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
@@ -226,8 +227,8 @@ class Projection:
                     s1 += f":x={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
                     if self.radial_nodes > 0:
                         s1 += f":r={self.radial_nodes + 1}"
-                    if abs(self.spread - 1.0) > 1e-6:
-                        s1 += f":zona={1. / self.spread:.6f}"
+                    if abs(self.spread_factor - 1.0) > 1e-6:
+                        s1 += f":zona={1. / self.spread_factor:.6f}"
                 string += f"{s1}\n"
         return string
 

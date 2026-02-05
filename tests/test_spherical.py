@@ -2,7 +2,7 @@ import pytest
 from scipy.special import spherical_jn
 from wannierberri.symmetry.orbitals import (
     Bessel_j_radial_int, radial_function_tilde, SphericalHarmonics,
-    Projector, bohr_radius_angstrom)
+    Projector)
 import numpy as np
 
 
@@ -95,7 +95,7 @@ def test_projector():
     ddk = (dk / (2 * np.pi))**3
 
     k_grid = np.array(np.meshgrid(kx, kx, kx, indexing='ij')).reshape(3, -1).T
-    projector = Projector(k_grid, bessel, a0=n * bohr_radius_angstrom)
+    projector = Projector(k_grid, bessel, spread_factor=n)
     proj_dict = {}
     for orb in ['s', 'px', 'py', 'pz', 'dxy', 'dyz', 'dxz', 'dx2-y2', 'dz2']:
         proj = projector(orb)

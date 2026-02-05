@@ -655,8 +655,8 @@ def get_diamond_projections():
         "d_atom": Projection(position_num=pos_atom, orbital='d', spacegroup=spacegroup),
         "p_atom": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup),
         "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True),
-        "s_atom_spread2": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread=2),
-        "s_atom_spread0.5": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread=0.5),
+        "s_atom_spread2": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread_factor=2),
+        "s_atom_spread0.5": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread_factor=0.5),
 
         "s_atom_0node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=0),
         "s_atom_1node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=1),

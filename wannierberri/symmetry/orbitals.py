@@ -272,8 +272,8 @@ class Projector:
     a class to calculate the projection of the wavefunctions on the plane vectors
     """
 
-    def __init__(self, gk, bessel, spread=1, unit=bohr_radius_angstrom):
-        a0 = unit * spread
+    def __init__(self, gk, bessel, spread_factor=1, unit=bohr_radius_angstrom):
+        a0 = unit * spread_factor
         self.gk = gk
         self.projectors = {}
         gk_abs = np.linalg.norm(gk, axis=1)

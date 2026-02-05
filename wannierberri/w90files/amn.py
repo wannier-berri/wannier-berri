@@ -128,7 +128,7 @@ class AMN(W90_file):
             positions += pos
             orbitals += orb
             radial_nodes_list += [proj.radial_nodes] * proj.num_wann
-            spread_list += [proj.spread] * proj.num_wann
+            spread_list += [proj.spread_factor] * proj.num_wann
             basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
             if verbose:
                 print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
@@ -162,10 +162,10 @@ class AMN(W90_file):
             print(f"{gk.shape=}, {expgk.shape=}, {wf.shape=}, {pos.shape=}")
             prj = []
             projector_dict = {}
-            for orb, basis, radial_nodes, spread in zip(orbitals, basis_list, radial_nodes_list, spread_list):
-                if spread not in projector_dict:
-                    projector_dict[spread] = Projector(gk, bessel, spread=spread)
-                projector = projector_dict[spread]
+            for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
+                if spread_factor not in projector_dict:
+                    projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
+                projector = projector_dict[spread_factor]
                 prj.append(projector(orb, basis, radial_nodes))
             # prj = list([projector(orb, basis, radial_nodes) for orb, basis, radial_nodes in zip(orbitals, basis_list, radial_nodes_list)])
             # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
