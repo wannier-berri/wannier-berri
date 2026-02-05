@@ -3,7 +3,7 @@ import multiprocessing
 import numpy as np
 from ..symmetry.projections import ProjectionsSet
 
-from ..symmetry.orbitals import Bessel_j_exp_int, Projector
+from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 from .utility import str2arraymmn
 from .w90file import W90_file, auto_kptirr, check_shape
 
@@ -177,7 +177,9 @@ class AMN(W90_file):
         data = {}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
-        bessel = Bessel_j_exp_int()
+        unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
+        print (f"unit cell volume = {unit_cell_volume} ")
+        bessel = Bessel_j_radial_int()
 
         for i, ikirr in enumerate(kptirr):
             kp = bandstructure.kpoints[selected_kpoints[i]]
@@ -197,7 +199,10 @@ class AMN(W90_file):
             prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
             # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
             # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
-            proj_gk = np.array(prj) * expgk
+            proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
+            proj_proj = proj_gk.conj() @ proj_gk.T
+            print (f"projector on itself ({proj_proj.shape}): \n {np.round(proj_proj.real, 3)} ")
+            # exit()
             if spinor:
                 # print(f"shapes proj_gk:{proj_gk.shape}, wf_up : {wf_up.shape}, wf_down : {wf_down.shape}, ")
                 proj_up = wf_up @ proj_gk.T
@@ -218,6 +223,19 @@ class AMN(W90_file):
         if self.NW != other.NW:
             return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
         return True, ""
+    
+    def get_high_projectability(self, threshold=0.5, select_WF=None):
+        """
+        Get the maximum projection value over all k-points and bands
+        """
+        if select_WF is None:
+            select_WF = range(self.NW)
+        result = {}
+        for ik, data in self.data.items():
+            proj = (np.abs(data[:, select_WF])**2).sum(axis=1)
+            print (f"ik={ik} proj = {proj}")
+            result[ik] = (proj>= threshold)
+        return result
 
 
 # def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):

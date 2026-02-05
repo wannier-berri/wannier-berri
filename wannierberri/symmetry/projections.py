@@ -203,13 +203,20 @@ class Projection:
                # + self.wyckoff_position.__str__()
         )
 
-    def write_wannier90(self, mod1=False):
+    def write_wannier90(self, mod1=False, basis=False):
         string = ""
         for o in self.orbitals:
-            for pos in self.wyckoff_position.positions:
+            for i, pos in enumerate(self.wyckoff_position.positions):
                 if mod1:
                     pos = pos % 1
-                string += f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}\n"
+                s1 = f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}"
+                if basis:
+                    basis_loc = self.basis_list[i]
+                    zaxis = basis_loc[2, :]
+                    xaxis = basis_loc[0, :]
+                    s1 += f":zaxis={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
+                    s1 += f":xaxis={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
+                string += f"{s1}\n"
         return string
 
     @cached_property
@@ -494,7 +501,7 @@ class ProjectionsSet:
         # print(f"updated rot,trans  {self.map_free_vars_cached[0].shape}, {self.map_free_vars_cached[1].shape}")
 
 
-    def write_wannier90(self, mod1=False, beginend=True, numwann=True):
+    def write_wannier90(self, mod1=False, beginend=True, numwann=True, basis=False):
         """
         return a string of wannier90 input file
         for projections
@@ -503,6 +510,12 @@ class ProjectionsSet:
         ----------
         mod1 : bool
             If True, the positions are printed modulo 1
+        beginend : bool
+            If True, the begin projections and end projections lines are added
+        numwann : bool
+            If True, the num_wann line is added
+        basis : bool
+            If True, the basis for each projection is also printed (zaxis, xaxis)
 
         Returns
         -------
@@ -518,7 +531,7 @@ class ProjectionsSet:
         if beginend:
             string += "begin projections\n"
         for p in self.projections:
-            string += p.write_wannier90(mod1=mod1)
+            string += p.write_wannier90(mod1=mod1, basis=basis)
         if beginend:
             string += "end projections\n"
         return string

@@ -1,5 +1,6 @@
-from gpaw import GPAW
+from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from .test_wannierise import spreads_Fe_spd_444_nowin as spreads_Fe_spd_444
+from gpaw import GPAW
 import irrep
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroup
@@ -8,11 +9,10 @@ from pytest import approx, fixture
 import wannierberri as wberri
 import numpy as np
 import os
-
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from wannierberri.w90files.eig import EIG
-from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
+
 
 
 @fixture
@@ -629,3 +629,41 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     spread_ref = 0.39536796  if select_grid == (2, 2, 2) else 0.57345447
     assert wannier_spreads == approx(spread_ref, abs=2e-5)
     assert wannier_centers == approx(pos @ w90data.chk.real_lattice, abs=1e-6)
+
+
+@pytest.mark.parametrize("projname", ['s_bond', 'p_bond', 'sp_bond', 'sp3'])
+def test_create_Amn(projname):
+    from irrep.bandstructure import BandStructure
+    path_data = os.path.join(ROOT_DIR,  "data", "diamond")
+    bandstructure = BandStructure(code='espresso',
+                                prefix= os.path.join(path_data, "di"),
+                                # Ecut=200,
+                                normalize=False, include_TR=False)
+    spacegroup = bandstructure.spacegroup
+
+    pos_bond = [[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]]  # but it is allowed to specify all 4 to preserve the order and selection of the unit cell
+
+    pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
+    zaxis_bond = (pos_atom[1] - pos_atom[0]) @ spacegroup.lattice
+    proj_s_bond = Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup)
+    proj_sp3 = Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True)
+    proj_p_bond = Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True)
+
+    if projname == 's_bond':
+        projset = ProjectionsSet([proj_s_bond])
+    elif projname == 'sp3':
+        projset = ProjectionsSet([proj_sp3])
+    elif projname == 'sp_bond':
+        projset = ProjectionsSet([proj_p_bond, proj_s_bond])
+    elif projname == 'p_bond':
+        projset = ProjectionsSet([proj_p_bond])
+    else:
+        raise ValueError(f"Unknown system name: {projname}")
+    amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(path_data, "amnfiles", f"diamond-{projname}"))
+    amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset)
+    assert amn_w90.NK == amn_wb.NK, f"Number of k-points differ for {projname}: {amn_w90.NK} != {amn_wb.NK} for projname {projname}"
+    assert amn_w90.NB == amn_wb.NB, f"Number of bands differ for {projname}: {amn_w90.NB} != {amn_wb.NB} for projname {projname}"
+    assert amn_w90.NW == amn_wb.NW, f"Number of Wannier functions differ for {projname}: {amn_w90.NW} != {amn_wb.NW} for projname {projname}"   
+    for ik in amn_wb.data.keys():
+        assert amn_wb.data[ik].shape == amn_w90.data[ik].shape, f"Shape of AMN data differ for {projname} at k-point {ik}: {amn_wb.data[ik].shape} != {amn_w90.data[ik].shape} for projname {projname}"
+        assert amn_wb.data[ik] == approx(amn_w90.data[ik], abs=0.01), f"AMN data differ for {projname} at k-point {ik}, max diff is {np.max(np.abs(amn_wb.data[ik] - amn_w90.data[ik]))} > 0.01 for projname {projname}"
