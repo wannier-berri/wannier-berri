@@ -102,7 +102,7 @@ class Projection:
                  void=False,
                  free_var_values=None,
                  spinor=None,
-                 rotate_basis=False,
+                 rotate_basis=True,
                  basis_list=None,
                  radial_nodes=0,
                  spread_factor=1.0,
@@ -150,11 +150,12 @@ class Projection:
                 assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
                 assert np.allclose(b @ b.T, np.eye(3), atol=1e-8), f"basis_list[{i}] should be an orthogonal matrix, not {b}"
             self.basis_list = np.array(basis_list)
-        elif rotate_basis:
+        else:
             basis0 = read_xzaxis(xaxis, zaxis)
+        if rotate_basis:
             self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
         else:
-            self.basis_list = [np.eye(3, dtype=float)] * self.num_points
+            self.basis_list = [basis0] * self.num_points
 
     @property
     def positions(self):
@@ -212,23 +213,23 @@ class Projection:
                # + self.wyckoff_position.__str__()
         )
 
-    def write_wannier90(self, mod1=False, basis=False):
+    def write_wannier90(self, mod1=False):
         string = ""
         for o in self.orbitals:
             for i, pos in enumerate(self.wyckoff_position.positions):
                 if mod1:
                     pos = pos % 1
                 s1 = f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}"
-                if basis:
-                    basis_loc = self.basis_list[i]
+                basis_loc = self.basis_list[i]
+                if not np.allclose(basis_loc, np.eye(3)):
                     zaxis = basis_loc[2, :]
                     xaxis = basis_loc[0, :]
                     s1 += f":z={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
                     s1 += f":x={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
-                    if self.radial_nodes > 0:
-                        s1 += f":r={self.radial_nodes + 1}"
-                    if abs(self.spread_factor - 1.0) > 1e-6:
-                        s1 += f":zona={1. / self.spread_factor:.6f}"
+                if self.radial_nodes > 0:
+                    s1 += f":r={self.radial_nodes + 1}"
+                if abs(self.spread_factor - 1.0) > 1e-6:
+                    s1 += f":zona={1. / self.spread_factor:.6f}"
                 string += f"{s1}\n"
         return string
 
@@ -514,7 +515,7 @@ class ProjectionsSet:
         # print(f"updated rot,trans  {self.map_free_vars_cached[0].shape}, {self.map_free_vars_cached[1].shape}")
 
 
-    def write_wannier90(self, mod1=False, beginend=True, numwann=True, basis=False):
+    def write_wannier90(self, mod1=False, beginend=True, numwann=True):
         """
         return a string of wannier90 input file
         for projections
@@ -544,7 +545,7 @@ class ProjectionsSet:
         if beginend:
             string += "begin projections\n"
         for p in self.projections:
-            string += p.write_wannier90(mod1=mod1, basis=basis)
+            string += p.write_wannier90(mod1=mod1)
         if beginend:
             string += "end projections\n"
         return string

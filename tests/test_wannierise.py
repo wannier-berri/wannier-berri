@@ -12,7 +12,7 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
-@pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22),])
+@pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22)])
 def test_wannierise(outer_window):
     systems = {}
 
@@ -40,7 +40,7 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
         w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])

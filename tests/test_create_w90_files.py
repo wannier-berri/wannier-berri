@@ -650,20 +650,20 @@ def get_diamond_projections():
 
     projections = {
         "s_bond": Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup),
-        "sp3": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True),
-        "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True),
+        "sp3": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup),
+        "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup),
         "d_atom": Projection(position_num=pos_atom, orbital='d', spacegroup=spacegroup),
         "p_atom": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup),
-        "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True),
-        "s_atom_spread2": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread_factor=2),
-        "s_atom_spread0.5": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, spread_factor=0.5),
+        "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup),
+        "s_atom_spread2": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, spread_factor=2),
+        "s_atom_spread0.5": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, spread_factor=0.5),
 
-        "s_atom_0node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=0),
-        "s_atom_1node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=1),
-        "s_atom_2node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, rotate_basis=True, radial_nodes=2),
-        "sp3_0node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True, radial_nodes=0),
-        "sp3_1node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True, radial_nodes=1),
-        "sp3_2node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True, radial_nodes=2),
+        "s_atom_0node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, radial_nodes=0),
+        "s_atom_1node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, radial_nodes=1),
+        "s_atom_2node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, radial_nodes=2),
+        "sp3_0node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, radial_nodes=0),
+        "sp3_1node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, radial_nodes=1),
+        "sp3_2node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, radial_nodes=2),
     }
     projections["sp_bond"] = ProjectionsSet([projections["p_bond"], projections["s_bond"]])
 
@@ -686,7 +686,7 @@ def test_create_Amn(projname):
     if not os.path.exists(file_amn_path):
         os.chdir(amnfiles_path)
         file_win = open("template.win_").read()
-        proj_str = projset.write_wannier90(basis=True)
+        proj_str = projset.write_wannier90()
         with open("diamond.win", "w") as f:
             f.write(proj_str + "\n" + file_win)
         os.system("wannier90.x -pp diamond")
