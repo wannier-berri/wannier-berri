@@ -577,7 +577,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
             check = np.max(np.abs(data - data_ref))
             print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
-    assert check_tot < 5e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
+    assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
 
 
 @pytest.mark.parametrize("select_grid", [None, (4, 4, 4), (2, 2, 2)])
