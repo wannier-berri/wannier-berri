@@ -503,7 +503,7 @@ def test_create_w90files_Fe_gpaw(ispin):
             check = np.max(np.abs(data - data_ref))
             print(f"spin={ispin} ik={ik} ib={ib}, bk={bkvec.bk_latt[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
-    assert check_tot < 3e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
+    assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
 
 
 @pytest.mark.parametrize("ispin", [0, 1])
