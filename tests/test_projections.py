@@ -112,7 +112,7 @@ def test_projection_basis_Telike_gen():
     spacegroup.show()
     for i, s in enumerate(spacegroup.symmetries):
         print(i + 1, "\n", s.rotation_cart)
-    proj = Projection(orbital="p", position_num=[0.1, 0, 0.01], spacegroup=spacegroup, rotate_basis=True, xaxis=[1, 0, 0])
+    proj = Projection(orbital="p", position_num=[0.1, 0, 0.01], spacegroup=spacegroup, xaxis=[1, 0, 0])
     print(repr(np.array(proj.basis_list)))
     reference = np.array([[[1., 0., 0.],
         [0., 1., 0.],
@@ -338,7 +338,7 @@ def test_create_amn_diamond_p_bond():
 
 
     # projection = Projection(position_num=[0, 0, 0], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
-    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup, rotate_basis=True)
+    projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='pz', zaxis=zaxis, spacegroup=bandstructure.spacegroup)
 
 
     print("positions_cart = ", projection.positions @ lattice)
@@ -434,7 +434,7 @@ def test_create_amn_diamond_sp3():
     lattice = bandstructure.lattice
     positions = np.array([[1, 1, 1], [-1, -1, -1]]) / 8
     projection_sp3 = Projection(position_num=positions, orbital='sp3',
-                            spacegroup=bandstructure.spacegroup, rotate_basis=True)
+                            spacegroup=bandstructure.spacegroup)
     projections = ProjectionsSet([projection_sp3])
     print(f"lattice = {lattice}")
     pos_atoms_cart = positions @ lattice
@@ -558,3 +558,54 @@ def test_find_bk_vectors():
     print("wk = for fcc ", wk)
     assert len(wk) == 8
     assert wk == approx(wk.mean())
+
+
+def test_write_wannier90():
+    spacegroup = SpaceGroup.get_trivial(lattice=np.eye(3))
+    zaxis = np.array([1, 1, 1])
+    xaxis = np.array([1, -1, 0])
+    proj1 = Projection(position_num=[[0.3, 0.4, 0.5]], orbital='pz',
+                       spacegroup=spacegroup,
+                       spread_factor=0.5,
+                       radial_nodes=1)
+    print("proj1.basis_list = ", proj1.basis_list)
+    proj2 = Projection(position_num=[[0.6, -0.7, 0.8]], orbital='d',
+                       spacegroup=spacegroup,
+                       zaxis=xaxis, xaxis=zaxis,
+                       spread_factor=2,
+                       rotate_basis=False,
+                       radial_nodes=0)
+    print("proj2.basis_list = ", proj2.basis_list)
+    projset = ProjectionsSet([proj1, proj2])
+    str_proj = projset.write_wannier90(mod1=True).split("\n")
+    print("Generated wannier90 projections :")
+    print(str_proj)
+    reference_string = (" num_wann = 6",
+                    " begin projections",
+                    "f=0.300000000000, 0.400000000000, 0.500000000000: pz:r=2:zona=2.000000",
+                    "f=0.600000000000, 0.300000000000, 0.800000000000: d:z=0.707106781187,-0.707106781187,0.000000000000:x=0.577350269190,0.577350269190,0.577350269190:zona=0.500000",
+                    "end projections",
+    )
+
+    def compare_str_nospaces(str1, str2):
+        str1_nospace = "".join(str1.split())
+        str2_nospace = "".join(str2.split())
+        return str1_nospace == str2_nospace
+
+    def compare_entry(entry1, entry2):
+        a1, b1 = entry1.split('=')
+        a2, b2 = entry2.split('=')
+        if a1.strip() != a2.strip():
+            return False
+        return np.allclose(np.array(b1.split(','), dtype=float), np.array(b2.split(','), dtype=float))
+
+    assert compare_str_nospaces(str_proj[0], reference_string[0]), f"Expected '{reference_string[0]}' but got '{str_proj[0]}'"
+    assert tuple(str_proj[1].strip().split(' ')) == ("begin", "projections"), f"Expected 'begin projections' but got '{str_proj[1]}'"
+    assert tuple(str_proj[4].strip().split(' ')) == ("end", "projections"), f"Expected 'end projections' but got '{str_proj[4]}'"
+    for line_generated, line_reference in zip(str_proj[2:4], reference_string[2:4]):
+        line_g = line_generated.split(':')
+        line_r = line_reference.split(':')
+        assert compare_entry(line_g[0], line_r[0]), f"Expected '{line_r[0]}' but got '{line_g[0]}'"
+        assert line_g[1].strip() == line_r[1].strip(), f"Expected '{line_r[1]}' but got '{line_g[1]}'"
+        for lg, lr in zip(line_g[2:-1], line_r[2:-1]):
+            assert compare_entry(lg, lr), f"Expected '{lr}' but got '{lg}'"

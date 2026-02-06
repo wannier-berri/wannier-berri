@@ -11,6 +11,7 @@ from .wannierizer import Wannierizer
 def wannierise(w90data,
                froz_min=np.inf,
                froz_max=-np.inf,
+               frozen_states=[],
                num_iter=1000,
                conv_tol=1e-9,
                num_iter_converge=3,
@@ -41,6 +42,10 @@ def wannierise(w90data,
         lower bound of the frozen window
     froz_max : float
         upper bound of the frozen window
+    frozen_states : list of int of dict
+        if list of int - the indices of the frozen states (0-based) for ALL k-points
+        if list of dict - the list of dictionaries with keys 'ik' (k-point index, 0-based) and
+          'bands' (list of band indices, 0-based) specifying the frozen states for each k-point separately
     num_iter : int
         maximal number of iterations.
     conv_tol : float
@@ -118,7 +123,23 @@ def wannierise(w90data,
 
     frozen = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
                        kwargs=dict(win_min=froz_min, win_max=froz_max))
+
+    if isinstance(frozen_states, list):
+        for ib in frozen_states:
+            frozen[:, ib] = True
+    elif isinstance(frozen_states, dict):
+        for ik, frozen_ik in frozen_states.items():
+            if ik in kptirr:
+                print(f"{kptirr=}, {ik=}, {frozen_ik=}")
+                iki = np.where(kptirr == ik)[0][0]
+                for ib in frozen_ik:
+                    frozen[iki, ib] = True
+
     free = vectorize(np.logical_not, frozen, to_array=True)
+
+    if not w90data.has_file("chk"):
+        from wannierberri.w90files.chk import CheckPoint
+        w90data.set_file("chk", CheckPoint(NK=NK, NB=w90data.mmn.NB, NW=w90data.mmn.NB))
 
     if init == "amn":
         amn = w90data.amn.data

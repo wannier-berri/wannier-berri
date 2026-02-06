@@ -32,6 +32,8 @@ class SavableNPZ(abc.ABC):
     npz_tags = []
     npz_tags_optional = []
     npz_keys_dict_int = []  # dictionary with int-valued keys
+    npz_keys_dict_int_optional = []  # dictionary with int-valued keys
+
 
     @abc.abstractmethod
     def __init__(self):
@@ -57,7 +59,13 @@ class SavableNPZ(abc.ABC):
                 if val is not None:
                     dic[k] = self.__getattribute__(k)
         for tag in self.__class__.npz_keys_dict_int:
-            dic.update(dic_to_keydic(self.__getattribute__(tag), tag))
+            val = self.__getattribute__(tag)
+            dic.update(dic_to_keydic(val, tag))
+        for tag in self.__class__.npz_keys_dict_int_optional:
+            if hasattr(self, tag):
+                val = self.__getattribute__(tag)
+                dic.update(dic_to_keydic(val, tag))
+
         return dic
 
     @classmethod
@@ -70,7 +78,16 @@ class SavableNPZ(abc.ABC):
                 dic_loc[k] = dic[k]
 
         for tag in cls.npz_keys_dict_int:
-            dic_loc[tag] = keydic_to_dic(dic, tag)
+            val = keydic_to_dic(keydic=dic, name=tag)
+            if len(val) == 0:
+                raise ValueError(f"Missing required key subdictionry with prefix '{tag}' in dictionary")
+
+            dic_loc[tag] = val
+
+        for tag in cls.npz_keys_dict_int_optional:
+            val = keydic_to_dic(keydic=dic, name=tag)
+            if len(val) > 0:
+                dic_loc[tag] = val
 
         for k in cls.npz_tags_optional:
             if k in dic:
@@ -93,7 +110,8 @@ def dic_to_keydic(dic, name="data"):
     Returns:
     dict: A new dictionary with keys prefixed by the specified name.
     """
-
+    if dic is None:
+        return None
     keydic = {}
     for k, v in dic.items():
         keydic[name + f"_{k}"] = v

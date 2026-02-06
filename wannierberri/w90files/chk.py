@@ -21,10 +21,11 @@ class CheckPoint(SavableNPZ):
         tolerance for the completeness relation for finite-difference scheme
     """
 
-    npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_latt", "mp_grid",
-                "wannier_centers_cart", "wannier_spreads"]
+    npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_latt"]
     npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
-    npz_keys_dict_int = ["v_matrix"]
+    # npz_keys_dict_int = ["v_matrix"]
+    npz_keys_dict_int_optional = ["v_matrix"]
+
 
 
     def __init__(self,

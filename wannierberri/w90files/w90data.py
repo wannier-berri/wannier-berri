@@ -385,12 +385,14 @@ class Wannier90data:
                 files=("mmn", "eig", "amn"),
                 irreducible=False):
         self = cls()
-        files = copy(files)
+        self.seedname = copy(seedname)
+        files = list(copy(files))
         if set(["mmn", "uHu", "uIu", "sHu", "sIu"]).intersection(set(files)):
             if "bkvec" not in files:
                 files.append("bkvec")
         print(f"files = {files}")
         for f in files:
+            print(f"Trying to read file {f} from npz {seedname}.{f}.npz")
             try:
                 if f == "symmetrizer":
                     val = SymmetrizerSAWF.from_npz(seedname + ".symmetrizer.npz")

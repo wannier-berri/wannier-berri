@@ -30,8 +30,8 @@ for data_dir in ['diamond']:
     pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
     zaxis_bond = (pos_atom[1] - pos_atom[0]) @ spacegroup.lattice
     proj_s_bond = Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup)
-    proj_sp3 = Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, rotate_basis=True)
-    proj_p_bond = Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup, rotate_basis=True)
+    proj_sp3 = Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup)
+    proj_p_bond = Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup)
 
 
     for projname in ['s_bond', 'p_bond', 'sp_bond', 'sp3']:

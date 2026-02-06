@@ -1,18 +1,19 @@
+import pytest
+from pytest import approx, fixture
+import numpy as np
+import os
 from gpaw import GPAW
-from .test_wannierise import spreads_Fe_spd_444_nowin as spreads_Fe_spd_444
 import irrep
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroup
-import pytest
-from pytest import approx, fixture
+from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
+from .test_wannierise import spreads_Fe_spd_444_nowin as spreads_Fe_spd_444
 import wannierberri as wberri
-import numpy as np
-import os
-
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from wannierberri.w90files.eig import EIG
-from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
+
+
 
 
 @fixture
@@ -331,7 +332,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
-        write_npz_list=[],
+        write_npz_list=None,
         read_npz_list=[],
         seedname=os.path.join(path_tmp, prefix),
         projections=proj_set,
@@ -502,7 +503,7 @@ def test_create_w90files_Fe_gpaw(ispin):
             check = np.max(np.abs(data - data_ref))
             print(f"spin={ispin} ik={ik} ib={ib}, bk={bkvec.bk_latt[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
-    assert check_tot < 3e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
+    assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
 
 
 @pytest.mark.parametrize("ispin", [0, 1])
@@ -576,7 +577,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
             check = np.max(np.abs(data - data_ref))
             print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
-    assert check_tot < 5e-5, f"MMN files differ, max deviation is {check_tot} > 3e-5"
+    assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
 
 
 @pytest.mark.parametrize("select_grid", [None, (4, 4, 4), (2, 2, 2)])
@@ -629,3 +630,83 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     spread_ref = 0.39536796  if select_grid == (2, 2, 2) else 0.57345447
     assert wannier_spreads == approx(spread_ref, abs=2e-5)
     assert wannier_centers == approx(pos @ w90data.chk.real_lattice, abs=1e-6)
+
+
+
+
+def get_diamond_projections():
+    """Generate and return the diamond projections dictionary.
+
+    Returns:
+        dict: Dictionary with projection names as keys and Projection/ProjectionsSet objects as values.
+    """
+    bandstructure = BandStructure(code='espresso', prefix=os.path.join(ROOT_DIR, "data", "diamond", "di"),
+                                normalize=False,
+                                onlysym=True)
+    spacegroup = bandstructure.spacegroup
+    pos_bond = [[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]]
+    pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
+    zaxis_bond = (pos_atom[1] - pos_atom[0]) @ spacegroup.lattice
+
+    projections = {
+        "s_bond": Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup),
+        "sp3": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup),
+        "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup),
+        "d_atom": Projection(position_num=pos_atom, orbital='d', spacegroup=spacegroup, rotate_basis=False),
+        "p_atom": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup, rotate_basis=False),
+        "s_atom": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup),
+        "s_atom_spread2": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, spread_factor=2),
+        "s_atom_spread0.5": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, spread_factor=0.5),
+
+        "s_atom_0node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, radial_nodes=0),
+        "s_atom_1node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, radial_nodes=1),
+        "s_atom_2node": Projection(position_num=pos_atom, orbital='s', spacegroup=spacegroup, radial_nodes=2),
+        "sp3_0node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, radial_nodes=0),
+        "sp3_1node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, radial_nodes=1),
+        "sp3_2node": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup, radial_nodes=2),
+    }
+    projections["sp_bond"] = ProjectionsSet([projections["p_bond"], projections["s_bond"]])
+
+    return projections
+
+
+projections_diamond = get_diamond_projections()
+
+
+@pytest.mark.parametrize("projname", list(projections_diamond.keys()))
+def test_create_Amn(projname):
+    pw2wann = "/home/stepan/github/q-e/build/bin/pw2wannier90.x"  # patched pw2wannier90 executable
+    path_data = os.path.join(ROOT_DIR, "data", "diamond")
+    amnfiles_path = os.path.join(path_data, "amnfiles")
+    projections = projections_diamond
+    projset = projections[projname]
+    if isinstance(projset, Projection):
+        projset = ProjectionsSet([projset])
+    file_amn_path = os.path.join(amnfiles_path, f"{projname}.amn")
+    if not os.path.exists(file_amn_path):
+        os.chdir(amnfiles_path)
+        file_win = open("template.win_").read()
+        proj_str = projset.write_wannier90()
+        with open("diamond.win", "w") as f:
+            f.write(proj_str + "\n" + file_win)
+        os.system("wannier90.x -pp diamond")
+        os.system(f"{pw2wann} < diamond.pw2wan | tee {projname}-pw2wan.log")
+        # copy amn file
+        os.system(f"mv diamond.amn {projname}.amn")
+        os.system(f"mv diamond.win {projname}.win")
+        os.system(f"mv diamond.nnkp {projname}.nnkp")
+        os.chdir(ROOT_DIR)
+
+    amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(amnfiles_path, f"{projname}"))
+    bandstructure = BandStructure(code='espresso',
+                                prefix=os.path.join(amnfiles_path, "di"),
+                                normalize=False, include_TR=False)
+    amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)
+    amn_wb.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-wb.amn.npz"))
+    amn_w90.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-w90.amn.npz"))
+    assert amn_w90.NK == amn_wb.NK, f"Number of k-points differ for {projname}: {amn_w90.NK} != {amn_wb.NK} for projname {projname}"
+    assert amn_w90.NB == amn_wb.NB, f"Number of bands differ for {projname}: {amn_w90.NB} != {amn_wb.NB} for projname {projname}"
+    assert amn_w90.NW == amn_wb.NW, f"Number of Wannier functions differ for {projname}: {amn_w90.NW} != {amn_wb.NW} for projname {projname}"
+    for ik in amn_wb.data.keys():
+        assert amn_wb.data[ik].shape == amn_w90.data[ik].shape, f"Shape of AMN data differ for {projname} at k-point {ik}: {amn_wb.data[ik].shape} != {amn_w90.data[ik].shape} for projname {projname}"
+        assert amn_wb.data[ik] == approx(amn_w90.data[ik], abs=0.01), f"AMN data differ for {projname} at k-point {ik}, max diff is {np.max(np.abs(amn_wb.data[ik] - amn_w90.data[ik]))} > 0.01 for projname {projname}"

@@ -42,6 +42,11 @@ class Projection:
     spacegroup : irrep.spacegroup.SpaceGroup
         The spacegroup of the structure. All points equivalent to the given ones are also added 
         (not needed if wyckoff_position is provided)
+    radial_nodes : int
+        number of nodes in the radial function (e.g. 0 is equivalent to r=1 in wannier90 projections)
+    spread_factor : float
+        multiplier for the spread of the radial function (in Bohr). The radial function is proportional exp(-r/((nodes+1)*spread_factor))
+        equivalent to zona=1/spread_factor in wannier90 projections
     void : bool
         if true, create an empty object, to be filled later
     wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
@@ -97,8 +102,10 @@ class Projection:
                  void=False,
                  free_var_values=None,
                  spinor=None,
-                 rotate_basis=False,
+                 rotate_basis=True,
                  basis_list=None,
+                 radial_nodes=0,
+                 spread_factor=1.0,
                  zaxis=None,
                  xaxis=None,
                  do_not_split_projections=False):
@@ -108,6 +115,8 @@ class Projection:
             self.orbitals = [orbital]
         else:
             self.orbitals = orbital.split(";")
+        self.radial_nodes = radial_nodes
+        self.spread_factor = spread_factor
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
@@ -135,17 +144,19 @@ class Projection:
         self.spinor = spinor
 
         if basis_list is not None:
-            assert not rotate_basis, "rotate_basis is not allowed if basis_list is provided"
+            if rotate_basis:
+                Warning("basis list is provided, rotate_basis is ignored")
             for i, b in enumerate(basis_list):
                 b = np.array(b, dtype=float)
                 assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
                 assert np.allclose(b @ b.T, np.eye(3), atol=1e-8), f"basis_list[{i}] should be an orthogonal matrix, not {b}"
             self.basis_list = np.array(basis_list)
-        elif rotate_basis:
-            basis0 = read_xzaxis(xaxis, zaxis)
-            self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
         else:
-            self.basis_list = [np.eye(3, dtype=float)] * self.num_points
+            basis0 = read_xzaxis(xaxis, zaxis)
+            if rotate_basis:
+                self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
+            else:
+                self.basis_list = [basis0] * self.num_points
 
     @property
     def positions(self):
@@ -206,10 +217,21 @@ class Projection:
     def write_wannier90(self, mod1=False):
         string = ""
         for o in self.orbitals:
-            for pos in self.wyckoff_position.positions:
+            for i, pos in enumerate(self.wyckoff_position.positions):
                 if mod1:
                     pos = pos % 1
-                string += f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}\n"
+                s1 = f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}"
+                basis_loc = self.basis_list[i]
+                if not np.allclose(basis_loc, np.eye(3)):
+                    zaxis = basis_loc[2, :]
+                    xaxis = basis_loc[0, :]
+                    s1 += f":z={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
+                    s1 += f":x={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
+                if self.radial_nodes > 0:
+                    s1 += f":r={self.radial_nodes + 1}"
+                if abs(self.spread_factor - 1.0) > 1e-6:
+                    s1 += f":zona={1. / self.spread_factor:.6f}"
+                string += f"{s1}\n"
         return string
 
     @cached_property
@@ -503,6 +525,12 @@ class ProjectionsSet:
         ----------
         mod1 : bool
             If True, the positions are printed modulo 1
+        beginend : bool
+            If True, the begin projections and end projections lines are added
+        numwann : bool
+            If True, the num_wann line is added
+        basis : bool
+            If True, the basis for each projection is also printed (zaxis, xaxis)
 
         Returns
         -------

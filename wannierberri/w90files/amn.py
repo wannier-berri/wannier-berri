@@ -3,7 +3,7 @@ import multiprocessing
 import numpy as np
 from ..symmetry.projections import ProjectionsSet
 
-from ..symmetry.orbitals import Bessel_j_exp_int, Projector
+from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 from .utility import str2arraymmn
 from .w90file import W90_file, auto_kptirr, check_shape
 
@@ -71,11 +71,6 @@ class AMN(W90_file):
                 for ib in range(self.NB):
                     f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
 
-    # def get_disentangled(self, v_left, v_right):
-    #     print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
-    #     data = np.einsum("klm,kmn->kln", v_left, self.data)
-    #     print(f"shape of data {data.shape} , old {self.data.shape}")
-    #     return self.__class__(data=data)
 
     def spin_order_block_to_interlace(self):
         """
@@ -86,53 +81,13 @@ class AMN(W90_file):
         data[:, :, 1::2] = self.data[:, :, self.NW // 2:]
         self.data = data
 
+
     def spin_order_interlace_to_block(self):
         """ the reverse of spin_order_block_to_interlace"""
         data = np.zeros((self.NK, self.NB, self.NW), dtype=complex)
         data[:, :, :self.NW // 2] = self.data[:, :, 0::2]
         data[:, :, self.NW // 2:] = self.data[:, :, 1::2]
         self.data = data
-
-    # def write(self, seedname, comment="written by WannierBerri"):
-    #     comment = comment.strip()
-    #     f_amn_out = open(seedname + ".amn", "w")
-    #     print(f"writing {seedname}.amn: " + comment + "\n")
-    #     f_amn_out.write(comment + "\n")
-    #     f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
-    #     for ik in range(self.NK):
-    #         f_amn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
-    #             ib + 1, iw + 1, ik + 1, self.data[ik, ib, iw].real, self.data[ik, ib, iw].imag)
-    #             for iw in range(self.NW) for ib in range(self.NB)))
-    #     f_amn_out.close()
-
-
-    # def from_bandstructure_s_delta(self, bandstructure, positions, normalize=True):
-    #     """
-    #     Create an AMN object from a BandStructure object
-    #     NOTE!!: Only for delta-localised s-orbitals
-
-    #     more complete implementation is in from_bandstructure()
-
-    #     Parameters
-    #     ----------
-    #     bandstructure : irrep.bandstructure.BandStructure
-    #         the band structure object
-    #     positions : array( (N, 3), dtype=float)
-    #         the positions of the orbitals
-    #     normalize : bool
-    #         if True, the wavefunctions are normalised
-    #     """
-    #     data = []
-    #     pos = np.array(positions)
-    #     for kp in bandstructure.kpoints:
-    #         igk = kp.ig[:3, :] + kp.k[:, None]
-    #         exppgk = np.exp(-2j * np.pi * (pos @ igk))
-    #         wf = kp.WF.conj()
-    #         if normalize:
-    #             wf /= np.linalg.norm(wf, axis=1)[:, None]
-    #         data.append(wf @ exppgk.T)
-    #     self.data = np.array(data)
-    #     return self
 
 
     @classmethod
@@ -160,16 +115,21 @@ class AMN(W90_file):
 
         positions = []
         orbitals = []
+        radial_nodes_list = []
         basis_list = []
+        spread_list = []
         print(f"Creating amn. Using projections_set \n{projections}")
         for proj in projections.projections:
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
             orbitals += orb
+            radial_nodes_list += [proj.radial_nodes] * proj.num_wann
+            spread_list += [proj.spread_factor] * proj.num_wann
             basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
             if verbose:
                 print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
         spinor = projections.spinor
+
 
 
         if verbose:
@@ -177,7 +137,9 @@ class AMN(W90_file):
         data = {}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
-        bessel = Bessel_j_exp_int()
+        unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
+        print(f"unit cell volume = {unit_cell_volume} ")
+        bessel = Bessel_j_radial_int()
 
         for i, ikirr in enumerate(kptirr):
             kp = bandstructure.kpoints[selected_kpoints[i]]
@@ -193,11 +155,21 @@ class AMN(W90_file):
                 wf_down = wf[:, :, 1]
 
             gk = igk @ rec_latt
-            projector = Projector(gk, bessel)
-            prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
+            print(f"{gk.shape=}, {expgk.shape=}, {wf.shape=}, {pos.shape=}")
+            prj = []
+            projector_dict = {}
+            for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
+                if spread_factor not in projector_dict:
+                    projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
+                projector = projector_dict[spread_factor]
+                prj.append(projector(orb, basis, radial_nodes))
+            # prj = list([projector(orb, basis, radial_nodes) for orb, basis, radial_nodes in zip(orbitals, basis_list, radial_nodes_list)])
             # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
             # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
-            proj_gk = np.array(prj) * expgk
+            proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
+            proj_proj = proj_gk.conj() @ proj_gk.T
+            print(f"projector on itself ({proj_proj.shape}): \n {np.round(proj_proj.real, 3)} ")
+            # exit()
             if spinor:
                 # print(f"shapes proj_gk:{proj_gk.shape}, wf_up : {wf_up.shape}, wf_down : {wf_down.shape}, ")
                 proj_up = wf_up @ proj_gk.T
@@ -218,6 +190,19 @@ class AMN(W90_file):
         if self.NW != other.NW:
             return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
         return True, ""
+
+    def get_high_projectability(self, threshold=0.5, select_WF=None):
+        """
+        Get the maximum projection value over all k-points and bands
+        """
+        if select_WF is None:
+            select_WF = range(self.NW)
+        result = {}
+        for ik, data in self.data.items():
+            proj = (np.abs(data[:, select_WF])**2).sum(axis=1)
+            print(f"ik={ik} proj = {proj}")
+            result[ik] = (proj >= threshold)
+        return result
 
 
 # def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):
