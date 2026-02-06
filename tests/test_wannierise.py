@@ -40,7 +40,7 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     if outer_window is not None:
         w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])

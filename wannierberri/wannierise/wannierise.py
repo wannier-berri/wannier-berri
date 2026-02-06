@@ -128,8 +128,9 @@ def wannierise(w90data,
         for ib in frozen_states:
             frozen[:, ib] = True
     elif isinstance(frozen_states, dict):
-        for ik, frozen_ik in frozen_states:
+        for ik, frozen_ik in frozen_states.items():
             if ik in kptirr:
+                print(f"{kptirr=}, {ik=}, {frozen_ik=}")
                 iki = np.where(kptirr == ik)[0][0]
                 for ib in frozen_ik:
                     frozen[iki, ib] = True

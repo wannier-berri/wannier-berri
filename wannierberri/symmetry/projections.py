@@ -144,7 +144,8 @@ class Projection:
         self.spinor = spinor
 
         if basis_list is not None:
-            assert not rotate_basis, "rotate_basis is not allowed if basis_list is provided"
+            if rotate_basis:
+                Warning("basis list is provided, rotate_basis is ignored")
             for i, b in enumerate(basis_list):
                 b = np.array(b, dtype=float)
                 assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
@@ -152,10 +153,10 @@ class Projection:
             self.basis_list = np.array(basis_list)
         else:
             basis0 = read_xzaxis(xaxis, zaxis)
-        if rotate_basis:
-            self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
-        else:
-            self.basis_list = [basis0] * self.num_points
+            if rotate_basis:
+                self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
+            else:
+                self.basis_list = [basis0] * self.num_points
 
     @property
     def positions(self):
