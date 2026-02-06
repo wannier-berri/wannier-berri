@@ -24,7 +24,6 @@ from packaging import version
 
 def System_tb_py(model,
                  module,
-                 spin=False,
                  **parameters):
     """This interface initializes the System class from a tight-binding
     model packed by one of the available python modules (see below)
@@ -36,8 +35,6 @@ def System_tb_py(model,
         name of the tight-binding model object.
     module : str
         name of the module 'pythtb' or 'tbmodels'
-    spin : bool
-        generate SS_R matrix (if PythTB model  has spin)
 
     Notes
     -----
@@ -51,12 +48,12 @@ def System_tb_py(model,
     system = System_R(force_internal_terms_only=True,
                      name=f'model_{names[module]}',
                      **parameters)
-
+    print(f"Reading the system from {names[module]} model. Needed data: {needed_data.matrices}")
     if module == 'tbmodels':
         # Extract the parameters from the model
         real = model.uc
         system.num_wann = model.size
-        if needed_data.need_R_any(['SS', 'SHA', 'SA', 'SH', 'SRA', 'SR']):
+        if needed_data.need_any(['SS', 'SHA', 'SA', 'SH', 'SRA', 'SR']):
             raise ValueError(
                 f"System_{names[module]} class cannot be used for evaluation of spin properties")
         system.spinor = False
@@ -160,15 +157,15 @@ def System_tb_py(model,
                 Ham_R[index0, i, i] = model._site_energies[i]
             elif model._nspin == 2:
                 Ham_R[index0, 2 * i:2 * i + 2, 2 * i:2 * i + 2] = model._site_energies[i]
-        if model._nspin == 2 and spin:
+        if model._nspin == 2 and needed_data.need_any(['SS']):
             system.set_spin_pairs([(i, i + 1) for i in range(0, system.num_wann, 2)])
 
-        system.set_R_mat('Ham', Ham_R)
-        print(f"shape of Ham_R = {Ham_R.shape}")
+    system.set_R_mat('Ham', Ham_R)
+    print(f"shape of Ham_R = {Ham_R.shape}")
 
-        system.do_at_end_of_init()
-        cprint(f"Reading the system from {names[module]} finished successfully", 'green', attrs=['bold'])
-        return system
+    system.do_at_end_of_init()
+    cprint(f"Reading the system from {names[module]} finished successfully", 'green', attrs=['bold'])
+    return system
 
 
 def System_TBmodels(tbmodel, **parameters):
