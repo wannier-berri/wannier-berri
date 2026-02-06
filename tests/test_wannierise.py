@@ -8,6 +8,9 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 
+from wannierberri.evaluate_k import evaluate_k_path
+from wannierberri.system.system_w90 import System_w90
+
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
@@ -240,3 +243,69 @@ def test_sitesym_Fe(include_TR, use_window):
     plt.legend()
     plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
     plt.close()
+
+
+def test_graphene_freeze_bands():
+    # This test is to check that the frozen bands are actually frozen. We take the graphene example and freeze the first valence band, which should be well separated from the rest of the bands. Then we check that the spread of this band is not changed by the wannierisation procedure.
+    path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw")
+    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer", "chk"], irreducible=True)
+    print(f"files in w90data: {w90data._files}")
+    w90data.wannierise(init="amn",
+                    print_progress_every=20,
+                    frozen_states={0: [1,], 2: [3, 4]},
+                    num_iter=50,
+                    conv_tol=1e-10,
+                    mix_ratio_z=0.8,
+                    localise=True,
+                    sitesym=True,
+                    )
+    spreads = w90data.chk.wannier_spreads
+    print(f"spreads: {repr(spreads)}")
+    assert np.all(spreads < 1)
+    assert np.all(spreads > 0.3)
+    system = System_w90(w90data=w90data, berry=True)
+    
+    kpoints = {
+        'G': [0.0, 0.0, 0.0],
+        'K': [1 / 3, 1 / 3, 0.0],
+        'M': [0.5, 0.0, 0.0],
+    }
+
+    path_labels = "GKMG"
+
+    path, bands_wannier = evaluate_k_path(system,
+                                    nodes=[kpoints[label] for label in path_labels],
+                                    labels=list(path_labels),
+                                    length=100,
+                                    return_path=True)  # length~=2pi/dk
+    bands_dft = np.load(os.path.join(path_data, "graphene-bands-dft.npz"))
+    ik_G_dft, ik_K_dft = None, None
+    for ik, k in enumerate(bands_dft["kpts"]):
+        if np.allclose(k, kpoints['G'], atol=1e-5):
+            ik_G_dft = ik
+        elif np.allclose(k, kpoints['K'], atol=1e-5):
+            ik_K_dft = ik
+    assert ik_G_dft is not None, "G point not found in DFT k-points"
+    assert ik_K_dft is not None, "K point not found in DFT k-points"
+    ik_G_wan, ik_K_wan = None, None
+    for ik, k in enumerate(path.K_list):
+        if np.allclose(k, kpoints['G'], atol=1e-5):
+            ik_G_wan = ik
+        elif np.allclose(k, kpoints['K'], atol=1e-5):
+            ik_K_wan = ik
+    assert ik_G_wan is not None, "G point not found in Wannier k-points"
+    assert ik_K_wan is not None, "K point not found in Wannier k-points"
+    print(f"ik_G_dft={ik_G_dft}, ik_K_dft={ik_K_dft}, ik_G_wan={ik_G_wan}, ik_K_wan={ik_K_wan}")
+
+
+    bands_wannier = bands_wannier.results["Energy"].data
+    bands_dft_G = bands_dft["energies"][ik_G_dft][[1,]]  # the first valence band is frozen, so we take the second one as reference
+    bandsw_wannier_G = bands_wannier[ik_G_wan][[0,]]  # the first band should correspond to the frozen band
+    assert np.allclose(bandsw_wannier_G, bands_dft_G, atol=0.01), f"G point energies differ from reference by {np.max(abs(bandsw_wannier_G - bands_dft_G))}"
+    bands_dft_K = bands_dft["energies"][ik_K_dft][[3, 4]]  # the first valence band is frozen, so we take the second and third one as reference
+    bands_wannier_K = bands_wannier[ik_K_wan][[0, 1]]  # the first two bands should correspond to the frozen band and the first conduction band, which are well separated from the rest of the bands at K point
+    assert np.allclose(bands_wannier_K, bands_dft_K, atol=0.01), f"K point energies differ from reference by {np.max(abs(bands_wannier_K - bands_dft_K))}"
+
+    bands_wannier_ref = np.load(os.path.join(path_data, "graphene-bands-wannier.npz"))
+    assert np.allclose(path.K_list, bands_wannier_ref["kpts"]), f"kpts differ from reference by {np.max(abs(bands_wannier['kpts'] - bands_wannier_ref['kpts']))}"
+    assert np.allclose(bands_wannier, bands_wannier_ref["energies"], atol=0.01), f"energies differ from reference by {np.max(abs(bands_wannier - bands_wannier_ref['energies']))}"

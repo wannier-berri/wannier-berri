@@ -137,6 +137,10 @@ def wannierise(w90data,
 
     free = vectorize(np.logical_not, frozen, to_array=True)
 
+    if not w90data.has_file("chk"):
+        from wannierberri.w90files.chk import CheckPoint
+        w90data.set_file("chk", CheckPoint(NK=NK, NB=w90data.mmn.NB, NW=w90data.mmn.NB))
+
     if init == "amn":
         amn = w90data.amn.data
         w90data.chk.num_wann = w90data.amn.NW
