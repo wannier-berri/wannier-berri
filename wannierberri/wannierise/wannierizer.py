@@ -33,7 +33,10 @@ class Kpoint_and_neighbours:
             list of weights for each neighbour (b-vector)
         """
 
-    def __init__(self, Mmn, frozen, frozen_nb, wb, bk,
+    def __init__(self, Mmn,
+                 frozen, frozen_nb,
+                 free, free_nb,
+                 wb, bk,
                  ikirr,
                  symmetrizer_Zirr,
                  symmetrizer_Uirr,
@@ -45,8 +48,10 @@ class Kpoint_and_neighbours:
         self.Mmn = Mmn
         assert Mmn.shape[2] == nb
         assert len(frozen) == nb
+        assert len(free) == nb
         assert frozen_nb.shape == (nnb, nb), f"frozen_nb shape {frozen_nb.shape} does not match nnb {nnb} and nb {nb}"
-        self.amn = amn
+        assert free_nb.shape == (nnb, nb), f"free_nb shape {free_nb.shape} does not match nnb {nnb} and nb {nb}"
+
         self.num_wann = amn.shape[1]
         self.nband = amn.shape[0]
         self.wb = wb
@@ -57,8 +62,11 @@ class Kpoint_and_neighbours:
         self.data = {}
         self.frozen = frozen
         self.nfrozen = sum(frozen)
-        self.free = np.logical_not(self.frozen)
-        self.free_nb = np.logical_not(frozen_nb)
+        self.free = free
+        self.selected = frozen | free
+        self.NBselected = sum(self.selected)
+        self.amn_sel = amn[self.selected, :]
+        self.free_nb = free_nb
         self.num_bands_free = sum(self.free)
         self.nWfree = self.num_wann - sum(frozen)
         self.NBfree = sum(self.free)
@@ -175,9 +183,11 @@ class Kpoint_and_neighbours:
         U = np.zeros((self.nband, self.num_wann), dtype=complex)
         U[self.frozen, range(self.nfrozen)] = 1.
         U[self.free, self.nfrozen:] = U_opt_free
-        ZV = orthogonalize(U.T.conj().dot(self.amn))
-        U_out = U.dot(ZV)
-        return U_out
+        U_loc = U[self.selected, :].copy()
+        ZV = orthogonalize(U_loc.T.conj().dot(self.amn_sel))
+        U[:] = 0
+        U[self.selected] = U_loc.dot(ZV)
+        return U
 
     def update_Mmn_opt(self):
         """

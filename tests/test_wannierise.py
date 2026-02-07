@@ -15,7 +15,14 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
-@pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22)])
+@pytest.mark.parametrize("outer_window", [None,
+                                          (-100, 100, "select_bands"),
+                                          (-10, 40, "select_bands"),
+                                          (-10, 22, "select_bands"),
+                                          (-100, 100, "outer"),
+                                          (-10, 40, "outer"),
+                                          (-10, 22, "outer"),
+                                          ])
 def test_wannierise(outer_window):
     systems = {}
 
@@ -45,13 +52,21 @@ def test_wannierise(outer_window):
     # Read the data from the Wanier90 inputs
     w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    outer_min = -np.inf
+    outer_max = np.inf
     if outer_window is not None:
-        w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
+        if outer_window[2] == "select_bands":
+            w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
+        elif outer_window[2] == "outer":
+            outer_min = outer_window[0]
+            outer_max = outer_window[1]
     print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
     # Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
     w90data.wannierise(
         froz_min=-8,
         froz_max=20,
+        outer_min=outer_min,
+        outer_max=outer_max,
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
@@ -135,28 +150,38 @@ spreads_Fe_spd_444_nowin = np.array([1.4903928, 1.45260483, 1.62040443, 1.586837
        0.40920197, 0.39504559, 0.40920197, 0.39504559, 0.46868826,
        0.43212589, 0.40920177, 0.39505669])
 
+spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1.70652668, 1.75385869,
+       1.70653457, 1.75385869, 1.70653457, 0.46611582, 0.4308129,
+       0.40815878, 0.39383537, 0.40815878, 0.39383537, 0.46613583,
+       0.43081535, 0.40815827, 0.39384666])
+
 
 @pytest.mark.parametrize("include_TR", [True, False])
-@pytest.mark.parametrize("use_window", [True, False])
+@pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
     w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
     symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
-    if use_window:
+    outer_min, outer_max = -np.inf, np.inf
+    if use_window == "select_bands":
         w90data.select_bands(win_min=-8, win_max=50)
+    elif use_window == "outer":
+        outer_min, outer_max = -8, 50
     froz_max = 30
     w90data.wannierise(init="amn",
                        froz_min=-8,
-                    froz_max=froz_max,
-                    print_progress_every=20,
-                    num_iter=40,
-                    conv_tol=1e-6,
-                    mix_ratio_z=1.0,
-                    localise=True,
-                    sitesym=True,
-                    )
+                       froz_max=froz_max,
+                       outer_min=outer_min,
+                       outer_max=outer_max,
+                       print_progress_every=20,
+                       num_iter=40,
+                       conv_tol=1e-6,
+                       mix_ratio_z=1.0,
+                       localise=True,
+                       sitesym=True,
+                       )
     assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
     spreads = w90data.chk.wannier_spreads
     print(f"spreads: {repr(spreads)}")
@@ -166,7 +191,9 @@ def test_sitesym_Fe(include_TR, use_window):
     assert spreads[5] == approx(spreads[7], abs=atol)
     assert spreads[10] == approx(spreads[12], abs=atol)
     assert spreads[11] == approx(spreads[13], abs=atol)
-    spreads_ref = spreads_Fe_spd_444_win50 if use_window else spreads_Fe_spd_444_nowin
+    spreads_ref = {"select_bands": spreads_Fe_spd_444_win50,
+                   "outer": spreads_Fe_spd_444_win50_outer,
+                   False: spreads_Fe_spd_444_nowin}[use_window]
     assert spreads == approx(spreads_ref, abs=0.01)
     system = wberri.system.System_w90(w90data=w90data, berry=True)
     tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
@@ -245,13 +272,16 @@ def test_sitesym_Fe(include_TR, use_window):
     plt.close()
 
 
-def test_graphene_freeze_bands():
+@pytest.mark.parametrize("outer_window", [(-100, 100, ""), (-15, 15, "-outer")])
+def test_graphene_freeze_bands(outer_window):
     # This test is to check that the frozen bands are actually frozen. We take the graphene example and freeze the first valence band, which should be well separated from the rest of the bands. Then we check that the spread of this band is not changed by the wannierisation procedure.
     path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw")
     w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer", "chk"], irreducible=True)
     print(f"files in w90data: {w90data._files}")
     w90data.wannierise(init="amn",
                     print_progress_every=20,
+                    outer_min=outer_window[0],
+                    outer_max=outer_window[1],
                     frozen_states={0: [1,], 2: [3, 4]},
                     num_iter=50,
                     conv_tol=1e-10,
@@ -264,7 +294,7 @@ def test_graphene_freeze_bands():
     assert np.all(spreads < 1)
     assert np.all(spreads > 0.3)
     system = System_w90(w90data=w90data, berry=True)
-    
+
     kpoints = {
         'G': [0.0, 0.0, 0.0],
         'K': [1 / 3, 1 / 3, 0.0],
@@ -297,7 +327,6 @@ def test_graphene_freeze_bands():
     assert ik_K_wan is not None, "K point not found in Wannier k-points"
     print(f"ik_G_dft={ik_G_dft}, ik_K_dft={ik_K_dft}, ik_G_wan={ik_G_wan}, ik_K_wan={ik_K_wan}")
 
-
     bands_wannier = bands_wannier.results["Energy"].data
     bands_dft_G = bands_dft["energies"][ik_G_dft][[1,]]  # the first valence band is frozen, so we take the second one as reference
     bandsw_wannier_G = bands_wannier[ik_G_wan][[0,]]  # the first band should correspond to the frozen band
@@ -306,6 +335,6 @@ def test_graphene_freeze_bands():
     bands_wannier_K = bands_wannier[ik_K_wan][[0, 1]]  # the first two bands should correspond to the frozen band and the first conduction band, which are well separated from the rest of the bands at K point
     assert np.allclose(bands_wannier_K, bands_dft_K, atol=0.01), f"K point energies differ from reference by {np.max(abs(bands_wannier_K - bands_dft_K))}"
 
-    bands_wannier_ref = np.load(os.path.join(path_data, "graphene-bands-wannier.npz"))
+    bands_wannier_ref = np.load(os.path.join(path_data, f"graphene-bands-wannier{outer_window[2]}.npz"))
     assert np.allclose(path.K_list, bands_wannier_ref["kpts"]), f"kpts differ from reference by {np.max(abs(bands_wannier['kpts'] - bands_wannier_ref['kpts']))}"
     assert np.allclose(bands_wannier, bands_wannier_ref["energies"], atol=0.01), f"energies differ from reference by {np.max(abs(bands_wannier - bands_wannier_ref['energies']))}"

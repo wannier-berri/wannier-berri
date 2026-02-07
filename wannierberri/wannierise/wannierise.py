@@ -12,6 +12,8 @@ def wannierise(w90data,
                froz_min=np.inf,
                froz_max=-np.inf,
                frozen_states=[],
+               outer_min=-np.inf,
+               outer_max=np.inf,
                num_iter=1000,
                conv_tol=1e-9,
                num_iter_converge=3,
@@ -122,7 +124,10 @@ def wannierise(w90data,
         include_k = np.ones(NK, dtype=bool)
 
     frozen = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
-                       kwargs=dict(win_min=froz_min, win_max=froz_max))
+                       kwargs=dict(win_min=froz_min, win_max=froz_max, include_degen=False))
+    selected_bands = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
+                               kwargs=dict(win_min=outer_min, win_max=outer_max, include_degen=True))
+
 
     if isinstance(frozen_states, list):
         for ib in frozen_states:
@@ -135,27 +140,35 @@ def wannierise(w90data,
                 for ib in frozen_ik:
                     frozen[iki, ib] = True
 
+    frozen = symmetrizer.select_full_blocks(frozen, include_partial_blocks=True)
+    selected_bands = symmetrizer.select_full_blocks(selected_bands, include_partial_blocks=True)
     free = vectorize(np.logical_not, frozen, to_array=True)
+    deselected = vectorize(np.logical_and, np.logical_not(selected_bands), free, to_array=True)
+
+    assert np.all(selected_bands[frozen]), "Frozen bands should be included in the selected bands"
+    free[deselected] = False
+    print(f"selected_bands: \n{selected_bands} ")
+
+
 
     if not w90data.has_file("chk"):
         from wannierberri.w90files.chk import CheckPoint
         w90data.set_file("chk", CheckPoint(NK=NK, NB=w90data.mmn.NB, NW=w90data.mmn.NB))
 
     if init == "amn":
-        amn = w90data.amn.data
+        amn = {kpt: w90data.amn.data[kpt] for kpt in kptirr}
         w90data.chk.num_wann = w90data.amn.NW
     elif init == "random":
         if sitesym:
             num_wann = symmetrizer.num_wann
         else:
             assert num_wann is not None, "num_wann should be provided for random initialization without site-symmetry"
-        amnshape = (w90data.mmn.NK, w90data.mmn.NB, num_wann)
-        amn = np.random.random(amnshape) + 1j * np.random.random(amnshape)
+        with np.random.random((len(kptirr), w90data.mmn.NB, num_wann, 2)) as rnd:
+            amn = {kpt: rnd[ik, :, :, 0] + 1j * rnd[ik, :, :, 1] for ik, kpt in enumerate(kptirr)}
         w90data.chk.num_wann = num_wann
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"
-        amn = w90data.chk.v_matrix.copy()
-        print("Restarting from the previous state", amn.shape)
+        amn = {kpt: w90data.chk.v_matrix[kpt].copy() for kpt in kptirr}
     else:
         raise ValueError("init should be 'amn' or 'random'")
 
@@ -171,6 +184,8 @@ def wannierise(w90data,
         wannierizer.add_kpoint(Mmn=w90data.mmn.data[kpt],
                             frozen=frozen[ik],
                             frozen_nb=frozen[neighbours_irreducible[ik]],
+                            free=free[ik],
+                            free_nb=free[neighbours_irreducible[ik]],
                             wb=w90data.bkvec.wk,
                             bk=w90data.bkvec.bk_cart,
                             symmetrizer_Zirr=get_symmetrizer_Zirr(symmetrizer, ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),

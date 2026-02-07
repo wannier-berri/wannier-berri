@@ -143,10 +143,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
             no_exclude_bands = self.nb + no_exclude_bands
         if U is None:
             U = np.random.rand(self.nb, self.num_wann) + 1j * np.random.rand(self.nb, self.num_wann)
-        # print (f"random U matrix for check: \n{arr_to_string(U, fmt='{:12.5e}')}")
         U = self(U)  # symmetrize U
-        # U = sum(self.rotate_U(U, isym) for isym in self.isym_little)
-        # print (f"symmetrized U matrix for check: \n{arr_to_string(U, fmt='{:12.5e}')}")
         max_error_in_blocks = np.zeros(len(self.d_indices), dtype=float)
         for isym in self.isym_little:
             U1 = self.rotate_U(U, isym)
@@ -184,7 +181,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         return Uloc
 
 
-    def __call__(self, U, maxiter=100, tol=1e-6):
+    def __call__(self, U, maxiter=10, tol=1e-6):
         Uprev = U.copy()
         for _ in range(maxiter):
             Uloc = Uprev.copy()
@@ -197,8 +194,11 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                 return Usym
             Uprev = Usym_ortho
         else:
-            print(f"Warning: symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}")
-            return Usym
+            print(f"Warning: symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
+                  "; probably the input data are not perfectly symmetrizable, or the provided projections are not"
+                  "compatible with the irreps of the DFT bands."
+            )
+        return Usym
 
 
 class Symmetrizer_Zirr(SymmetrizerSAWF):
@@ -229,8 +229,8 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
 
 
     def __call__(self, Z):
-        # return Z # temporary for testing
         if Z.shape[0] == 0:
+            # return Z # temporary for testing
             return Z
         else:
             Z_rotated = [self.rotate_Z(Z, isym) for isym in self.isym_little]
@@ -243,8 +243,6 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
         Z = d_band^+ @ Z @ d_band
         """
         Zloc = Z.copy()
-        # if self.time_reversals[isym]:
-        #     Zloc = Zloc.conj()
         Zloc = rotate_block_matrix(Zloc, lblocks=self.lblocks[isym],
                                  lindices=self.indices,
                                  rblocks=self.rblocks[isym],
