@@ -868,6 +868,33 @@ class SymmetrizerSAWF:
 
         return bk_latt_map
 
+    def select_full_blocks(self, selected_bands_bool, include_partial_blocks=False):
+        """select the blocks of bands to be used in the calculation, the rest are excluded
+
+            Parameters
+            ----------
+            selected_bands_bool : np.ndarray(bool, shape=(NKirr, NB))
+                the boolean mask of the bands to be used, for each irreducible k-point. if include_partial_blocks is False, the whole block will be included if all bands in the block are selected, otherwise the whole block will be excluded. if include_partial_blocks is True, the whole block will be included if at least one band in the block is selected, otherwise the whole block will be excluded
+             include_partial_blocks : bool
+                whether to include the whole block if at least one band in the block is selected, or only if all bands in the block are selected
+
+            Returns
+            -------
+            selected_bands_bool_new : np.ndarray(bool, shape=(NKirr, NB))
+                the new boolean mask of the bands to be used, after including/excluding the whole blocks
+        """
+        selected_bands_bool_new = np.copy(selected_bands_bool)
+        for ikirr in range(self.NKirr):
+            for start, end in self.d_band_block_indices[ikirr]:
+                if include_partial_blocks:
+                    if np.any(selected_bands_bool[ikirr, start:end]):
+                        selected_bands_bool_new[ikirr, start:end] = True
+                else:
+                    if np.any(~selected_bands_bool[ikirr, start:end]):
+                        selected_bands_bool_new[ikirr, start:end] = False
+        return selected_bands_bool_new
+
+
 
 
 class VoidSymmetrizer(SymmetrizerSAWF):
@@ -893,3 +920,6 @@ class VoidSymmetrizer(SymmetrizerSAWF):
 
     def symmetrize_wannier_property(self, wannier_property):
         return wannier_property
+
+    def select_full_blocks(self, selected_bands_bool, include_partial_blocks=False):
+        return np.copy(selected_bands_bool), None
