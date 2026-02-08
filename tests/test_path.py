@@ -14,7 +14,7 @@ from .common import OUTPUT_DIR, REF_DIR
 def test_path_1(system_Haldane_PythTB):
     # Test the construction of Path class
     nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
-    path = wberri.Path(system_Haldane_PythTB, nodes=nodes, nk=3)
+    path = wberri.Path.from_nodes(system=system_Haldane_PythTB, nodes=nodes, nk=3)
     assert path.labels == {0: '1', 2: '2'}, "path.labels is wrong"
     assert path.K_list == approx(np.array([[0, 0., 0.], [0.25, 0.25, 0.25], [0.5, 0.5, 0.5]])), "path.K_list is wrong"
 
@@ -23,7 +23,7 @@ def test_path_2(system_Haldane_PythTB):
     # Test the construction of Path class
     nodes = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5], [0.5, 0.0, 0.0]]
     k_labels = ["A", "B", "C"]
-    path = wberri.Path(system_Haldane_PythTB, nodes=nodes, labels=k_labels, nk=4)
+    path = wberri.Path.from_nodes(system=system_Haldane_PythTB, nodes=nodes, labels=k_labels, nk=4)
     assert path.labels == {0: 'A', 3: 'B', 6: 'C'}, "path.labels is wrong"
     assert path.K_list == approx(
         np.array([
@@ -40,7 +40,7 @@ def test_path_2(system_Haldane_PythTB):
 def test_path_3(system_Haldane_PythTB):
     # Test the construction of Path class
     nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
-    path = wberri.Path(system_Haldane_PythTB, nodes=nodes, dk=1.0)
+    path = wberri.Path.from_nodes(system_Haldane_PythTB, nodes=nodes, dk=1.0)
     assert path.labels == {0: '1', 3: '2', 8: '3'}, "path.labels is wrong"
     assert path.K_list[:4, :] == approx(
         np.array([[0, 0, 3], [0, 0, 2], [0, 0, 1], [0, 0, 0]]) / 6), "path.K_list is wrong"
@@ -59,8 +59,8 @@ def test_path_4(system_Haldane_PythTB):
     # Test where nodes is a list of numpy arrays
     nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
     nodes_npy = [np.array(k) for k in nodes]
-    path = wberri.Path(system_Haldane_PythTB, nodes=nodes, dk=1.0)
-    path_npy = wberri.Path(system_Haldane_PythTB, nodes=nodes_npy, dk=1.0)
+    path = wberri.Path.from_nodes(system_Haldane_PythTB, nodes=nodes, dk=1.0)
+    path_npy = wberri.Path.from_nodes(system_Haldane_PythTB, nodes=nodes_npy, dk=1.0)
     assert path_npy.labels == path.labels, "path.labels is wrong"
     assert path_npy.K_list == approx(path.K_list), "path.K_list is wrong"
 
@@ -68,7 +68,7 @@ def test_path_4(system_Haldane_PythTB):
 def test_path_sphere(system_Haldane_PythTB):
     # Test the construction of Path class with spherical k-list
     recip_lattice = system_Haldane_PythTB.recip_lattice
-    path = wberri.Path(system_Haldane_PythTB, k_list='sphere', r1=0.5, ntheta=3, nphi=5)
+    path = wberri.Path.sphere(system=system_Haldane_PythTB, r1=0.5, ntheta=3, nphi=5)
     assert path.K_list.shape == (15, 3), "path.K_list shape is wrong"
     print(repr(np.round(path.K_list, 10)))
     k_cart = path.K_list.dot(recip_lattice)
@@ -100,7 +100,7 @@ def test_path_spheroid(system_Haldane_PythTB):
 
     r1_cart = 0.5
     r2_cart = 1.0
-    path = wberri.Path(system_Haldane_PythTB, k_list='spheroid', r1=r1_cart, r2=r2_cart, ntheta=3, nphi=4)
+    path = wberri.Path.spheroid(system=system_Haldane_PythTB, r1=r1_cart, r2=r2_cart, ntheta=3, nphi=4)
     assert path.K_list.shape == (12, 3), "path.K_list shape is wrong"
     print(repr(np.round(path.K_list, 10)))
     k_cart = path.K_list.dot(recip_lattice)
@@ -152,7 +152,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
 
 
     nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
-    path = wberri.Path(system_Haldane_PythTB, nodes=nodes, dk=1.0)
+    path = wberri.Path.from_nodes(system_Haldane_PythTB, nodes=nodes, dk=1.0)
     print("k-points", path.K_list)
     # print (f"forcing internal terms: {system_Haldane_PythTB.force_internal_terms_only}")
 
@@ -225,7 +225,7 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
 
 def test_tabulate_fail(system_Haldane_PythTB):
     nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
-    path = wberri.Path(system_Haldane_PythTB, nodes=nodes, dk=1.0)
+    path = wberri.Path.from_nodes(system_Haldane_PythTB, nodes=nodes, dk=1.0)
 
     quantities = {
         "Energy": wberri.calculators.tabulate.Energy(),
