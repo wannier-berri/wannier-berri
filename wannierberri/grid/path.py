@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterable
 import numpy as np
 import seekpath
-        
+
 
 class Path(GridAbstract):
     """ A class containing information about the k-path
@@ -42,6 +42,7 @@ class Path(GridAbstract):
     user needs to specify either `k_list` or (`nodes` + (`length` or `nk` or dk))
 
     """
+
     def __init__(self,
                  system,
                  k_list,
@@ -56,7 +57,7 @@ class Path(GridAbstract):
         self.labels = labels
         self.K_list = np.array(k_list)
         self.div = np.shape(self.K_list)[0]
-        
+
     @classmethod
     def spheroid(cls, system, r1, r2, ntheta, nphi, origin=None):
         if origin is None:
@@ -76,22 +77,23 @@ class Path(GridAbstract):
 
         return cls(
             system=system,
-            k_list = k_list,
-            labels = ['sphere']
+            k_list=k_list,
+            labels=['sphere']
         )
-    
+
     @classmethod
     def sphere(cls, system, r1, ntheta, nphi, origin=None):
         return cls.spheroid(system, r1, r1, ntheta, nphi, origin)
 
     @classmethod
-    def from_nodes(cls, system, nodes, labels=None, length=None, dk=None, 
-                   nk=None, breaks=None):
+    def from_nodes(cls, system, nodes, labels=None, length=None, dk=None,
+                   nk=None):
         if labels is None:
             labels = [str(i + 1) for i, k in enumerate([k for k in nodes if k is not None])]
         labels = (l for l in labels)
         labels = [None if k is None else next(labels) for k in nodes]
         new_labels = {}
+        breaks = []
 
         if length is not None:
             assert length > 0
@@ -116,7 +118,11 @@ class Path(GridAbstract):
                 if nk is not None:
                     _nk = next(nkgen)
                 else:
-                    _nk = round(np.linalg.norm((start - end).dot(system.recip_lattice)) / dk) + 1
+                    if isinstance(system, np.ndarray):
+                        rec_lattice = 2 * np.pi * np.linalg.inv(system).T
+                    else:
+                        rec_lattice = system.recip_lattice
+                    _nk = round(np.linalg.norm((start - end).dot(rec_lattice)) / dk) + 1
                     if _nk == 1:
                         _nk = 2
                 K_list = np.vstack(
@@ -129,11 +135,11 @@ class Path(GridAbstract):
         new_labels[K_list.shape[0] - 1] = labels[-1]
         return cls(
             system=system,
-            k_list = K_list,
-            labels = new_labels,
-            breaks = breaks
+            k_list=K_list,
+            labels=new_labels,
+            breaks=breaks
         )
-    
+
     @classmethod
     def seekpath(cls, cell=None, dk=0.05, with_time_reversal=True,
                  lattice=None, positions=None, numbers=None):
@@ -142,7 +148,7 @@ class Path(GridAbstract):
                 raise ValueError("Either 'cell' or ('lattice', 'positions', 'numbers') should be set")
             cell = (lattice, positions, numbers)
         path = seekpath.get_path_orig_cell(cell, with_time_reversal=with_time_reversal)
-        point_coords =  path['point_coords']
+        point_coords = path['point_coords']
         path_seek = path['path']
         nodes = []
         labels = []
@@ -156,14 +162,7 @@ class Path(GridAbstract):
                 labels.extend([segment[0], segment[1]])
             last_point = segment[1]
         return cls.from_nodes(cell[0], nodes=nodes, labels=labels, dk=dk)
-        
-    
-    def from_cell(cls, cell, dk):
-        import seekpath
-        path_seek = seekpath.get_path_
-        rec_lattice = 2 * np.pi * np.linalg.inv(cell).T
-        length = 2 * np.pi / dk
-        return cls.from_nodes(system, nodes=[[0, 0, 0], [1, 0, 0], [1, 1, 0], [1, 1, 1]], labels=['G', 'X', 'M', 'R'], length=length)
+
 
     @property
     def str_short(self):

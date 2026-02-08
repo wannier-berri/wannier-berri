@@ -65,6 +65,23 @@ def test_path_4(system_Haldane_PythTB):
     assert path_npy.K_list == approx(path.K_list), "path.K_list is wrong"
 
 
+@pytest.mark.parametrize("lattice_type", ["cubic", "fcc", "bcc"])
+def test_seek_path(lattice_type):
+    # Test the construction of Path class with seekpath
+    lattice = {
+        'cubic': np.eye(3),
+        'fcc': np.ones((3, 3)) - np.eye(3),
+        'bcc': np.ones((3, 3)) / 2 - np.eye(3)
+    }[lattice_type]
+    positions = np.array([[0, 0, 0]])
+    numbers = np.array([1])
+    path = wberri.Path.seekpath(lattice=lattice, positions=positions, numbers=numbers)
+    print(f"lattice type: {lattice_type}")
+    print("k-points", path.K_list)
+    print("labels", path.labels)
+
+
+
 def test_path_sphere(system_Haldane_PythTB):
     # Test the construction of Path class with spherical k-list
     recip_lattice = system_Haldane_PythTB.recip_lattice
