@@ -271,7 +271,7 @@ class TABresult(Result):
 
         kline = path.getKline()
         E = self.get_eigenvalues(iband=iband) - Eshift
-        
+
         axes.set_ylabel(r"$E$, eV")
         if Emin is None:
             Emin = E.min() - 0.5

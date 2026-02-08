@@ -272,6 +272,7 @@ def test_tabulate_fail(system_Haldane_PythTB):
                            match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
             wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key: val})
 
+
 @pytest.mark.parametrize("system_type", ["Haldane_PythTB", "Fe_gpaw"])
 def test_get_bandstructure(system_type,
                       system_Haldane_PythTB,

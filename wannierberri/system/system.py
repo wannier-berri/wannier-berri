@@ -17,7 +17,6 @@ import warnings
 import numpy as np
 from functools import cached_property
 
-from ..symmetry.point_symmetry import PointGroup
 from ..utility import real_recip_lattice
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
 
@@ -199,7 +198,7 @@ class System:
             The range of Wannier functions, i.e. the list of Wannier functions. By default, it is set to all Wannier functions, but it can be changed by the user.
         """
         return np.arange(self.num_wann)
-    
+
     def set_structure(self, positions, atom_labels, magnetic_moments=None):
         """
         Set atomic structure of the system.
@@ -258,7 +257,7 @@ class System:
                 raise AttributeError("atom_labels or positions are not set, cannot get spglib cell\n set_structure must be called before get_spglib_cell")
         else:
             atom_labels = self.atom_labels
-            positions = self.positions            
+            positions = self.positions
         atom_labels_unique = list(set(atom_labels))
         atom_numbers = [atom_labels_unique.index(label) for label in atom_labels]
         if not hasattr(self, 'magnetic_moments') or self.magnetic_moments is None:
@@ -340,16 +339,16 @@ class System:
                 direction = None
             path = Path.seekpath(cell, dk=dk, twoD_direction=direction)
         bandstructure = evaluate_k_path(system=self,
-                                     path=path, 
-                                     return_path=False, 
-                                     parallel=parallel, 
+                                     path=path,
+                                     return_path=False,
+                                     parallel=parallel,
         )
         if return_path:
             return path, bandstructure
         else:
             return bandstructure
-        
-        
+
+
 
 
 class System_k(System):
