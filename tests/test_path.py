@@ -65,6 +65,7 @@ def test_path_4(system_Haldane_PythTB):
     assert path_npy.K_list == approx(path.K_list), "path.K_list is wrong"
 
 
+
 @pytest.mark.parametrize("lattice_type", ["cubic", "fcc", "bcc"])
 def test_seek_path(lattice_type):
     # Test the construction of Path class with seekpath
@@ -73,9 +74,21 @@ def test_seek_path(lattice_type):
         'fcc': np.ones((3, 3)) - np.eye(3),
         'bcc': np.ones((3, 3)) / 2 - np.eye(3)
     }[lattice_type]
+    lattice = lattice * 5.0  # make
     positions = np.array([[0, 0, 0]])
     numbers = np.array([1])
-    path = wberri.Path.seekpath(lattice=lattice, positions=positions, numbers=numbers)
+    path = wberri.Path.seekpath(lattice=lattice, positions=positions, numbers=numbers, dk=0.5)
+    output_file = os.path.join(OUTPUT_DIR, f"seekpath_{lattice_type}.npz")
+    label_ind = np.array(sorted(path.labels.keys()))
+    label_val = np.array([path.labels[i] for i in label_ind])
+    np.savez(output_file, K_list=path.K_list, labels_ind=label_ind, labels_val=label_val)
+    ref_file = os.path.join(REF_DIR, f"seekpath_{lattice_type}.npz")
+    data_ref = np.load(ref_file)
+    assert path.K_list == approx(data_ref["K_list"]), "path.K_list is wrong"
+    assert label_ind == approx(data_ref["labels_ind"]), "path.labels keys are wrong"
+    assert label_val == approx(data_ref["labels_val"]), "path.labels values are wrong"
+
+
     print(f"lattice type: {lattice_type}")
     print("k-points", path.K_list)
     print("labels", path.labels)
@@ -258,3 +271,22 @@ def test_tabulate_fail(system_Haldane_PythTB):
         with pytest.raises(ValueError,
                            match=f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path"):
             wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key: val})
+
+@pytest.mark.parametrize("system_type", ["Haldane_PythTB", "Fe_gpaw"])
+def test_get_bandstructure(system_type,
+                      system_Haldane_PythTB,
+                      system_Fe_gpaw_soc_z_symmetrized):
+    if system_type == "Haldane_PythTB":
+        system = system_Haldane_PythTB
+    elif system_type == "Fe_gpaw":
+        system = system_Fe_gpaw_soc_z_symmetrized
+    else:
+        raise ValueError(f"Unknown system type {system_type}")
+    path, bandstructure = system.get_bandstructure(dk=0.5, parallel=False, return_path=True)
+    ref_file = os.path.join(REF_DIR, f"bandstructure_{system_type}.npz")
+    output_file = os.path.join(OUTPUT_DIR, f"bandstructure_{system_type}.npz")
+    energies = bandstructure.get_eigenvalues()
+    np.savez(output_file, K_list=path.K_list, energies=energies)
+    data_ref = np.load(ref_file)
+    assert path.K_list == approx(data_ref["K_list"]), "path.K_list is wrong"
+    assert energies == approx(data_ref["energies"]), "bandstructure energies are wrong"

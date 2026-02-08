@@ -142,7 +142,7 @@ class Path(GridAbstract):
 
     @classmethod
     def seekpath(cls, cell=None, dk=0.05, with_time_reversal=True,
-                 lattice=None, positions=None, numbers=None):
+                 lattice=None, positions=None, numbers=None, twoD_direction=None):
         if cell is None:
             if lattice is None or positions is None or numbers is None:
                 raise ValueError("Either 'cell' or ('lattice', 'positions', 'numbers') should be set")
@@ -150,6 +150,7 @@ class Path(GridAbstract):
         path = seekpath.get_path_orig_cell(cell, with_time_reversal=with_time_reversal)
         point_coords = path['point_coords']
         path_seek = path['path']
+        point_coords, path_seek = flatten_path(point_coords, path_seek, direction=twoD_direction)
         nodes = []
         labels = []
         last_point = None
@@ -202,3 +203,53 @@ class Path(GridAbstract):
             k[self.breaks] = 0.0
         K[1:] = np.cumsum(k)
         return K
+
+def flatten_path(nodes, segments, direction=None):
+    """Flattens a path defined by nodes and segments. If direction is given, then the path is flattened along this direction, otherwise the path is flattened along the direction of the first segment"""
+    if direction is None:
+        return nodes, segments
+    print (f"Flattening path along direction {direction}")
+    print(f"Original nodes: {nodes}")
+    print(f"Original segments: {segments}")
+    nodes_flat = {k:np.array(v) for k,v in nodes.items() if abs(v[direction]) < 1e-7}
+    flatten_map = {}
+    for k,v in nodes.items():
+        for kf,vf in nodes_flat.items():
+            diff = v-vf
+            diff[direction] = 0
+            if np.linalg.norm(diff) < 1e-7:
+                flatten_map[k] = kf
+                break
+    segments_flat = [(flatten_map[s[0]], flatten_map[s[1]]) for s in segments]
+    segments_flat = [ seg for seg in segments_flat if seg[0] != seg[1]] # remove vertical lines
+    repeated = np.zeros(len(segments_flat), dtype=bool)
+    for i, seg in enumerate(segments_flat):
+        for j in range(i):
+            if not repeated[j]:
+                seg2 = segments_flat[j]
+                if (seg == seg2) or (seg == (seg2[1], seg2[0])):
+                    repeated[i] = True
+                    break
+    segments_flat = [ seg for i, seg in enumerate(segments_flat) if not repeated[i]] # remove repeated lines
+    print(f"Flattened nodes: {nodes_flat}")
+    print(f"Flattened segments: {segments_flat}")
+    # now reorder the segment so that they are connected, if possible
+    # This is AI code, I did not check it manually yet.
+    if len(segments_flat) > 0:
+        segments_flat_reordered = [segments_flat[0]]
+        for _ in range(len(segments_flat)-1):
+            last_point = segments_flat_reordered[-1][1]
+            for seg in segments_flat:
+                if seg[0] == last_point and seg not in segments_flat_reordered:
+                    segments_flat_reordered.append(seg)
+                    break
+                elif seg[1] == last_point and seg not in segments_flat_reordered:
+                    segments_flat_reordered.append((seg[1], seg[0]))
+                    break
+        segments_flat = segments_flat_reordered
+    print(f"Reordered segments: {segments_flat}")
+    return nodes_flat, segments_flat    
+    
+    
+        
+    
