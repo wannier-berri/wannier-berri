@@ -113,7 +113,7 @@ def test_wannierise(outer_window):
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
     system0 = list(systems.values())[0]
-    path = wberri.Path(system0, nodes=[[0, 0, 0], [1 / 2, 0, 0]], labels=['G', 'L'], length=100)
+    path = wberri.Path.from_nodes(system0, nodes=[[0, 0, 0], [1 / 2, 0, 0]], labels=['G', 'L'], length=100)
     tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
     calculators = {'tabulate': tabulator}
 
@@ -207,7 +207,7 @@ def test_sitesym_Fe(include_TR, use_window):
     )
 
     # all kpoints given in reduced coordinates
-    path = wberri.Path(system,
+    path = wberri.Path.from_nodes(system,
                     nodes=[
                         [0.0000, 0.0000, 0.0000],  # G
                         [0.500, -0.5000, -0.5000],  # H
