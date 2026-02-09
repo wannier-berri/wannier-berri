@@ -23,6 +23,7 @@ from .common_systems import (
     system_Fe_gpaw_up,
     system_Fe_gpaw_dw,
     soc_Fe_gpaw,
+    system_SSH_PythTB,
     system_Fe_gpaw_soc_angle,
     system_Fe_gpaw_soc_angle_symmetrized,
     system_Fe_gpaw_soc_z,

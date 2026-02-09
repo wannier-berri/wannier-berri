@@ -171,7 +171,7 @@ def evaluate_k_path(system, nodes=None, labels=None, length=500, path=None,
         return_path = (path is None)
     if path is None:
         from .grid import Path
-        path = Path(system, nodes=nodes, labels=labels, length=length)
+        path = Path.from_nodes(system, nodes=nodes, labels=labels, length=length)
 
     tabulators_loc = {}
     if tabulators is not None:

@@ -3,6 +3,8 @@ from .Kpoint import KpointBZpath
 import warnings
 from collections.abc import Iterable
 import numpy as np
+import seekpath
+from .path_order import flatten_path
 
 
 class Path(GridAbstract):
@@ -42,92 +44,23 @@ class Path(GridAbstract):
 
     """
 
-    def __init__(
-            self,
-            system,
-            k_list=None,
-            nodes=None,
-            length=None,
-            dk=None,
-            nk=None,
-            labels=None,
-            breaks=[],
-            r1=None,
-            r2=None,
-            ntheta=None,
-            nphi=None,
-            origin=None):
-
+    def __init__(self,
+                 system,
+                 k_list,
+                 labels=None,
+                 breaks=None):
         super().__init__(system=system, use_symmetry=False)
-#        self.findif = None
+        if breaks is None:
+            breaks = []
+        if labels is None:
+            labels = {}
         self.breaks = breaks
-
-        if isinstance(k_list, str):
-            if k_list == 'sphere':
-                self.K_list = self.sphere(r1, r1, ntheta, nphi, origin)
-                self.labels = ['sphere']
-            elif k_list == 'spheroid':
-                self.K_list = self.sphere(r1, r2, ntheta, nphi, origin)
-                self.labels = ['spheroid']
-        elif k_list is None:
-            if nodes is None:
-                raise ValueError("need to specify either 'k_list' of 'nodes'")
-
-            if labels is None:
-                labels = [str(i + 1) for i, k in enumerate([k for k in nodes if k is not None])]
-            labels = (l for l in labels)
-            labels = [None if k is None else next(labels) for k in nodes]
-
-            if length is not None:
-                assert length > 0
-                if dk is not None:
-                    raise ValueError("'length' and  'dk' cannot be set together")
-                dk = 2 * np.pi / length
-            if dk is not None:
-                if nk is not None:
-                    raise ValueError("'nk' cannot be set together with 'length' or 'dk' ")
-
-            if isinstance(nk, Iterable):
-                nkgen = (x for x in nk)
-            else:
-                nkgen = (nk for x in nodes)
-
-            self.K_list = np.zeros((0, 3))
-            self.labels = {}
-            self.breaks = []
-            for start, end, l1, l2 in zip(nodes, nodes[1:], labels, labels[1:]):
-                if start is not None and end is not None:
-                    self.labels[self.K_list.shape[0]] = l1
-                    start = np.array(start)
-                    end = np.array(end)
-                    assert start.shape == end.shape == (3, )
-                    if nk is not None:
-                        _nk = next(nkgen)
-                    else:
-                        _nk = round(np.linalg.norm((start - end).dot(self.recip_lattice)) / dk) + 1
-                        if _nk == 1:
-                            _nk = 2
-                    self.K_list = np.vstack(
-                        (
-                            self.K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None] *
-                            (end - start)[None, :]))
-                elif end is None:
-                    self.breaks.append(self.K_list.shape[0] - 1)
-            self.K_list = np.vstack((self.K_list, nodes[-1]))
-            self.labels[self.K_list.shape[0] - 1] = labels[-1]
-        else:
-            self.K_list = np.array(k_list)
-            assert self.K_list.shape[1] == 3, "k_list should contain 3-vectors"
-            assert self.K_list.shape[0] > 0, "k_list should not be empty"
-            for var in 'nodes', 'length', 'nk', 'dk':
-                if locals()[var] is not None:
-                    warnings.warn(f"k_list was entered manually, ignoring {var}")
-            self.labels = {} if labels is None else labels
-            self.breaks = [] if breaks is None else breaks
+        self.labels = labels
+        self.K_list = np.array(k_list)
         self.div = np.shape(self.K_list)[0]
-        self.breaks = np.array(self.breaks, dtype=int)
 
-    def sphere(self, r1, r2, ntheta, nphi, origin=None):
+    @classmethod
+    def spheroid(cls, system, r1, r2, ntheta, nphi, origin=None):
         if origin is None:
             origin = np.array([0.0, 0.0, 0.0])
         theta = np.linspace(0, np.pi, ntheta, endpoint=True)
@@ -138,11 +71,106 @@ class Path(GridAbstract):
             r2 * np.cos(theta_grid)
         ]
         cart_k_list = np.array(sphere).reshape(3, ntheta * nphi).transpose(1, 0)
-        list_k = cart_k_list.dot(np.linalg.inv(self.recip_lattice)) - origin[None, :]
+        k_list = cart_k_list.dot(np.linalg.inv(system.recip_lattice)) - origin[None, :]
         with open("klist_cart.txt", "w") as f:
             for i in range(ntheta * nphi):
                 f.write(f"{cart_k_list[i, 0]:12.6f}{cart_k_list[i, 1]:12.6f}{cart_k_list[i, 2]:12.6f}\n")
-        return list_k
+
+        return cls(
+            system=system,
+            k_list=k_list,
+            labels=['sphere']
+        )
+
+    @classmethod
+    def sphere(cls, system, r1, ntheta, nphi, origin=None):
+        return cls.spheroid(system, r1, r1, ntheta, nphi, origin)
+
+    @classmethod
+    def from_nodes(cls, system, nodes, labels=None, length=None, dk=None,
+                   nk=None):
+        if labels is None:
+            labels = [str(i + 1) for i, k in enumerate([k for k in nodes if k is not None])]
+        labels = (l for l in labels)
+        labels = [None if k is None else next(labels) for k in nodes]
+        new_labels = {}
+        breaks = []
+
+        if length is not None:
+            assert length > 0
+            if dk is not None:
+                raise ValueError("'length' and  'dk' cannot be set together")
+            dk = 2 * np.pi / length
+        if dk is not None:
+            if nk is not None:
+                raise ValueError("'nk' cannot be set together with 'length' or 'dk' ")
+
+        if isinstance(nk, Iterable):
+            nkgen = (x for x in nk)
+        else:
+            nkgen = (nk for _ in nodes)
+        K_list = np.zeros((0, 3))
+        for start, end, l1, l2 in zip(nodes, nodes[1:], labels, labels[1:]):
+            if start is not None and end is not None:
+                new_labels[K_list.shape[0]] = l1
+                start = np.array(start)
+                end = np.array(end)
+                assert start.shape == end.shape == (3, )
+                if nk is not None:
+                    _nk = next(nkgen)
+                else:
+                    if hasattr(system, "recip_lattice"):
+                        rec_lattice = system.recip_lattice
+                    else:  # assuming it is array-like
+                        rec_lattice = 2 * np.pi * np.linalg.inv(system).T
+                    _nk = round(np.linalg.norm((start - end).dot(rec_lattice)) / dk) + 1
+                    if _nk == 1:
+                        _nk = 2
+                K_list = np.vstack(
+                    (
+                        K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None] *
+                        (end - start)[None, :]))
+            elif end is None:
+                breaks.append(K_list.shape[0] - 1)
+        K_list = np.vstack((K_list, nodes[-1]))
+        new_labels[K_list.shape[0] - 1] = labels[-1]
+        return cls(
+            system=system,
+            k_list=K_list,
+            labels=new_labels,
+            breaks=breaks
+        )
+
+    @classmethod
+    def seekpath(cls, cell=None, dk=0.05, with_time_reversal=True,
+                 lattice=None, positions=None, numbers=None, twoD_direction=None):
+        if cell is None:
+            if lattice is None or positions is None or numbers is None:
+                raise ValueError("Either 'cell' or ('lattice', 'positions', 'numbers') should be set")
+            cell = (lattice, positions, numbers)
+        path = seekpath.get_path_orig_cell(cell, with_time_reversal=with_time_reversal)
+        point_coords = path['point_coords']
+        path_seek = path['path']
+        point_coords, path_seek = flatten_path(point_coords, path_seek, direction=twoD_direction)
+        nodes = []
+        labels = []
+        last_point = None
+        for segment in path_seek:
+            if segment[0] == last_point:
+                nodes.append(point_coords[segment[1]])
+                labels.append(segment[1])
+            else:
+                nodes.extend([None, point_coords[segment[0]], point_coords[segment[1]]])
+                labels.extend([segment[0], segment[1]])
+            last_point = segment[1]
+        return cls.from_nodes(cell[0], nodes=nodes, labels=labels, dk=dk)
+
+
+    def get_kpoints(self):
+        return np.array(self.K_list)
+
+    def get_kpoints_cart(self):
+        return self.K_list.dot(self.recip_lattice)
 
     @property
     def str_short(self):
