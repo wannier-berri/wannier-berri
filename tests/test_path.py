@@ -273,14 +273,17 @@ def test_tabulate_fail(system_Haldane_PythTB):
             wberri.run(system=system_Haldane_PythTB, grid=path, calculators={key: val})
 
 
-@pytest.mark.parametrize("system_type", ["Haldane_PythTB", "Fe_gpaw"])
+@pytest.mark.parametrize("system_type", ["Haldane_PythTB", "Fe_gpaw", "SSH"])
 def test_get_bandstructure(system_type,
                       system_Haldane_PythTB,
-                      system_Fe_gpaw_soc_z_symmetrized):
+                      system_Fe_gpaw_soc_z_symmetrized,
+                      system_SSH_PythTB,):
     if system_type == "Haldane_PythTB":
         system = system_Haldane_PythTB
     elif system_type == "Fe_gpaw":
         system = system_Fe_gpaw_soc_z_symmetrized
+    elif system_type == "SSH":
+        system = system_SSH_PythTB
     else:
         raise ValueError(f"Unknown system type {system_type}")
     path, bandstructure = system.get_bandstructure(dk=0.5, parallel=False, return_path=True)
@@ -288,6 +291,63 @@ def test_get_bandstructure(system_type,
     output_file = os.path.join(OUTPUT_DIR, f"bandstructure_{system_type}.npz")
     energies = bandstructure.get_eigenvalues()
     np.savez(output_file, K_list=path.K_list, energies=energies)
-    data_ref = np.load(ref_file)
-    assert path.K_list == approx(data_ref["K_list"]), "path.K_list is wrong"
+    if system_type == "SSH":
+        k = np.linspace(-0.5, 0.5, 13)
+        data_ref = {'K_list': np.zeros((13, 3))}
+        data_ref['K_list'][:, 0] = k
+        hop1 = 1.0
+        hop2 = 0.5
+        delta = 0.1
+        Delta = hop1 + hop2 * np.exp(-2j * np.pi * k)
+        E = np.sqrt(delta**2 + abs(Delta)**2)
+        data_ref['energies'] = np.array([-E, E]).T
+    else:
+        data_ref = np.load(ref_file)
+    assert path.get_kpoints() == approx(data_ref["K_list"]), "path.K_list is wrong"
     assert energies == approx(data_ref["energies"]), "bandstructure energies are wrong"
+
+
+
+def test_insert_closed():
+    from wannierberri.grid.path_order import insert_closed_loop, insert_all_closed_loops
+    loops = [[0, 1, 2], [3, 4, 5, 3], [5, 6, 4, 7, 8]]
+    new_loops_ref = [[0, 1, 2], [5, 6, 4, 5, 3, 4, 7, 8]]
+    new_loops, success = insert_closed_loop(loops)
+    assert success, "insert_closed_loop did not find the closed loop"
+    assert new_loops == new_loops_ref, f"insert_all_closed_loops did not insert the closed loop correctly. Expected {new_loops_ref}, got {new_loops}"
+    new_loops = insert_all_closed_loops(loops)
+    assert new_loops == new_loops_ref, f"insert_all_closed_loops did not insert the closed loop correctly. Expected {new_loops_ref}, got {new_loops}"
+
+
+def test_connect_segments():
+    from wannierberri.grid.path_order import connect_segments
+    segments = [(0, 1), (2, 3), (1, 2), (4, 5), (3, 5), (3, 1)]
+    new_segments_ref = [(0, 1), (1, 2), (2, 3), (3, 5), (5, 4), (3, 1)]
+    new_segments = connect_segments(segments)
+    assert new_segments == new_segments_ref, f"connect_segments did not connect the segments correctly. Expected {new_segments_ref}, got {new_segments}"
+
+
+def test_connect_segments_a():
+    from wannierberri.grid.path_order import connect_segments
+    segments = [(0, 'a'), (2, 3), ('a', 2), (4, 'gamma'), (3, 'gamma'), (3, 'a')]
+    new_segments_ref = [(0, 'a'), ('a', 2), (2, 3), (3, 'gamma'), ('gamma', 4), (3, 'a')]
+    new_segments = connect_segments(segments)
+    assert new_segments == new_segments_ref, f"connect_segments did not connect the segments correctly. Expected {new_segments_ref}, got {new_segments}"
+
+
+def test_flatten_path():
+    from wannierberri.grid.path_order import flatten_path
+    point_coords = {0: [0, 0, 0], 1: [0.5, 0.5, 0.5], 2: [0.5, 0, 0], 3: [0.5, 0.5, 0], 4: [0.5, 0, 0.5], 5: [0, 0.5, 0.5], 6: [0, 0.5, 0]}
+    path_seek = [(0, 1), (1, 2), (0, 3), (3, 4), (4, 2), (2, 0), (1, 3), (3, 1), (1, 4), (4, 1), (1, 4), (4, 3), (2, 3), (3, 2), (1, 5), (5, 2)]
+    new_point_coords_ref = {0: [0, 0, 0], 3: [0.5, 0.5, 0.0], 2: [0.5, 0, 0], 6: [0, 0.5, 0]}
+    new_path_seek_ref = [(3, 2), (2, 0), (0, 3), (3, 6), (6, 2)]
+    new_point_coords, new_path_seek = flatten_path(nodes=point_coords, segments=path_seek, direction=2)
+    for k, v in new_point_coords_ref.items():
+        assert k in new_point_coords, f"Node {k} is missing in the flattened nodes"
+        assert np.allclose(new_point_coords[k], v), f"Node {k} has wrong coordinates. Expected {v}, got {new_point_coords[k]}"
+    for k, v in new_point_coords.items():
+        assert k in new_point_coords_ref, f"Node {k} is extra in the flattened nodes"
+    assert len(new_path_seek) == len(new_path_seek_ref), f"Flattened path seek has wrong number of segments. Expected {len(new_path_seek_ref)}, got {len(new_path_seek)}"
+    for seg1, seg2 in zip(new_path_seek, new_path_seek_ref[1:]):
+        assert seg1[1] == seg2[0], f"Segments {seg1} and {seg2} are not connected in the flattened path seek"
+    assert new_path_seek == new_path_seek_ref, f"flatten_path did not return the correct path seek. Expected {new_path_seek_ref}, got {new_path_seek}"

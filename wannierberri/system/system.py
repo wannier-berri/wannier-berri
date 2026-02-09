@@ -324,14 +324,14 @@ class System:
         from ..evaluate_k import evaluate_k_path
         cell = self.get_spglib_cell(ignore_no_atoms=True)
         if self.periodic.sum() == 0:
-            path = Path.from_nodes(cell, nodes=[[0, 0, 0]], labels=['G'], dk=dk)
+            path = Path.from_nodes(cell[0], nodes=[[0, 0, 0]], labels=['G'], dk=dk)
         elif self.periodic.sum() == 1:
             directionk = np.where(self.periodic)[0][0]
             X = np.zeros(3)
             X[directionk] = 0.5
             mX = np.zeros(3)
             mX[directionk] = -0.5
-            path = Path.from_nodes(cell, nodes=[mX, [0, 0, 0], X], labels=['-X', 'G', 'X'], dk=dk)
+            path = Path.from_nodes(cell[0], nodes=[mX, [0, 0, 0], X], labels=['-X', 'G', 'X'], dk=dk)
         else:
             if self.periodic.sum() == 2:
                 direction = np.where(~self.periodic)[0][0]
