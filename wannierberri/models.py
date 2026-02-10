@@ -160,6 +160,36 @@ def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_lef
     return my_model
 
 
+def SSH_ptb(delta=0.2, hop1=1.0, hop2=0.15):
+    """Create a 1D SSH model using `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
+
+    Parameters
+    -----------
+    delta : float
+        difference between the on-site potentials of the two atoms
+    hop1 : float
+        nearest-neighbour hopping on the strong bond
+    hop2 : float
+        nearest-neighbour hopping on the weak bond
+
+    Notes
+    -----
+    PythTB should be installed to use this (`pip install pythtb`)
+
+    """
+    import pythtb
+
+    lat = [[1.0]]
+    orb = [[0.], [0.4]]
+
+    my_model = pythtb.tb_model(1, 1, lat, orb)
+
+    my_model.set_onsite([-delta, delta])
+    my_model.set_hop(hop1, 0, 1, [0])
+    my_model.set_hop(hop2, 1, 0, [1])
+    return my_model
+
+
 def CuMnAs_2d(
     nx=0,
     ny=1,

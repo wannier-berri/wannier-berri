@@ -710,6 +710,15 @@ def system_Haldane_PythTB():
 
 
 @pytest.fixture(scope="session")
+def system_SSH_PythTB():
+    """Create system for SSH model using PythTB"""
+    # Load system
+    model_pythtb_SSH = wb_models.SSH_ptb(delta=0.1, hop1=1.0, hop2=0.5)
+    system = wberri.system.System_PythTB(model_pythtb_SSH)
+    return system
+
+
+@pytest.fixture(scope="session")
 def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system

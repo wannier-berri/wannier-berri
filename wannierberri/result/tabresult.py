@@ -221,6 +221,9 @@ class TABresult(Result):
                            frmsf_name=frmsf_name
                            )
 
+    def get_eigenvalues(self, iband=None):
+        return self.get_data(quantity="Energy", iband=iband)
+
     def plot_path_fat(
             self,
             path,
@@ -267,7 +270,7 @@ class TABresult(Result):
             raise ValueError("iband should be either an integer, or array of intergers, or None")
 
         kline = path.getKline()
-        E = self.get_data(quantity='Energy', iband=iband) - Eshift
+        E = self.get_eigenvalues(iband=iband) - Eshift
 
         axes.set_ylabel(r"$E$, eV")
         if Emin is None:

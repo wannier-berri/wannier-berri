@@ -41,7 +41,8 @@ setuptools.setup(
                         'sympy', 
                         'spglib>=2', 
                         'irrep>=2.5.0', 
-                        'spgrep'
+                        'spgrep',
+                        'seekpath',
                       ],
      extras_require=extras_require,
      url="https://wannier-berri.org",
