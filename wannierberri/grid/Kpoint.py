@@ -44,13 +44,10 @@ class KpointBZ():
         self.result_storage_path = path
 
 
-    def set_result(self, res, dump=False):
+    def set_result(self, res):
         self.result = res
         self._max = self.result.max
         self.was_evaluated_flag = True
-        if dump:
-            self.dump_result()
-            assert self.result is None, "result should be None after dumping"
 
     def get_result(self):
         if self.result is not None:
@@ -69,8 +66,8 @@ class KpointBZ():
         self.res_cleared_flag = True
 
     def dump_result(self):
-        assert not self.res_dumped_flag, "result is already dumped"
-        assert self.result is not None, "result is not set"
+        if self.res_dumped_flag:
+            return
         with open(self.result_storage_path, 'wb') as f:
             pickle.dump(self.result, f)
         self.result = None
@@ -80,6 +77,12 @@ class KpointBZ():
         with open(self.result_storage_path, 'rb') as f:
             res = pickle.load(f)
         return res
+
+    def add_factor(self, factor):
+        self.factor += factor
+
+    def set_factor(self, factor):
+        self.factor = factor
 
     @cached_property
     def Kp_fullBZ(self):
@@ -134,10 +137,13 @@ class KpointBZparallel(KpointBZ):
     def absorb(self, other):
         if other is None:
             return
-        if other.was_evaluated_flag or self.was_evaluated_flag:
-            raise RuntimeError(
-                f"combining two K-points :\n {self} \n and\n  {other}\n  with calculated result should not happen")
-        self.factor += other.factor
+        if other.was_evaluated_flag:
+            if self.was_evaluated_flag:
+                raise RuntimeError(
+                    f"combining two K-points :\n {self}:{self.was_evaluated_flag} \n and\n  {other}:{other.was_evaluated_flag}\n  with calculated result should not happen")
+            else:
+                self.set_result(other.get_result())
+        self.add_factor(other.factor)
 
     def equiv(self, other):
         if self.refinement_level != other.refinement_level:
@@ -170,11 +176,11 @@ class KpointBZparallel(KpointBZ):
         ]
 
         if include_original:
-            self.factor = newfac
+            self.set_factor(newfac)
             self.refinement_level += 1
             self.dK = dK_adpt
         else:
-            self.factor = 0  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
+            self.set_factor(0)  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
         if use_symmetry and (self.pointgroup is not None):
             exclude_equiv_points(K_list_add)
         return K_list_add
@@ -215,10 +221,7 @@ def exclude_equiv_points(K_list, new_points=None):
                         continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
-                            print('+++exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
                             K_list[i].absorb(K_list[j])
     for i in sorted(exclude)[-1::-1]:
-        if i >= n - new_points:
-            print(f"---exclude dbg {i} with K={K_list[i].K}, distGamma={K_list[i].distGamma}, factor={K_list[i].factor}")
-            del K_list[i]
+        del K_list[i]

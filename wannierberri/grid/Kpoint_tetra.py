@@ -94,5 +94,5 @@ class KpointBZtetra(KpointBZ):
                     NKFFT=self.NKFFT
                 ))
         #        print (f"split {self.size} intp {[k.size for k in add_list]}")
-        self.factor = 0.
+        self.set_factor(0)  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
         return add_list

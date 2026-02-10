@@ -54,8 +54,9 @@ def check_run(compare_any_result):
             extra_precision={},
             precision=-1e-8,
             restart=False,
-            file_Klist=None,
+            file_Klist_path=None,
             do_not_compare=False,
+            allow_restart=False,
             skip_compare=[],
     ):
 
@@ -73,6 +74,8 @@ def check_run(compare_any_result):
             parameters_K=parameters_K,
             fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
             suffix=suffix,
+            allow_restart=allow_restart,
+            file_Klist_path=file_Klist_path,
             restart=restart,
         )
 
@@ -554,12 +557,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     suffix = "refine-" + '-'.join([str(i) for i in adpt_num_iter_list])
-    fKl = f"Klist-{suffix}.pickle"
-    fKl_ch = f"Klist-{suffix}.changed_factors"
-    if os.path.exists(fKl_ch):
-        os.remove(fKl_ch)
-    if os.path.exists(fKl):
-        os.remove(fKl)
+    fKl = os.path.join(OUTPUT_DIR, f"_tmp_K_{suffix}")
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
 
@@ -575,7 +573,8 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
             adpt_num_iter=adpt_num_iter,
             restart=restart,
             use_symmetry=True,
-            file_Klist=fKl,
+            allow_restart=True,
+            file_Klist_path=fKl,
             parameters_K={
                 '_FF_antisym': True,
                 '_CCab_antisym': True

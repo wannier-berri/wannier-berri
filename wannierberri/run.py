@@ -59,7 +59,7 @@ def process(paralfunc,
     dK_list = [K_list[ik] for ik in selK]
     if len(dK_list) == 0:
         print("nothing to process now")
-        return 0
+        return 0, None
 
     print(f"processing {len(dK_list)} K points :", end=" ")
     nproc_loc = get_ray_cpus_count()
@@ -71,12 +71,12 @@ def process(paralfunc,
     print("# K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)", flush=True)
     nstep_print = max(1, nproc_loc, int(round(numK * progress_step_percent / 100)))
 
-    def set_result(Kp, res, dump, clear):
+    def set_result(Kp, res):
         Kp.set_result(res)
         res_fac = Kp.get_result_factor()
-        if dump:
+        if dump_results:
             Kp.dump_result()
-        elif clear:
+        elif not store_results:
             Kp.clear_result()
         return res_fac
 
@@ -84,7 +84,7 @@ def process(paralfunc,
     if not parallel:
         for count, Kp in enumerate(dK_list):
             res = paralfunc(Kp, **remote_parameters)
-            result_sum += set_result(Kp, res, dump=dump_results, clear=not store_results)
+            result_sum += set_result(Kp, res)
             if (count + 1) % nstep_print == 0:
                 t_print_prev = print_progress(count=count + 1,
                                               total=numK,
@@ -111,7 +111,7 @@ def process(paralfunc,
             for ir in np.where(remotes_calculated_diff)[0]:
                 res = ray.get(remotes[ir])
                 Kp = dK_list[ir]
-                result_sum += set_result(Kp, res, dump=dump_results, clear=not store_results)
+                result_sum += set_result(Kp, res)
             if num_remotes_calculated >= num_remotes:
                 break
             remotes_calculated_old = remotes_calculated_bool
@@ -143,13 +143,13 @@ def run(
         file_Klist_path=None,
         restart=False,
         allow_restart=False,
+        dump_results=False,
         restart_iteration=-1,
         Klist_part=10,
         parallel=True,  # will fall into serial if ray is not installed/initialized
         print_Kpoints=False,
         adpt_mesh=2,
         adpt_fac=1,
-        dump_results=False,
         print_progress_step_time=5,
         print_progress_step_percent=1,
 ):
@@ -201,6 +201,8 @@ def run(
             `dump_results` is `True` and adpt_num_iter > 0, in which case they are stored anyway, and the restart is possible,
     print_progress_step_time : float or int
         minimal intervals (in seconds) to print progress
+    print_progress_step_percent : float or int
+        minimal intervals (in percent) to print progress
 
 
     Returns
@@ -211,6 +213,8 @@ def run(
     -----
     Results are also printed to ASCII files
     """
+    if dump_results:
+        allow_restart = True
     assert isinstance(parallel, bool), "parallel should be True or False"
     if parallel:
         try:
@@ -301,15 +305,19 @@ def run(
         factors = np.hstack([factors, np.zeros(len(K_list) - len(factors))])  # If we have more K-points than factors, add zeros for the new ones
         for ik, (Kp, fac) in enumerate(zip(K_list, factors)):
             Kp.set_factor(fac)
+        result_all = sum(Kp.get_result_factor()  for Kp in K_list)
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
         factors = np.array([Kp.factor for Kp in K_list])
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter = 0
         nk_prev = 0
-        remove_dir(file_Klist_path)
-        os.makedirs(file_Klist_path)
-        write_factors(file_Klist_path=file_Klist_path, factors=factors, iter=0)
+        if allow_restart or dump_results:
+            remove_dir(file_Klist_path)
+            os.makedirs(file_Klist_path)
+            write_factors(file_Klist_path=file_Klist_path, factors=factors, iter=0)
+        result_all = None
+
 
 
         # remove_file(file_Klist_factor_changed)
@@ -325,9 +333,7 @@ def run(
             adpt_mesh = [adpt_mesh] * 3
         adpt_mesh = np.array(adpt_mesh)
 
-    do_write_Klist = True
     counter = 0
-    result_all = None
     factors_old = None
 
     for i_iter in range(adpt_num_iter + 1):
@@ -349,11 +355,12 @@ def run(
             dump_results=dump_results,
             store_results=allow_restart or adpt_num_iter > 0,
             progress_step_time=print_progress_step_time,
+            progress_step_percent=print_progress_step_percent,
             remote_parameters=remote_parameters)
         counter += count_iter
 
         nk = len(K_list)
-        if do_write_Klist:
+        if allow_restart:
             # append new (refined) k-points only
             fw = open(file_Klist, "ab")
             for ink in range(nk_prev, nk, Klist_part):
@@ -372,7 +379,8 @@ def run(
             print(f"factors changed for old points : {factors_diff_dict} ")
             result_all += result_sum_iter
             result_all += sum(K_list[i].get_result() * fac for i, fac in factors_diff_dict.items())
-            write_factors(file_Klist_path=file_Klist_path, factors=factors, iter=i_iter_global)
+            if allow_restart:
+                write_factors(file_Klist_path=file_Klist_path, factors=factors, iter=i_iter_global)
 
         time1 = time()
         print("time1 = ", time1 - time0)
