@@ -47,6 +47,7 @@ def check_run(compare_any_result):
             grid=None,
             adpt_num_iter=0,
             parameters_K={},
+            dump_results=False,
             use_symmetry=False,
             suffix="",
             suffix_ref="",
@@ -67,12 +68,12 @@ def check_run(compare_any_result):
             parallel=parallel,
             adpt_num_iter=adpt_num_iter,
             use_irred_kpt=use_symmetry,
+            dump_results=dump_results,
             symmetrize=use_symmetry,
             parameters_K=parameters_K,
             fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
             suffix=suffix,
             restart=restart,
-            file_Klist=file_Klist,
         )
 
         if do_not_compare:
@@ -673,8 +674,9 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-def check_Haldane(check_run, system, code, use_symmetry):
+def check_Haldane(check_run, system, code, use_symmetry, dump_results=False):
     param = {'Efermi': Efermi_Haldane}
+    # param = {'Efermi': np.linspace(-3, 3, 1000)}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
     check_run(
@@ -687,12 +689,18 @@ def check_Haldane(check_run, system, code, use_symmetry):
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
-        })
+        }, 
+        dump_results=dump_results)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Haldane_PythTB):
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry)
+
+
+
+def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythTB):
+    check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, dump_results=True)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])

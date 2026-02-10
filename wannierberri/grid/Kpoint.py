@@ -12,6 +12,7 @@
 # ------------------------------------------------------------
 # This is an auxilary class for the __evaluate.py  module
 
+import pickle
 import numpy as np
 from functools import cached_property
 from ..symmetry.point_symmetry import SYMMETRY_PRECISION
@@ -19,17 +20,60 @@ from ..symmetry.point_symmetry import SYMMETRY_PRECISION
 
 class KpointBZ():
 
-    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., pointgroup=None, refinement_level=-1):
+    def __init__(self,
+                 K=np.zeros(3),
+                 dK=np.ones(3),
+                 NKFFT=np.ones(3),
+                 factor=1.,
+                 pointgroup=None,
+                 result_storage_path=None,
+                 refinement_level=-1):
+
         self.K = np.copy(K)
         self.dK = np.copy(dK)
         self.factor = factor
-        self.res = None
+        self.result = None
+        self.result_storage_path = result_storage_path
+        self.res_dumped = False
         self.NKFFT = np.copy(NKFFT)
         self.pointgroup = pointgroup
         self.refinement_level = refinement_level
 
-    def set_res(self, res):
-        self.res = res
+    def set_storage_path(self, path):
+        self.result_storage_path = path
+
+    def has_result(self):
+        return self.result is not None or self.res_dumped
+
+    def set_result(self, res, dump=False):
+        self.result = res
+        self._max = self.result.max
+        if dump:
+            self.dump_result()
+            assert self.result is None, "result should be None after dumping"
+
+    def get_result(self):
+        if self.result is not None:
+            return self.result
+        elif self.res_dumped:
+            with open(self.result_storage_path, 'rb') as f:
+                result = pickle.load(f)
+            return result
+        else:
+            raise RuntimeError("result for a K-point is called, which is not evaluated")
+
+    def dump_result(self):
+        assert not self.res_dumped, "result is already dumped"
+        assert self.result is not None, "result is not set"
+        with open(self.result_storage_path, 'wb') as f:
+            pickle.dump(self.result, f)
+        self.result = None
+        self.res_dumped = True
+
+    def get_dumped_result(self):
+        with open(self.result_storage_path, 'rb') as f:
+            res = pickle.load(f)
+        return res
 
     @cached_property
     def Kp_fullBZ(self):
@@ -41,38 +85,36 @@ class KpointBZ():
             f" ], refinement level:{self.refinement_level}, factor = {self.factor}"
         )
 
-    @cached_property
-    def _max(self):
-        return self.res.max  # np.max(self.res_smooth)
+    # @cached_property
+    # def _max(self):
+    #     return self.result.max  # np.max(self.res_smooth)
+
+    # @property
+    # def evaluated(self):
+    #     return self.has_result()
 
     @property
-    def evaluated(self):
-        return not (self.res is None)
-
-    @property
-    def check_evaluated(self):
-        if not self.evaluated:
+    def check_has_result(self):
+        if not self.has_result():
             raise RuntimeError("result for a K-point is called, which is not evaluated")
 
     @property
     def max(self):
-        self.check_evaluated
+        self.check_has_result
         return self._max * self.factor
 
-    @property
-    def norm(self):
-        self.check_evaluated
-        return self._norm * self.factor
+    # @property
+    # def norm(self):
+    #     self.check_evaluated
+    #     return self._norm * self.factor
 
-    @property
-    def normder(self):
-        self.check_evaluated
-        return self._normder * self.factor
+    # @property
+    # def normder(self):
+    #     self.check_evaluated
+    #     return self._normder * self.factor
 
-    @property
-    def get_res(self):
-        self.check_evaluated
-        return self.res * self.factor
+    def get_result_factor(self):
+        return self.get_result() * self.factor
 
 
 class KpointBZpath(KpointBZ):
@@ -108,12 +150,10 @@ class KpointBZparallel(KpointBZ):
     def absorb(self, other):
         if other is None:
             return
+        if other.has_result() or self.has_result():
+            raise RuntimeError(
+                f"combining two K-points :\n {self} \n and\n  {other}\n  with calculated result should not happen")
         self.factor += other.factor
-        if other.res is not None:
-            if self.res is not None:
-                raise RuntimeError(
-                    f"combining two K-points :\n {self} \n and\n  {other}\n  with calculated result should not happen")
-            self.res = other.res
 
     def equiv(self, other):
         if self.refinement_level != other.refinement_level:
@@ -163,12 +203,6 @@ class KpointBZparallel(KpointBZ):
 
 
 def exclude_equiv_points(K_list, new_points=None):
-    # cnt: the number of excluded k-points
-    # weight_changed_old: a dictionary that saves the "old" weights, K_list[i].factor,
-    #       for k-points that are already calculated (i < n - new_points)
-    #       and whose weights are changed by this function
-
-    cnt = 0
     n = len(K_list)
 
     if new_points is None:
@@ -180,9 +214,6 @@ def exclude_equiv_points(K_list, new_points=None):
     wall = [0] + list(np.where(K_list_length[1:] - K_list_length[:-1] > 1e-4)[0] + 1) + [len(K_list)]
 
     exclude = []
-
-    # dictionary; key: ik, value: previous factor
-    weight_changed_old = {}
 
     for start, end in zip(wall[:-1], wall[1:]):
         for l in range(start, end):
@@ -202,12 +233,8 @@ def exclude_equiv_points(K_list, new_points=None):
                         if K_list[i].equiv(K_list[j]):
                             # print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
-                            if i < n - new_points:
-                                if i not in weight_changed_old:
-                                    weight_changed_old[i] = K_list[i].factor
                             K_list[i].absorb(K_list[j])
-                            cnt += 1
-
     for i in sorted(exclude)[-1::-1]:
-        del K_list[i]
-    return cnt, weight_changed_old
+        if i >= n - new_points:
+            print(f"exclude dbg {i} with K={K_list[i].K}, distGamma={K_list[i].distGamma}, factor={K_list[i].factor}")
+            del K_list[i]
