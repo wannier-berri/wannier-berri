@@ -674,9 +674,8 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-def check_Haldane(check_run, system, code, use_symmetry, **kwargs_run):
-    param = {'Efermi': Efermi_Haldane}
-    # param = {'Efermi': np.linspace(-3, 3, 1000)}
+def check_Haldane(check_run, system, code, use_symmetry, tetra=False,**kwargs_run):
+    param = {'Efermi': Efermi_Haldane, 'tetra': tetra}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
     check_run(
@@ -703,10 +702,14 @@ def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythT
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, dump_results=True)
 
 
-def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_PythTB):
-    check_Haldane(check_run, system_Haldane_PythTB, "PythTB-adpt3", use_symmetry=True, 
-                  dump_results=True, adpt_mesh=3,
-                  suffix_ref="PythTB-adpt3-sym")
+@pytest.mark.parametrize("tetra", [True, False])
+def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_PythTB, tetra):
+    suffix = "PythTB-adpt3" + ("-tetra" if tetra else "")
+    check_Haldane(check_run, system_Haldane_PythTB, suffix, use_symmetry=True, 
+                  dump_results=True, adpt_mesh=3, tetra=tetra,
+                  suffix_ref=suffix + "-sym")
+
+
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_TBmodels(check_run, compare_any_result, use_symmetry, system_Haldane_TBmodels):
