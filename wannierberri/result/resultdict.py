@@ -48,7 +48,7 @@ class ResultDict(Result):
 
     # +
     def __add__(self, other):
-        if other == 0:
+        if other == 0 or other is None:
             return self
         results = {k: self.results[k] + other.results[k] for k in self.results if k in other.results}
         return ResultDict(results,

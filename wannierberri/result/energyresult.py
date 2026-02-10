@@ -158,7 +158,7 @@ class EnergyResult(Result):
         return self * (1. / number)
 
     def __add__(self, other):
-        if other == 0:
+        if other == 0 or other is None:
             return self
         if (self.transformTR is not None) and (other.transformTR is not None):
             assert self.transformTR == other.transformTR

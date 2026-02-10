@@ -39,7 +39,7 @@ class TABresult(Result):
         return self
 
     def __add__(self, other):
-        if other == 0:
+        if other == 0 or other is None:
             return self
         assert self.mode == other.mode
         assert self.save_mode == other.save_mode

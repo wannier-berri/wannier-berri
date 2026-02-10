@@ -34,7 +34,8 @@ class KpointBZ():
         self.factor = factor
         self.result = None
         self.result_storage_path = result_storage_path
-        self.res_dumped = False
+        self.res_dumped_flag = False
+        self.was_evaluated_flag = False
         self.NKFFT = np.copy(NKFFT)
         self.pointgroup = pointgroup
         self.refinement_level = refinement_level
@@ -42,12 +43,11 @@ class KpointBZ():
     def set_storage_path(self, path):
         self.result_storage_path = path
 
-    def has_result(self):
-        return self.result is not None or self.res_dumped
 
     def set_result(self, res, dump=False):
         self.result = res
         self._max = self.result.max
+        self.was_evaluated_flag = True
         if dump:
             self.dump_result()
             assert self.result is None, "result should be None after dumping"
@@ -55,20 +55,26 @@ class KpointBZ():
     def get_result(self):
         if self.result is not None:
             return self.result
-        elif self.res_dumped:
-            with open(self.result_storage_path, 'rb') as f:
-                result = pickle.load(f)
-            return result
+        elif self.res_dumped_flag:
+            return self.get_dumped_result()
+        elif self.res_cleared_flag:
+            raise RuntimeError("result for a K-point is called, which is cleared and not dumped")
+        elif not self.was_evaluated_flag:
+            raise RuntimeError("result for a K-point is called, which was never evaluated")
         else:
-            raise RuntimeError("result for a K-point is called, which is not evaluated")
+            raise RuntimeError("result for a K-point is called, which was evaluated, not dumped, not cleared, but somehow is not in memory - this is a bug")
+
+    def clear_result(self):
+        self.result = None
+        self.res_cleared_flag = True
 
     def dump_result(self):
-        assert not self.res_dumped, "result is already dumped"
+        assert not self.res_dumped_flag, "result is already dumped"
         assert self.result is not None, "result is not set"
         with open(self.result_storage_path, 'wb') as f:
             pickle.dump(self.result, f)
         self.result = None
-        self.res_dumped = True
+        self.res_dumped_flag = True
 
     def get_dumped_result(self):
         with open(self.result_storage_path, 'rb') as f:
@@ -85,33 +91,11 @@ class KpointBZ():
             f" ], refinement level:{self.refinement_level}, factor = {self.factor}"
         )
 
-    # @cached_property
-    # def _max(self):
-    #     return self.result.max  # np.max(self.res_smooth)
-
-    # @property
-    # def evaluated(self):
-    #     return self.has_result()
-
-    @property
-    def check_has_result(self):
-        if not self.has_result():
-            raise RuntimeError("result for a K-point is called, which is not evaluated")
-
     @property
     def max(self):
-        self.check_has_result
+        assert self.was_evaluated_flag, "max is called for a K-point which is not evaluated"
         return self._max * self.factor
 
-    # @property
-    # def norm(self):
-    #     self.check_evaluated
-    #     return self._norm * self.factor
-
-    # @property
-    # def normder(self):
-    #     self.check_evaluated
-    #     return self._normder * self.factor
 
     def get_result_factor(self):
         return self.get_result() * self.factor
@@ -150,7 +134,7 @@ class KpointBZparallel(KpointBZ):
     def absorb(self, other):
         if other is None:
             return
-        if other.has_result() or self.has_result():
+        if other.was_evaluated_flag or self.was_evaluated_flag:
             raise RuntimeError(
                 f"combining two K-points :\n {self} \n and\n  {other}\n  with calculated result should not happen")
         self.factor += other.factor
@@ -231,10 +215,10 @@ def exclude_equiv_points(K_list, new_points=None):
                         continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
-                            # print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
+                            print('+++exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
                             K_list[i].absorb(K_list[j])
     for i in sorted(exclude)[-1::-1]:
         if i >= n - new_points:
-            print(f"exclude dbg {i} with K={K_list[i].K}, distGamma={K_list[i].distGamma}, factor={K_list[i].factor}")
+            print(f"---exclude dbg {i} with K={K_list[i].K}, distGamma={K_list[i].distGamma}, factor={K_list[i].factor}")
             del K_list[i]
