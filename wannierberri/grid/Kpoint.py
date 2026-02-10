@@ -159,21 +159,27 @@ class KpointBZparallel(KpointBZ):
         assert (np.all(ndiv > 0))
         ndiv[np.logical_not(periodic)] = 1  # divide only along periodic directions
         # include_original = np.all(ndiv % 2 == 1)
-        include_original = False  
+        include_original = False
         K0 = self.K
         dK_adpt = self.dK / ndiv
         adpt_shift = (-self.dK + dK_adpt) / 2.
         newfac = self.factor / np.prod(ndiv)
-        K_list_add = [
-            KpointBZparallel(
-                K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
-                dK=dK_adpt,
-                NKFFT=self.NKFFT,
-                factor=newfac,
-                pointgroup=self.pointgroup,
-                refinement_level=self.refinement_level + 1) for x in range(ndiv[0]) for y in range(ndiv[1])
-            for z in range(ndiv[2]) 
-        ]
+        K_list_add = []
+        for x in range(ndiv[0]):
+            for y in range(ndiv[1]):
+                for z in range(ndiv[2]):
+                    K_list_add.append(
+                        KpointBZparallel(
+                            K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
+                            dK=dK_adpt,
+                            NKFFT=self.NKFFT,
+                            factor=newfac,
+                            pointgroup=self.pointgroup,
+                            refinement_level=self.refinement_level + 1)
+                    )
+                    if include_original and (x, y, z) == (ndiv[0] // 2, ndiv[1] // 2, ndiv[2] // 2):
+                        K_list_add[-1].set_result(self.get_result())
+
 
         self.set_factor(0)  # the K-point is "dead" but can be used for restarting again from an intermediate refinement level
         if use_symmetry and (self.pointgroup is not None):

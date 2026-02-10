@@ -70,9 +70,9 @@ def check_run(compare_any_result):
             allow_restart=False,
             file_Klist_path=None,
             restart=False
-            )
+        )
         kwargs_run_default.update(kwargs_run)
-    
+
 
         result = wberri.run(
             system,
@@ -674,7 +674,7 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-def check_Haldane(check_run, system, code, use_symmetry, tetra=False,**kwargs_run):
+def check_Haldane(check_run, system, code, use_symmetry, tetra=False, **kwargs_run):
     param = {'Efermi': Efermi_Haldane, 'tetra': tetra}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
@@ -688,7 +688,7 @@ def check_Haldane(check_run, system, code, use_symmetry, tetra=False,**kwargs_ru
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
-        }, 
+        },
         **kwargs_run)
 
 
@@ -705,7 +705,7 @@ def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythT
 @pytest.mark.parametrize("tetra", [True, False])
 def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_PythTB, tetra):
     suffix = "PythTB-adpt3" + ("-tetra" if tetra else "")
-    check_Haldane(check_run, system_Haldane_PythTB, suffix, use_symmetry=True, 
+    check_Haldane(check_run, system_Haldane_PythTB, suffix, use_symmetry=True,
                   dump_results=True, adpt_mesh=3, tetra=tetra,
                   suffix_ref=suffix + "-sym")
 
