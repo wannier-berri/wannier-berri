@@ -49,9 +49,6 @@ def process(paralfunc,
             store_results,
             progress_step_time=5,
             progress_step_percent=1):
-    if remote_parameters is None:
-        remote_parameters = {}
-    # print(f"pointgroup : {pointgroup}")
     t0 = time()
     t_print_prev = 0
     selK = [ik for ik, k in enumerate(K_list) if not k.was_evaluated_flag]

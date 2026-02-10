@@ -39,44 +39,46 @@ def check_run(compare_any_result):
             calculators={},
             fout_name="berry",
             compare_zero=False,
-            parallel=True,
+            adpt_num_iter=0,
             grid_param={
                 'NK': [6, 6, 6],
                 'NKFFT': [3, 3, 3]
             },
             grid=None,
-            adpt_num_iter=0,
-            parameters_K={},
-            dump_results=False,
             use_symmetry=False,
             suffix="",
             suffix_ref="",
             extra_precision={},
             precision=-1e-8,
-            restart=False,
-            file_Klist_path=None,
             do_not_compare=False,
-            allow_restart=False,
             skip_compare=[],
+            **kwargs_run
     ):
 
         if grid is None:
             grid = wberri.Grid(system, **grid_param)
+
+        kwargs_run_default = dict(
+            parallel=True,
+            adpt_num_iter=adpt_num_iter,
+            use_irred_kpt=use_symmetry,
+            dump_results=False,
+            symmetrize=use_symmetry,
+            parameters_K={},
+            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
+            suffix=suffix,
+            allow_restart=False,
+            file_Klist_path=None,
+            restart=False
+            )
+        kwargs_run_default.update(kwargs_run)
+    
+
         result = wberri.run(
             system,
             grid=grid,
             calculators=calculators,
-            parallel=parallel,
-            adpt_num_iter=adpt_num_iter,
-            use_irred_kpt=use_symmetry,
-            dump_results=dump_results,
-            symmetrize=use_symmetry,
-            parameters_K=parameters_K,
-            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
-            suffix=suffix,
-            allow_restart=allow_restart,
-            file_Klist_path=file_Klist_path,
-            restart=restart,
+            **kwargs_run_default
         )
 
         if do_not_compare:
@@ -534,7 +536,7 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
     )
 
 
-def test_Fe_parallel_serial(check_run, system_Fe_W90, compare_any_result):
+def test_Fe_serial(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     check_run(
@@ -542,8 +544,7 @@ def test_Fe_parallel_serial(check_run, system_Fe_W90, compare_any_result):
         calculators,
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
-
-        suffix="paral-ray-4",
+        suffix="serial",
         parallel=False,
         parameters_K={
             '_FF_antisym': True,
@@ -673,7 +674,7 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-def check_Haldane(check_run, system, code, use_symmetry, dump_results=False):
+def check_Haldane(check_run, system, code, use_symmetry, **kwargs_run):
     param = {'Efermi': Efermi_Haldane}
     # param = {'Efermi': np.linspace(-3, 3, 1000)}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
@@ -689,7 +690,7 @@ def check_Haldane(check_run, system, code, use_symmetry, dump_results=False):
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
         }, 
-        dump_results=dump_results)
+        **kwargs_run)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
@@ -701,6 +702,11 @@ def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Hald
 def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythTB):
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, dump_results=True)
 
+
+def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_PythTB):
+    check_Haldane(check_run, system_Haldane_PythTB, "PythTB-adpt3", use_symmetry=True, 
+                  dump_results=True, adpt_mesh=3,
+                  suffix_ref="PythTB-adpt3-sym")
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_TBmodels(check_run, compare_any_result, use_symmetry, system_Haldane_TBmodels):

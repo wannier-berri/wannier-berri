@@ -158,8 +158,8 @@ class KpointBZparallel(KpointBZ):
         assert (ndiv.shape == (3,))
         assert (np.all(ndiv > 0))
         ndiv[np.logical_not(periodic)] = 1  # divide only along periodic directions
-        include_original = np.all(ndiv % 2 == 1)
-
+        # include_original = np.all(ndiv % 2 == 1)
+        include_original = False  
         K0 = self.K
         dK_adpt = self.dK / ndiv
         adpt_shift = (-self.dK + dK_adpt) / 2.
@@ -172,15 +172,10 @@ class KpointBZparallel(KpointBZ):
                 factor=newfac,
                 pointgroup=self.pointgroup,
                 refinement_level=self.refinement_level + 1) for x in range(ndiv[0]) for y in range(ndiv[1])
-            for z in range(ndiv[2]) if not (include_original and np.all(np.array([x, y, z]) * 2 + 1 == ndiv))
+            for z in range(ndiv[2]) 
         ]
 
-        if include_original:
-            self.set_factor(newfac)
-            self.refinement_level += 1
-            self.dK = dK_adpt
-        else:
-            self.set_factor(0)  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
+        self.set_factor(0)  # the K-point is "dead" but can be used for restarting again from an intermediate refinement level
         if use_symmetry and (self.pointgroup is not None):
             exclude_equiv_points(K_list_add)
         return K_list_add

@@ -41,7 +41,8 @@ from termcolor import cprint
 
 from packaging import version
 import irrep
-assert version.parse(irrep.__version__) >= version.parse("2.3.2"), f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
+assert version.parse(irrep.__version__) >= version.parse("2.3.2"),\
+      f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
 
 
 def welcome():
