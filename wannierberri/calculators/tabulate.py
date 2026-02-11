@@ -91,8 +91,8 @@ class TabulatorAll(Calculator):
             mode=self.mode,
             recip_lattice=data_K.system.recip_lattice,
             save_mode=self.save_mode,
-            results={k: v(data_K)
-                     for k, v in self.tabulators.items()})
+            results={key: val(data_K)
+                     for key, val in self.tabulators.items()})
 
     @property
     def allow_path(self):

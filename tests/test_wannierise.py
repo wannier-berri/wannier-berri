@@ -15,10 +15,9 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
-# temporary, because some results differ from serial execution, not sure why.
-# This should be investigated and fixed, 
-PARALLEL = False 
-                 
+# Switch to FAlse, to test purely serial execution
+PARALLEL = True
+
 
 
 @pytest.mark.parametrize("outer_window", [None,
@@ -239,6 +238,13 @@ def test_sitesym_Fe(include_TR, use_window):
     A[:, 0] *= 2 * np.pi / alatt
     A[:, 1] = A[:, 1] - EF
     plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
+    kpoints = result_path.results["tabulate"].kpoints
+    print(f"kpoints: \n{kpoints}")
+    kpoints_path = path.get_kpoints()
+    print(f"kpoints_path: \n{kpoints_path}")
+    diff = abs(kpoints - kpoints_path)
+    diff -= np.round(diff)  # account for periodicity
+    assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
 
     energies = result_path.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18))
 

@@ -23,6 +23,7 @@ from .utility import remove_dir
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import get_ray_cpus_count
+from .result.tabresult import TABresult
 from .result import ResultDict
 
 
@@ -210,8 +211,6 @@ def run(
     -----
     Results are also printed to ASCII files
     """
-    if dump_results:
-        allow_restart = True
     assert isinstance(parallel, bool), "parallel should be True or False"
     if parallel:
         try:
@@ -223,9 +222,6 @@ def run(
             warnings.warn("ray package not found, running in serial mode")
             parallel = False
 
-    if file_Klist_path is None:
-        file_Klist_path = "_tmp_wb"
-    file_Klist = os.path.join(file_Klist_path, "K_list.pickle")
 
 
     cprint("Starting run()", 'red', attrs=['bold'])
@@ -244,6 +240,8 @@ def run(
         if symmetrize:
             print("Symmetrization switched off for Path")
             symmetrize = False
+        allow_restart = False
+        dump_results = False
     else:
         print("Calculation on  grid - checking calculators for compatibility")
         if use_irred_kpt:
@@ -254,6 +252,13 @@ def run(
                 raise ValueError(
                     f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
         print("All calculators are compatible")
+
+    if dump_results:
+        allow_restart = True
+    if file_Klist_path is None:
+        file_Klist_path = "_tmp_wb"
+    file_Klist = os.path.join(file_Klist_path, "K_list.pickle")
+
 
     if isinstance(grid, GridTetra):
         print("Grid is tetrahedral")
@@ -407,6 +412,15 @@ def run(
 
     print(f"Totally processed {counter} K-points ")
     print("run() finished")
+
+    # This reordering is important for the case of Path calculation in parallel
+    # Because in this case the K-points are not processed in the order of the path
+    for key, val in result_all.results.items():
+        if isinstance(val, TABresult):
+            if isinstance(grid, Path):
+                val.self_to_path(path=grid)
+            elif isinstance(grid, Grid):
+                val.self_to_grid()
 
     return result_all
 
