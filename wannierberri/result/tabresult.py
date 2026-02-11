@@ -39,7 +39,7 @@ class TABresult(Result):
         return self
 
     def __add__(self, other):
-        if other == 0:
+        if other == 0 or other is None:
             return self
         assert self.mode == other.mode
         assert self.save_mode == other.save_mode
@@ -167,6 +167,26 @@ class TABresult(Result):
         t3 = time()
         print(f"collecting - OK : {t3 - t0} ({t3 - t2})")
         return res
+
+    def self_to_path(self, path):
+        """reorder the k-points and results according to the path"""
+        kpoints_path = path.get_kpoints()
+        mapping = -np.ones(len(kpoints_path), dtype=int)
+        kpoints = self.kpoints
+        for i, k1 in enumerate(kpoints_path):
+            found = False
+            for j, k2 in enumerate(kpoints):
+                if np.allclose(k1 % 1, k2 % 1, atol=1e-5):
+                    found = True
+                    mapping[i] = j
+                    break
+            assert found, f"kpoint {i}:{k1} from path not found in result kpoints"
+        diff = abs(kpoints[mapping] - kpoints_path)
+        diff -= np.round(diff)  # account for periodicity
+        assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
+        self.results = {r: self.results[r].to_path(mapping) for r in self.results}
+        self.kpoints = kpoints_path.copy()
+
 
     def self_to_grid(self):
         res = self.to_grid(self.find_grid, order='C')

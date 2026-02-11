@@ -39,40 +39,46 @@ def check_run(compare_any_result):
             calculators={},
             fout_name="berry",
             compare_zero=False,
-            parallel=True,
+            adpt_num_iter=0,
             grid_param={
                 'NK': [6, 6, 6],
                 'NKFFT': [3, 3, 3]
             },
             grid=None,
-            adpt_num_iter=0,
-            parameters_K={},
             use_symmetry=False,
             suffix="",
             suffix_ref="",
             extra_precision={},
             precision=-1e-8,
-            restart=False,
-            file_Klist=None,
             do_not_compare=False,
             skip_compare=[],
+            **kwargs_run
     ):
 
         if grid is None:
             grid = wberri.Grid(system, **grid_param)
+
+        kwargs_run_default = dict(
+            parallel=False,
+            adpt_num_iter=adpt_num_iter,
+            use_irred_kpt=use_symmetry,
+            dump_results=False,
+            symmetrize=use_symmetry,
+            parameters_K={},
+            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
+            suffix=suffix,
+            allow_restart=False,
+            file_Klist_path=None,
+            restart=False
+        )
+        kwargs_run_default.update(kwargs_run)
+
+
         result = wberri.run(
             system,
             grid=grid,
             calculators=calculators,
-            parallel=parallel,
-            adpt_num_iter=adpt_num_iter,
-            use_irred_kpt=use_symmetry,
-            symmetrize=use_symmetry,
-            parameters_K=parameters_K,
-            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
-            suffix=suffix,
-            restart=restart,
-            file_Klist=file_Klist,
+            **kwargs_run_default
         )
 
         if do_not_compare:
@@ -530,7 +536,8 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
     )
 
 
-def test_Fe_parallel_serial(check_run, system_Fe_W90, compare_any_result):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_Fe_parallel(check_run, system_Fe_W90, compare_any_result, parallel):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     check_run(
@@ -538,9 +545,8 @@ def test_Fe_parallel_serial(check_run, system_Fe_W90, compare_any_result):
         calculators,
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
-
-        suffix="paral-ray-4",
-        parallel=False,
+        suffix="serial",
+        parallel=parallel,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -553,12 +559,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     suffix = "refine-" + '-'.join([str(i) for i in adpt_num_iter_list])
-    fKl = f"Klist-{suffix}.pickle"
-    fKl_ch = f"Klist-{suffix}.changed_factors"
-    if os.path.exists(fKl_ch):
-        os.remove(fKl_ch)
-    if os.path.exists(fKl):
-        os.remove(fKl)
+    fKl = os.path.join(OUTPUT_DIR, f"_tmp_K_{suffix}")
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
 
@@ -574,7 +575,8 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
             adpt_num_iter=adpt_num_iter,
             restart=restart,
             use_symmetry=True,
-            file_Klist=fKl,
+            allow_restart=True,
+            file_Klist_path=fKl,
             parameters_K={
                 '_FF_antisym': True,
                 '_CCab_antisym': True
@@ -673,8 +675,8 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-def check_Haldane(check_run, system, code, use_symmetry):
-    param = {'Efermi': Efermi_Haldane}
+def check_Haldane(check_run, system, code, use_symmetry, tetra=False, **kwargs_run):
+    param = {'Efermi': Efermi_Haldane, 'tetra': tetra}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
 
     check_run(
@@ -687,12 +689,27 @@ def check_Haldane(check_run, system, code, use_symmetry):
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
-        })
+        },
+        **kwargs_run)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Haldane_PythTB):
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry)
+
+
+
+def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythTB):
+    check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, dump_results=True)
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_PythTB, tetra):
+    suffix = "PythTB-adpt3" + ("-tetra" if tetra else "")
+    check_Haldane(check_run, system_Haldane_PythTB, suffix, use_symmetry=True,
+                  dump_results=True, adpt_mesh=3, tetra=tetra,
+                  suffix_ref=suffix + "-sym")
+
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
@@ -1098,7 +1115,8 @@ def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
     )
 
 
-def test_Te_QE(check_run, system_Te_QE, compare_any_result):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_Te_QE(check_run, system_Te_QE, compare_any_result, parallel):
     param = {'Efermi': Efermi_Te_qe, "tetra": True}
     calculators = {}
     for k, v in calculators_Te_all.items():
@@ -1115,6 +1133,7 @@ def test_Te_QE(check_run, system_Te_QE, compare_any_result):
             'NKFFT': [1, 1, 4]
         },
         use_symmetry=True,
+        parallel=parallel,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True

@@ -18,7 +18,10 @@ class Result(abc.ABC):
     # +
     @abc.abstractmethod
     def __add__(self, other):
-        raise NotImplementedError()
+        if other is None:
+            return self
+        else:
+            raise NotImplementedError()
 
     # -
     def __sub__(self, other):

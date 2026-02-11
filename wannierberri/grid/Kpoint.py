@@ -12,6 +12,7 @@
 # ------------------------------------------------------------
 # This is an auxilary class for the __evaluate.py  module
 
+import pickle
 import numpy as np
 from functools import cached_property
 from ..symmetry.point_symmetry import SYMMETRY_PRECISION
@@ -19,17 +20,69 @@ from ..symmetry.point_symmetry import SYMMETRY_PRECISION
 
 class KpointBZ():
 
-    def __init__(self, K=np.zeros(3), dK=np.ones(3), NKFFT=np.ones(3), factor=1., pointgroup=None, refinement_level=-1):
+    def __init__(self,
+                 K=np.zeros(3),
+                 dK=np.ones(3),
+                 NKFFT=np.ones(3),
+                 factor=1.,
+                 pointgroup=None,
+                 result_storage_path=None,
+                 refinement_level=-1):
+
         self.K = np.copy(K)
         self.dK = np.copy(dK)
         self.factor = factor
-        self.res = None
+        self.result = None
+        self.result_storage_path = result_storage_path
+        self.res_dumped_flag = False
+        self.was_evaluated_flag = False
         self.NKFFT = np.copy(NKFFT)
         self.pointgroup = pointgroup
         self.refinement_level = refinement_level
 
-    def set_res(self, res):
-        self.res = res
+    def set_storage_path(self, path):
+        self.result_storage_path = path
+
+
+    def set_result(self, res):
+        self.result = res
+        self._max = self.result.max
+        self.was_evaluated_flag = True
+
+    def get_result(self):
+        if self.result is not None:
+            return self.result
+        elif self.res_dumped_flag:
+            return self.get_dumped_result()
+        elif self.res_cleared_flag:
+            raise RuntimeError("result for a K-point is called, which is cleared and not dumped")
+        elif not self.was_evaluated_flag:
+            raise RuntimeError("result for a K-point is called, which was never evaluated")
+        else:
+            raise RuntimeError("result for a K-point is called, which was evaluated, not dumped, not cleared, but somehow is not in memory - this is a bug")
+
+    def clear_result(self):
+        self.result = None
+        self.res_cleared_flag = True
+
+    def dump_result(self):
+        if self.res_dumped_flag:
+            return
+        with open(self.result_storage_path, 'wb') as f:
+            pickle.dump(self.result, f)
+        self.result = None
+        self.res_dumped_flag = True
+
+    def get_dumped_result(self):
+        with open(self.result_storage_path, 'rb') as f:
+            res = pickle.load(f)
+        return res
+
+    def add_factor(self, factor):
+        self.factor += factor
+
+    def set_factor(self, factor):
+        self.factor = factor
 
     @cached_property
     def Kp_fullBZ(self):
@@ -41,38 +94,14 @@ class KpointBZ():
             f" ], refinement level:{self.refinement_level}, factor = {self.factor}"
         )
 
-    @cached_property
-    def _max(self):
-        return self.res.max  # np.max(self.res_smooth)
-
-    @property
-    def evaluated(self):
-        return not (self.res is None)
-
-    @property
-    def check_evaluated(self):
-        if not self.evaluated:
-            raise RuntimeError("result for a K-point is called, which is not evaluated")
-
     @property
     def max(self):
-        self.check_evaluated
+        assert self.was_evaluated_flag, "max is called for a K-point which is not evaluated"
         return self._max * self.factor
 
-    @property
-    def norm(self):
-        self.check_evaluated
-        return self._norm * self.factor
 
-    @property
-    def normder(self):
-        self.check_evaluated
-        return self._normder * self.factor
-
-    @property
-    def get_res(self):
-        self.check_evaluated
-        return self.res * self.factor
+    def get_result_factor(self):
+        return self.get_result() * self.factor
 
 
 class KpointBZpath(KpointBZ):
@@ -108,12 +137,13 @@ class KpointBZparallel(KpointBZ):
     def absorb(self, other):
         if other is None:
             return
-        self.factor += other.factor
-        if other.res is not None:
-            if self.res is not None:
+        if other.was_evaluated_flag:
+            if self.was_evaluated_flag:
                 raise RuntimeError(
-                    f"combining two K-points :\n {self} \n and\n  {other}\n  with calculated result should not happen")
-            self.res = other.res
+                    f"combining two K-points :\n {self}:{self.was_evaluated_flag} \n and\n  {other}:{other.was_evaluated_flag}\n  with calculated result should not happen")
+            else:
+                self.set_result(other.get_result())
+        self.add_factor(other.factor)
 
     def equiv(self, other):
         if self.refinement_level != other.refinement_level:
@@ -128,29 +158,30 @@ class KpointBZparallel(KpointBZ):
         assert (ndiv.shape == (3,))
         assert (np.all(ndiv > 0))
         ndiv[np.logical_not(periodic)] = 1  # divide only along periodic directions
-        include_original = np.all(ndiv % 2 == 1)
-
+        # include_original = np.all(ndiv % 2 == 1)
+        include_original = False
         K0 = self.K
         dK_adpt = self.dK / ndiv
         adpt_shift = (-self.dK + dK_adpt) / 2.
         newfac = self.factor / np.prod(ndiv)
-        K_list_add = [
-            KpointBZparallel(
-                K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
-                dK=dK_adpt,
-                NKFFT=self.NKFFT,
-                factor=newfac,
-                pointgroup=self.pointgroup,
-                refinement_level=self.refinement_level + 1) for x in range(ndiv[0]) for y in range(ndiv[1])
-            for z in range(ndiv[2]) if not (include_original and np.all(np.array([x, y, z]) * 2 + 1 == ndiv))
-        ]
+        K_list_add = []
+        for x in range(ndiv[0]):
+            for y in range(ndiv[1]):
+                for z in range(ndiv[2]):
+                    K_list_add.append(
+                        KpointBZparallel(
+                            K=K0 + adpt_shift + dK_adpt * np.array([x, y, z]),
+                            dK=dK_adpt,
+                            NKFFT=self.NKFFT,
+                            factor=newfac,
+                            pointgroup=self.pointgroup,
+                            refinement_level=self.refinement_level + 1)
+                    )
+                    if include_original and (x, y, z) == (ndiv[0] // 2, ndiv[1] // 2, ndiv[2] // 2):
+                        K_list_add[-1].set_result(self.get_result())
 
-        if include_original:
-            self.factor = newfac
-            self.refinement_level += 1
-            self.dK = dK_adpt
-        else:
-            self.factor = 0  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
+
+        self.set_factor(0)  # the K-point is "dead" but can be used for restarting again from an intermediate refinement level
         if use_symmetry and (self.pointgroup is not None):
             exclude_equiv_points(K_list_add)
         return K_list_add
@@ -163,12 +194,6 @@ class KpointBZparallel(KpointBZ):
 
 
 def exclude_equiv_points(K_list, new_points=None):
-    # cnt: the number of excluded k-points
-    # weight_changed_old: a dictionary that saves the "old" weights, K_list[i].factor,
-    #       for k-points that are already calculated (i < n - new_points)
-    #       and whose weights are changed by this function
-
-    cnt = 0
     n = len(K_list)
 
     if new_points is None:
@@ -180,9 +205,6 @@ def exclude_equiv_points(K_list, new_points=None):
     wall = [0] + list(np.where(K_list_length[1:] - K_list_length[:-1] > 1e-4)[0] + 1) + [len(K_list)]
 
     exclude = []
-
-    # dictionary; key: ik, value: previous factor
-    weight_changed_old = {}
 
     for start, end in zip(wall[:-1], wall[1:]):
         for l in range(start, end):
@@ -200,14 +222,7 @@ def exclude_equiv_points(K_list, new_points=None):
                         continue
                     if j not in exclude:
                         if K_list[i].equiv(K_list[j]):
-                            # print('exclude dbg', i, j, K_list[i].K, K_list[j].K, n, new_points)
                             exclude.append(j)
-                            if i < n - new_points:
-                                if i not in weight_changed_old:
-                                    weight_changed_old[i] = K_list[i].factor
                             K_list[i].absorb(K_list[j])
-                            cnt += 1
-
     for i in sorted(exclude)[-1::-1]:
         del K_list[i]
-    return cnt, weight_changed_old
