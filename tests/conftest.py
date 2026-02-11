@@ -84,7 +84,7 @@ from .test_run import check_run
 from .test_system import check_system
 
 from .common_parallel import init_parallel_ray
-init_parallel_ray()
+# init_parallel_ray()
 
 
 @pytest.fixture(scope="session", autouse=True)

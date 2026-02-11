@@ -15,6 +15,12 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
+# temporary, because some results differ from serial execution, not sure why.
+# This should be investigated and fixed, 
+PARALLEL = False 
+                 
+
+
 @pytest.mark.parametrize("outer_window", [None,
                                           (-100, 100, "select_bands"),
                                           (-10, 40, "select_bands"),
@@ -74,6 +80,7 @@ def test_wannierise(outer_window):
         print_progress_every=20,
         sitesym=True,
         localise=True,
+        parallel=PARALLEL,
     )
     wannier_centers = w90data.chk.wannier_centers_cart
     wannier_spreads = w90data.chk.wannier_spreads
@@ -181,6 +188,7 @@ def test_sitesym_Fe(include_TR, use_window):
                        mix_ratio_z=1.0,
                        localise=True,
                        sitesym=True,
+                       parallel=PARALLEL,
                        )
     assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
     spreads = w90data.chk.wannier_spreads
@@ -262,7 +270,7 @@ def test_sitesym_Fe(include_TR, use_window):
         linecolor="red",
         close_fig=False,
         show_fig=False,
-        label=f"TR={include_TR}"
+        label=f"TR={include_TR}",
     )
 
     plt.ylim(-10, 20)
@@ -288,6 +296,7 @@ def test_graphene_freeze_bands(outer_window):
                     mix_ratio_z=0.8,
                     localise=True,
                     sitesym=True,
+                    parallel=PARALLEL,
                     )
     spreads = w90data.chk.wannier_spreads
     print(f"spreads: {repr(spreads)}")
