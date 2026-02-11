@@ -87,6 +87,12 @@ from .common_parallel import init_parallel_ray
 # init_parallel_ray()
 
 
+@pytest.fixture
+def system(request):
+    """Fixture to enable indirect parametrization with system fixtures."""
+    return request.getfixturevalue(request.param)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def create_output_dir():
     # Create folder OUTPUT_DIR

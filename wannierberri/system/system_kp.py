@@ -119,3 +119,9 @@ class SystemKP(System_k):
     @property
     def NKFFT_recommended(self):
         return np.array([1, 1, 1])
+
+    def has_R_mat(self, key):
+        if key == "Ham":
+            return True
+        else:
+            return False

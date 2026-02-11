@@ -112,16 +112,6 @@ class System_R(System):
     def has_R_mat(self, key):
         return key in self._XX_R
 
-    def has_R_mat_any(self, keys):
-        for k in keys:
-            if self.has_R_mat(k):
-                return True
-
-    def has_R_mat_all(self, keys):
-        for k in keys:
-            if not self.has_R_mat(k):
-                return False
-        return True
 
     def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """

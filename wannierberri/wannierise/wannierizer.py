@@ -257,7 +257,7 @@ class Wannierizer:
             # kpoint = Kpoint_and_neighbours_ray.remote(**kwargs)
             kpoint = Kpoint_and_neighbours_ray.remote(**{k: copy.deepcopy(v) for k, v in kwargs.items()})
         else:
-            kpoint = Kpoint_and_neighbours(**kwargs)
+            kpoint = Kpoint_and_neighbours(**{k: copy.deepcopy(v) for k, v in kwargs.items()})
         self.kpoints.append(kpoint)
 
     def get_U_opt_full(self):

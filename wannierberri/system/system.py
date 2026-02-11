@@ -18,7 +18,7 @@ import numpy as np
 from functools import cached_property
 
 from ..utility import real_recip_lattice
-from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
+from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal, transform_ident, transform_odd
 
 
 def num_cart_dim(key):
@@ -347,6 +347,77 @@ class System:
             return path, bandstructure
         else:
             return bandstructure
+
+    def has_R_mat(self, key):
+        raise NotImplementedError("has_R_mat method is not implemented for the base System class. Please use a child class that implements this method, e.g. System_R.")
+
+    def has_R_mat_any(self, keys):
+        for k in keys:
+            if self.has_R_mat(k):
+                return True
+
+    def has_R_mat_all(self, keys):
+        for k in keys:
+            if not self.has_R_mat(k):
+                return False
+        return True
+
+
+    def check_symmetry(self,
+                       quantities=None,
+                       kpoint=None,
+    ):
+        """
+        Check the symmetry of the system by evaluating the given quantities 
+        at a random (or given) k-point
+        and its symmetry-related k-points, and comparing the results.
+        
+        Parameters
+        ----------
+        quantities : list of str
+            the list of quantities to check. If None, the code will check "energy" and "berry_curvature_internal_terms" by default, and also "spin" if the system has spin, and "berry_curvature_external_terms" if the system has AA matrix.
+        kpoint : array-like, optional
+            the k-point at which to evaluate the quantities. If None, a random k-point will be used.
+
+        Returns
+        -------
+        differences : dict
+            a dictionary with keys (quantity, symmetry) and values the maximum difference between the quantity at the original k-point and the symmetry-related k-point.
+        kpoints : list of array
+            the list of symmetry-related k-points corresponding to the symmetries of the system.    
+        """
+        from ..evaluate_k import evaluate_k
+        if quantities is None:
+            quantities = ["energy", "berry_curvature_internal_terms"]
+            if self.has_R_mat('SS'):
+                quantities.append('spin')
+            if self.has_R_mat('AA'):
+                quantities.append('berry_curvature_external_terms')
+
+        if kpoint is None:
+            kpoint = np.random.rand(3)
+        result_0 = evaluate_k(self, k=kpoint, quantities=quantities, return_single_as_dict=True)
+        differences = {}
+        kpoints = []
+        for isym, sym in enumerate(self.pointgroup.symmetries):
+            k_sym = sym.transform_reduced_vector(kpoint, basis=self.recip_lattice)
+            kpoints.append(k_sym)
+            result_sym = evaluate_k(self, k=k_sym, quantities=quantities, return_single_as_dict=True)
+            for key in quantities:
+                if key.startswith('berry_curvature') or key.startswith('spin'):
+                    transform_TR = transform_odd
+                else:
+                    transform_TR = transform_ident
+                transform_Inv = transform_ident
+                rank = 0 if key == "energy" else 1
+                data_ref = sym.transform_tensor(data=result_0[key],
+                                                rank=rank,
+                                                transformTR=transform_TR,
+                                                transformInv=transform_Inv)
+                data_sym = result_sym[key]
+                differences[(key, isym)] = np.max(np.abs(data_ref - data_sym))
+        return differences, kpoints
+
 
 
 
