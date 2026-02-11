@@ -15,6 +15,11 @@ from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 
 
+# Switch to FAlse, to test purely serial execution
+PARALLEL = True
+
+
+
 @pytest.mark.parametrize("outer_window", [None,
                                           (-100, 100, "select_bands"),
                                           (-10, 40, "select_bands"),
@@ -74,6 +79,7 @@ def test_wannierise(outer_window):
         print_progress_every=20,
         sitesym=True,
         localise=True,
+        parallel=PARALLEL,
     )
     wannier_centers = w90data.chk.wannier_centers_cart
     wannier_spreads = w90data.chk.wannier_spreads
@@ -156,9 +162,10 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
        0.43081535, 0.40815827, 0.39384666])
 
 
+@pytest.mark.parametrize("parallel", [True, False])
 @pytest.mark.parametrize("include_TR", [True, False])
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
-def test_sitesym_Fe(include_TR, use_window):
+def test_sitesym_Fe(include_TR, use_window, parallel):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
     w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
 
@@ -181,6 +188,7 @@ def test_sitesym_Fe(include_TR, use_window):
                        mix_ratio_z=1.0,
                        localise=True,
                        sitesym=True,
+                       parallel=parallel,
                        )
     assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
     spreads = w90data.chk.wannier_spreads
@@ -196,15 +204,6 @@ def test_sitesym_Fe(include_TR, use_window):
                    False: spreads_Fe_spd_444_nowin}[use_window]
     assert spreads == approx(spreads_ref, abs=0.01)
     system = wberri.system.System_w90(w90data=w90data, berry=True)
-    tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
-                }
-
-
-    tab_all_path = wberri.calculators.TabulatorAll(
-        tabulators,
-        ibands=np.arange(0, 18),
-        mode="path"
-    )
 
     # all kpoints given in reduced coordinates
     path = wberri.Path.from_nodes(system,
@@ -218,9 +217,9 @@ def test_sitesym_Fe(include_TR, use_window):
         labels=["G", "H", "P", "N", "G"],
         nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
 
-    result_path = wberri.run(system,
-                    grid=path,
-                    calculators={"tabulate": tab_all_path},
+    result_path = wberri.evaluate_k_path(system,
+                    path=path,
+                    parallel=parallel,
                     print_Kpoints=False)
     EF = 12.6
     A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
@@ -231,8 +230,15 @@ def test_sitesym_Fe(include_TR, use_window):
     A[:, 0] *= 2 * np.pi / alatt
     A[:, 1] = A[:, 1] - EF
     plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
+    kpoints = result_path.kpoints
+    print(f"kpoints: \n{kpoints}")
+    kpoints_path = path.get_kpoints()
+    print(f"kpoints_path: \n{kpoints_path}")
+    diff = abs(kpoints - kpoints_path)
+    diff -= np.round(diff)  # account for periodicity
+    assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
 
-    energies = result_path.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18))
+    energies = result_path.get_data(quantity="Energy", iband=np.arange(0, 18))
 
     np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
     np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
@@ -250,7 +256,7 @@ def test_sitesym_Fe(include_TR, use_window):
             f"energies at ik={ik} differ by {np.max(abs(energies_diff[ik]))} more than {_atol}" +\
             f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
 
-    result_path.results["tabulate"].plot_path_fat(
+    result_path.plot_path_fat(
         path,
         quantity=None,
         Eshift=EF,
@@ -262,7 +268,7 @@ def test_sitesym_Fe(include_TR, use_window):
         linecolor="red",
         close_fig=False,
         show_fig=False,
-        label=f"TR={include_TR}"
+        label=f"TR={include_TR}",
     )
 
     plt.ylim(-10, 20)
@@ -272,8 +278,9 @@ def test_sitesym_Fe(include_TR, use_window):
     plt.close()
 
 
+@pytest.mark.parametrize("parallel", [True, False])
 @pytest.mark.parametrize("outer_window", [(-100, 100, ""), (-15, 15, "-outer")])
-def test_graphene_freeze_bands(outer_window):
+def test_graphene_freeze_bands(outer_window, parallel):
     # This test is to check that the frozen bands are actually frozen. We take the graphene example and freeze the first valence band, which should be well separated from the rest of the bands. Then we check that the spread of this band is not changed by the wannierisation procedure.
     path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw")
     w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer", "chk"], irreducible=True)
@@ -288,6 +295,7 @@ def test_graphene_freeze_bands(outer_window):
                     mix_ratio_z=0.8,
                     localise=True,
                     sitesym=True,
+                    parallel=parallel,
                     )
     spreads = w90data.chk.wannier_spreads
     print(f"spreads: {repr(spreads)}")

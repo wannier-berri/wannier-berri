@@ -13,6 +13,7 @@
 
 import os
 from functools import lru_cache
+import shutil
 import numpy as np
 import warnings
 
@@ -207,6 +208,11 @@ def one2three(nk):
 def remove_file(filename):
     if filename is not None and os.path.exists(filename):
         os.remove(filename)
+
+
+def remove_dir(dirname):
+    if os.path.isdir(dirname):
+        shutil.rmtree(dirname)
 
 
 def vectorize(func, *args, kwargs={}, sum=False, to_array=False):

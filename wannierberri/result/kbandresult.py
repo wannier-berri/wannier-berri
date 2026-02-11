@@ -129,6 +129,16 @@ class K__Result(Result, abc.ABC):
                               other_properties=self.other_properties
                               )
 
+    def to_path(self, k_map):
+        dataall = self.data
+        data = np.array([dataall[ik] for ik in k_map])
+        return self.__class__(data=data,
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              rank=self.rank,
+                              other_properties=self.other_properties
+                              )
+
     def average_deg(self, deg):
         for i, D in enumerate(deg):
             for ib1, ib2 in D:
