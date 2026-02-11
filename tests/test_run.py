@@ -59,7 +59,7 @@ def check_run(compare_any_result):
             grid = wberri.Grid(system, **grid_param)
 
         kwargs_run_default = dict(
-            parallel=True,
+            parallel=False,
             adpt_num_iter=adpt_num_iter,
             use_irred_kpt=use_symmetry,
             dump_results=False,
@@ -536,7 +536,8 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
     )
 
 
-def test_Fe_serial(check_run, system_Fe_W90, compare_any_result):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_Fe_parallel(check_run, system_Fe_W90, compare_any_result, parallel):
     param = {'Efermi': Efermi_Fe}
     calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     check_run(
@@ -545,7 +546,7 @@ def test_Fe_serial(check_run, system_Fe_W90, compare_any_result):
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
         suffix="serial",
-        parallel=False,
+        parallel=parallel,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
@@ -1114,7 +1115,8 @@ def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
     )
 
 
-def test_Te_QE(check_run, system_Te_QE, compare_any_result):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_Te_QE(check_run, system_Te_QE, compare_any_result, parallel):
     param = {'Efermi': Efermi_Te_qe, "tetra": True}
     calculators = {}
     for k, v in calculators_Te_all.items():
@@ -1131,6 +1133,7 @@ def test_Te_QE(check_run, system_Te_QE, compare_any_result):
             'NKFFT': [1, 1, 4]
         },
         use_symmetry=True,
+        parallel=parallel,
         parameters_K={
             '_FF_antisym': True,
             '_CCab_antisym': True
