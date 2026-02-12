@@ -922,4 +922,4 @@ class VoidSymmetrizer(SymmetrizerSAWF):
         return wannier_property
 
     def select_full_blocks(self, selected_bands_bool, include_partial_blocks=False):
-        return np.copy(selected_bands_bool), None
+        return np.copy(selected_bands_bool)
