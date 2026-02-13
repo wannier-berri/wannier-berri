@@ -10,6 +10,7 @@ from ..utility import cached_einsum, clear_cached, arr_to_string
 from ..w90files.amn import AMN
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
+from .projections_searcher import EBRsearcher
 
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
@@ -231,7 +232,9 @@ class SymmetrizerSAWF:
 
         if isinstance(projections, Projection):
             projections = [projections]
+            self.projectionsSet = ProjectionsSet(projections)
         elif isinstance(projections, ProjectionsSet):
+            self.projectionsSet = projections
             projections = projections.projections
         for proj in projections:
             orbitals = proj.orbitals
@@ -844,6 +847,38 @@ class SymmetrizerSAWF:
                         rindices=rindices, )
 
         return M_loc * factor
+
+    def check_windows(self,
+                      projectionsset,
+                      froz_min=np.inf,
+                      froz_max=-np.inf,
+                      outer_min=-np.inf,
+                      outer_max=np.inf):
+        """check the consistency of the windows with the symmetries of the projections
+
+        Parameters
+        ----------
+        projectionsset : ProjectionsSet
+            the set of projections to be used in the calculation
+        froz_min, froz_max, outer_min, outer_max : float
+            the minimum and maximum values of the frozen and outer windows, used to check the consistency of the windows with the symmetries of the projections. If the windows are not consistent, a warning"""
+        ebrsearcher = EBRsearcher(self,
+                                  froz_min=froz_min, froz_max=froz_max, outer_min=outer_min, outer_max=outer_max,
+                                  trial_projections=projectionsset.projections)
+        num_wann = projectionsset.num_wann
+        combinations = ebrsearcher.find_combinations(num_wann_min=num_wann,
+                                                     num_wann_max=num_wann,
+                                                     fixed=[1] * len(projectionsset.projections))
+        if len(combinations) == 0:
+            return False
+        elif len(combinations) == 1:
+            return True
+        else:
+            raise RuntimeError("CheckWindows: Multiple combinations of EBRs found, although num_wann constrains only the "
+                               "solution where all projections are taken exactly once. "
+                               "This is a bug. the combinations are : \n" + "\n".join([str(c) for c in combinations]))
+
+
 
 
 

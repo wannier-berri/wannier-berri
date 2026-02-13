@@ -21,6 +21,8 @@ def wannierise(w90data,
                mix_ratio_u=1,
                print_progress_every=10,
                sitesym=False,
+               check_irreps=False,
+               check_irreps_warn=False,
                localise=True,
                init="amn",
                num_wann=None,
@@ -68,6 +70,12 @@ def wannierise(w90data,
         see  :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF`, 
         :func:`~wannierberri.symmetry.sawf.SymmetrizerSAWF.from_irrep` and 
         :func:`~wannierberri.symmetry.sawf.SymmetrizerSAWF.set_D_wann_from_projections`
+    check_irreps : bool
+        if sitesym=True, checks that the bands within the outer and frozen windows are compatible with the projections.
+        if not compatible, raises ValueError. 
+    check_irreps_warn : bool
+        like check_irreps but only prints a warning instead of raising an error. Only used if 
+
     localise : bool
         whether to perform the localization. If False, only disentanglement and rotation to projections are performed
     kwargs_sitesym : dict
@@ -118,6 +126,27 @@ def wannierise(w90data,
         for ik in kptirr:
             include_k[ik] = True
             include_k[neighbours[ik]] = True
+        if check_irreps or check_irreps_warn:
+
+            valid_win_all = symmetrizer.check_windows(projectionsset=w90data.symmetrizer.projectionsSet,
+                                                      froz_min=froz_min, froz_max=froz_max,
+                                                      outer_min=outer_min, outer_max=outer_max)
+            msg = f"Compatibility with projections:\nfrozen = [{froz_min}:{froz_max}] ; outer = [{outer_min}:{outer_max}] : {valid_win_all}.\n "
+            if not valid_win_all:
+                for froz_min_trial in (froz_min, np.inf):
+                    for froz_max_trial in (froz_max, -np.inf):
+                        for outer_min_trial in (outer_min, -np.inf):
+                            for outer_max_trial in (outer_max, np.inf):
+                                valid_win = symmetrizer.check_windows(projectionsset=w90data.symmetrizer.projectionsset,
+                                                                    froz_min=froz_min_trial, froz_max=froz_max_trial,
+                                                                    outer_min=outer_min_trial, outer_max=outer_max_trial)
+                                msg += f"frozen = [{froz_min_trial}:{froz_max_trial}] ; outer = [{outer_min_trial}:{outer_max_trial}] : {valid_win}.\n"
+            if check_irreps:
+                if not valid_win_all:
+                    raise ValueError(msg)
+            elif check_irreps_warn:
+                if not valid_win_all:
+                    warnings.warn(msg)
     else:
         kptirr = np.arange(NK)
         symmetrizer = VoidSymmetrizer(NK=NK)
