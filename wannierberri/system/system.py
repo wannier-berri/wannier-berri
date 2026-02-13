@@ -371,7 +371,7 @@ class System:
         Check the symmetry of the system by evaluating the given quantities 
         at a random (or given) k-point
         and its symmetry-related k-points, and comparing the results.
-        
+
         Parameters
         ----------
         quantities : list of str

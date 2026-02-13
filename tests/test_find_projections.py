@@ -16,7 +16,7 @@ def test_find_projections_diamond():
     bandstructure = BandStructure(prefix=data_dir + "/di", code="espresso",
                             Ecut=100, include_TR=False)
     spacegroup = bandstructure.spacegroup
-    spacegroup.show()
+    # spacegroup.show()
 
     symmetrizer = SymmetrizerSAWF.from_irrep(bandstructure)
     symmetrizer.to_npz(OUTPUT_DIR + "/diamond-only-bands.sawf.npz")
@@ -49,7 +49,7 @@ def test_find_projections_diamond():
         froz_max=30,
         outer_min=-20,
         outer_max=50,
-        debug=False
+        debug=True
     )
 
     combinations = ebrsearcher.find_combinations(num_wann_max=10)
@@ -63,7 +63,7 @@ def test_find_projections_diamond():
         froz_max=20,
         outer_min=-20,
         outer_max=25,
-        debug=False
+        debug=True
     )
 
     combinations = ebrsearcher.find_combinations(num_wann_max=10)

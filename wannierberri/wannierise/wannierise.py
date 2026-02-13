@@ -4,7 +4,7 @@ import numpy as np
 
 from ..symmetry.sawf_kirr import get_symmetrizer_Zirr, get_symmetrizer_Uirr
 from ..utility import vectorize, select_window_degen
-from ..symmetry.sawf import VoidSymmetrizer
+from ..symmetry.sawf import IrrepsIncompatibleError, VoidSymmetrizer
 from .wannierizer import Wannierizer
 
 
@@ -21,6 +21,8 @@ def wannierise(w90data,
                mix_ratio_u=1,
                print_progress_every=10,
                sitesym=False,
+               check_irreps=True,
+               check_irreps_warn=False,
                localise=True,
                init="amn",
                num_wann=None,
@@ -68,6 +70,12 @@ def wannierise(w90data,
         see  :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF`, 
         :func:`~wannierberri.symmetry.sawf.SymmetrizerSAWF.from_irrep` and 
         :func:`~wannierberri.symmetry.sawf.SymmetrizerSAWF.set_D_wann_from_projections`
+    check_irreps : bool
+        if sitesym=True, checks that the bands within the outer and frozen windows are compatible with the projections.
+        if not compatible, raises ValueError. 
+    check_irreps_warn : bool
+        like check_irreps but only prints a warning instead of raising an error. Only used if 
+
     localise : bool
         whether to perform the localization. If False, only disentanglement and rotation to projections are performed
     kwargs_sitesym : dict
@@ -129,6 +137,8 @@ def wannierise(w90data,
                                kwargs=dict(win_min=outer_min, win_max=outer_max, include_degen=True))
 
 
+
+
     if isinstance(frozen_states, list):
         for ib in frozen_states:
             frozen[:, ib] = True
@@ -144,10 +154,25 @@ def wannierise(w90data,
     selected_bands = symmetrizer.select_full_blocks(selected_bands, include_partial_blocks=True)
     free = vectorize(np.logical_not, frozen, to_array=True)
     deselected = vectorize(np.logical_and, np.logical_not(selected_bands), free, to_array=True)
-
     assert np.all(selected_bands[frozen]), "Frozen bands should be included in the selected bands"
     free[deselected] = False
     print(f"selected_bands: \n{selected_bands} ")
+
+    if sitesym:
+        if check_irreps or check_irreps_warn:
+            if w90data.symmetrizer.spacegroup.spinor:
+                Warning("The check of irreps is not implemented for spinor case. Skipping the check, leaving to your responsibility")
+            elif np.any([symop.time_reversal for symop in w90data.symmetrizer.spacegroup.symmetries]):
+                Warning("The check of irreps is not implemented for anti-unitary symmetries. Skipping the check, leaving to your responsibility")
+            else:
+                try:
+                    check, msg = symmetrizer.check_windows(frozen=frozen,
+                                                    outer=selected_bands)
+                except IrrepsIncompatibleError as e:
+                    if check_irreps:
+                        raise e
+                    elif check_irreps_warn:
+                        warnings.warn(str(e))
 
 
 
