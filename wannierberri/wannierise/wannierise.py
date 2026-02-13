@@ -4,7 +4,7 @@ import numpy as np
 
 from ..symmetry.sawf_kirr import get_symmetrizer_Zirr, get_symmetrizer_Uirr
 from ..utility import vectorize, select_window_degen
-from ..symmetry.sawf import VoidSymmetrizer
+from ..symmetry.sawf import IrrepsIncompatibleError, VoidSymmetrizer
 from .wannierizer import Wannierizer
 
 
@@ -21,7 +21,7 @@ def wannierise(w90data,
                mix_ratio_u=1,
                print_progress_every=10,
                sitesym=False,
-               check_irreps=False,
+               check_irreps=True,
                check_irreps_warn=False,
                localise=True,
                init="amn",
@@ -126,27 +126,6 @@ def wannierise(w90data,
         for ik in kptirr:
             include_k[ik] = True
             include_k[neighbours[ik]] = True
-        if check_irreps or check_irreps_warn:
-
-            valid_win_all = symmetrizer.check_windows(projectionsset=w90data.symmetrizer.projectionsSet,
-                                                      froz_min=froz_min, froz_max=froz_max,
-                                                      outer_min=outer_min, outer_max=outer_max)
-            msg = f"Compatibility with projections:\nfrozen = [{froz_min}:{froz_max}] ; outer = [{outer_min}:{outer_max}] : {valid_win_all}.\n "
-            if not valid_win_all:
-                for froz_min_trial in (froz_min, np.inf):
-                    for froz_max_trial in (froz_max, -np.inf):
-                        for outer_min_trial in (outer_min, -np.inf):
-                            for outer_max_trial in (outer_max, np.inf):
-                                valid_win = symmetrizer.check_windows(projectionsset=w90data.symmetrizer.projectionsset,
-                                                                    froz_min=froz_min_trial, froz_max=froz_max_trial,
-                                                                    outer_min=outer_min_trial, outer_max=outer_max_trial)
-                                msg += f"frozen = [{froz_min_trial}:{froz_max_trial}] ; outer = [{outer_min_trial}:{outer_max_trial}] : {valid_win}.\n"
-            if check_irreps:
-                if not valid_win_all:
-                    raise ValueError(msg)
-            elif check_irreps_warn:
-                if not valid_win_all:
-                    warnings.warn(msg)
     else:
         kptirr = np.arange(NK)
         symmetrizer = VoidSymmetrizer(NK=NK)
@@ -156,6 +135,8 @@ def wannierise(w90data,
                        kwargs=dict(win_min=froz_min, win_max=froz_max, include_degen=False))
     selected_bands = vectorize(select_window_degen, [w90data.eig.data[ik] for ik in kptirr], to_array=True,
                                kwargs=dict(win_min=outer_min, win_max=outer_max, include_degen=True))
+
+
 
 
     if isinstance(frozen_states, list):
@@ -173,10 +154,20 @@ def wannierise(w90data,
     selected_bands = symmetrizer.select_full_blocks(selected_bands, include_partial_blocks=True)
     free = vectorize(np.logical_not, frozen, to_array=True)
     deselected = vectorize(np.logical_and, np.logical_not(selected_bands), free, to_array=True)
-
     assert np.all(selected_bands[frozen]), "Frozen bands should be included in the selected bands"
     free[deselected] = False
     print(f"selected_bands: \n{selected_bands} ")
+
+    if sitesym:
+        if check_irreps or check_irreps_warn:
+            try:
+                check, msg = symmetrizer.check_windows(frozen=frozen,
+                                                   outer=selected_bands)
+            except IrrepsIncompatibleError as e:
+                if check_irreps:
+                    raise e
+                elif check_irreps_warn:
+                    warnings.warn(str(e))
 
 
 

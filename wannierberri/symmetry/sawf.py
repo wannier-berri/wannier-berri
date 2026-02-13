@@ -853,11 +853,10 @@ class SymmetrizerSAWF:
         return M_loc * factor
 
     def check_windows(self,
-                      projectionsset,
-                      froz_min=np.inf,
-                      froz_max=-np.inf,
-                      outer_min=-np.inf,
-                      outer_max=np.inf):
+                      frozen=None,
+                      outer=None,
+                      frozen_min=np.inf, frozen_max=-np.inf, outer_min=-np.inf, outer_max=np.inf,
+                      ):
         """check the consistency of the windows with the symmetries of the projections
 
         Parameters
@@ -867,21 +866,42 @@ class SymmetrizerSAWF:
         froz_min, froz_max, outer_min, outer_max : float
             the minimum and maximum values of the frozen and outer windows, used to check the consistency of the windows with the symmetries of the projections. If the windows are not consistent, a warning"""
         ebrsearcher = EBRsearcher(self,
-                                  froz_min=froz_min, froz_max=froz_max, outer_min=outer_min, outer_max=outer_max,
-                                  trial_projections=projectionsset.projections)
-        num_wann = projectionsset.num_wann
-        combinations = ebrsearcher.find_combinations(num_wann_min=num_wann,
-                                                     num_wann_max=num_wann,
-                                                     fixed=[1] * len(projectionsset.projections))
-        if len(combinations) == 0:
-            return False
-        elif len(combinations) == 1:
-            return True
-        else:
-            raise RuntimeError("CheckWindows: Multiple combinations of EBRs found, although num_wann constrains only the "
-                               "solution where all projections are taken exactly once. "
-                               "This is a bug. the combinations are : \n" + "\n".join([str(c) for c in combinations]))
+                                  frozen=frozen,
+                                  outer=outer,
+                                  froz_min=frozen_min, froz_max=frozen_max,
+                                  outer_min=outer_min, outer_max=outer_max)
+        irreps_frozen_vectors = ebrsearcher.irreps_frozen_vectors
+        irreps_outer_vectors = ebrsearcher.irreps_outer_vectors
+        irreps_per_projections_vectors = ebrsearcher.irreps_per_projection_vectors
+        irreps_projections_vectors = [np.sum(irreps_per_projections_vectors[ik], axis=0) for ik in range(self.NKirr)]
 
+        msg = "checking the consistency of the windows with the symmetries of the projections : \n"
+        allgood = True
+        if frozen is None:
+            msg += f"  frozen window : {frozen_min} to {frozen_max}\n"
+        if outer is None:
+            msg += f"  outer window : {outer_min} to {outer_max}\n"
+        for ik in range(self.NKirr):
+            msg += "-" * 40 + "\n"
+            msg += f"  ik={ik}  k={self.kpoints_all[self.kptirr[ik]]}\n"
+            if frozen is not None:
+                msg += f"    frozen states : {np.where(frozen[ik])[0]}\n"
+            if outer is not None:
+                msg += f"    outer states : {np.where(outer[ik])[0]}\n"
+            check_frozen = np.all(irreps_frozen_vectors[ik] <= irreps_projections_vectors[ik])
+            check_outer = np.all(irreps_outer_vectors[ik] >= irreps_projections_vectors[ik])
+            msg += f"  irreps of the frozen window  : {irreps_frozen_vectors[ik]}  {'OK' if check_frozen else 'FAIL'}\n"
+            msg += f"  irreps of the outer window   : {irreps_outer_vectors[ik]}  {'OK' if check_outer else 'FAIL'}\n"
+            msg += f"  irreps of the projections    : {irreps_projections_vectors[ik]}\n"
+            if len(irreps_per_projections_vectors[ik]) > 1:
+                for i, vec in enumerate(irreps_per_projections_vectors[ik]):
+                    msg += (f"  irreps of per projection {i:3d} " if i == 0 else " " * 31) + f": {vec}\n"
+            if not (check_frozen and check_outer):
+                allgood = False
+        if not allgood:
+            raise IrrepsIncompatibleError(msg)
+        else:
+            return True, msg
 
 
 
@@ -962,3 +982,7 @@ class VoidSymmetrizer(SymmetrizerSAWF):
 
     def select_full_blocks(self, selected_bands_bool, include_partial_blocks=False):
         return np.copy(selected_bands_bool)
+
+
+class IrrepsIncompatibleError(ValueError):
+    pass

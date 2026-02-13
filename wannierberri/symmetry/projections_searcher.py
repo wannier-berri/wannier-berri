@@ -39,6 +39,8 @@ class EBRsearcher:
 
     def __init__(self,
                  symmetrizer,
+                 frozen=None,
+                 outer=None,
                  froz_min=np.inf, froz_max=-np.inf,
                  outer_min=-np.inf, outer_max=np.inf,
                  degen_thresh=1e-8,
@@ -61,7 +63,11 @@ class EBRsearcher:
         else:
             self.set_irreps_D_wann(symmetrizer)
         self.debug_msg(f"{self.irreps_per_projection_vectors=}")
-        self.set_irreps_dft(symmetrizer, froz_min=froz_min, froz_max=froz_max, outer_min=outer_min, outer_max=outer_max, degen_thresh=degen_thresh)
+        self.set_irreps_dft(symmetrizer,
+                            frozen=frozen, outer=outer,
+                            froz_min=froz_min, froz_max=froz_max,
+                            outer_min=outer_min, outer_max=outer_max,
+                            degen_thresh=degen_thresh)
 
 
     def set_trial_projections_irreps(self, symmetrizer, trial_projections_set):
@@ -98,26 +104,36 @@ class EBRsearcher:
         for ik in range(self.NKirr):
             vector_wann = char_to_vector(characters_wann[ik], self.all_possible_irreps_conj[ik], froce_int=True)
             self.irreps_per_projection_vectors.append(vector_wann)
-            self.debug_msg(f"Projections at kpoint {ik} are represented by vectors \n {vector_wann}")
-        self.debug_msg(f"num_wann_per_projection={self.num_wann_per_projection}")
-        for i in range(self.NKirr):
-            for j in range(self.num_trial_projections):
-                self.debug_msg(f"  i={i} j={j} {self.irreps_per_projection_vectors[i][j]}")
+
 
     def set_irreps_dft(self, symmetrizer,
-                       froz_min=np.inf, froz_max=-np.inf, outer_min=-np.inf, outer_max=np.inf, degen_thresh=1e-8):
+                       frozen=None, outer=None,
+                       froz_min=np.inf, froz_max=-np.inf,
+                       outer_min=-np.inf, outer_max=np.inf,
+                       degen_thresh=1e-8):
         self.debug_msg("Detrimine all possible irreps", hihglight=True)
         self.debug_msg(" deternine the irreps in the DFT bands", hihglight=True)
         self.irreps_frozen_vectors = []
         self.irreps_outer_vectors = []
         for ik in range(self.NKirr):
-            frozen = select_window_degen(self.eig[ik], thresh=degen_thresh,
-                                     win_min=froz_min, win_max=froz_max, return_indices=True)
-            outer = select_window_degen(self.eig[ik], thresh=degen_thresh,
+            if frozen is None:
+                frozen_ik = select_window_degen(self.eig[ik], thresh=degen_thresh,
+                                         win_min=froz_min, win_max=froz_max, return_indices=True)
+            else:
+                frozen_ik = np.array(frozen[ik])
+                if frozen_ik.dtype == bool:
+                    frozen_ik = np.where(frozen_ik)[0]
+            if outer is None:
+
+                outer_ik = select_window_degen(self.eig[ik], thresh=degen_thresh,
                                      win_min=outer_min, win_max=outer_max, return_indices=True)
-            nfrozen = len(frozen)
-            char_outer = np.array([symmetrizer.d_band_diagonal(ik, isym)[outer].sum() for isym in symmetrizer.isym_little[ik]])
-            char_frozen = np.array([symmetrizer.d_band_diagonal(ik, isym)[frozen].sum() for isym in symmetrizer.isym_little[ik]])
+            else:
+                outer_ik = np.array(outer[ik])
+                if outer_ik.dtype == bool:
+                    outer_ik = np.where(outer[ik])[0]
+            nfrozen = len(frozen_ik)
+            char_outer = np.array([symmetrizer.d_band_diagonal(ik, isym)[outer_ik].sum() for isym in symmetrizer.isym_little[ik]])
+            char_frozen = np.array([symmetrizer.d_band_diagonal(ik, isym)[frozen_ik].sum() for isym in symmetrizer.isym_little[ik]])
             self.debug_msg(f"ik= {ik} contains {nfrozen} frozen states\n" +
                 f"the little group contains {len(symmetrizer.isym_little[ik])} symmetries: \n {symmetrizer.isym_little[ik]}\n" +
                 f"characters in outer window : {np.round(char_outer, 3)}\n" +
