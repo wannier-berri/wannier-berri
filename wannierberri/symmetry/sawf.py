@@ -166,6 +166,10 @@ class SymmetrizerSAWF:
         else:
             return 0
 
+    @property
+    def num_D_wann_blocks(self):
+        return self.D_wann_block_indices.shape[0]
+
     @cached_property
     def isym_little(self):
         return [np.where(self.kptirr2kpt[ik] == self.kptirr[ik])[0] for ik in range(self.NKirr)]
