@@ -51,6 +51,7 @@ class EBRsearcher:
         spacegroup = symmetrizer.spacegroup
         self.eig = symmetrizer.eig_irr.copy()
         assert not spacegroup.spinor, "EBRsearcher does not work with spinors"
+        assert len(spacegroup.number_str.split('.')) == 1, f"EBRsearcher works only with non-magnetic spacegroups which are numbered 1-230, not {spacegroup.number_str}"
         assert 0 < int(spacegroup.number_str) <= 230, f"EBRsearcher works only with non-magnetic spacegroups which are numbered 1-230, not {spacegroup.number}"
         assert "magnetic" not in spacegroup.name, "EBRsearcher does not work with magnetic spacegroups"
         assert "unknown" not in spacegroup.name, "EBRsearcher does not work with unknown spacegroups"

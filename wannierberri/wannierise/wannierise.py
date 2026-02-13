@@ -160,14 +160,19 @@ def wannierise(w90data,
 
     if sitesym:
         if check_irreps or check_irreps_warn:
-            try:
-                check, msg = symmetrizer.check_windows(frozen=frozen,
-                                                   outer=selected_bands)
-            except IrrepsIncompatibleError as e:
-                if check_irreps:
-                    raise e
-                elif check_irreps_warn:
-                    warnings.warn(str(e))
+            if w90data.symmetrizer.spacegroup.spinor:
+                Warning("The check of irreps is not implemented for spinor case. Skipping the check, leaving to your responsibility")
+            elif np.any([symop.time_reversal for symop in w90data.symmetrizer.spacegroup.symmetries]):
+                Warning("The check of irreps is not implemented for anti-unitary symmetries. Skipping the check, leaving to your responsibility")
+            else:
+                try:
+                    check, msg = symmetrizer.check_windows(frozen=frozen,
+                                                    outer=selected_bands)
+                except IrrepsIncompatibleError as e:
+                    if check_irreps:
+                        raise e
+                    elif check_irreps_warn:
+                        warnings.warn(str(e))
 
 
 
