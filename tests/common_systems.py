@@ -891,9 +891,9 @@ def model_1d_pythtb():
         model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
         model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
     else:
-        lattice = pythtb.Lattice(lat_vecs = lat, orb_vecs = orb, periodic_dirs=[0])
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0])
         model1d_1 = pythtb.TBModel(lattice, spinful=True)
-        lattice2 = pythtb.Lattice(lat_vecs = lat, orb_vecs = orb2, periodic_dirs=[0])
+        lattice2 = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb2, periodic_dirs=[0])
         model1d_2 = pythtb.TBModel(lattice2)
     Delta = 1
     model1d_1.set_onsite([-Delta, Delta])
