@@ -44,7 +44,6 @@ kwargs_w90file = dict(
     files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
     seedname="./Fe",
     projections=projections_set,
-    read_npz_list=[],
     normalize=False)
 
 w90data_full = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_full, **kwargs_w90file)

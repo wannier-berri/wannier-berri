@@ -109,8 +109,6 @@ def test_create_w90files_diamond_irred(select_grid):
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "symmetrizer"],
-        write_npz_list=[],
-        read_npz_list=[],
         seedname=os.path.join(path_tmp, prefix),
         projections=proj_set,
         normalize=False,
@@ -217,7 +215,6 @@ def test_irreducible_vs_full_Fe():
         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
         seedname=os.path.join(OUTPUT_DIR, "Fe-irr-vs-full"),
         projections=projections_set,
-        read_npz_list=[],
         normalize=False)
 
     w90data_full = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_full, **kwargs_w90file)
@@ -332,8 +329,6 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
-        write_npz_list=None,
-        read_npz_list=[],
         seedname=os.path.join(path_tmp, prefix),
         projections=proj_set,
         normalize=False,
@@ -463,8 +458,6 @@ def test_create_w90files_Fe_gpaw(ispin):
         ecut_sym=150,
         spin_channel=ispin,
         projections=proj_set,
-        read_npz_list=[],
-        # write_npz_list=[],
         seedname=os.path.join(path_output, f"Fe-spin-{ispin}"),
         irreducible=False,
         files=["amn", "mmn", "eig", "symmetrizer"],
@@ -527,8 +520,6 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
         ecut_sym=150,
         spin_channel=ispin,
         projections=proj_set,
-        read_npz_list=[],
-        # write_npz_list=[],
         seedname=seedname,
         irreducible=True,
         files=["amn", "mmn", "eig", "symmetrizer"],
@@ -600,9 +591,7 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
         calculator=calc,
         spin_channel=0,
         projections=proj_set,
-        read_npz_list=[],
         select_grid=select_grid,
-        # write_npz_list=[],
         seedname=seedname,
         irreducible=True,
         files=["amn", "mmn", "eig", "symmetrizer"],

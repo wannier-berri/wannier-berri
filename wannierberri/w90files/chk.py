@@ -25,6 +25,7 @@ class CheckPoint(SavableNPZ):
     npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
     # npz_keys_dict_int = ["v_matrix"]
     npz_keys_dict_int_optional = ["v_matrix"]
+    extension = "chk"
 
 
 

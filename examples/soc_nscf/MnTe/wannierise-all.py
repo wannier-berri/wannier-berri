@@ -81,8 +81,7 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         symmetrizer.to_npz(f"symmetrizer-spin-{spin_channel}.npz")
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = Wannier90data.from_w90_files(prefix, readfiles=["win", "eig", "mmn"],
-                                             read_npz=True)
+    w90data = Wannier90data.from_w90_files(prefix, files=["win", "eig", "mmn"])
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)
     # w90data.select_bands(win_min=-10,

@@ -20,7 +20,6 @@ for m in 0.0, 2.2:
         calculator=gpaw_calc,
         projections=proj_set,
         mp_grid=(4,4,4),
-        read_npz_list=[],
         spacegroup=sg,
     )
 

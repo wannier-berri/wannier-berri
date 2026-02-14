@@ -74,7 +74,9 @@ for data_dir in ['diamond']:
         print("Projectability:\n", projectability)
         exit()
 
-        w90data = wberri.w90files.Wannier90data.from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond', readfiles=['mmn', 'eig', 'win'], read_npz=False)
+        w90data = wberri.w90files.Wannier90data.from_w90_files(
+                        seedname='../../tests/data/' + data_dir + '/diamond', 
+                        files=['mmn', 'eig', 'win'])
         w90data.set_file("amn", amn)
         w90data.set_symmetrizer(symmetrizer)
         w90data.select_bands(win_min=win_min, win_max=win_max)

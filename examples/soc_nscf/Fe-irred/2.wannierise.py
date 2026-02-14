@@ -17,7 +17,6 @@ w90data = Wannier90dataSOC.from_gpaw(
     calculator=gpaw_calc,
     projections=proj_set,
     mp_grid=(4, 4, 4),
-    # read_npz_list=[],
     spacegroup=sg,
     files=["mmn", "eig", "amn", "symmetrizer", "soc", "mmn_ud"],
 )

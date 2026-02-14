@@ -48,28 +48,21 @@ class BKVectors(W90_file):
 
     @classmethod
     def autoread(cls, seedname="wannier90",
-                 read_npz=True,
-                 write_npz=True,
                  params=None,
                  ):
         """First try to read  npz file, then read the w90 file if npz does not exist, 
         otherwise generate from bandstructure if provided.
         """
-        ext = cls.extension
-        f_npz = f"{seedname}.{ext}.npz"
-        # print(f"calling autoread for {cls.__name__} with seedname={seedname}, ext={ext}, read_npz={read_npz}, read_w90={read_w90}, bandstructure={bandstructure is not None} write_npz={write_npz}, selected_bands={selected_bands}, kwargs_w90={kwargs_w90}, kwargs_bandstructure={kwargs_bandstructure}")
-        if os.path.exists(f_npz) and read_npz:
-            obj = cls.from_npz(f_npz)
-            write_npz = False  # do not write npz again if it was read
+        path = seedname + "." + cls.extension
+        if os.path.exists(path + ".npz"):
+            obj = cls.from_npz(path + ".npz")
             was_read = True
-        elif os.path.exists(f"{seedname}.nnkp"):
-            obj = cls.from_nnkp(f"{seedname}.nnkp", params=params)
+        elif os.path.exists(path):
+            obj = cls.from_nnkp(path, params=params)
             was_read = True
         else:
             obj = cls.from_kpoints(**params)
             was_read = False
-        if write_npz:
-            obj.to_npz(f_npz)
         # window is applied after, so that npz contains same data as original file
         return obj, was_read
 
