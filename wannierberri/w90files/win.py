@@ -59,6 +59,7 @@ class WIN:
         for key in ["unit_cell_cart", "kpoints", "atoms_frac"]:
             if key in self.data:
                 self.data[key] = np.array(self.data[key], dtype=float)
+        return self
 
 
     def __getitem__(self, key):

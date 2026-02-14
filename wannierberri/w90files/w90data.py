@@ -440,7 +440,7 @@ class Wannier90data:
             self.set_file('mmn', mmn)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
-            kwargs_w90 = {} 
+            kwargs_w90 = {}
             if f in ['uhu', 'uiu', 'shu', 'siu']:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
                 assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
@@ -808,8 +808,6 @@ class Wannier90data:
         wannierise(self,
                    irreducible=self.irreducible,
                    **kwargs)
-        chk = self.get_file('chk')
-        chk.to_npz(self.seedname + ".chk")
 
 
     def apply_window(self, *args, **kwargs):
