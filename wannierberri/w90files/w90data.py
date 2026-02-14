@@ -405,6 +405,7 @@ class Wannier90data:
                      formatted=tuple(),
                      files=tuple(),
                      bkvec=None,
+                     readnnkp=True
                      ):
         self = cls()
         self.seedname = copy(seedname)
@@ -424,7 +425,7 @@ class Wannier90data:
             self.set_chk(read=False)
 
         if bkvec is None:
-            if os.path.exists(seedname + ".nnkp"):
+            if os.path.exists(seedname + ".nnkp") and readnnkp:
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
                                             bk_complete_tol=1e-5)

@@ -163,6 +163,7 @@ def system_Fe_W90(create_files_Fe_W90):
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
+        readnnkp=False,  # to reproduce the old behavior of not reading bkvec from nnkp file
     )
     system = wberri.system.System_w90(
         w90data=w90data,
