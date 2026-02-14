@@ -35,27 +35,27 @@ class W90_file(SavableNPZ):
 
 
 
-    @classmethod
-    def autoread(cls, seedname="wannier90", ext=None,
-                 read_w90=True,
-                 bandstructure=None,
-                 selected_bands=None,
-                 kwargs_w90=None,
-                 kwargs_bandstructure=None,
-                 ):
-        """First try to read  npz file, then read the w90 file if npz does not exist, 
-        otherwise generate from bandstructure if provided.
-        """
-        ext = cls.extension if ext is None else ext
-        if bandstructure is not None:
-            if kwargs_bandstructure is None:
-                kwargs_bandstructure = {}
-            obj = cls.from_bandstructure(bandstructure=bandstructure, **kwargs_bandstructure)
-        elif read_w90:
-            obj = cls.from_w90_file(seedname, **kwargs_w90)
-        # window is applied after, so that npz contains same data as original file
-        obj.select_bands(selected_bands)
-        return obj
+    # @classmethod
+    # def autoread(cls, seedname="wannier90", ext=None,
+    #              read_w90=True,
+    #              bandstructure=None,
+    #              selected_bands=None,
+    #              kwargs_w90=None,
+    #              kwargs_bandstructure=None,
+    #              ):
+    #     """First try to read  npz file, then read the w90 file if npz does not exist,
+    #     otherwise generate from bandstructure if provided.
+    #     """
+    #     ext = cls.extension if ext is None else ext
+    #     if bandstructure is not None:
+    #         if kwargs_bandstructure is None:
+    #             kwargs_bandstructure = {}
+    #         obj = cls.from_bandstructure(bandstructure=bandstructure, **kwargs_bandstructure)
+    #     elif read_w90:
+    #         obj = cls.from_w90_file(seedname, **kwargs_w90)
+    #     # window is applied after, so that npz contains same data as original file
+    #     obj.select_bands(selected_bands)
+    #     return obj
 
 
     @classmethod

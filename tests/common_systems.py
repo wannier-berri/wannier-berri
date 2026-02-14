@@ -428,7 +428,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
-        )
+    )
     system = wberri.system.System_w90(w90data=w90data,
                                       **matrices,
                                       transl_inv_MV=True,  # legacy
@@ -448,7 +448,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
-        )
+    )
     system = wberri.system.System_w90(w90data=w90data,
                                       **matrices,
                                       transl_inv_JM=True,
@@ -511,7 +511,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
-        )
+    )
     system = wberri.system.System_w90(w90data=w90data,
                                       transl_inv_MV=transl_inv,
                                       transl_inv_JM=transl_inv_JM,

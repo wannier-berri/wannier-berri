@@ -213,52 +213,37 @@ class Wannier90data:
         self.set_file('chk', chk)
 
         if "eig" in files:
-            eig = EIG.autoread(seedname=seedname,
-                               read_w90=False,
-                               bandstructure=bandstructure,
-                               kwargs_bandstructure=kwargs_bandstructure
-                               )
+            eig = EIG.from_bandstructure(bandstructure=bandstructure,
+                                         **kwargs_bandstructure)
             self.set_file('eig', eig)
         if "amn" in files:
-            amn = AMN.autoread(seedname=seedname,
-                               read_w90=False,
-                               bandstructure=bandstructure,
-                               kwargs_bandstructure={"normalize": normalize,
-                                                     "projections": projections} |
-                               kwargs_bandstructure)
+            amn = AMN.from_bandstructure(bandstructure=bandstructure,
+                                         projections=projections,
+                                         normalize=normalize,
+                                         **kwargs_bandstructure)
             self.set_file('amn', amn)
         if "mmn" in files:
-
-            mmn = MMN.autoread(seedname=seedname,
-                               read_w90=False,
-                               bandstructure=bandstructure,
-                               kwargs_bandstructure={"normalize": normalize,
-                                                    #  "kpt_latt_grid": kpt_latt,
-                                                    #  "kpt2kptirr": kpt2kptirr,
-                                                     "symmetrizer": symmetrizer,
-                                                     "irred_bk_only": irred_bk_only,
-                                                     "irreducible": self.irreducible,
-                                                     "include_paw": include_paw,
-                                                     "include_pseudo": include_pseudo,
-                                                     "bkvec": bkvec,
-                                                    #  "kpt_from_kptirr_isym": kpt_from_kptirr_isym
-                                                    } |
-                               kwargs_bandstructure)
+            mmn = MMN.from_bandstructure(bandstructure=bandstructure,
+                                         normalize=normalize,
+                                         symmetrizer=symmetrizer,
+                                         irred_bk_only=irred_bk_only,
+                                         irreducible=self.irreducible,
+                                         include_paw=include_paw,
+                                         include_pseudo=include_pseudo,
+                                         bkvec=bkvec,
+                                         **kwargs_bandstructure)
             self.set_file('mmn', mmn)
         if "spn" in files:
-            spn = SPN.autoread(seedname=seedname,
-                               read_w90=False,
-                               bandstructure=bandstructure,
-                               kwargs_bandstructure={"normalize": normalize} | kwargs_bandstructure)
+            spn = SPN.from_bandstructure(bandstructure=bandstructure,
+                                         normalize=normalize,
+                                         **kwargs_bandstructure)
             self.set_file('spn', spn)
         # TODO : use a cutoff ~100eV for symmetrizer
         if "unk" in files:
-            unk = UNK.autoread(seedname=seedname,
-                               read_w90=False,
-                               bandstructure=bandstructure,
-                               kwargs_bandstructure={"normalize": normalize,
-                                                     "grid_size": unk_grid} |
-                               kwargs_bandstructure)
+            unk = UNK.from_bandstructure(bandstructure=bandstructure,
+                                         normalize=normalize,
+                                         grid_size=unk_grid,
+                                         **kwargs_bandstructure)
             self.set_file('unk', unk)
         return self
 
@@ -419,6 +404,7 @@ class Wannier90data:
     def from_w90_files(cls, seedname="wannier90",
                      formatted=tuple(),
                      files=tuple(),
+                     bkvec=None,
                      ):
         self = cls()
         self.seedname = copy(seedname)
@@ -428,7 +414,7 @@ class Wannier90data:
         _read_files_loc = [f.lower() for f in files]
         assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
         if 'win' in _read_files_loc:
-            win = WIN(seedname=seedname, autoread=True)
+            win = WIN.from_w90_file(seedname=seedname)
             self.set_file('win', win)
             _read_files_loc.remove('win')
         if 'chk' in _read_files_loc:
@@ -436,18 +422,28 @@ class Wannier90data:
             _read_files_loc.remove('chk')
         else:
             self.set_chk(read=False)
-        bkvec, bk_was_read = BKVectors.autoread(seedname=seedname,
-                         params=dict(recip_lattice=self.chk.recip_lattice,
-                                     mp_grid=self.chk.mp_grid,
-                                     kpoints_red=self.chk.kpt_latt,
-                                     kptirr=None),
-        )
+
+        if bkvec is None:
+            if os.path.exists(seedname + ".nnkp"):
+                bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
+                                            kmesh_tol=1e-5,
+                                            bk_complete_tol=1e-5)
+            else:
+                assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file does not exist"
+                bkvec = BKVectors.from_kpoints(recip_lattice=self.chk.recip_lattice,
+                                            mp_grid=self.chk.mp_grid,
+                                            kpoints_red=self.chk.kpt_latt)
         self.set_file('bkvec', bkvec)
         if 'mmn' in _read_files_loc:
-            self.set_file('mmn', kwargs_w90=dict(bkvec=bkvec))
+            mmn = MMN.from_w90_file(seedname=seedname, bkvec=bkvec)
+            self.set_file('mmn', mmn)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
-            self.set_file(f)
+            kwargs_w90 = {} 
+            if f in ["spn", "uhu", "uiu", "shu", "siu", ]:
+                kwargs_w90['formatted'] = f in self.formatted_list
+            val = FILES_CLASSES[f].from_w90_file(seedname=seedname, **kwargs_w90)
+            self.set_file(f, val=val)
         return self
 
     @property
@@ -535,8 +531,9 @@ class Wannier90data:
         """
         return self.has_file("symmetrizer")
 
-    def set_file(self, key, val=None, overwrite=False, allow_selected_bands=False,
-                 kwargs_w90={},
+    def set_file(self, key, val,
+                 overwrite=False,
+                 allow_selected_bands=False,
                  **kwargs):
         """
         Set the file with the key `key` to the value `val`
@@ -567,20 +564,20 @@ class Wannier90data:
             return
         if not overwrite and self.has_file(key):
             raise RuntimeError(f"file '{key}' was already set")
-        if val is None:
-            if key not in FILES_CLASSES:
-                raise ValueError(f"key '{key}' is not a valid w90 file")
-            # kwargs_auto = self.auto_kwargs_files(key)
-            # kwargs_auto.update(kwargs)
-            kwargs_w90 = copy(kwargs_w90)
-            if key in ['uhu', 'uiu', 'shu', 'siu']:
-                assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
-                assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
-                assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
-                kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
-            if key in ["spn", "uhu", "uiu", "shu", "siu", ]:
-                kwargs_w90['formatted'] = key in self.formatted_list
-            val = FILES_CLASSES[key].autoread(self.seedname, kwargs_w90=kwargs_w90)
+        # if val is None:
+        #     if key not in FILES_CLASSES:
+        #         raise ValueError(f"key '{key}' is not a valid w90 file")
+        #     # kwargs_auto = self.auto_kwargs_files(key)
+        #     # kwargs_auto.update(kwargs)
+        #     kwargs_w90 = copy(kwargs_w90)
+        #     if key in ['uhu', 'uiu', 'shu', 'siu']:
+        #         assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
+        #         assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
+        #         assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
+        #         kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
+        #     if key in ["spn", "uhu", "uiu", "shu", "siu", ]:
+        #         kwargs_w90['formatted'] = key in self.formatted_list
+        #     val = FILES_CLASSES[key].autoread(self.seedname, kwargs_w90=kwargs_w90)
         self.check_conform(key, val)
         if key == 'amn' and self.has_file('chk'):
             self.get_file('chk').num_wann = val.NW

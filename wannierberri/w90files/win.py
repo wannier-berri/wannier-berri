@@ -25,13 +25,15 @@ class WIN:
     """
 
     extension = "win"
+    blocks = ["unit_cell_cart", "projections", "kpoints", "kpoint_path", "atoms_frac"]
 
-    def __init__(self, seedname='wannier90', data=None, autoread=False):
-        if not autoread:
-            return
+    def __init__(self, seedname='wannier90'):
         self.data = {}
         self.seedname = seedname
-        self.blocks = ["unit_cell_cart", "projections", "kpoints", "kpoint_path", "atoms_frac"]
+
+    @classmethod
+    def from_w90_file(cls, seedname='wannier90', data=None):
+        self = cls(seedname=seedname)
         if seedname is not None:
             name = seedname + ".win"
             self.parsed = parse_win_raw(name)
@@ -57,30 +59,6 @@ class WIN:
         for key in ["unit_cell_cart", "kpoints", "atoms_frac"]:
             if key in self.data:
                 self.data[key] = np.array(self.data[key], dtype=float)
-
-
-
-    # @functools.lru_cache()
-    # def _get_param(self, param):
-    #     """
-    #     Get the parameter from the parsed data
-
-    #     Parameters
-    #     ----------
-    #     param : str
-    #         the parameter to be retrieved
-
-    #     Returns
-    #     -------
-    #     Any
-    #         the value of the parameter
-    #     """
-    #     return self.parsed['parameters'][param]
-
-    # def __getitem__(self, key):
-    #     return self.data[key]
-
-        # self.data[key] = value
 
 
     def __getitem__(self, key):
@@ -145,6 +123,7 @@ class WIN:
         dic(dict) : the dictionary with the new parameters
         """
         self.data.update(dic)
+        return self
 
     def write(self, seedname=None, comment="written by WannierBerri"):
         """

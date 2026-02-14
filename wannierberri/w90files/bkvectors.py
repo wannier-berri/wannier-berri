@@ -1,4 +1,3 @@
-import os
 import numpy as np
 
 from .utility import get_mp_grid
@@ -43,28 +42,6 @@ class BKVectors(W90_file):
     def select_bands(self, selected_bands, **kwargs):
         # this class has no information on the bands, so nothing to do
         pass
-
-
-
-    @classmethod
-    def autoread(cls, seedname="wannier90",
-                 params=None,
-                 ):
-        """First try to read  npz file, then read the w90 file if npz does not exist, 
-        otherwise generate from bandstructure if provided.
-        """
-        path = seedname + "." + cls.extension
-        if os.path.exists(path + ".npz"):
-            obj = cls.from_npz(path + ".npz")
-            was_read = True
-        elif os.path.exists(path):
-            obj = cls.from_nnkp(path, params=params)
-            was_read = True
-        else:
-            obj = cls.from_kpoints(**params)
-            was_read = False
-        # window is applied after, so that npz contains same data as original file
-        return obj, was_read
 
 
     @classmethod

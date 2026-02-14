@@ -236,8 +236,8 @@ class MMN(W90_file):
 
     @classmethod
     def from_bandstructure(cls,
-                           bkvec,
                            bandstructure,
+                           bkvec,
                            bandstructure_left=None,
                            normalize=False,
                            verbose=False,
