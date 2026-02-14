@@ -4,10 +4,10 @@ import warnings
 import numpy as np
 from scipy.constants import physical_constants
 from .utility import get_mp_grid
+from ..io import SavableNPZ
 
 
-
-class WIN:
+class WIN(SavableNPZ):
     """
     Class to read and store the wannier90.win input file
 
@@ -29,7 +29,21 @@ class WIN:
 
     def __init__(self, seedname='wannier90'):
         self.data = {}
-        self.seedname = seedname
+        self.data["seedname"] = seedname
+
+    @property
+    def seedname(self):
+        return self.data["seedname"]
+
+    def as_dict(self):
+        return {k: v for k, v in self.data.items() if v is not None}
+
+    @classmethod
+    def from_dict(cls, dic):
+        self = cls()
+        for k, v in dic.items():
+            self.data[k] = v
+        return self
 
     @classmethod
     def from_w90_file(cls, seedname='wannier90', data=None):

@@ -103,15 +103,12 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     data_dir_new = data_dir.joinpath("NPZ")
     data_dir_new.mkdir(exist_ok=True)
 
-    def _link(ext):
-        f = seedname + "." + ext
-        try:
-            data_dir_new.joinpath(f).symlink_to(data_dir.joinpath(f))
-        except FileExistsError:
-            pass
+    w90data = Wannier90data.from_w90_files(seedname=str(data_dir / seedname),
+                                           files=["amn", "mmn", "eig", "chk", "spn", "win",
+                                                  "uHu", "uIu", "sHu", "sIu"],
+                                           readnnkp=False)
+    w90data.to_npz(data_dir_new / seedname)
 
-    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu", "bkvec", "chk"]:
-        _link(ext + ".npz")
     return data_dir_new
 
 
@@ -889,8 +886,8 @@ def model_1d_pythtb():
     orb = [[0], [0.5]]
     orb2 = [orb[0]] * 2 + [orb[1]] * 2
 
-    model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
-    model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
+    model1d_1 = pythtb.TBModel(1, 1, lat, orb, nspin=2)
+    model1d_2 = pythtb.TBModel(1, 1, lat, orb2, nspin=1)
     Delta = 1
     model1d_1.set_onsite([-Delta, Delta])
     model1d_2.set_onsite([-Delta] * 2 + [Delta] * 2)

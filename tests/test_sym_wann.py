@@ -440,10 +440,10 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
     rot_orb = np.array(symmetrizer.rot_orb_list[0])
     assert np.allclose(rot_orb, np.round(rot_orb), atol=1e-10), f"For the chosen bases the rotation matrices should be integer, but they are \n{rot_orb}"
 
-    model = pythtb.tb_model(dim_k=3, dim_r=3,
-                            lat=lattice,
-                            orb=[[1 / 3, 1 / 3, 0]] * norb + [[2 / 3, 2 / 3, 1 / 2]] * norb,
-                            nspin=1)
+    model = pythtb.TBModel(dim_k=3, dim_r=3,
+                           lat=lattice,
+                           orb=[[1 / 3, 1 / 3, 0]] * norb + [[2 / 3, 2 / 3, 1 / 2]] * norb,
+                           nspin=1)
     for i in range(norb * 2):
         model.set_onsite(rnd(), ind_i=i)
 

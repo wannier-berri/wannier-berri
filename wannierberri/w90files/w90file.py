@@ -63,7 +63,7 @@ class W90_file(SavableNPZ):
         """
         abstract method to read the necessary data from Wannier90 file
         """
-        raise NotImplementedError("{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
+        raise NotImplementedError(f"{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
 
     @classmethod
     def from_bandstructure(cls, bandstructure, **kwargs):
@@ -75,7 +75,7 @@ class W90_file(SavableNPZ):
         bandstructure : irrep.bandstructure.BandStructure
             the band structure object
         """
-        raise NotImplementedError("{cls.__name__}.from_bandstructure method is not implemented ")
+        raise NotImplementedError(f"{cls.__name__}.from_bandstructure method is not implemented ")
 
     def select_bands(self, selected_bands, dimensions=(0,), var_select=False):
         """

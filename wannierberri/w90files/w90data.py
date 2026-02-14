@@ -369,7 +369,8 @@ class Wannier90data:
             files = self._files.keys()
         for f in files:
             if f in self._files:
-                self.get_file(f).to_npz(seedname + "." + f + ".npz")
+                val = self.get_file(f)
+                val.to_npz(str(seedname) + "." + val.extension + ".npz")
             else:
                 warnings.warn(f"file {f} is not set, cannot write to npz")
 
@@ -440,6 +441,9 @@ class Wannier90data:
             self.set_file('mmn', mmn)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
+            if f not in FILES_CLASSES:
+                warnings.warn(f"file {f} is not a valid w90 file, skipping it")
+                continue
             kwargs_w90 = {}
             if f in ['uhu', 'uiu', 'shu', 'siu']:
                 assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"

@@ -57,7 +57,7 @@ def Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     lat = [[1.0, 0.0], [0.5, np.sqrt(3.0) / 2.0]]
     orb = [[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]
 
-    my_model = pythtb.tb_model(2, 2, lat, orb)
+    my_model = pythtb.TBModel(2, 2, lat, orb)
 
     delta = 0.2
     t2 = hop2 * np.exp(1.j * phi)
@@ -116,7 +116,7 @@ def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_lef
     orb = [[1. / 3., 1. / 3., 0.0], [2. / 3., 2. / 3., 0.0]]
 
     # make tree dimensional (stacked) tight-binding Haldene model
-    my_model = pythtb.tb_model(3, 3, lat, orb)
+    my_model = pythtb.TBModel(3, 3, lat, orb)
 
     # set model parameters
     t2 = hop2 * np.exp(1.j * phi)
@@ -182,7 +182,7 @@ def SSH_ptb(delta=0.2, hop1=1.0, hop2=0.15):
     lat = [[1.0]]
     orb = [[0.], [0.4]]
 
-    my_model = pythtb.tb_model(1, 1, lat, orb)
+    my_model = pythtb.TBModel(1, 1, lat, orb)
 
     my_model.set_onsite([-delta, delta])
     my_model.set_hop(hop1, 0, 1, [0])
@@ -244,7 +244,7 @@ def CuMnAs_2d(
     ny = ny / nabs
     nz = nz / nabs
 
-    my_model = pythtb.tb_model(2, 2, lat, orb)
+    my_model = pythtb.TBModel(2, 2, lat, orb)
 
     # set hoppings (one for each connected pair of orbitals)
     # (amplitude, i, j, [lattice vector to cell containing j])
@@ -306,7 +306,7 @@ def KaneMele_ptb(topological):
     orb = [[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]
 
     # make two dimensional tight-binding Kane-Mele model
-    ret_model = pythtb.tb_model(2, 2, lat, orb, nspin=2)
+    ret_model = pythtb.TBModel(2, 2, lat, orb, nspin=2)
 
     # set model parameters depending on whether you are in the topological
     # phase or not
