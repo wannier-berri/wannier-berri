@@ -258,10 +258,10 @@ def CuMnAs_2d(
     nz = nz / nabs
 
     if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
-        my_model = pythtb.tb_model(2, 2, lat, orb, nspin=2)
+        my_model = pythtb.tb_model(2, 2, lat, orb, nspin=1)
     else:
         lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
-        my_model = pythtb.TBModel(lattice, nspin=2)
+        my_model = pythtb.TBModel(lattice, spinful=False)
 
     # set hoppings (one for each connected pair of orbitals)
     # (amplitude, i, j, [lattice vector to cell containing j])
@@ -396,7 +396,7 @@ def Chiral_OSD():
         my_model = pythtb.tb_model(3, 3, lat, orb, nspin=2)
     else:
         lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1, 2])
-        my_model = pythtb.TBModel(lattice, nspin=2)
+        my_model = pythtb.TBModel(lattice, spinful=True)
 
     # set model parameters
     t1 = 1.0
