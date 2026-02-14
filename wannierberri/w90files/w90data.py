@@ -440,6 +440,11 @@ class Wannier90data:
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             kwargs_w90 = {} 
+            if f in ['uhu', 'uiu', 'shu', 'siu']:
+                assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
+                assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
+                assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
+                kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
             if f in ["spn", "uhu", "uiu", "shu", "siu", ]:
                 kwargs_w90['formatted'] = f in self.formatted_list
             val = FILES_CLASSES[f].from_w90_file(seedname=seedname, **kwargs_w90)
