@@ -882,12 +882,19 @@ def system_kp_mass_aniso_2():
 
 def model_1d_pythtb():
     import pythtb
+    from wannierberri.models import NEW_PYTHTB_VERSION
+    from packaging import version
     lat = [[1.0]]
     orb = [[0], [0.5]]
     orb2 = [orb[0]] * 2 + [orb[1]] * 2
-
-    model1d_1 = pythtb.TBModel(1, 1, lat, orb, nspin=2)
-    model1d_2 = pythtb.TBModel(1, 1, lat, orb2, nspin=1)
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
+        model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
+    else:
+        lattice = pythtb.Lattice(lat_vecs = lat, orb_vecs = orb, periodic_dirs=[0])
+        model1d_1 = pythtb.TBModel(lattice, spinful=True)
+        lattice2 = pythtb.Lattice(lat_vecs = lat, orb_vecs = orb2, periodic_dirs=[0])
+        model1d_2 = pythtb.TBModel(lattice2)
     Delta = 1
     model1d_1.set_onsite([-Delta, Delta])
     model1d_2.set_onsite([-Delta] * 2 + [Delta] * 2)
