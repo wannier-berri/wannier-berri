@@ -52,8 +52,6 @@ class Wannier90dataSOC(Wannier90data):
                   mag_symprec=0.05,
                   include_paw=True,
                   include_pseudo=True,
-                  read_npz_list=None,
-                  write_npz_list=None,
                   files=["mmn", "eig", "amn", "symmetrizer", "soc"],
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC."""
@@ -77,8 +75,6 @@ class Wannier90dataSOC(Wannier90data):
                                                   nbands_upper_skip=8),
                               include_paw=include_paw,
                               include_pseudo=include_pseudo,
-                              read_npz_list=read_npz_list,
-                              write_npz_list=write_npz_list,
                               files=[f for f in files if f not in ["soc", "mmn_ud"]],
                               )
         kwargs_w90data.update(kwargs)
@@ -117,50 +113,25 @@ class Wannier90dataSOC(Wannier90data):
         data = cls(data_up=data_up, data_down=data_down, cell=cell)
 
         if "soc" in files:
-            soc = None
-            if read_npz_list is None or "soc" in read_npz_list:
-                try:
-                    soc = SOC.from_npz(seedname + ".soc.npz")
-                except FileNotFoundError:
-                    soc = None
-            if soc is None:
-                soc = SOC.from_gpaw(calculator=calculator)
-            if write_npz_list is None or "soc" in write_npz_list:
-                soc.to_npz(seedname + ".soc.npz")
+            soc = SOC.from_gpaw(calculator=calculator)
             data.set_file("soc", soc)
 
         if "mmn_ud" in files and nspin == 2:
-            mmn_ud = None
-            if read_npz_list is None or "mmn_ud" in read_npz_list:
-                try:
-                    mmn_ud = MMN.from_npz(seedname + ".mmn_ud.npz")
-                except FileNotFoundError:
-                    mmn_ud = None
-            if mmn_ud is None:
-                bkvec = data_up.get_file('bkvec')
-                mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
-                                                bandstructure=bandstructure_down,
-                                                irreducible=data.is_irreducible,
-                                                symmetrizer_left=data_up.get_file("symmetrizer"),
-                                                symmetrizer=data_down.get_file("symmetrizer"),
-                                                bkvec=bkvec)
+            bkvec = data_up.get_file('bkvec')
+            mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
+                                            bandstructure=bandstructure_down,
+                                            irreducible=data.is_irreducible,
+                                            symmetrizer_left=data_up.get_file("symmetrizer"),
+                                            symmetrizer=data_down.get_file("symmetrizer"),
+                                            bkvec=bkvec)
             data.set_file("mmn_ud", mmn_ud)
-            if write_npz_list is None or "mmn_ud" in write_npz_list:
-                mmn_ud.to_npz(seedname + ".mmn_ud.npz")
 
-            mmn_du = None
-            if read_npz_list is None or "mmn_du" in read_npz_list:
-                try:
-                    mmn_du = MMN.from_npz(seedname + ".mmn_du.npz")
-                except FileNotFoundError:
-                    mmn_du = None
-            if mmn_du is None:
-                mmn_du = MMN.from_bandstructure(bandstructure_left=bandstructure_down,
-                                                bandstructure=bandstructure_up,
-                                                irreducible=data.is_irreducible,
-                                                symmetrizer_left=data_down.get_file("symmetrizer"),
-                                                symmetrizer=data_up.get_file("symmetrizer"),
-                                                bkvec=bkvec,)
+            mmn_du = MMN.from_bandstructure(bandstructure_left=bandstructure_down,
+                                            bandstructure=bandstructure_up,
+                                            irreducible=data.is_irreducible,
+                                            symmetrizer_left=data_down.get_file("symmetrizer"),
+                                            symmetrizer=data_up.get_file("symmetrizer"),
+                                            bkvec=bkvec,)
             data.set_file("mmn_du", mmn_du)
         return data
 

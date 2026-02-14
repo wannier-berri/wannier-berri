@@ -287,7 +287,7 @@ def test_create_amn_diamond_s_bond():
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
     print("amn.shape = ", amn.data[0].shape)
     print("mmn.shape = ", w90data.mmn.data[0].shape)
     print("eig.shape = ", w90data.eig.data[0].shape)
@@ -375,7 +375,7 @@ def test_create_amn_diamond_p_bond():
 
     w90data = wberri.w90files.Wannier90data.from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
-        readfiles=["mmn", "eig", "win", "unk"])
+        files=["mmn", "eig", "win", "unk"])
 
     amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                             normalize=True, return_object=True)
@@ -461,7 +461,7 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["mmn", "eig", "win"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
     w90data.set_file("amn", amn)
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)

@@ -30,6 +30,7 @@ def wannierise(w90data,
                symmetrize_Z=True,
                irreducible=False,
                print_wcc_chk=False,
+               savechk=True
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -166,8 +167,7 @@ def wannierise(w90data,
                 Warning("The check of irreps is not implemented for anti-unitary symmetries. Skipping the check, leaving to your responsibility")
             else:
                 try:
-                    check, msg = symmetrizer.check_windows(frozen=frozen,
-                                                    outer=selected_bands)
+                    symmetrizer.check_windows(frozen=frozen, outer=selected_bands)
                 except IrrepsIncompatibleError as e:
                     if check_irreps:
                         raise e
@@ -178,7 +178,12 @@ def wannierise(w90data,
 
     if not w90data.has_file("chk"):
         from wannierberri.w90files.chk import CheckPoint
-        w90data.set_file("chk", CheckPoint(NK=NK, NB=w90data.mmn.NB, NW=w90data.mmn.NB))
+        w90data.set_file("chk", CheckPoint(num_kpts=NK,
+                                           num_bands=w90data.mmn.NB,
+                                           mp_grid=w90data.bkvec.mp_grid,
+                                           kpt_latt=w90data.bkvec.kpt_latt,
+                                           real_lattice=w90data.bkvec.real_lattice,
+                                           num_wann=0))  # num_wann will be set later from amn
 
     if init == "amn":
         amn = {kpt: w90data.amn.data[kpt] for kpt in kptirr}
@@ -284,6 +289,9 @@ def wannierise(w90data,
     print(f"time for iterations {t02 - t01}")
     print(f"time for updating {t_update}")
     print(f"total time for wannierization {time() - t0}")
+    if savechk:
+        chk = w90data.get_file('chk')
+        chk.to_npz(w90data.seedname + ".chk")
     return w90data.chk.v_matrix
 
 

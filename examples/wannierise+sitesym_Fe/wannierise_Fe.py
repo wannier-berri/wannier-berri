@@ -3,7 +3,8 @@ from irrep.bandstructure import BandStructure
 import wannierberri as wb
 
 path_data = "../../tests/data/Fe-222-pw/"
-w90data = wb.w90files.Wannier90data.from_w90_files(seedname=path_data + "Fe", readfiles=["mmn", "eig", "win", ], read_npz=True)
+w90data = wb.w90files.Wannier90data.from_w90_files(seedname=path_data + "Fe", 
+                                                   files=["mmn", "eig", "win", ])
 
 
 bandstructure = BandStructure(code='espresso',

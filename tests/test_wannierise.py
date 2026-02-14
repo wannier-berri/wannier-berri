@@ -10,6 +10,8 @@ import shutil
 
 from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.system.system_w90 import System_w90
+# from wannierberri.w90files.win import WIN
+# from wannierberri.w90files.chk import CheckPoint as CHK
 
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import IrrepsIncompatibleError, SymmetrizerSAWF
@@ -55,7 +57,7 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     outer_min = -np.inf
     outer_max = np.inf
@@ -167,8 +169,11 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window, parallel):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
-
+    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
+    # win = WIN.from_w90_file(path_data + "/Fe")
+    # chk = CHK.from_win(win)
+    # chk.to_npz(path_data + f"/Fe.chk.npz")
+    # w90data.set_file("chk", chk)
     symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
     w90data.set_symmetrizer(symmetrizer)
     outer_min, outer_max = -np.inf, np.inf
@@ -189,6 +194,7 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
                        localise=True,
                        sitesym=True,
                        parallel=parallel,
+                       savechk=False,
                        )
     assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
     spreads = w90data.chk.wannier_spreads

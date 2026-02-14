@@ -40,7 +40,6 @@ if True:
                         seedname="./Fe",
                         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
                         projections=projections_set,
-                        read_npz_list=["mmn", "amn", "spn", "eig", ],
                         normalize=False
                         )
 

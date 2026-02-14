@@ -1,5 +1,4 @@
 import abc
-import os
 
 import numpy as np
 from ..io import SavableNPZ
@@ -36,36 +35,27 @@ class W90_file(SavableNPZ):
 
 
 
-    @classmethod
-    def autoread(cls, seedname="wannier90", ext=None,
-                 read_npz=True,
-                 read_w90=True,
-                 bandstructure=None,
-                 write_npz=True,
-                 selected_bands=None,
-                 kwargs_w90=None,
-                 kwargs_bandstructure=None,
-                 ):
-        """First try to read  npz file, then read the w90 file if npz does not exist, 
-        otherwise generate from bandstructure if provided.
-        """
-        ext = cls.extension if ext is None else ext
-        f_npz = f"{seedname}.{ext}.npz"
-        # print(f"calling autoread for {cls.__name__} with seedname={seedname}, ext={ext}, read_npz={read_npz}, read_w90={read_w90}, bandstructure={bandstructure is not None} write_npz={write_npz}, selected_bands={selected_bands}, kwargs_w90={kwargs_w90}, kwargs_bandstructure={kwargs_bandstructure}")
-        if os.path.exists(f_npz) and read_npz:
-            obj = cls.from_npz(f_npz)
-            write_npz = False  # do not write npz again if it was read
-        elif bandstructure is not None:
-            if kwargs_bandstructure is None:
-                kwargs_bandstructure = {}
-            obj = cls.from_bandstructure(bandstructure=bandstructure, **kwargs_bandstructure)
-        elif read_w90:
-            obj = cls.from_w90_file(seedname, **kwargs_w90)
-        if write_npz:
-            obj.to_npz(f_npz)
-        # window is applied after, so that npz contains same data as original file
-        obj.select_bands(selected_bands)
-        return obj
+    # @classmethod
+    # def autoread(cls, seedname="wannier90", ext=None,
+    #              read_w90=True,
+    #              bandstructure=None,
+    #              selected_bands=None,
+    #              kwargs_w90=None,
+    #              kwargs_bandstructure=None,
+    #              ):
+    #     """First try to read  npz file, then read the w90 file if npz does not exist,
+    #     otherwise generate from bandstructure if provided.
+    #     """
+    #     ext = cls.extension if ext is None else ext
+    #     if bandstructure is not None:
+    #         if kwargs_bandstructure is None:
+    #             kwargs_bandstructure = {}
+    #         obj = cls.from_bandstructure(bandstructure=bandstructure, **kwargs_bandstructure)
+    #     elif read_w90:
+    #         obj = cls.from_w90_file(seedname, **kwargs_w90)
+    #     # window is applied after, so that npz contains same data as original file
+    #     obj.select_bands(selected_bands)
+    #     return obj
 
 
     @classmethod
@@ -73,7 +63,7 @@ class W90_file(SavableNPZ):
         """
         abstract method to read the necessary data from Wannier90 file
         """
-        raise NotImplementedError("{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
+        raise NotImplementedError(f"{cls.__name__}.from_w90_file method is not implemented, please implement it in the subclass")
 
     @classmethod
     def from_bandstructure(cls, bandstructure, **kwargs):
@@ -85,7 +75,7 @@ class W90_file(SavableNPZ):
         bandstructure : irrep.bandstructure.BandStructure
             the band structure object
         """
-        raise NotImplementedError("{cls.__name__}.from_bandstructure method is not implemented ")
+        raise NotImplementedError(f"{cls.__name__}.from_bandstructure method is not implemented ")
 
     def select_bands(self, selected_bands, dimensions=(0,), var_select=False):
         """

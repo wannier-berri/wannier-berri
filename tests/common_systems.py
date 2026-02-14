@@ -103,16 +103,12 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     data_dir_new = data_dir.joinpath("NPZ")
     data_dir_new.mkdir(exist_ok=True)
 
-    def _link(ext):
-        f = seedname + "." + ext
-        try:
-            data_dir_new.joinpath(f).symlink_to(data_dir.joinpath(f))
-        except FileExistsError:
-            pass
+    w90data = Wannier90data.from_w90_files(seedname=str(data_dir / seedname),
+                                           files=["amn", "mmn", "eig", "chk", "spn", "win",
+                                                  "uHu", "uIu", "sHu", "sIu"],
+                                           readnnkp=False)
+    w90data.to_npz(data_dir_new / seedname)
 
-    _link("chk")
-    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu", "bkvec"]:
-        _link(ext + ".npz")
     return data_dir_new
 
 
@@ -163,9 +159,8 @@ def system_Fe_W90(create_files_Fe_W90):
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
-        readfiles=NeededData(**matrices).files,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu", "mmn", "eig", "bkvec"],
-        write_npz_formatted=True,
+        files=NeededData(**matrices).files,
+        readnnkp=False,  # to reproduce the old behavior of not reading bkvec from nnkp file
     )
     system = wberri.system.System_w90(
         w90data=w90data,
@@ -184,11 +179,13 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    w90data = Wannier90data.from_w90_files(
+    w90data = Wannier90data.from_npz(
         seedname=seedname,
-        readfiles=NeededData(**matrices).files,
-        read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False,
+        files=NeededData(**matrices).files,
     )
+    # chk = CHK.from_w90_file(seedname=seedname)
+    # chk.to_npz(seedname+".chk.npz")
+    # w90data.set_file("chk", chk)
     system = wberri.system.System_w90(
         w90data=w90data,
         **matrices,
@@ -232,9 +229,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
-        readfiles=NeededData(**matrices).files,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
-        write_npz_formatted=True,
+        files=NeededData(**matrices).files,
     )
 
     system = wberri.system.System_w90(w90data=w90data,
@@ -377,80 +372,6 @@ def system_Fe_gpaw_soc_111_symmetrized(get_system_Fe_gpaw_soc):
     return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0, do_symmetrize=True)
 
 
-# @pytest.fixture(scope="session")
-# def _system_Fe_gpaw_soc_111_irred():
-#     PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
-
-#     gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
-#     sg = SpaceGroup.from_gpaw(gpaw_calc)
-#     projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
-#     projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
-#     proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
-#     path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
-#     os.makedirs(path, exist_ok=True)
-#     kwargs_w90data = dict(calculator=gpaw_calc,
-#                           projections=proj_set,
-#         #                     ecut_pw=300,
-#         # ecut_sym=150,
-#         mp_grid=(2, 2, 2),
-#         read_npz_list=[],
-#         spacegroup=sg,
-#         # write_npz_list=[],
-#         # irreducible=True,
-#         # files=["amn", "mmn", "eig", "symmetrizer"],
-#         unitary_params=dict(error_threshold=0.1,
-#                             warning_threshold=0.01,
-#                             nbands_upper_skip=8),
-#     )
-
-#     w90data_up = wberri.w90files.Wannier90data.from_gpaw(
-#         spin_channel=0,
-#         seedname=os.path.join(path, "Fe-irred-spin-0"),
-#         **kwargs_w90data)
-#     w90data_dw = wberri.w90files.Wannier90data.from_gpaw(
-#         spin_channel=1,
-#         seedname=os.path.join(path, "Fe-irred-spin-1"),
-#         **kwargs_w90data)
-#     w90data_dw.select_bands(win_min=-100,
-#                          win_max=50)
-#     w90data_up.select_bands(win_min=-100,
-#                             win_max=50)
-
-#     w90data_up.wannierise(
-#         froz_min=-np.inf,
-#         froz_max=17,
-#         num_iter=500,
-#         print_progress_every=10,
-#         sitesym=True,
-#         localise=True,
-#     )
-
-#     w90data_dw.wannierise(
-#         froz_min=-np.inf,
-#         froz_max=17,
-#         num_iter=500,
-#         print_progress_every=10,
-#         sitesym=True,
-#         localise=True,
-#     )
-#     system_up = System_w90(w90data=w90data_up, berry=True)
-#     system_dw = System_w90(w90data=w90data_dw, berry=True)
-#     system_soc = SystemSOC(system_up=system_up, system_down=system_dw)
-#     chk_up = w90data_up.get_file('chk')
-#     chk_dw = w90data_dw.get_file('chk')
-#     soc = SOC.from_gpaw(gpaw_calc)
-#     kptirr, weights_k = w90data_up.kptirr_system
-#     system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw, kptirr=kptirr, weights_k=weights_k)
-#     system_soc.symmetrize2(symmetrizer_up=w90data_up.get_file('symmetrizer'),
-#                            symmetrizer_down=w90data_dw.get_file('symmetrizer'),)
-#     theta = np.arccos(1 / np.sqrt(3))
-#     phi = np.pi / 4
-#     system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
-#     mg = SpaceGroup.from_gpaw_magnetic(gpaw_calc, theta=theta, phi=phi)
-#     system_soc.set_pointgroup(spacegroup=mg)
-#     return system_soc
-
-
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_111_irred():
     PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
@@ -467,7 +388,6 @@ def system_Fe_gpaw_soc_111_irred():
         calculator=gpaw_calc,
         projections=proj_set,
         mp_grid=(2, 2, 2),
-        read_npz_list=[],
         files=["mmn", "eig", "amn", "symmetrizer", "soc", "mmn_ud"],
         spacegroup=sg,
     )
@@ -505,9 +425,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
-        readfiles=NeededData(**matrices).files,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
-        write_npz_formatted=True,
+        files=NeededData(**matrices).files,
     )
     system = wberri.system.System_w90(w90data=w90data,
                                       **matrices,
@@ -527,9 +445,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
-        readfiles=NeededData(**matrices).files,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu"],
-        write_npz_formatted=True,
+        files=NeededData(**matrices).files,
     )
     system = wberri.system.System_w90(w90data=w90data,
                                       **matrices,
@@ -592,9 +508,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     seedname = os.path.join(data_dir, "Si")
     w90data = Wannier90data.from_w90_files(
         seedname=seedname,
-        readfiles=NeededData(**matrices).files,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn"],
-        write_npz_formatted=True,
+        files=NeededData(**matrices).files,
     )
     system = wberri.system.System_w90(w90data=w90data,
                                       transl_inv_MV=transl_inv,
@@ -968,12 +882,19 @@ def system_kp_mass_aniso_2():
 
 def model_1d_pythtb():
     import pythtb
+    from wannierberri.models import NEW_PYTHTB_VERSION
+    from packaging import version
     lat = [[1.0]]
     orb = [[0], [0.5]]
     orb2 = [orb[0]] * 2 + [orb[1]] * 2
-
-    model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
-    model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
+        model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0])
+        model1d_1 = pythtb.TBModel(lattice, spinful=True)
+        lattice2 = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb2, periodic_dirs=[0])
+        model1d_2 = pythtb.TBModel(lattice2)
     Delta = 1
     model1d_1.set_onsite([-Delta, Delta])
     model1d_2.set_onsite([-Delta] * 2 + [Delta] * 2)

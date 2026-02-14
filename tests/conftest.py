@@ -84,7 +84,22 @@ from .test_run import check_run
 from .test_system import check_system
 
 from .common_parallel import init_parallel_ray
-init_parallel_ray()
+
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--serial",
+        action="store_true",
+        default=False,
+        help="Run tests in serial mode without Ray parallelization"
+    )
+
+
+def pytest_configure(config):
+    """Configure pytest based on command line options."""
+    if not config.getoption("--serial"):
+        init_parallel_ray()
 
 
 @pytest.fixture

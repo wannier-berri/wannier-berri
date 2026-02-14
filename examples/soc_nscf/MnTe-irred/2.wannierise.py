@@ -34,7 +34,6 @@ w90data = Wannier90dataSOC.from_gpaw(
     projections_up=proj_set_up,
     projections_down=proj_set_down,
     mp_grid=(6, 6, 4),
-    # read_npz_list=[],
     spacegroup=sg,
 )
 
