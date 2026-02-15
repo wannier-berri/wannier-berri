@@ -9,7 +9,6 @@ import numpy as np
 from pytest import approx
 
 from tests.common import OUTPUT_DIR, ROOT_DIR
-from wannierberri.w90files.amn import AMN, amn_from_bandstructure
 from wannierberri.symmetry.projections import Projection, ProjectionsSet, get_perpendicular_coplanar_vector, read_xzaxis
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 import wannierberri as wberri
@@ -261,10 +260,6 @@ def test_create_amn_diamond_s_bond():
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
 
-    amn = AMN.from_bandstructure(bandstructure=bandstructure,
-                                 projections=ProjectionsSet([projection]),
-                                normalize=True)
-    print(f"amn,data,keys : {amn.data.keys()}")
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond+create_amn")
 
@@ -288,11 +283,17 @@ def test_create_amn_diamond_s_bond():
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
     w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    w90data.set_projections(projections=[projection],
+                            bandstructure=bandstructure,
+                            all_kpoints=True)
+    amn = w90data.get_file("amn")
+    print(f"amn,data,keys : {amn.data.keys()}")
+
     print("amn.shape = ", amn.data[0].shape)
     print("mmn.shape = ", w90data.mmn.data[0].shape)
     print("eig.shape = ", w90data.eig.data[0].shape)
-    w90data.set_file("amn", amn)
-    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    # w90data.set_file("amn", amn)
     mmn = w90data.get_file("mmn")
     bkvec = w90data.get_file("bkvec")
     err_mmn = symmetrizer.check_mmn(bkvec=bkvec,
@@ -377,7 +378,7 @@ def test_create_amn_diamond_p_bond():
         seedname=os.path.join(tmp_dir, prefix),
         files=["mmn", "eig", "win", "unk"])
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
+    amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                             normalize=True, return_object=True)
     w90data.set_file("amn", amn)
     err_amn = symmetrizer.check_amn(amn, ignore_upper_bands=2)
@@ -440,7 +441,7 @@ def test_create_amn_diamond_sp3():
     pos_atoms_cart = positions @ lattice
     print("positions_cart = ", projection_sp3.positions @ lattice)
 
-    amn = amn_from_bandstructure(bandstructure=bandstructure, projections=projections,
+    amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=projections,
                            normalize=True, return_object=True)
     symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections(projections)

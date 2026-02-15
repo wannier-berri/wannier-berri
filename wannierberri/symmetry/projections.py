@@ -269,6 +269,11 @@ class ProjectionsSet:
 
     def __init__(self,
                  projections=[]):
+        if isinstance(projections, ProjectionsSet):
+            self.__dict__.update(projections.__dict__)
+            return self
+        elif isinstance(projections, Projection):
+            projections = [projections]
         self.spinor = None
         for i, p in enumerate(projections):
             assert isinstance(p, Projection), f"element {i} of list 'projections' should be a Projection, not {p}"

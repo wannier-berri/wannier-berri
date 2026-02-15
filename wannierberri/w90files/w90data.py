@@ -19,6 +19,8 @@ import os
 import warnings
 import numpy as np
 
+from ..symmetry.projections import ProjectionsSet
+
 
 from ..utility import cached_einsum
 from ..wannierise import wannierise
@@ -246,6 +248,36 @@ class Wannier90data:
                                          **kwargs_bandstructure)
             self.set_file('unk', unk)
         return self
+
+    def set_projections(self,
+                        projections,
+                        bandstructure=None,
+                        normalize=True,
+                        all_kpoints=False,):
+        """
+        Set the projections of the system, and update the symmetrizer and amn files accordingly
+
+        Parameters
+        ----------
+        projections : `~wannierberri.symmetry.projections.ProjectionSet`
+            the projections to be used for the AMN and symmetrizer files.
+        """
+        projectionsSet = ProjectionsSet(projections)
+        kwargs = {}
+        if self.has_symmetrizer:
+            self.symmetrizer.set_D_wann_from_projections(projectionsSet)
+            if not all_kpoints:
+                kwargs["kptirr"] = self.symmetrizer.kptirr
+                kwargs["NK"] = self.symmetrizer.NK
+        amn = AMN.from_bandstructure(bandstructure=bandstructure,
+                            projections=projectionsSet,
+                        #  selected_kpoints=symmetrizer.selected_kpoints,
+                            normalize=normalize,
+                            **kwargs)
+        if self.bands_were_selected:
+            amn.select_bands(selected_bands=self.selected_bands)
+        self.set_file('amn', amn, overwrite=True, allow_selected_bands=True)
+
 
     @classmethod
     def from_gpaw(cls,
