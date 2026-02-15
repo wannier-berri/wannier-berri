@@ -17,7 +17,6 @@ import abc
 from functools import cached_property
 import warnings
 
-from ..system.system import System
 from ..symmetry.point_symmetry import PointGroup
 from .Kpoint import KpointBZparallel
 from ..utility import one2three
@@ -26,21 +25,53 @@ from ..utility import one2three
 class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
-    def __init__(self, system, use_symmetry, FFT=(1, 1, 1)):
+    def __init__(self,
+                 system=None,
+                 real_lattice=None,
+                 recip_lattice=None,
+                 pointgroup=None,
+                 use_symmetry=True,
+                 FFT=(1, 1, 1)):
+        """
+        Parameters
+        -----------
+        system : :class:`~wannierberri.system.System`
+            which the calculations will be made
+        real_lattice : 3x3 array 
+            real lattice vectors in angstroms (columns of the matrix)
+        recip_lattice : 3x3 array
+            reciprocal lattice vectors in 1/angstroms (columns of the matrix)
+        pointgroup : :class:`~wannierberri.symmetry.point_symmetry.PointGroup`
+            point group of the system
+        use_symmetry : bool
+            use symmetries of the system to exclude equivalent points   
+        FFT : 3-array
+            number of k-points in the FFT grid along each directions
+
+        Notes
+        -----
+        exactly one of system, real_lattice, recip_lattice, pointgroup should be provided. If use_symmetry is True, then pointgroup will be determined from the provided system or pointgroup. Otherwise - just create a trivial pointgroup (no symmetries) from the provided system or real_lattice or recip_lattice.
+
+        """
+        found = [p is not None for p in (system, real_lattice, recip_lattice, pointgroup)]
+        assert np.sum(found) == 1, f"Exactly one of system, real_lattice, recip_lattice, pointgroup should be provided. "\
+            f"Found: system={system}, real_lattice={real_lattice}, recip_lattice={recip_lattice}, pointgroup={pointgroup}"
         if use_symmetry:
-            if isinstance(system, System):
+            if found[0]:  # system is provided
                 self.pointgroup = system.pointgroup
-            elif isinstance(system, PointGroup):
-                self.pointgroup = system
+            elif found[3]:  # pointgroup is provided
+                self.pointgroup = pointgroup
         else:
-            if isinstance(system, System):
-                real_lattice = system.real_lattice
-            elif isinstance(system, PointGroup):
-                real_lattice = system.real_lattice
-            else:
-                real_lattice = system
-            self.pointgroup = PointGroup(real_lattice=real_lattice)
+            if any([found[0], found[1], found[3]]):  # system or real_lattice or pointgroup is provided
+                if found[0]:  # system or pointgroup is provided
+                    real_lattice = system.real_lattice
+                elif found[3]:  # pointgroup is provided
+                    real_lattice = pointgroup.real_lattice
+                self.pointgroup = PointGroup(real_lattice=real_lattice)
+            elif found[2]:  # recip_lattice is provided
+                self.pointgroup = PointGroup(recip_lattice=recip_lattice)
         self.FFT = np.array(FFT)
+
 
     @abc.abstractmethod
     def get_K_list(self, use_symmetry=False):
@@ -55,6 +86,14 @@ class GridAbstract(abc.ABC):
                 for iz in range(self.FFT[2])
             ])
 
+    @property
+    def recip_lattice(self):
+        return self.pointgroup.recip_lattice
+
+    @property
+    def real_lattice(self):
+        return self.pointgroup.real_lattice
+
 
 class Grid(GridAbstract):
     """ A class containing information about the k-grid.
@@ -63,6 +102,12 @@ class Grid(GridAbstract):
     -----------
     system : :class:`~wannierberri.system.System`
         which the calculations will be made
+    real_lattice : 3x3 array
+        real lattice vectors in angstroms (columns of the matrix)
+    recip_lattice : 3x3 array
+        reciprocal lattice vectors in 1/angstroms (columns of the matrix)
+    pointgroup : :class:`~wannierberri.symmetry.point_symmetry.PointGroup`
+        point group of the system
     length :  float
         (angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
     length_FFT :  float
@@ -90,11 +135,16 @@ class Grid(GridAbstract):
 
     The others will be evaluated automatically.
 
+    # see also :class:`~wannierberri.grid.GridAbstract` 
     """
 
-    def __init__(self, system, length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
+    def __init__(self,
+                 system=None, real_lattice=None, recip_lattice=None, pointgroup=None,  # exactly one of these should be provided
+                 length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
 
-        super().__init__(system=system, use_symmetry=use_symmetry)
+        super().__init__(system=system,
+                         real_lattice=real_lattice, recip_lattice=recip_lattice, pointgroup=pointgroup,
+                         use_symmetry=use_symmetry, FFT=NKFFT)
         NKFFT_recommended = np.array(system.NKFFT_recommended)
         self.div, self.FFT = determineNK(
             system.periodic, NKdiv, NKFFT, NK, NKFFT_recommended, self.pointgroup, length=length, length_FFT=length_FFT)

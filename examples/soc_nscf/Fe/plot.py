@@ -29,7 +29,7 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
                      theta=theta_deg / 180 * np.pi,
                      phi=phi_deg / 180 * np.pi)
 
-path = Path(system_dw,
+path = Path(system=system_dw,
             nodes=[
                 [0.0, 0.0, 0.0],
                 [0.5, -0.5, -0.5],

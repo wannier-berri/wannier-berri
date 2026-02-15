@@ -39,7 +39,7 @@ def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
     calculators["spin"] = wberri.calculators.static.Spin(tetra=True, Efermi=Efermi)
     results = {}
 
-    grid = wberri.grid.Grid(system_Fe_gpaw_soc_z, NK=4)
+    grid = wberri.grid.Grid(system=system_Fe_gpaw_soc_z, NK=4)
 
     for alpha in [0.0, 0.25, 0.5, 0.75, 1.0]:
         system_interp = interpolator.interpolate(alpha)

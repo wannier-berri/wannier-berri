@@ -102,7 +102,7 @@ if do_wberri:
     plt.xlim(0, 0.31)
     plt.ylim(5, 6)
 
-    grid = wberri.Grid(system, length=200, NKFFT=[6, 6, 8])
+    grid = wberri.Grid(system=system, length=200, NKFFT=[6, 6, 8])
     if do_integrate:
         Efermi = np.linspace(-10, 10, 1001)
         wberri.run(system,

@@ -55,6 +55,43 @@ def test_path_3(system_Haldane_PythTB):
         ]) / 10), "path.K_list is wrong"
 
 
+def compare_paths(path1, path2):
+    path1_dict = path1.as_dict()
+    path2_dict = path2.as_dict()
+    assert set(path1_dict.keys()) == set(path2_dict.keys()), f"path.as_dict keys are wrong: {set(path1_dict.keys())} vs {set(path2_dict.keys())}"
+    assert path1_dict["K_list"] == approx(path2_dict["K_list"]), "path.K_list is wrong"
+    assert path1_dict["label_indices"] == approx(path2_dict["label_indices"]), f"path.labels keys are wrong {path1_dict['label_indices']} vs {path2_dict['label_indices']}"
+    assert path1_dict["label_values"] == approx(path2_dict["label_values"]), f"path.labels values are wrong {path1_dict['label_values']} vs {path2_dict['label_values']}"
+    assert path1_dict["breaks"] == approx(path2_dict["breaks"]), f"path.breaks is wrong {path1_dict['breaks']} vs {path2_dict['breaks']}"
+
+
+def test_path_refined():
+    rec_lattice = 4 * (np.ones((3, 3)) - np.eye(3)) / 2
+    # Test the construction of Path class with dk=0.5, which should give the same result as dk=1.0 but with more points
+    nodes = [[0.0, 0.0, 0.5],
+             [0.0, 0.0, 0.0],
+             None,
+             [0.5, 0.5, 0.5],
+             [0, 0, 0],
+             [0.5, 0.0, 0.5],
+             None,
+             [0.75, 0.25, 0.75],
+             [0.125, 0.375, 0.625]
+             ]
+    labels = ["A", "Gamma", "L", "Gamma", "B", "F", "G"]
+    path = wberri.Path.from_nodes(recip_lattice=rec_lattice, nodes=nodes, labels=labels, dk=0.1)
+    output_file = os.path.join(OUTPUT_DIR, "path_not_refined.npz")
+    path.to_npz(output_file)
+    path_refined = path.get_refined(factor=4)
+    print(f"Original path:\n{path}")
+    print(f"Refined path:\n{path_refined}")
+    output_file_refined = os.path.join(OUTPUT_DIR, "path_refined.npz")
+    path_refined.to_npz(output_file_refined)
+    ref_file = os.path.join(REF_DIR, "path_refined.npz")
+    data_ref = wberri.Path.from_npz(ref_file)
+    compare_paths(path_refined, data_ref)
+
+
 def test_path_4(system_Haldane_PythTB):
     # Test where nodes is a list of numpy arrays
     nodes = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]
@@ -79,19 +116,10 @@ def test_seek_path(lattice_type):
     numbers = np.array([1])
     path = wberri.Path.seekpath(lattice=lattice, positions=positions, numbers=numbers, dk=0.5)
     output_file = os.path.join(OUTPUT_DIR, f"seekpath_{lattice_type}.npz")
-    label_ind = np.array(sorted(path.labels.keys()))
-    label_val = np.array([path.labels[i] for i in label_ind])
-    np.savez(output_file, K_list=path.K_list, labels_ind=label_ind, labels_val=label_val)
+    path.to_npz(output_file)
     ref_file = os.path.join(REF_DIR, f"seekpath_{lattice_type}.npz")
-    data_ref = np.load(ref_file)
-    assert path.K_list == approx(data_ref["K_list"]), "path.K_list is wrong"
-    assert label_ind == approx(data_ref["labels_ind"]), "path.labels keys are wrong"
-    assert label_val == approx(data_ref["labels_val"]), "path.labels values are wrong"
-
-
-    print(f"lattice type: {lattice_type}")
-    print("k-points", path.K_list)
-    print("labels", path.labels)
+    path_ref = wberri.Path.from_npz(ref_file)
+    compare_paths(path, path_ref)
 
 
 
@@ -158,7 +186,7 @@ def test_path_spheroid(system_Haldane_PythTB):
 def test_path_list(system_Haldane_PythTB):
     # Test the construction of Path class with spherical k-list
     kpoints = np.random.rand(10, 3)
-    path = wberri.Path(system_Haldane_PythTB, k_list=kpoints)
+    path = wberri.Path(system=system_Haldane_PythTB, k_list=kpoints)
     assert path.K_list.shape == (10, 3), "path.K_list shape is wrong"
     assert np.allclose(path.K_list, kpoints), "path.K_list is wrong"
 

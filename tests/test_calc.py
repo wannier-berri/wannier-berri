@@ -25,7 +25,7 @@ def check_calculator(compare_any_result):
                result_type=EnergyResult,
                factor=1
                 ):
-        grid = wberri.Grid(system, NKFFT=NKFFT, NKdiv=1)
+        grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
         result = calc(data_K) * factor
 
@@ -73,7 +73,7 @@ def test_tabulator_mul(system_Fe_W90, check_calculator):
 def test_tab_fit(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
-    grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=1)
+    grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
     data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
     morb = wberri.calculators.tabulate.OrbitalMoment
     berry = wberri.calculators.tabulate.BerryCurvature
@@ -97,7 +97,7 @@ def test_tab_fit(system_Haldane_PythTB):
 def test_BD_trace(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
-    grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=1)
+    grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
     data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
     noext = dict(kwargs_formula={"external_terms": False})
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
@@ -110,7 +110,7 @@ def test_BD_trace(system_Haldane_PythTB):
 @pytest.fixture
 def check_save_result():
     def _inner(system, calc, result_type, filename="dummy"):
-        grid = wberri.Grid(system, NKFFT=3, NK=5)
+        grid = wberri.Grid(system=system, NKFFT=3, NK=5)
         dK = np.random.random(3)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
         result = calc(data_K)

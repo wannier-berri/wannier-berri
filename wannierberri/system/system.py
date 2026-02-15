@@ -331,7 +331,7 @@ class System:
             X[directionk] = 0.5
             mX = np.zeros(3)
             mX[directionk] = -0.5
-            path = Path.from_nodes(cell[0], nodes=[mX, [0, 0, 0], X], labels=['-X', 'G', 'X'], dk=dk)
+            path = Path.from_nodes(real_lattice=cell[0], nodes=[mX, [0, 0, 0], X], labels=['-X', 'G', 'X'], dk=dk)
         else:
             if self.periodic.sum() == 2:
                 direction = np.where(~self.periodic)[0][0]

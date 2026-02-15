@@ -45,11 +45,18 @@ class Path(GridAbstract):
     """
 
     def __init__(self,
-                 system,
-                 k_list,
+                 system=None,
+                 pointgroup=None,
+                 real_lattice=None,
+                 recip_lattice=None,
+                 k_list=[],
                  labels=None,
                  breaks=None):
-        super().__init__(system=system, use_symmetry=False)
+        super().__init__(system=system,
+                         pointgroup=pointgroup,
+                         real_lattice=real_lattice,
+                         recip_lattice=recip_lattice,
+                         use_symmetry=False)
         if breaks is None:
             breaks = []
         if labels is None:
@@ -60,7 +67,17 @@ class Path(GridAbstract):
         self.div = np.shape(self.K_list)[0]
 
     @classmethod
-    def spheroid(cls, system, r1, r2, ntheta, nphi, origin=None):
+    def spheroid(cls, system=None,
+                 real_lattice=None,
+                 recip_lattice=None,
+                 pointgroup=None,
+                 r1=0.1, r2=0.1, ntheta=10, nphi=10, origin=None):
+        self = cls(system=system,
+                   real_lattice=real_lattice,
+                   recip_lattice=recip_lattice,
+                   pointgroup=pointgroup,
+                   labels=["sphere"],
+                   breaks=[])
         if origin is None:
             origin = np.array([0.0, 0.0, 0.0])
         theta = np.linspace(0, np.pi, ntheta, endpoint=True)
@@ -71,24 +88,63 @@ class Path(GridAbstract):
             r2 * np.cos(theta_grid)
         ]
         cart_k_list = np.array(sphere).reshape(3, ntheta * nphi).transpose(1, 0)
-        k_list = cart_k_list.dot(np.linalg.inv(system.recip_lattice)) - origin[None, :]
-        with open("klist_cart.txt", "w") as f:
-            for i in range(ntheta * nphi):
-                f.write(f"{cart_k_list[i, 0]:12.6f}{cart_k_list[i, 1]:12.6f}{cart_k_list[i, 2]:12.6f}\n")
+        self.K_list = cart_k_list.dot(np.linalg.inv(self.recip_lattice)) - origin[None, :]
+        return self
 
-        return cls(
-            system=system,
-            k_list=k_list,
-            labels=['sphere']
+    @classmethod
+    def sphere(cls, system=None,
+               real_lattice=None,
+               recip_lattice=None,
+               pointgroup=None,
+               r1=0.1, ntheta=10, nphi=10, origin=None):
+        return cls.spheroid(system=system, real_lattice=real_lattice, recip_lattice=recip_lattice, pointgroup=pointgroup,
+                            r1=r1, r2=r1, ntheta=ntheta, nphi=nphi, origin=origin)
+
+    def as_dict(self):
+        label_indices = sorted(self.labels.keys())
+        label_values = [self.labels[i] for i in label_indices]
+        return {
+            "recip_lattice": self.recip_lattice,
+            "K_list": self.K_list,
+            "label_indices": label_indices,
+            "label_values": label_values,
+            "breaks": self.breaks
+        }
+
+    @classmethod
+    def from_dict(cls, dct):
+        self = cls(
+            recip_lattice=dct["recip_lattice"],
+            k_list=dct["K_list"],
+            labels={i: label for i, label in zip(dct["label_indices"], dct["label_values"])},
+            breaks=dct["breaks"]
         )
+        return self
+
+    def to_npz(self, filename):
+        np.savez(filename, **self.as_dict())
 
     @classmethod
-    def sphere(cls, system, r1, ntheta, nphi, origin=None):
-        return cls.spheroid(system, r1, r1, ntheta, nphi, origin)
+    def from_npz(cls, filename):
+        dct = np.load(filename)
+        return cls.from_dict(dct)
+
+
 
     @classmethod
-    def from_nodes(cls, system, nodes, labels=None, length=None, dk=None,
+    def from_nodes(cls,
+                   system=None,
+                   real_lattice=None,
+                   recip_lattice=None,
+                   pointgroup=None,
+                   nodes=[], labels=None, length=None, dk=None,
                    nk=None):
+        self = cls(system=system,
+                   real_lattice=real_lattice,
+                   recip_lattice=recip_lattice,
+                   pointgroup=pointgroup,
+                   labels=[],
+                   breaks=[])
         if labels is None:
             labels = [str(i + 1) for i, k in enumerate([k for k in nodes if k is not None])]
         labels = (l for l in labels)
@@ -119,30 +175,29 @@ class Path(GridAbstract):
                 if nk is not None:
                     _nk = next(nkgen)
                 else:
-                    if hasattr(system, "recip_lattice"):
-                        rec_lattice = system.recip_lattice
-                    else:  # assuming it is array-like
-                        rec_lattice = 2 * np.pi * np.linalg.inv(system).T
-                    _nk = round(np.linalg.norm((start - end).dot(rec_lattice)) / dk) + 1
+                    _nk = round(np.linalg.norm((start - end).dot(self.recip_lattice)) / dk) + 1
                     if _nk == 1:
                         _nk = 2
                 K_list = np.vstack(
                     (
                         K_list, start[None, :] + np.linspace(0, 1., _nk - 1, endpoint=False)[:, None] *
                         (end - start)[None, :]))
+            elif start is None:
+                continue
             elif end is None:
+                new_labels[K_list.shape[0]] = l1
+                K_list = np.vstack((K_list, [start]))
                 breaks.append(K_list.shape[0] - 1)
         K_list = np.vstack((K_list, nodes[-1]))
         new_labels[K_list.shape[0] - 1] = labels[-1]
-        return cls(
-            system=system,
-            k_list=K_list,
-            labels=new_labels,
-            breaks=breaks
-        )
+        self.K_list = K_list
+        self.labels = new_labels
+        self.breaks = breaks
+        return self
 
     @classmethod
-    def seekpath(cls, cell=None, dk=0.05, with_time_reversal=True,
+    def seekpath(cls, cell=None,
+                 dk=0.05, with_time_reversal=True,
                  lattice=None, positions=None, numbers=None, twoD_direction=None):
         if cell is None:
             if lattice is None or positions is None or numbers is None:
@@ -163,7 +218,7 @@ class Path(GridAbstract):
                 nodes.extend([None, point_coords[segment[0]], point_coords[segment[1]]])
                 labels.extend([segment[0], segment[1]])
             last_point = segment[1]
-        return cls.from_nodes(cell[0], nodes=nodes, labels=labels, dk=dk)
+        return cls.from_nodes(real_lattice=cell[0], nodes=nodes, labels=labels, dk=dk)
 
     def get_refined(self, factor=2):
         """ returns a refined path with more k-points by linear interpolation"""

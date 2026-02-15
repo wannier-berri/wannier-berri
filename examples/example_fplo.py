@@ -30,7 +30,7 @@ system = wberri.System_fplo('../tests/data/Fe_FPLO/+hamdata', berry=False, spin=
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system, length=300, length_FFT=50)
+grid = wberri.Grid(system=system, length=300, length_FFT=50)
 
 wberri.ray_init()
 wberri.run(system,
