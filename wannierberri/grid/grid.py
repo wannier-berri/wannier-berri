@@ -149,7 +149,6 @@ class Grid(GridAbstract):
         self.div, self.FFT = determineNK(
             system.periodic, NKdiv, NKFFT, NK, NKFFT_recommended, self.pointgroup, length=length, length_FFT=length_FFT)
 
-    #        self.findif = FiniteDifferences(self.recip_lattice, self.FFT)
 
     @property
     def str_short(self):

@@ -289,7 +289,7 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
 def test_graphene_freeze_bands(outer_window, parallel):
     # This test is to check that the frozen bands are actually frozen. We take the graphene example and freeze the first valence band, which should be well separated from the rest of the bands. Then we check that the spread of this band is not changed by the wannierisation procedure.
     path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw")
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer", "chk"], irreducible=True)
+    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer"], irreducible=True)
     print(f"files in w90data: {w90data._files}")
     kwargs = dict(init="amn",
                   print_progress_every=20,

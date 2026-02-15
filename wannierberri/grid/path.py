@@ -258,9 +258,6 @@ class Path(GridAbstract):
     def str_short(self):
         return f"Path() with {len(self.K_list)} points and labels {self.labels}"
 
-    @property
-    def recip_lattice(self):
-        return self.pointgroup.recip_lattice
 
     def __str__(self):
         return (
