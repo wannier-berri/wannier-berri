@@ -166,8 +166,7 @@ class MMN(W90_file):
 
         Returns
         -------
-        MMN or np.ndarray
-            the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
+        MMN 
         """
         if irreducible:
             assert symmetrizer is not None, "Symmetrizer should be provided if irreducible is True"

@@ -379,7 +379,7 @@ def test_create_amn_diamond_p_bond():
         files=["mmn", "eig", "win", "unk"])
 
     amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
-                            normalize=True, return_object=True)
+                            normalize=True)
     w90data.set_file("amn", amn)
     err_amn = symmetrizer.check_amn(amn, ignore_upper_bands=2)
     assert err_amn < 1e-6, f"amn is not symmetric, error={err_amn}"
@@ -442,7 +442,7 @@ def test_create_amn_diamond_sp3():
     print("positions_cart = ", projection_sp3.positions @ lattice)
 
     amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=projections,
-                           normalize=True, return_object=True)
+                           normalize=True)
     symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.set_D_wann_from_projections(projections)
 
