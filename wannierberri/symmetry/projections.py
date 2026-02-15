@@ -271,7 +271,7 @@ class ProjectionsSet:
                  projections=[]):
         if isinstance(projections, ProjectionsSet):
             self.__dict__.update(projections.__dict__)
-            return self
+            return
         elif isinstance(projections, Projection):
             projections = [projections]
         self.spinor = None
