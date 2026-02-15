@@ -10,7 +10,6 @@ Usage:
 """
 
 import argparse
-import sys
 import time
 import subprocess
 from .__cluster_template import slurm_text, pbs_torque_text
@@ -29,7 +28,8 @@ SLEEP_WORKER = "{{SLEEP_WORKER}}"
 SPILLING = "{{SPILLING}}"
 
 
-def main():
+def main(argv=None):
+    """Run the CLI entry point; pass argv to parse custom arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--batch-system", type=str, required=True, help="The batch system to use. Only Slurm and PBS implemented..")
@@ -78,7 +78,7 @@ def main():
     parser.add_argument(
         '--no-submit', dest='submit', action='store_false', help=" DO NOT submit the generated script with sbatch")
     parser.set_defaults(submit=False)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.node:
         # assert args.num_nodes == 1
@@ -149,7 +149,7 @@ def main():
     else:
         print(f"Now you may submit it to the queue with ' {submit_command} {script_file} '")
 
-    sys.exit(0)
+    return text
 
 
 if __name__ == '__main__':
