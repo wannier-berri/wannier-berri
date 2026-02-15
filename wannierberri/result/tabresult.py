@@ -176,7 +176,9 @@ class TABresult(Result):
         for i, k1 in enumerate(kpoints_path):
             found = False
             for j, k2 in enumerate(kpoints):
-                if np.allclose(k1 % 1, k2 % 1, atol=1e-5):
+                diff = k1 - k2
+                diff -= np.round(diff)  # account for periodicity
+                if np.allclose(diff, 0, atol=1e-5):
                     found = True
                     mapping[i] = j
                     break

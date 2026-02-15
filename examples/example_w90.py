@@ -33,7 +33,7 @@ system = wberri.system.System_w90('../tests/data/Fe_Wannier90/Fe', berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system, length=30, length_FFT=15)
+grid = wberri.Grid(system=system, length=30, length_FFT=15)
 
 
 param_tabulate = {'ibands': np.arange(4, 10)}

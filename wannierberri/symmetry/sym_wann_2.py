@@ -79,6 +79,7 @@ class SymWann:
         self.symmetrizer_right = symmetrizer_right
         self.num_blocks_left = len(symmetrizer_left.D_wann_block_indices)
         self.num_blocks_right = len(symmetrizer_right.D_wann_block_indices)
+        print(f"num_blocks_left = {self.num_blocks_left}, num_blocks_right = {self.num_blocks_right}")
         self.num_orb_list_left = [symmetrizer_left.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks_left)]
         self.num_orb_list_right = [symmetrizer_right.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks_right)]
         self.num_points_list_left = [symmetrizer_left.atommap_list[i].shape[0] for i in range(self.num_blocks_left)]

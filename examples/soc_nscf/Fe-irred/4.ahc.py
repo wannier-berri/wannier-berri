@@ -11,7 +11,7 @@ phi = 0
 system_soc.set_soc_axis(theta=theta, phi=phi, units="degrees")
 
 
-grid = wb.grid.Grid(system_soc, NK=200)
+grid = wb.grid.Grid(system=system_soc, NK=200)
 
 EF = 9.22085
 
@@ -43,7 +43,7 @@ ahc_int = result_int.results["ahc_int"].data
 
 
 
-grid = wb.grid.Grid(system_soc, NK=100)
+grid = wb.grid.Grid(system=system_soc, NK=100)
 result_ext = wb.run(system_soc,
         grid=grid,
         fout_name=f"results/Fe-irred-soc-ahc-th{theta}-phi{phi}",

@@ -132,9 +132,9 @@ class Wannier90data:
         print(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files},  projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
-            kpt_latt_grid = np.array([KP.K  for KP in bandstructure.kpoints])
-            print(f"kpt_latt_grid={kpt_latt_grid}")
-            grid, selected_kpoints = grid_from_kpoints_irrep(kpt_latt_grid, grid=None, allow_missing=True)
+            kpt_red = np.array([KP.K  for KP in bandstructure.kpoints])
+            print(f"kpt_red={kpt_red}")
+            grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
             print(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
             if len(selected_kpoints) < np.prod(grid):
                 warnings.warn(f"detected grid {grid} od {np.prod(grid)} kpoints, "
@@ -167,15 +167,15 @@ class Wannier90data:
             symmetrizer = None
 
         if self.has_symmetrizer:
-            kpt_latt = self.symmetrizer.kpoints_all
+            kpt_red = self.symmetrizer.kpoints_all
             mp_grid = self.symmetrizer.grid
             if hasattr(self.symmetrizer, "selected_kpoints"):
                 selected_kpoints = self.symmetrizer.selected_kpoints
             else:
                 selected_kpoints = np.arange(bandstructure.num_k)
         else:
-            kpt_latt = np.array([kp.k for kp in bandstructure.kpoints])
-            mp_grid = grid_from_kpoints(kpt_latt)
+            kpt_red = np.array([kp.k for kp in bandstructure.kpoints])
+            mp_grid = grid_from_kpoints(kpt_red)
             selected_kpoints = None
         if irreducible:
             kptirr = self.symmetrizer.kptirr
@@ -188,9 +188,9 @@ class Wannier90data:
             # kpt_from_kptirr_isym = None
             # kpt2kptirr = None
             NK = None
-        kwargs_bandstructure = {"selected_kpoints":
-                        selected_kpoints, "kptirr": kptirr,
-                        "NK": NK}
+        kwargs_bandstructure = {"selected_kpoints": selected_kpoints,
+                                "kptirr": kptirr,
+                                "NK": NK}
 
         if bkvec is None:
             if os.path.exists(seedname + ".nnkp"):
@@ -201,14 +201,14 @@ class Wannier90data:
             else:
                 bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
                                             mp_grid=mp_grid,
-                                            kpoints_red=kpt_latt,
+                                            kpoints_red=kpt_red,
                                             kptirr=kptirr)
         self.set_file('bkvec', bkvec)
 
         chk = CheckPoint(real_lattice=bandstructure.lattice,
-                         num_wann=projections.num_wann,
+                         num_wann=0,
                          num_bands=bandstructure.num_bands,
-                         kpt_latt=kpt_latt,
+                         kpt_red=kpt_red,
                          mp_grid=mp_grid,)
         self.set_file('chk', chk)
 
@@ -266,6 +266,7 @@ class Wannier90data:
                   spacegroup=None,
                   mp_grid=None,
                   bkvec=None,
+                  include_TR=True,
                   unitary_params=dict(error_threshold=0.1,
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
@@ -282,6 +283,7 @@ class Wannier90data:
                                       spin_channel=spin_channel,
                                       spacegroup=spacegroup,
                                       verbosity=verbosity,
+                                      include_TR=include_TR
                                       )
 
 
@@ -325,7 +327,7 @@ class Wannier90data:
             print(f"Trying to read file {f} from npz {seedname}.{f}.npz")
             try:
                 if f == "symmetrizer":
-                    val = SymmetrizerSAWF.from_npz(seedname + ".symmetrizer.npz")
+                    val = SymmetrizerSAWF.from_npz(seedname + ".sawf.npz")
                 elif f in FILES_CLASSES:
                     cls = FILES_CLASSES[f]
                     val = cls.from_npz(seedname + "." + cls.extension + ".npz")
@@ -434,7 +436,7 @@ class Wannier90data:
                 assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file does not exist"
                 bkvec = BKVectors.from_kpoints(recip_lattice=self.chk.recip_lattice,
                                             mp_grid=self.chk.mp_grid,
-                                            kpoints_red=self.chk.kpt_latt)
+                                            kpoints_red=self.chk.kpt_red)
         self.set_file('bkvec', bkvec)
         if 'mmn' in _read_files_loc:
             mmn = MMN.from_w90_file(seedname=seedname, bkvec=bkvec)
@@ -465,10 +467,10 @@ class Wannier90data:
         return self.chk.mp_grid
 
     @property
-    def kpt_latt(self):
+    def kpt_red(self):
         """ Returns the k-points or the grid in lattice coordinates
         """
-        return self.chk.kpt_latt
+        return self.chk.kpt_red
 
     @cached_property
     def atomic_positions_red(self):
@@ -621,7 +623,7 @@ class Wannier90data:
         self._files['chk'] = val
         self.wannierised = read
         self.kpt_mp_grid = [tuple(k) for k in
-                            np.array(np.round(self.chk.kpt_latt * np.array(self.chk.mp_grid)[None, :]),
+                            np.array(np.round(self.chk.kpt_red * np.array(self.chk.mp_grid)[None, :]),
                                      dtype=int) % self.chk.mp_grid]
         self.win_index = [np.arange(self.chk.num_bands)] * self.chk.num_kpts
 
@@ -992,8 +994,8 @@ class Wannier90data:
 
         mp_grid = np.array(self.chk.mp_grid)
 
-        kpoints = self.chk.kpt_latt
-        kpoints_int = self.chk.kpt_latt_int
+        kpoints_red = self.chk.kpt_red
+        kpoints_grid = self.chk.kpt_grid
 
         exp_one = np.exp(2j * np.pi / (mp_grid * real_grid))
 
@@ -1013,8 +1015,8 @@ class Wannier90data:
             U = self.unk.data[ik].copy()
             U = U[:, ::reduce_r_points[0], ::reduce_r_points[1], ::reduce_r_points[2], :]
             U = cached_einsum("m...,mn->...n", U, self.chk.v_matrix[ik][:, select_WF])
-            k_int = kpoints_int[ik]
-            k_latt = kpoints[ik]
+            k_int = kpoints_grid[ik]
+            k_latt = kpoints_red[ik]
             exp_loc = [exp_grid[i]**k_int[i] for i in range(3)]
             U[:] *= exp_loc[0][:, None, None, None, None]
             U[:] *= exp_loc[1][None, :, None, None, None]

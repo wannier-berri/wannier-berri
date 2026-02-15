@@ -119,100 +119,6 @@ class MMN(W90_file):
         return super().select_bands(selected_bands, dimensions=(1, 2), var_select=var_select)
 
 
-    # # TODO : combine with find_bk_vectors
-    # @staticmethod
-    # def get_bk(G, neighbours, NNB, NK, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-    #     mp_grid = np.array(grid_from_kpoints(kpt_latt))
-    #     bk_latt_all = np.array(
-    #         np.round(
-    #             [
-    #                 (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
-    #                 for nbrs, G in zip(neighbours.T, G.transpose(1, 0, 2))
-    #             ]).transpose(1, 0, 2),
-    #         dtype=int)
-
-    #     bk_latt = bk_latt_all[0]
-
-    #     ## Reorder the bk_latt vectors to match the order of the first k-point
-    #     bk_latt_tuples_0 = [tuple(b) for b in bk_latt]
-    #     bk_reorder = []
-    #     for ik in range(NK):
-    #         bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
-    #         srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
-    #         assert len(srt) == NNB, f"Reordering failed for k-point {ik}. Expected {NNB} neighbours, got {len(srt)}"
-    #         assert np.all(bk_latt == bk_latt_all[ik, srt]), \
-    #             f"Reordering failed for k-point {ik}. Expected {bk_latt}, got {bk_latt_all[ik, srt]}"
-    #         bk_reorder.append(srt)
-    #     bk_reorder = np.array(bk_reorder, dtype=int)
-
-    #     bk_cart = bk_latt.dot(recip_lattice / mp_grid[:, None])
-    #     bk_length = np.linalg.norm(bk_cart, axis=1)
-    #     srt = np.argsort(bk_length)
-    #     srt_inv = np.argsort(srt)
-    #     bk_length_srt = bk_length[srt]
-    #     brd = [
-    #         0,
-    #     ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
-    #         NNB,
-    #     ]
-    #     shell_mat = []
-    #     shell_mat = np.array([bk_cart[srt[b1:b2]].T.dot(bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
-    #     shell_mat_line = shell_mat.reshape(-1, 9)
-    #     u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-    #     s = 1. / s
-    #     weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-    #     check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
-    #     tol = np.linalg.norm(check_eye - np.eye(3))
-    #     if tol > bk_complete_tol:
-    #         raise RuntimeError(
-    #             f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
-    #             f"failed to be identity by an error of {tol}. Further debug information :  \n"
-    #             f"bk_latt={bk_latt} \n bk_cart={bk_cart} \n"
-    #             f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
-    #             f"weight_shell={weight_shell}, srt={srt}\n")
-    #     weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
-    #     wk = weight[srt_inv]
-
-    #     return bk_cart, bk_latt, wk, bk_reorder
-
-    # def reorder_bk(self,
-    #                bk_reorder=None,
-    #                bk_latt_new=None,
-    #                 ):
-    #     """
-    #     Reorder the bk vectors according to the given order
-
-    #     Parameters
-    #     ----------
-    #     bk_reorder : list of int or None
-    #         the new order of the bk vectors. If None, the order is taken from bk_latt_new
-    #     bk_latt_new : list of tuple or None
-    #         the new list of bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid.
-    #         If None, the order is taken from self.bk_latt
-    #     """
-    #     assert (bk_reorder is not None) != (bk_latt_new is not None), \
-    #         "Either bk_reorder or bk_latt_new should be provided, but not both."
-    #     if bk_reorder is None:
-    #         bk_latt_new = np.array(bk_latt_new, dtype=int)
-    #         assert bk_latt_new.shape == (self.NNB, 3), \
-    #             f"bk_latt_new should have shape (NNB, 3), got {bk_latt_new.shape}"
-    #         bk_reorder = [np.where((self.bk_latt == b).all(axis=1))[0][0] for b in bk_latt_new]
-    #     print(f"Reordering bk vectors with {bk_reorder} ")
-    #     self.bk_latt = self.bk_latt[bk_reorder]
-    #     if bk_latt_new is not None:
-    #         assert np.all(self.bk_latt == bk_latt_new), \
-    #             f"Reordered bk_latt {self.bk_latt} does not match the provided bk_latt_new {bk_latt_new}"
-    #     self.bk_cart = self.bk_cart[bk_reorder]
-    #     self.wk = self.wk[bk_reorder]
-
-    #     for ik, d in self.data.items():
-    #         self.data[ik] = d[bk_reorder, :]
-    #     for ik, g in self.G.items():
-    #         self.G[ik] = g[bk_reorder]
-    #     for ik, n in self.neighbours.items():
-    #         self.neighbours[ik] = n[bk_reorder]
-    #     for ik in self.bk_reorder.keys():
-    #         self.bk_reorder[ik] = self.bk_reorder[ik][bk_reorder]
 
 
     def equals(self, other, tolerance=1e-8, check_reorder=True):
@@ -221,12 +127,6 @@ class MMN(W90_file):
             return iseq, message
         if self.NNB != other.NNB:
             return False, f"the number of neighbouring bands is not equal: {self.NNB} and {other.NNB} correspondingly"
-        # if not np.all(self.bk_latt == other.bk_latt):
-        #     return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"
-        # if not np.allclose(self.bk_cart, other.bk_cart):
-        #     return False, f"the bk_cart vectors are not equal: {self.bk_cart} and {other.bk_cart} correspondingly"
-        # if not np.allclose(self.wk, other.wk):
-        #     return False, f"the wk valuesare not equal: {self.wk} and {other.wk} correspondingly"
         if check_reorder:
             for ik in self.bk_reorder.keys():
                 if not np.all(self.bk_reorder[ik] == other.bk_reorder[ik]):
@@ -277,15 +177,14 @@ class MMN(W90_file):
                 kptirr = symmetrizer.kptirr
             kpt2kptirr = symmetrizer.kpt2kptirr
             kpt_from_kptirr_isym = symmetrizer.kpt_from_kptirr_isym
-            kpt_latt_grid = symmetrizer.kpoints_all
+            kpt_grid = symmetrizer.kpoints_all
         else:
-            kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
+            kpt_grid = np.array([kp.k for kp in bandstructure.kpoints])
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
         print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
-        # NK = kpt_latt_grid.shape[0]
         identity_operation = bandstructure.spacegroup.get_identity_operation()
 
         spinor = bandstructure.spinor
@@ -314,7 +213,7 @@ class MMN(W90_file):
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
         if symmetrizer is not None and irred_bk_only:
-            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bkvec.bk_latt, bkvec.neighbours)
+            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bkvec.bk_grid, bkvec.neighbours)
         else:
             bkirr = [np.arange(NNB) for _ in kptirr]
             bk2bkirr = np.array([np.arange(NNB) for _ in kptirr])
@@ -335,7 +234,7 @@ class MMN(W90_file):
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
-                                                        k_new=kpt_latt_grid[ik2])
+                                                        k_new=kpt_grid[ik2])
                         kpoints_dict_all[ik2] = kp2
 
 
@@ -392,7 +291,7 @@ class MMN(W90_file):
                     data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin],
                                                                         isym=isym, ikirr=ikirr, ib=ib_origin,
                                                                         ikb=ikb_origin,
-                                                                        bk_latt_map=bk_map, bk_cart=bkvec.bk_cart,
+                                                                        bk_grid_map=bk_map, bk_cart=bkvec.bk_cart,
                                                                         symmetrizer_left=symmetrizer_left)
                     ib_is_set[ib] = True
         return MMN(

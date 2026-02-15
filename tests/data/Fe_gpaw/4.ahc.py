@@ -44,7 +44,7 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
 system_soc.set_pointgroup(spacegroup=mg)
 
 
-grid = wb.grid.Grid(system_spinor, NK=200)
+grid = wb.grid.Grid(system=system_spinor, NK=200)
 
 EF = 9.22085
 

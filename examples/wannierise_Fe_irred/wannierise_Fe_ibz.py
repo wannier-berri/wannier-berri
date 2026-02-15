@@ -66,7 +66,7 @@ system = wberri.system.System_w90(w90data=w90data, spin=True, berry=True)
 
 
 # all kpoints given in reduced coordinates
-path = wberri.Path(system,
+path = wberri.Path(system=system,
              nodes=[
                  [0.0000, 0.0000, 0.0000],  # G
                  [0.500, -0.5000, -0.5000],  # H

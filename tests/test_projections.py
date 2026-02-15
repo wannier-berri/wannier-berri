@@ -535,26 +535,26 @@ def test_find_bk_vectors():
     nkxy = 5
     nkz = 4
     recip_lattice = np.array([[1, 0, 0], [-1 / 2, np.sqrt(3) / 2, 0], [0, 0, 1.8]])
-    wk, bk_cart, bk_latt = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
+    wk, bk_cart, bk_grid = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkxy, nkxy, nkz))
     print("wk = for hex ", wk)
     assert len(wk) == 8
     assert wk[:6] == approx(wk[:6].mean())
     assert wk[6:] == approx(wk[6:].mean())
 
     recip_lattice = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    wk, bk_cart, bk_latt = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    wk, bk_cart, bk_grid = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for simple cubic ", wk)
     assert len(wk) == 6
     assert wk == approx(wk.mean())
 
     recip_lattice = np.ones((3, 3)) - np.eye(3)
-    wk, bk_cart, bk_latt = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    wk, bk_cart, bk_grid = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for bcc ", wk)
     assert len(wk) == 12
     assert wk == approx(wk.mean())
 
     recip_lattice = np.ones((3, 3)) - 2 * np.eye(3)
-    wk, bk_cart, bk_latt = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
+    wk, bk_cart, bk_grid = BKVectors.find_bk_vectors(recip_lattice=recip_lattice, mp_grid=(nkz, nkz, nkz))
     print("wk = for fcc ", wk)
     assert len(wk) == 8
     assert wk == approx(wk.mean())

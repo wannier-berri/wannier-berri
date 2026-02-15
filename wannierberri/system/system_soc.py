@@ -139,7 +139,7 @@ class SystemSOC(System_R):
             assert chk_down is not None, "chk_down must be provided for nspin=2 SOC"
             assert chk_up.num_kpts == chk_down.num_kpts, f"Number of k-points must match for up and down systems ({chk_up.num_kpts} != {chk_down.num_kpts})"
             assert np.all(chk_up.mp_grid == chk_down.mp_grid)
-            assert np.allclose(chk_up.kpt_latt, chk_down.kpt_latt), f"k-point grids should match for up and down systems ({chk_up.kpt_latt} != {chk_down.kpt_latt})"
+            assert np.allclose(chk_up.kpt_red, chk_down.kpt_red), f"k-point grids should match for up and down systems ({chk_up.kpt_red} != {chk_down.kpt_red})"
             chk_list = [chk_up, chk_down]
 
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
@@ -158,7 +158,7 @@ class SystemSOC(System_R):
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
 
-        self.rvec.set_fft_q_to_R(chk_up.kpt_latt, fftlib='fftw')
+        self.rvec.set_fft_q_to_R(kpt_red=chk_up.kpt_red, fftlib='fftw')
         NK = chk_up.num_kpts
 
         if kptirr is None:

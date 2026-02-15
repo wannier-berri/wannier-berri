@@ -98,7 +98,7 @@ def evaluate_k(system=None,
     except AssertionError:
         raise ValueError("names of calculators, formula and quantities should be unique")
 
-    grid = Grid(system, NK=1, NKFFT=1)
+    grid = Grid(system=system, NK=1, NKFFT=1)
     data_k = get_data_k(system, grid=grid, dK=k, **parameters_K)
 
     result = {c: calc(data_k) for c, calc in calculators.items()}

@@ -13,7 +13,7 @@ def test_fourier(system_Fe_W90):
 
     k = np.array([0.1, 0.2, -0.3])
 
-    grid = wberri.Grid(system, NKFFT=[4, 3, 2], NKdiv=1, use_symmetry=False)
+    grid = wberri.Grid(system=system, NKFFT=[4, 3, 2], NKdiv=1, use_symmetry=False)
 
     dK = 1. / grid.div
     NKFFT = grid.FFT

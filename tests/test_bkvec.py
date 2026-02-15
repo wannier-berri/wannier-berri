@@ -8,7 +8,7 @@ from tests.common import ROOT_DIR
 def test_bkvec_nnkp():
     path = os.path.join(ROOT_DIR, "data", "Fe_Wannier90", "Fe.nnkp")
     bkvec = BKVectors.from_nnkp(path, kmesh_tol=1e-5, bk_complete_tol=1e-5)
-    expected_bk_latt = np.array([[0, 0, 1],
+    expected_bk_grid = np.array([[0, 0, 1],
                                 [0, 1, 0],
                                 [0, 1, 1],
                                 [1, 0, 0],
@@ -20,7 +20,7 @@ def test_bkvec_nnkp():
                                 [-1, 0, 0],
                                 [-1, 0, 1],
                                 [-1, -1, 0]])
-    assert np.array_equal(bkvec.bk_latt, expected_bk_latt)
+    assert np.array_equal(bkvec.bk_grid, expected_bk_grid)
     assert np.allclose(bkvec.wk[0], 0.23472230182715031)
 
 
@@ -33,7 +33,7 @@ def check_bkvec_kpoints(mp_grid, recip_lattice):
     bkvec = BKVectors.from_kpoints(recip_lattice=recip_lattice,
                                    mp_grid=mp_grid,
                                    kpoints_red=kpt_red)
-    print(f"bkvec.bk_latt:\n{repr(bkvec.bk_latt)}")
+    print(f"bkvec.bk_grid:\n{repr(bkvec.bk_grid)}")
     print(f"bkvec.wk:\n{repr(bkvec.wk)}")
     return bkvec
 

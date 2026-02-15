@@ -12,7 +12,7 @@ theta = 0
 phi = 0
 system_soc.set_soc_axis(theta=theta, phi=phi, units="degrees")
 
-path = Path(system_soc,
+path = Path(system=system_soc,
             nodes=[
                 [0.0, 0.0, 0.0],
                 [0.5, -0.5, -0.5],

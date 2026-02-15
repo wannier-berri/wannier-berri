@@ -113,6 +113,8 @@ def wannierise(w90data,
     * Disentanglement and localization are done together, in the same loop. Therefore only one parameter `num_iter` is used for both
 
     """
+    if w90data.irreducible:
+        irreducible = True
 
     t0 = time()
     if froz_min > froz_max:
@@ -181,7 +183,7 @@ def wannierise(w90data,
         w90data.set_file("chk", CheckPoint(num_kpts=NK,
                                            num_bands=w90data.mmn.NB,
                                            mp_grid=w90data.bkvec.mp_grid,
-                                           kpt_latt=w90data.bkvec.kpt_latt,
+                                           kpt_red=w90data.bkvec.kpt_red,
                                            real_lattice=w90data.bkvec.real_lattice,
                                            num_wann=0))  # num_wann will be set later from amn
 

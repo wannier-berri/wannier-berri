@@ -256,6 +256,10 @@ class Projection:
                     positions.append(pos)
         return positions, orbitals
 
+    @property
+    def num_free_vars(self):
+        return self.wyckoff_position.num_free_vars
+
 
 class ProjectionsSet:
 
