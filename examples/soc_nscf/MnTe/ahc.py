@@ -53,7 +53,7 @@ system_soc.set_pointgroup(spacegroup=mg)
 print(system_soc.pointgroup)
 # exit()
 
-grid = wb.grid.Grid(system_soc, NK=400)
+grid = wb.grid.Grid(system=system_soc, NK=400)
 
 EF = 6.7
 

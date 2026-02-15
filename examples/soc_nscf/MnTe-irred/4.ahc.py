@@ -10,7 +10,7 @@ phi = 90
 system_soc.set_soc_axis(theta=theta, phi=phi, units="degrees")
 
 
-grid = wb.grid.Grid(system_soc, NK=400)
+grid = wb.grid.Grid(system=system_soc, NK=400)
 
 EF = 6.7
 
@@ -42,7 +42,7 @@ ahc_int = result_int.results["ahc_int"].data
 
 
 
-grid = wb.grid.Grid(system_soc, NK=100)
+grid = wb.grid.Grid(system=system_soc, NK=100)
 result_ext = wb.run(system_soc,
         grid=grid,
         fout_name=f"results/MnTe-irred-soc-ahc-th{theta}-phi{phi}",

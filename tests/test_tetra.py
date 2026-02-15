@@ -118,7 +118,7 @@ def test_tetra_corners_soc(kpoint_type, system_Fe_gpaw_soc_z):
 def check_tetra_corners(system, kpoint_type):
     k = np.array([0.123, 0.234, 0.345])
     if kpoint_type == "parallel":
-        grid = Grid(system, NK=(8, 8, 8), NKFFT=(4, 4, 4))
+        grid = Grid(system=system, NK=(8, 8, 8), NKFFT=(4, 4, 4))
     elif kpoint_type == "tetra":
         grid = GridTetra(system, length=20, NKFFT=(2, 2, 2))
     kpoint = grid.get_K_list(use_symmetry=False)[3]

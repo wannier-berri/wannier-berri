@@ -29,7 +29,7 @@ projection_t2g = Projection(orbital='t2g', position_num=[0, 0, 0], spacegroup=sp
 projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
 
 symmetrizer.set_D_wann_from_projections(projections_set)
-amn = wb.w90files.amn_from_bandstructure(bandstructure, projections=projections_set)
+amn = wb.w90files.AMN.from_bandstructure(bandstructure, projections=projections_set)
 w90data.set_symmetrizer(symmetrizer)
 w90data.set_file("amn", amn)
 

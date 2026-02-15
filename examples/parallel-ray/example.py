@@ -29,7 +29,7 @@ system = wberri.system.System_w90('../../tests/data/Fe_Wannier90/Fe', berry=True
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system, NKdiv=16, NKFFT=16)
+grid = wberri.Grid(system=system, NKdiv=16, NKFFT=16)
 
 wberri.ray_init()
 

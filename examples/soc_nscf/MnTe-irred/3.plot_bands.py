@@ -13,7 +13,7 @@ phi = 90
 system_soc.set_soc_axis(theta=theta, phi=phi, units="degrees")
 
 kz = 0.35 / system_soc.recip_lattice[2, 2]
-path = Path(system_soc,
+path = Path(system=system_soc,
             nodes=[
                 [2 / 3, -1 / 3, 0],
                 [0, 0, 0],

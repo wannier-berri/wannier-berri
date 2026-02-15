@@ -8,7 +8,6 @@ import numpy as np
 import wannierberri as wberri
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from wannierberri.w90files.amn import amn_from_bandstructure
 
 
 
@@ -68,7 +67,7 @@ for data_dir in ['diamond']:
         symmetrizer.set_D_wann_from_projections(projections=projset)
         print("D_wann\n", symmetrizer.D_wann_blocks)
 
-        amn = amn_from_bandstructure(bandstructure, projections=projset)
+        amn = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset)
 
         projectability = amn.get_high_projectability(threshold=1.1)
         print("Projectability:\n", projectability)
@@ -102,7 +101,7 @@ system = list(systems.values())[0]
 # K 0.37500 -0.37500 0.0000 G 0.00000  0.00000 0.0000
 # esite
 
-path = wberri.Path(system, nodes=[[1 / 2, 0, 0],
+path = wberri.Path(system=system, nodes=[[1 / 2, 0, 0],
                 [0, 0, 0],
     [1 / 2, 0, 1 / 2],
     [3 / 8, -3 / 8, 0],

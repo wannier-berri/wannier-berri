@@ -494,7 +494,7 @@ class Rvectors:
             XX_R = self.derivative(XX_R)
         return self.fft_R_to_k(XX_R, hermitian=hermitian)
 
-    def set_fft_q_to_R(self, kpt_red, fftlib='fftw'):
+    def set_fft_q_to_R(self, kpt_red=None, kpt_grid=None, fftlib='fftw'):
         """
         set the FFT for the q to R conversion
 
@@ -502,21 +502,32 @@ class Rvectors:
         ----------
         kpt_red : list
             The k-point of Monkhorst-Pack grid in reduced coordinates
+        kpt_grid : list
+            The k-point of Monkhorst-Pack grid in lattice coordinates (kpt_red * mp_grid)
         fftlib : str
             The FFT library to use ('fftw' or 'numpy' or 'slow')
         """
-        kpt_red = np.array(kpt_red)
-        kpt_red_mp = kpt_red * self.mp_grid[None, :]
-        kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
-        assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
-        assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"
+        assert (kpt_red is None) != (kpt_grid is None), "either kpt_red or kpt_grid should be provided, but not both"
+        if kpt_grid is None:
+            kpt_red = np.array(kpt_red)
+            kpt_red_mp = kpt_red * self.mp_grid[None, :]
+            kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
+            print(f"{kpt_red=} \n {kpt_red_mp_int=} \n {kpt_red_mp=}")
+            assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
+            assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"
+        else:
+            kpt_red_mp_int = np.array(kpt_grid, dtype=int)
         self.kpt_mp_grid = [tuple(k) for k in kpt_red_mp_int % self.mp_grid]
+
         if (0, 0, 0) not in self.kpt_mp_grid:
             raise ValueError(
                 "the grid of k-points read from .chk file is not Gamma-centered. Please, use Gamma-centered grids in the ab initio calculation"
             )
         assert len(self.kpt_mp_grid) == np.prod(self.mp_grid), f"the grid of k-points read from .chk file is not {self.mp_grid} kpoints"
-        assert len(self.kpt_mp_grid) == len(set(self.kpt_mp_grid)), "the grid of k-points read from .chk file has duplicates"
+        assert len(self.kpt_mp_grid) == len(set(self.kpt_mp_grid)), \
+            "the grid of k-points read from .chk file has duplicates\n"\
+            f"unique k-points : {len(set(self.kpt_mp_grid))} vs full grid {len(self.kpt_mp_grid)}\n"\
+            f"mp_grid : {self.mp_grid}\n"
         self.fftlib_q2R = fftlib
         self.fft_q2R_set = True
 
