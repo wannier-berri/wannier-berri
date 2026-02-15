@@ -49,7 +49,7 @@ system_soc.set_pointgroup(spacegroup=mg)
 # print(system_soc.pointgroup)
 # exit()
 
-grid = wb.grid.Grid(system_spinor, NK=200)
+grid = wb.grid.Grid(system=system_spinor, NK=200)
 
 EF = 9.22085
 

@@ -41,7 +41,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         self.isym_little = symmetrizer.isym_little[ikirr]
         self.nsym_little = len(self.isym_little)
         self.ikpt = symmetrizer.kptirr[ikirr]
-        self.kpt_latt = symmetrizer.kpoints_all[self.ikpt]
+        self.kpt_red = symmetrizer.kpoints_all[self.ikpt]
         self.d_indices = symmetrizer.d_band_block_indices[ikirr]
         self.D_indices = symmetrizer.D_wann_block_indices
         self.d_band_blocks = symmetrizer.d_band_blocks[ikirr]
@@ -51,14 +51,14 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         self.time_reversals = symmetrizer.time_reversals
         self.include_bands = np.ones(self.nb, dtype=bool)
         # self.symop_product, self.symop_diff, self.spinor_diff = symmetrizer.spacegroup.get_product_table(get_diff=True)
-        # print(f"initializing Symmetrizer_Uirr for ikirr={ikirr}, ikpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries")
+        # print(f"initializing Symmetrizer_Uirr for ikirr={ikirr}, ikpt={self.ikpt}, {self.kpt_red} with {self.nsym_little} symmetries")
         # print(f" product table:\n{ "\n".join([ " ".join([f'{self.symop_product[i,j]:3d}' for j in self.isym_little]) for i in self.isym_little]) }")
         # self.check_products_d()
         # self.check_products_D()
         # self.check_products_dD()
         err = self.check(accuracy_threshold=accuracy_threshold)
         if err > 1e-6:
-            print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_latt} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
+            print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_red} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
                 f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
 
 
@@ -72,7 +72,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
     #                 d1 = self.d_band_blocks[isym1][i]
     #                 d2 = self.d_band_blocks[isym2][i]
     #                 d3 = self.d_band_blocks[isym3][i]
-    #                 prod = d1 @ d2  *np.exp( 2j*np.pi* (self.kpt_latt @ self.symop_diff[isym1, isym2])) * self.spinor_diff[isym1, isym2]
+    #                 prod = d1 @ d2  *np.exp( 2j*np.pi* (self.kpt_red @ self.symop_diff[isym1, isym2])) * self.spinor_diff[isym1, isym2]
     #                 err = np.linalg.norm(prod - d3)
     #                 maxerr = max(maxerr, err)
     #                 if err > 1e-6:
@@ -90,7 +90,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
     #                 D1 = self.D_wann_blocks_inverse[isym1][i]
     #                 D2 = self.D_wann_blocks_inverse[isym2][i]
     #                 D3 = self.D_wann_blocks_inverse[isym3][i]
-    #                 prod = D2 @ D1  *np.exp( -2j*np.pi* (self.kpt_latt @ self.symop_diff[isym1, isym2])) * self.spinor_diff[isym1, isym2]
+    #                 prod = D2 @ D1  *np.exp( -2j*np.pi* (self.kpt_red @ self.symop_diff[isym1, isym2])) * self.spinor_diff[isym1, isym2]
     #                 err = np.linalg.norm(prod - D3)
     #                 maxerr = max(maxerr, err)
     #                 if err > 1e-6:

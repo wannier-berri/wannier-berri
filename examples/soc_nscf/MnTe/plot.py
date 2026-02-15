@@ -30,7 +30,7 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
 
 
 kz = 0.35 / system_dw.recip_lattice[2, 2]
-path = Path(system_dw,
+path = Path(system=system_dw,
             nodes=[
                 [2 / 3, -1 / 3, 0],
                 [0, 0, 0],

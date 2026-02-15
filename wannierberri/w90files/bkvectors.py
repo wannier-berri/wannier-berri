@@ -7,18 +7,21 @@ from .w90file import W90_file, check_shape
 
 class BKVectors(W90_file):
 
-    npz_tags = ["bk_latt", "wk", "kpt_latt", "kptirr", "mp_grid", "recip_lattice"]
+    npz_tags = ["bk_grid", "wk", "kpt_grid",
+                "kptirr", "mp_grid", "recip_lattice"]
     npz_keys_dict_int = ["neighbours", "G"]
     extension = "bkvec"
 
 
-    def __init__(self, recip_lattice, mp_grid, wk, bk_latt, G, neighbours, kpt_latt, kptirr=None):
+    def __init__(self, recip_lattice, mp_grid,
+                 wk, bk_grid, G, neighbours,
+                 kpt_grid, kptirr=None):
         self.recip_lattice = recip_lattice
         self.mp_grid = np.array(mp_grid)
         self.G = sparselist_to_dict(G)
         self.NNB = len(wk)
-        self.kpt_latt = np.array(kpt_latt)
-        self.NK = len(kpt_latt)
+        self.kpt_grid = np.array(kpt_grid)
+        self.NK = len(kpt_grid)
         if kptirr is None:
             kptirr = range(self.NK)
         assert set(self.G.keys()) == set(kptirr), \
@@ -27,11 +30,11 @@ class BKVectors(W90_file):
         self.neighbours = sparselist_to_dict(neighbours)
         assert check_shape(self.neighbours) == (self.NNB,)
         assert check_shape(self.G) == (self.NNB, 3)
-        self.bk_latt = np.array(bk_latt, dtype=int)
-        assert self.bk_latt.shape == (self.NNB, 3), \
-            f"MMN bk_latt should have shape (NNB, 3), got {self.bk_latt.shape}"
-        self.bk_cart = bk_latt.dot(recip_lattice / self.mp_grid[:, None])
-        self.bk_red = self.bk_latt / self.mp_grid[None, :]
+        self.bk_grid = np.array(bk_grid, dtype=int)
+        assert self.bk_grid.shape == (self.NNB, 3), \
+            f"MMN bk_grid should have shape (NNB, 3), got {self.bk_grid.shape}"
+        self.bk_cart = bk_grid.dot(recip_lattice / self.mp_grid[:, None])
+        self.bk_red = self.bk_grid / self.mp_grid[None, :]
         assert self.bk_cart.shape == (self.NNB, 3), \
             f"MMN bk_cart should have shape (NNB, 3), got {self.bk_cart.shape}"
         self.wk = np.array(wk, dtype=float)
@@ -76,17 +79,17 @@ class BKVectors(W90_file):
         BKVectors
             the BKVectors object
         """
-        wk, bk_cart, bk_latt = cls.find_bk_vectors(
+        wk, bk_cart, bk_grid = cls.find_bk_vectors(
             recip_lattice, mp_grid,
             kmesh_tol=kmesh_tol,
             bk_complete_tol=bk_complete_tol,
             search_supercell=search_supercell)
-        G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_latt, mp_grid, kptirr=kptirr)
-        kpt_latt = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
+        G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_grid, mp_grid, kptirr=kptirr)
+        kpt_grid = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
 
         return cls(recip_lattice=recip_lattice,
-                   kpt_latt=kpt_latt,
-                   mp_grid=mp_grid, wk=wk, bk_latt=bk_latt, G=G, neighbours=neighbours, kptirr=kptirr)
+                   kpt_grid=kpt_grid,
+                   mp_grid=mp_grid, wk=wk, bk_grid=bk_grid, G=G, neighbours=neighbours, kptirr=kptirr)
 
     @classmethod
     def from_nnkp(cls, filename, kmesh_tol=1e-5,
@@ -118,28 +121,28 @@ class BKVectors(W90_file):
             recip_lattice = nnkp["reciprocal_lattice"]
             recip_lattice = np.array([recip_lattice[i] for i in ["b1", "b2", "b3"]])
         mp_grid = get_mp_grid(kpoints_red)
-        bk_latt = np.round(bk_red * np.array(mp_grid)[None, :]).astype(int)
-        bk_red = bk_latt / np.array(mp_grid)[None, :]  # this is done to avoid numerical issues
+        bk_grid = np.round(bk_red * np.array(mp_grid)[None, :]).astype(int)
+        bk_red = bk_grid / np.array(mp_grid)[None, :]  # this is done to avoid numerical issues
         # due to limited precision of kpoints in the nnkp file
         bk_cart = bk_red @ recip_lattice
 
-        shell_klatt, shell_kcart = cls.k_to_shells(bk_latt, bk_cart, kmesh_tol=kmesh_tol)
-        wk, bk_cart, bk_latt = cls.get_shell_weights(shell_kcart=shell_kcart,
+        shell_klatt, shell_kcart = cls.k_to_shells(bk_grid, bk_cart, kmesh_tol=kmesh_tol)
+        wk, bk_cart, bk_grid = cls.get_shell_weights(shell_kcart=shell_kcart,
                                                     shell_klatt=shell_klatt,
                                                     bk_complete_tol=bk_complete_tol)
-        G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_latt, mp_grid, kptirr=kptirr)
-        kpt_latt = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
+        G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_grid, mp_grid, kptirr=kptirr)
+        kpt_grid = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
 
         return cls(recip_lattice=recip_lattice,
-                   kpt_latt=kpt_latt,
-                   mp_grid=mp_grid, wk=wk, bk_latt=bk_latt, G=G, neighbours=neighbours, kptirr=kptirr)
+                   kpt_grid=kpt_grid,
+                   mp_grid=mp_grid, wk=wk, bk_grid=bk_grid, G=G, neighbours=neighbours, kptirr=kptirr)
 
 
     def reorder_bk_vectors(self, ik, neighbours, G, data):
-        bk_latt_new = self.kpt_latt[neighbours] - self.kpt_latt[ik, None, :] + G * self.mp_grid[None, :]
-        bk_latt_new_tuples = [tuple(bl) for bl in bk_latt_new]
-        bk_latt_tuples = [tuple(bl) for bl in self.bk_latt]
-        srt = [bk_latt_new_tuples.index(bl) for bl in bk_latt_tuples]
+        bk_grid_new = self.kpt_grid[neighbours] - self.kpt_grid[ik, None, :] + G * self.mp_grid[None, :]
+        bk_grid_new_tuples = [tuple(bl) for bl in bk_grid_new]
+        bk_grid_tuples = [tuple(bl) for bl in self.bk_grid]
+        srt = [bk_grid_new_tuples.index(bl) for bl in bk_grid_tuples]
         assert len(srt) == self.NNB
         data[:] = data[srt, :]
         G[:] = G[srt]
@@ -156,24 +159,27 @@ class BKVectors(W90_file):
                 srt_ref = srt
             else:
                 assert np.all(srt == srt_ref), f"Different reorderings for ik={ik}: {srt} != {srt_ref}"
-        bkvec.bk_latt = bkvec.bk_latt[srt_ref]
+        bkvec.bk_grid = bkvec.bk_grid[srt_ref]
         bkvec.bk_cart = bkvec.bk_cart[srt_ref]
         bkvec.wk = bkvec.wk[srt_ref]
 
+    @property
+    def kpt_red(self):
+        return self.kpt_grid / self.mp_grid[None, :]
 
     @classmethod
-    def find_G_and_neighbours(cls, kpoints_red, bk_latt, mp_grid, kptirr=None):
+    def find_G_and_neighbours(cls, kpoints_red, bk_grid, mp_grid, kptirr=None):
         if kptirr is None:
             kptirr = range(kpoints_red.shape[0])
         k_latt_int = np.rint(kpoints_red * mp_grid).astype(int)
-        NNB = bk_latt.shape[0]
+        NNB = bk_grid.shape[0]
         NK = kpoints_red.shape[0]
-        # bk_red = bk_latt / mp_grid[None, :]
+        # bk_red = bk_grid / mp_grid[None, :]
         G = {ik: np.zeros((NNB, 3), dtype=int) for ik in kptirr}
         neighbours = {ik: np.zeros(NNB, dtype=int) for ik in kptirr}
         for kirr in kptirr:
             for ib in range(NNB):
-                k_latt_int_nb = k_latt_int[kirr] + bk_latt[ib]
+                k_latt_int_nb = k_latt_int[kirr] + bk_grid[ib]
                 for ik2 in range(NK):
                     g = k_latt_int_nb - k_latt_int[ik2]
                     if np.all(g % mp_grid == 0):
@@ -183,7 +189,7 @@ class BKVectors(W90_file):
                 else:
                     raise RuntimeError(
                         f"Could not find a neighbour for k-point {kirr} with k-lattice {k_latt_int[kirr]} and "
-                        f"bk-lattice {bk_latt[ib]} in the Monkhorst-Pack grid {mp_grid}. "
+                        f"bk-lattice {bk_grid[ib]} in the Monkhorst-Pack grid {mp_grid}. "
                         f"Check the parameters of `find_bk_vectors`."
                     )
         return G, neighbours
@@ -213,7 +219,7 @@ class BKVectors(W90_file):
             the weights of the bk vectors
         bk_cart : np.ndarray(shape=(NNB, 3), dtype=float)
             the bk vectors in cartesian coordinates
-        bk_latt : np.ndarray(shape=(NNB, 3), dtype=int)
+        bk_grid : np.ndarray(shape=(NNB, 3), dtype=int)
             the bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid
         """
         mp_grid = np.array(mp_grid, dtype=int)
@@ -233,21 +239,33 @@ class BKVectors(W90_file):
         for i_shell in range(num_shells):
             shell_new_cart = shell_kcart[i_shell]
             shell_new_latt = shell_klatt[i_shell]
+            # print (f"Trying shell {i_shell} with k_cart:\n{shell_new_cart}\nand k_latt:\n{shell_new_latt}")
             if is_parallel_shell(projector_list_cart, shell_new_latt, tol=kmesh_tol):
                 # print(f"Skipping shell {i_shell} with k_cart {shell_new_cart} because it is parallel to previously selected shells {shell_list_cart}")
                 continue
-            projector_list_cart.append(cls.get_projector_shell_cart(shell_new_cart))
-            shell_list_cart.append(shell_new_cart)
-            shell_list_latt.append(shell_new_latt)
-            wkbk = cls.get_shell_weights(shell_list_latt, shell_list_cart, bk_complete_tol=bk_complete_tol,
-                                         none_if_fail=True)
-            if wkbk is not None:
-                return wkbk
+            shell_list_cart_tmp = shell_list_cart + [shell_new_cart]
+            shell_list_latt_tmp = shell_list_latt + [shell_new_latt]
+            wkbk = cls.get_shell_weights(shell_list_latt_tmp, shell_list_cart_tmp, bk_complete_tol=bk_complete_tol,
+                                         msg_if_fail=True)
+            if isinstance(wkbk, str):
+                if wkbk == "zero singular value":
+                    continue
+                elif wkbk == "incomplete shells":
+                    projector_list_cart.append(cls.get_projector_shell_cart(shell_new_cart))
+                    shell_list_cart.append(shell_new_cart)
+                    shell_list_latt.append(shell_new_latt)
+                else:
+                    raise RuntimeError(f"Unexpected error in get_shell_weights: {wkbk}")
+            else:
+                wk, bk_cart, bk_grid = wkbk
+                return wk, bk_cart, bk_grid
+
+
         raise RuntimeError(
             f"Could not find a complete set of bk vectors up to {num_shells} shells. ")
 
     @classmethod
-    def get_shell_weights(cls, shell_klatt, shell_kcart, bk_complete_tol=1e-5, none_if_fail=False):
+    def get_shell_weights(cls, shell_klatt, shell_kcart, bk_complete_tol=1e-5, msg_if_fail=False):
         """
         get the weights of the shells of bk vectors for the finite-difference scheme
 
@@ -266,20 +284,29 @@ class BKVectors(W90_file):
             the weights of the bk vectors
         bk_cart : np.ndarray(shape=(NNB, 3), dtype=float)
             the cartesian coordinates of the bk vectors
-        bk_latt : np.ndarray(shape=(NNB, 3), dtype=int)
+        bk_grid : np.ndarray(shape=(NNB, 3), dtype=int)
             the reciprocal lattice vectors of the bk vectors (in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid)
 
         """
         shell_mat = np.array([kcart.T.dot(kcart) for kcart in shell_kcart])
         shell_mat_line = shell_mat.reshape(-1, 9)
         u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
+        print(f"SVD values for shell matrix:\n {s}")
+        if np.any(s < 1e-10) or np.any(s > 1e10):
+            msg = (f"Warning: shell matrix is close to singular, with SVD values:\n {s}. "
+                   f"This may indicate that the shells are not linearly independent, and the weights may be unreliable.")
+            if msg_if_fail:
+                return "zero singular value"
+            else:
+                raise RuntimeError(msg)
+
         s = 1. / s
         weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
         check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
         tol = np.linalg.norm(check_eye - np.eye(3))
         if tol > bk_complete_tol:
-            if none_if_fail:
-                return None
+            if msg_if_fail:
+                return "incomplete shells"
             else:
                 raise RuntimeError(
                     f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
@@ -290,19 +317,19 @@ class BKVectors(W90_file):
                     f"shell_kcart={shell_kcart}\n")
 
         print(f"Shells found with weights {weight_shell} and tolerance {tol}")
-        bk_latt = []
+        bk_grid = []
         bk_cart = []
         wk = []
         for w, sh_klatt, sh_kcart in zip(weight_shell, shell_klatt, shell_kcart):
             for kl, kc in zip(sh_klatt, sh_kcart):
-                bk_latt.append(kl)
+                bk_grid.append(kl)
                 bk_cart.append(kc)
                 wk.append(w)
 
         wk = np.array(wk)
         bk_cart = np.array(bk_cart)
-        bk_latt = np.array(bk_latt, dtype=int)
-        return wk, bk_cart, bk_latt
+        bk_grid = np.array(bk_grid, dtype=int)
+        return wk, bk_cart, bk_grid
 
     @classmethod
     def get_projector_shell_cart(cls, shell_kcart):
@@ -319,6 +346,10 @@ class BKVectors(W90_file):
         # print (f"Projector before subtracting identity:\n{projector}")
         projector -= np.eye(3)  # We want to subtract the identity, to check if a new vector is in the span
         return projector
+
+    @property
+    def real_lattice(self):
+        return 2 * np.pi * np.linalg.inv(self.recip_lattice).T
 
 
     @classmethod

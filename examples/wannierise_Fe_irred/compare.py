@@ -121,7 +121,7 @@ def report_diff(key):
 for key in ["Ham", "SS", "AA"]:
     report_diff(key)
 
-path = wberri.Path(system_irr,
+path = wberri.Path(system=system_irr,
              nodes=[
                  [0.0000, 0.0000, 0.0000],  # G
                  [0.500, -0.5000, -0.5000],  # H

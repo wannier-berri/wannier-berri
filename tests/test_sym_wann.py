@@ -465,7 +465,7 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
 
     calculators = {"tabulate": wberri.calculators.TabulatorAll(tabulators={})}
 
-    grid = wberri.Grid(system,
+    grid = wberri.Grid(system=system,
                     NK=[24, 24, 4],
                     NKFFT=[6, 6, 2],
                     )

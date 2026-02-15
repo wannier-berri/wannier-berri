@@ -56,7 +56,7 @@ def check_run(compare_any_result):
     ):
 
         if grid is None:
-            grid = wberri.Grid(system, **grid_param)
+            grid = wberri.Grid(system=system, **grid_param)
 
         kwargs_run_default = dict(
             parallel=False,

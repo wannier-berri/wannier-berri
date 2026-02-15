@@ -24,7 +24,7 @@ system = wberri.System_Phonon_QE('../tests/data/Si_phonons/si', asr=True)
 
 generators = ["C4z", "C4x", "TimeReversal"]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system, length=10, NKFFT=4)
+grid = wberri.Grid(system=system, length=10, NKFFT=4)
 
 wberri.ray_init()
 
@@ -61,7 +61,7 @@ wberri.run(system,
             )
 
 
-path = wberri.Path(system,
+path = wberri.Path(system=system,
                 nodes=[
                     [0.0000, 0.0000, 0.0000],  # 30 !Gamma
                     [-0.500, 0.0000, -0.500],  # 10 !X

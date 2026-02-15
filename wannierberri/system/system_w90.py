@@ -123,7 +123,7 @@ def System_w90(
     system.num_wann = w90data.num_wann
 
     system.rvec.set_fft_q_to_R(
-        kpt_red=w90data.kpt_latt,
+        kpt_red=w90data.kpt_red,
         fftlib=fftlib,
     )
 

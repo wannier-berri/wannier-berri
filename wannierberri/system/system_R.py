@@ -240,10 +240,10 @@ class System_R(System):
         if not silent:
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
-
+        print(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
         self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
-
+        print(f"number o R-vectors after symmetrization: {len(iRvec)}")
         self.clear_cached_wcc()
         rvec_new = Rvectors(
             lattice=self.real_lattice,

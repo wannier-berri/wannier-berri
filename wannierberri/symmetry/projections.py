@@ -256,6 +256,10 @@ class Projection:
                     positions.append(pos)
         return positions, orbitals
 
+    @property
+    def num_free_vars(self):
+        return self.wyckoff_position.num_free_vars
+
 
 class ProjectionsSet:
 
@@ -265,6 +269,11 @@ class ProjectionsSet:
 
     def __init__(self,
                  projections=[]):
+        if isinstance(projections, ProjectionsSet):
+            self.__dict__.update(projections.__dict__)
+            return
+        elif isinstance(projections, Projection):
+            projections = [projections]
         self.spinor = None
         for i, p in enumerate(projections):
             assert isinstance(p, Projection), f"element {i} of list 'projections' should be a Projection, not {p}"

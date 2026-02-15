@@ -77,7 +77,7 @@ def main(argv):
                         fftlib=parameters["__wb_fft_lib"],
                         transl_inv_MV=parameters["transl_inv"]
                         )
-    grid = Grid(system, NK=parameters["berry_kmesh"])
+    grid = Grid(system=system, NK=parameters["berry_kmesh"])
 
 
     ray_init()
