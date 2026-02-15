@@ -72,8 +72,10 @@ class SymmetrizerSAWF:
 
     npz_tags = ['D_wann_block_indices', '_NB',
                 'kpt2kptirr', 'kptirr', 'kptirr2kpt', 'kpt2kptirr_sym',
-                '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals',]
-    npz_tags_optional = ['eig_irr', 'kpoints_all', 'kpt_from_kptirr_isym', 'grid']
+                '_NK', 'num_wann', 'comment', 'NKirr', 'Nsym', 'time_reversals']
+    npz_tags_optional = ['eig_irr', 'kpoints_all', 'kpt_from_kptirr_isym', 'grid',
+                'selected_kpoints']
+    extension = "sawf"
 
 
     def __init__(self):
@@ -186,10 +188,10 @@ class SymmetrizerSAWF:
         return np.array([len(set(self.kptirr2kpt[ikirr])) for ikirr in range(self.NKirr)])
 
 
-    def get_bk_mapping(self, bk_latt, neighbours):
-        NNB = bk_latt.shape[0]
+    def get_bk_mapping(self, bk_grid, neighbours):
+        NNB = bk_grid.shape[0]
         isym_little = self.isym_little
-        bk_map = self.get_bk_map(bk_latt)
+        bk_map = self.get_bk_map(bk_grid)
         NKirr = len(self.kptirr)
         bkirr = [[] for _ in range(NKirr)]
         bk2bkirr = -np.ones((NKirr, NNB), dtype=int)
@@ -772,10 +774,10 @@ class SymmetrizerSAWF:
         print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
-        nnb = len(bkvec.bk_latt)
-        bk_latt = bkvec.bk_latt
+        nnb = len(bkvec.bk_grid)
+        bk_grid = bkvec.bk_grid
 
-        bk_latt_map = self.get_bk_map(bk_latt)
+        bk_grid_map = self.get_bk_map(bk_grid)
 
 
         maxerr = 0
@@ -787,12 +789,12 @@ class SymmetrizerSAWF:
                 M = mmn.data[ik][ib]
                 for isym in range(self.Nsym):
                     ik_sym = int(self.kptirr2kpt[ikirr, isym])
-                    ib_sym = int(bk_latt_map[isym, ib])
+                    ib_sym = int(bk_grid_map[isym, ib])
 
                     if ik_sym not in mmn.data:
                         continue
                     # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
-                    M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_latt_map=bk_latt_map, bk_cart=bkvec.bk_cart)
+                    M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_grid_map=bk_grid_map, bk_cart=bkvec.bk_cart)
                     M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
 
                     M_loc = M_loc[b1:b2, b1:b2]
@@ -813,7 +815,7 @@ class SymmetrizerSAWF:
                     maxerr = max(maxerr, err)
         return maxerr
 
-    def transform_Mmn_kb(self, M, isym, ikirr, ib, ikb, bk_latt_map, bk_cart,
+    def transform_Mmn_kb(self, M, isym, ikirr, ib, ikb, bk_grid_map, bk_cart,
                          symmetrizer_left=None,):
         if symmetrizer_left is None:
             symmetrizer_left = self
@@ -821,7 +823,7 @@ class SymmetrizerSAWF:
         kpoints_red = self.kpoints_all
 
         ikbirr = self.kpt2kptirr[ikb]
-        ib_sym = bk_latt_map[isym, ib]
+        ib_sym = bk_grid_map[isym, ib]
         rindices = self.d_band_block_indices[ikbirr]
 
 
@@ -906,26 +908,26 @@ class SymmetrizerSAWF:
 
 
 
-    def get_bk_map(self, bk_latt):
-        bk_latt_transformed = np.array([[symop.transform_k(bk)  for bk in bk_latt] for symop in self.spacegroup.symmetries])
-        assert np.allclose(bk_latt_transformed, np.round(bk_latt_transformed)), f"the symmetry operations do not leave the b_k as integers\n" \
-            f"b_k = {bk_latt}\n" \
-            f"b_k transformed = {bk_latt_transformed}\n"
-        bk_latt_transformed = np.round(bk_latt_transformed).astype(int)
+    def get_bk_map(self, bk_grid):
+        bk_grid_transformed = np.array([[symop.transform_k(bk)  for bk in bk_grid] for symop in self.spacegroup.symmetries])
+        assert np.allclose(bk_grid_transformed, np.round(bk_grid_transformed)), f"the symmetry operations do not leave the b_k as integers\n" \
+            f"b_k = {bk_grid}\n" \
+            f"b_k transformed = {bk_grid_transformed}\n"
+        bk_grid_transformed = np.round(bk_grid_transformed).astype(int)
 
 
-        bk_latt_map = -np.ones((self.Nsym, len(bk_latt),), dtype=int)
+        bk_grid_map = -np.ones((self.Nsym, len(bk_grid),), dtype=int)
         for isym in range(self.Nsym):
-            for ibk, bk in enumerate(bk_latt):
-                for ibk2, bk2 in enumerate(bk_latt_transformed[isym]):
+            for ibk, bk in enumerate(bk_grid):
+                for ibk2, bk2 in enumerate(bk_grid_transformed[isym]):
                     if np.all(bk2 == bk):
-                        bk_latt_map[isym, ibk2] = ibk
+                        bk_grid_map[isym, ibk2] = ibk
                         break
                 else:
                     raise ValueError(f"after applying symmetry operation{isym} to the bk vectors, none of the transformed vectors match the original vector {bk} ({ibk})\n"
-                        f"b_k transformed = {bk_latt_transformed[isym]}\n")
+                        f"b_k transformed = {bk_grid_transformed[isym]}\n")
 
-        return bk_latt_map
+        return bk_grid_map
 
     def select_full_blocks(self, selected_bands_bool, include_partial_blocks=False):
         """select the blocks of bands to be used in the calculation, the rest are excluded

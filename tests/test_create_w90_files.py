@@ -485,7 +485,7 @@ def test_create_w90files_Fe_gpaw(ispin):
     mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.mmn.npz"))
     bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.bkvec.npz"))
     bkvec_ref.reorder_mmn(bkvec, mmn)
-    assert np.all(bkvec.bk_latt == bkvec_ref.bk_latt), f"bk_latt differ {bkvec.bk_latt} != {bkvec_ref.bk_latt}"
+    assert np.all(bkvec.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec.bk_grid} != {bkvec_ref.bk_grid}"
     NNB = mmn.NNB
     check_tot = 0
     for ik in mmn_ref.data.keys():
@@ -494,7 +494,7 @@ def test_create_w90files_Fe_gpaw(ispin):
             data = mmn.data[ik][ib]
             data_ref = mmn_ref.data[ik][ib]
             check = np.max(np.abs(data - data_ref))
-            print(f"spin={ispin} ik={ik} ib={ib}, bk={bkvec.bk_latt[ib]}, G={G[ib]}, max diff mmn: {check}")
+            print(f"spin={ispin} ik={ik} ib={ib}, bk={bkvec.bk_grid[ib]}, G={G[ib]}, max diff mmn: {check}")
             check_tot = max(check_tot, check)
     assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
 
@@ -522,6 +522,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
         projections=proj_set,
         seedname=seedname,
         irreducible=True,
+        include_TR=False,
         files=["amn", "mmn", "eig", "symmetrizer"],
         unitary_params=dict(error_threshold=0.1,
                             warning_threshold=0.01,
@@ -544,7 +545,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     amn_ref = wberri.w90files.AMN.from_npz(f"{seedname_ref}.amn.npz")  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
     assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
 
-    symmetrizer_ref = SymmetrizerSAWF.from_npz(f"{seedname_ref}.symmetrizer.npz")
+    symmetrizer_ref = SymmetrizerSAWF.from_npz(f"{seedname_ref}.sawf.npz")
     check_sawf(symmetrizer, symmetrizer_ref)
 
     # for ik, E in eig_ref.data.items():
@@ -555,8 +556,8 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     mmn_ref = wberri.w90files.MMN.from_npz(f"{seedname_ref}.mmn.npz")
     bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(f"{seedname_ref}.bkvec.npz")
     bkvec_ref.reorder_mmn(bkvec, mmn)
-    assert np.all(bkvec.bk_latt == bkvec_ref.bk_latt), f"bk_latt differ {bkvec.bk_latt} != {bkvec_ref.bk_latt}"
-    bk = bkvec_ref.bk_latt
+    assert np.all(bkvec.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec.bk_grid} != {bkvec_ref.bk_grid}"
+    bk = bkvec_ref.bk_grid
     NNB = mmn.NNB
     check_tot = 0
     ignore_upper = -10

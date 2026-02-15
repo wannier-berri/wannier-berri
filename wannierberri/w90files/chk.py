@@ -21,7 +21,7 @@ class CheckPoint(SavableNPZ):
         tolerance for the completeness relation for finite-difference scheme
     """
 
-    npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_latt"]
+    npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_red"]
     npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
     # npz_keys_dict_int = ["v_matrix"]
     npz_keys_dict_int_optional = ["v_matrix"]
@@ -37,7 +37,7 @@ class CheckPoint(SavableNPZ):
                 wannier_centers_cart=None,
                 wannier_spreads=None,
                 v_matrix=None,
-                kpt_latt=None,
+                kpt_red=None,
                 selected_bands=None,
                 mp_grid=None,
                 kmesh_tol=1e-7,
@@ -67,12 +67,12 @@ class CheckPoint(SavableNPZ):
                 assert len(wannier_spreads) == num_wann, f"wannier_spreads should be of shape ({num_wann},), but got {len(wannier_spreads)}"
         self.wannier_spreads = wannier_spreads
 
-        if kpt_latt is not None:
-            kpt_latt = np.array(kpt_latt, dtype=float)
+        if kpt_red is not None:
+            kpt_red = np.array(kpt_red, dtype=float)
             if num_kpts is None:
-                num_kpts = kpt_latt.shape[0]
-            assert kpt_latt.shape == (num_kpts, 3), f"kpt_latt should be of shape ({num_kpts}, 3), but got {kpt_latt.shape}"
-        self.kpt_latt = kpt_latt
+                num_kpts = kpt_red.shape[0]
+            assert kpt_red.shape == (num_kpts, 3), f"kpt_red should be of shape ({num_kpts}, 3), but got {kpt_red.shape}"
+        self.kpt_red = kpt_red
 
         if mp_grid is not None:
             mp_grid = np.array(mp_grid, dtype=int)
@@ -149,7 +149,7 @@ class CheckPoint(SavableNPZ):
         mp_grid = readint()
         assert len(mp_grid) == 3
         assert num_kpts == np.prod(mp_grid), f"the number of k-points is not consistent with the mesh {num_kpts}!={np.prod(mp_grid)}"
-        kpt_latt = readfloat().reshape((num_kpts, 3))
+        kpt_red = readfloat().reshape((num_kpts, 3))
         _ = readint()[0]  # nntot
         num_wann = readint()[0]
         readstr(FIN)  # checkpoint string
@@ -190,7 +190,7 @@ class CheckPoint(SavableNPZ):
                    v_matrix=v_matrix,
                    wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
                    kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
-                   kpt_latt=kpt_latt, mp_grid=mp_grid,
+                   kpt_red=kpt_red, mp_grid=mp_grid,
         )
 
 
@@ -222,11 +222,11 @@ class CheckPoint(SavableNPZ):
         self.v_matrix = v_matrix
 
     @cached_property
-    def kpt_latt_int(self):
+    def kpt_grid(self):
         """
         Returns the k-points in the lattice basis
         """
-        return np.array(np.round(self.kpt_latt * self.mp_grid[None, :]), dtype=int)
+        return np.array(np.round(self.kpt_red * self.mp_grid[None, :]), dtype=int)
 
 
     def wannier_gauge(self, mat, ik1, ik2):
@@ -512,7 +512,7 @@ class CheckPoint(SavableNPZ):
     def from_win(cls, win):
         print("creating empty CheckPoint from Win file")
         mp_grid = np.array(win.data["mp_grid"])
-        kpt_latt = win.get_kpoints()
+        kpt_red = win.get_kpoints()
         real_lattice = win.get_unit_cell_cart_ang()
         try:
             num_wann = win["num_wann"]
@@ -525,7 +525,7 @@ class CheckPoint(SavableNPZ):
         return cls(real_lattice=real_lattice,
                    num_wann=num_wann,
                    num_bands=num_bands,
-                   kpt_latt=kpt_latt,
+                   kpt_red=kpt_red,
                    mp_grid=mp_grid,)
 
     def select_bands(self, selected_bands):

@@ -165,6 +165,33 @@ class Path(GridAbstract):
             last_point = segment[1]
         return cls.from_nodes(cell[0], nodes=nodes, labels=labels, dk=dk)
 
+    def get_refined(self, factor=2):
+        """ returns a refined path with more k-points by linear interpolation"""
+        K_list_refined = []
+        labels_refined = {}
+        breaks_refined = []
+        last_point_index = len(self.K_list) - 1
+        for i in range(last_point_index):
+            K_list_refined.append(self.K_list[i])
+            if i in self.labels:
+                labels_refined[len(K_list_refined) - 1] = self.labels[i]
+            if i in self.breaks:
+                breaks_refined.append(len(K_list_refined) - 1)
+            if i not in self.breaks:
+                segment = (self.K_list[i + 1] - self.K_list[i]) / factor
+                for j in range(1, factor):
+                    K_list_refined.append(self.K_list[i] + j * segment)
+        K_list_refined.append(self.K_list[-1])
+        if last_point_index in self.labels:
+            labels_refined[len(K_list_refined) - 1] = self.labels[last_point_index]
+        if last_point_index in self.breaks:
+            breaks_refined.append(len(K_list_refined) - 1)
+        return Path(
+            system=self.pointgroup,
+            k_list=K_list_refined,
+            labels=labels_refined,
+            breaks=breaks_refined
+        )
 
     def get_kpoints(self):
         return np.array(self.K_list)
