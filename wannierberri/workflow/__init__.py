@@ -6,3 +6,4 @@ use on your own risk, modify if needed
 """
 
 from .workflow import WorkflowQE, Executables
+from .workflow_gpaw import WorkflowGPAW
