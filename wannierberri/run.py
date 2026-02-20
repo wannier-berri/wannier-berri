@@ -348,7 +348,7 @@ def run(
             print("iteration {0} - {1} points. New points are:".format(i_iter + start_iter,
                                                                        len([K for K in K_list if K.result is None])))
             for i, K in enumerate(K_list):
-                if not K.evaluated:
+                if not K.was_evaluated_flag:
                     print(f" K-point {i} : {K} ")
         count_iter, result_sum_iter = process(
             paralfunc=paralfunc,

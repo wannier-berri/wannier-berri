@@ -700,7 +700,14 @@ def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Hald
 
 
 def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythTB):
-    check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, dump_results=True)
+    check_Haldane(
+        check_run,
+        system_Haldane_PythTB,
+        "PythTB",
+        use_symmetry=True,
+        dump_results=True,
+        print_Kpoints=True,
+    )
 
 
 @pytest.mark.parametrize("tetra", [True, False])
