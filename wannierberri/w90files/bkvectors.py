@@ -291,7 +291,7 @@ class BKVectors(W90_file):
         shell_mat = np.array([kcart.T.dot(kcart) for kcart in shell_kcart])
         shell_mat_line = shell_mat.reshape(-1, 9)
         u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-        print(f"SVD values for shell matrix:\n {s}")
+        # print(f"SVD values for shell matrix:\n {s}")
         if np.any(s < 1e-10) or np.any(s > 1e10):
             msg = (f"Warning: shell matrix is close to singular, with SVD values:\n {s}. "
                    f"This may indicate that the shells are not linearly independent, and the weights may be unreliable.")

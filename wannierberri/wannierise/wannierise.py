@@ -159,7 +159,7 @@ def wannierise(w90data,
     deselected = vectorize(np.logical_and, np.logical_not(selected_bands), free, to_array=True)
     assert np.all(selected_bands[frozen]), "Frozen bands should be included in the selected bands"
     free[deselected] = False
-    print(f"selected_bands: \n{selected_bands} ")
+    # print(f"selected_bands: \n{selected_bands} ")
 
     if sitesym:
         if check_irreps or check_irreps_warn:
@@ -195,8 +195,9 @@ def wannierise(w90data,
             num_wann = symmetrizer.num_wann
         else:
             assert num_wann is not None, "num_wann should be provided for random initialization without site-symmetry"
-        with np.random.random((len(kptirr), w90data.mmn.NB, num_wann, 2)) as rnd:
-            amn = {kpt: rnd[ik, :, :, 0] + 1j * rnd[ik, :, :, 1] for ik, kpt in enumerate(kptirr)}
+        rnd = np.random.random((len(kptirr), w90data.mmn.NB, num_wann, 2))
+        amn = {kpt: rnd[ik, :, :, 0] + 1j * rnd[ik, :, :, 1] for ik, kpt in enumerate(kptirr)}
+        del rnd
         w90data.chk.num_wann = num_wann
     elif init == "restart":
         assert w90data.wannierised, "The data is not wannierised"

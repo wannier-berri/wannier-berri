@@ -92,7 +92,7 @@ class MMN(W90_file):
         neighbours = headstring[:, :, 1] - 1
         G = headstring[:, :, 2:]
         t2 = time()
-        print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
+        # print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
 
         bk_reorder = [None for _ in range(NK)]
         for ik in selected_kpoints:

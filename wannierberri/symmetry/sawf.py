@@ -245,7 +245,7 @@ class SymmetrizerSAWF:
         for proj in projections:
             orbitals = proj.orbitals
             basis_list = proj.basis_list
-            print(f"orbitals = {orbitals}")
+            # print(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
                 warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
             for orb in orbitals:
@@ -256,7 +256,7 @@ class SymmetrizerSAWF:
         self.atommap_list = []
         self.rot_orb_list = []
         for positions, proj, basis_list in projections_list:
-            print(f"calculating Wannier functions for {proj} at {positions}")
+            # print(f"calculating Wannier functions for {proj} at {positions}")
             _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbitalrotator=self.orbitalrotator,
                            spinor=self.spacegroup.spinor,
                            basis_list=basis_list)
@@ -294,7 +294,7 @@ class SymmetrizerSAWF:
         self.clear_inverse(d=False, D=True)
         if not isinstance(D_wann, list):
             D_wann = [D_wann]
-        print("D.shape", [D.shape for D in D_wann])
+        # print("D.shape", [D.shape for D in D_wann])
         self.D_wann_block_indices = []
         num_wann = 0
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -309,8 +309,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        print("num_wann", num_wann)
-        print("D_wann_block_indices", self.D_wann_block_indices)
+        # print("num_wann", num_wann)
+        # print("D_wann_block_indices", self.D_wann_block_indices)
 
 
     def symmetrize_wannier_property(self, wannier_property):

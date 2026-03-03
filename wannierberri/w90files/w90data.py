@@ -135,7 +135,7 @@ class Wannier90data:
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
             kpt_red = np.array([KP.K  for KP in bandstructure.kpoints])
-            print(f"kpt_red={kpt_red}")
+            # print(f"kpt_red={kpt_red}")
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
             print(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
             if len(selected_kpoints) < np.prod(grid):
