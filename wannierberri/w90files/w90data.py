@@ -347,6 +347,7 @@ class Wannier90data:
     def from_npz(cls,
                 seedname="wannier90",
                 files=("mmn", "eig", "amn"),
+                ignore_missing_files=True,
                 irreducible=False):
         self = cls()
         self.seedname = copy(seedname)
@@ -368,7 +369,10 @@ class Wannier90data:
                 print(f"setting file {f} from npz {seedname}.{f}.npz as {val}")
                 self.set_file(f, val=val)
             except FileNotFoundError as e:
-                warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                if ignore_missing_files:
+                    warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                else:
+                    raise FileNotFoundError(f"Missing required npz file: {seedname}.{f}.npz ({e}). aborting")
         for f in self._files:
             ff = self.get_file(f)
             if f == "symmetrizer":
