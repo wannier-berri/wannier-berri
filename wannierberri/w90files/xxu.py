@@ -1,6 +1,7 @@
 import numpy as np
 from .w90file import W90_file, check_shape
 from .utility import readstr
+from ..utility import cached_einsum
 from ..io import FortranFileR
 
 
@@ -66,6 +67,19 @@ class UHU(UXU):
     """
     extension = 'uHu'
 
+    @classmethod
+    def from_mmn_eig(cls, mmn, eig):
+        """
+        Construct a UXU object from the MMn and EIG objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib1, ib2, m, n]
+            E = eig.data[ik]  # E[n]
+            data[ik] = cached_einsum('alm,l,bln->abmn', M.conj(), E, M)
+        return cls(data=data, NK=NK)
+
 
 class UIU(UXU):
     """
@@ -73,6 +87,17 @@ class UIU(UXU):
     """
     extension = 'uIu'
 
+    @classmethod
+    def from_mmn(cls, mmn):
+        """
+        Construct a UXU object from the MMn and EIG objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib1, ib2, m, n]
+            data[ik] = cached_einsum('alm,bln->abmn', M.conj(), M)
+        return cls(data=data, NK=NK)
 
 
 class SXU(W90_file):
@@ -181,6 +206,19 @@ class SIU(SXU):
 
     extension = 'sIu'
 
+    @classmethod
+    def from_mmn_spn(cls, mmn, spn):
+        """
+        Construct a SIU object from the MMn and SPN objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib, m, n]
+            S = spn.data[ik]  # S[m, n, ipol]
+            data[ik] = cached_einsum('mlc,bln->bmnc', S, M)
+        return cls(data=data, NK=NK)
+
 
 class SHU(SXU):
     """
@@ -198,3 +236,17 @@ class SHU(SXU):
     """
 
     extension = 'sHu'
+
+    @classmethod
+    def from_mmn_eig_spn(cls, mmn, eig, spn):
+        """
+        Construct a SHU object from the MMn, EIG and SPN objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib, m, n]
+            E = eig.data[ik]  # E[n]
+            S = spn.data[ik]  # S[m, n, ipol]
+            data[ik] = cached_einsum('mlc,l,bln->bmnc', S, E, M)
+        return cls(data=data, NK=NK)
