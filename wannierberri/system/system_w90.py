@@ -40,7 +40,7 @@ def System_w90(
 
     Parameters
     ----------
-    w90data : `~wannierberri.system.Wannier90data`
+    w90data : `~wannierberri.w90files.Wannier90data`
         object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
