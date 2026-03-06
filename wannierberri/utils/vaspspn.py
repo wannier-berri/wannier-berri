@@ -130,7 +130,7 @@ def main(argv):
     SPN.write_record(np.array([NBout, NK], dtype=np.int32))
 
     for ik in range(NK):
-        npw = int(record(2 + ik * (NBin + 1), 1))
+        npw = int(record(2 + ik * (NBin + 1), 1)[0])
         npw12 = npw // 2
         if npw != npw12 * 2:
             raise RuntimeError(f"odd number of coefs {npw}")

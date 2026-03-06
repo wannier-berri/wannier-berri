@@ -631,6 +631,30 @@ class Wannier90data:
             self.get_file('chk').num_wann = val.NW
         self._files[key] = val
 
+    def set_uIu_from_mmn(self, overwrite=False):
+        assert self.has_file('mmn'), "mmn file should be set before to generate uIu"
+        uiu = UIU.from_mmn(mmn=self.mmn)
+        self.set_file('uiu', uiu, overwrite=overwrite)
+
+    def set_uHu_from_mmn_eig(self, overwrite=False):
+        assert self.has_file('mmn'), "mmn file should be set before to generate uHu"
+        assert self.has_file('eig'), "eig file should be set before to generate uHu"
+        uhu = UHU.from_mmn_eig(mmn=self.mmn, eig=self.eig)
+        self.set_file('uhu', uhu, overwrite=overwrite)
+
+    def set_sIu_from_mmn_spn(self, overwrite=False):
+        assert self.has_file('mmn'), "mmn file should be set before to generate sIu"
+        assert self.has_file('spn'), "spn file should be set before to generate sIu"
+        siu = SIU.from_mmn_spn(mmn=self.mmn, spn=self.spn)
+        self.set_file('siu', siu, overwrite=overwrite)
+
+    def set_sHu_from_mmn_eig_spn(self, overwrite=False):
+        assert self.has_file('mmn'), "mmn file should be set before to generate sHu"
+        assert self.has_file('eig'), "eig file should be set before to generate sHu"
+        assert self.has_file('spn'), "spn file should be set before to generate sHu"
+        shu = SHU.from_mmn_eig_spn(mmn=self.mmn, eig=self.eig, spn=self.spn)
+        self.set_file('shu', shu, overwrite=overwrite)
+
     def has_file(self, key):
         """
         Check if the file with the key `key` is set
