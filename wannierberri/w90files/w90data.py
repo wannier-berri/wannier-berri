@@ -269,9 +269,9 @@ class Wannier90data:
             if not all_kpoints:
                 kwargs["kptirr"] = self.symmetrizer.kptirr
                 kwargs["NK"] = self.symmetrizer.NK
+            kwargs["selected_kpoints"] = self.symmetrizer.selected_kpoints
         amn = AMN.from_bandstructure(bandstructure=bandstructure,
                             projections=projectionsSet,
-                        #  selected_kpoints=symmetrizer.selected_kpoints,
                             normalize=normalize,
                             **kwargs)
         if self.bands_were_selected:

@@ -112,6 +112,7 @@ class AMN(W90_file):
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+        
 
         positions = []
         orbitals = []
@@ -140,8 +141,8 @@ class AMN(W90_file):
         unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
         bessel = Bessel_j_radial_int()
 
-        for i, ikirr in enumerate(kptirr):
-            kp = bandstructure.kpoints[selected_kpoints[i]]
+        for ikirr in kptirr:
+            kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             igk = kp.ig[:, :3] + kp.k[None, :]
             expgk = np.exp(-2j * np.pi * (pos @ igk.T))
             wf = kp.WF
