@@ -628,6 +628,30 @@ class System_R(System):
                 )
         f.close()
 
+    def to_hr_file(self, hr_file=None, use_convention_II=True,seedname='seedname'):
+        """
+        Write the system in the format of the wannier90_hr.dat file, see http://www.wanniertools.com/input.html#wannier90-dat
+        for more informations
+        """
+        if hr_file is None:
+            hr_file = seedname + "_hr.dat"
+        f = open(hr_file, "w")
+        f.write("written by wannier-berri from the chk file\n")
+        f.write(f"{self.num_wann}\n")
+        f.write(f"{self.rvec.nRvec}\n")
+        Ndegen = np.ones(self.rvec.nRvec, dtype=int)
+        for i in range(0, self.rvec.nRvec, 15):
+            a = Ndegen[i:min(i + 15, self.rvec.nRvec)]
+            f.write("  ".join(f"{x:2d}" for x in a) + "\n")
+        for iR in range(self.rvec.nRvec):
+            _ham = self.Ham_R[iR] * Ndegen[iR]
+            for n in self.range_wann:
+                for m in self.range_wann:
+                    f.write(
+                        "{:3d} {:3d} {:3d} {:3d} {:3d} {:15.8e} {:15.8e}\n".format(*tuple(self.rvec.iRvec[iR]),m + 1,n + 1,_ham[m, n].real,_ham[m, n].imag)
+                    )
+        f.close()
+
     @property
     def NKFFT_recommended(self):
         """finds a minimal FFT grid on which different R-vectors do not overlap"""
