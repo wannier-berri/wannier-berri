@@ -280,8 +280,8 @@ class Wannier90data:
         self.wannierised = False
         if self.has_file("chk"):
             self.chk.num_wann = projectionsSet.num_wann
-            self.chk.wannier_centers_cart = None # projectionsSet.centers_cart
-            self.chk.wannier_spreads = None # np.array([100] * projectionsSet.num_wann)
+            self.chk.wannier_centers_cart = None  # projectionsSet.centers_cart
+            self.chk.wannier_spreads = None  # np.array([100] * projectionsSet.num_wann)
 
 
     @classmethod
@@ -583,7 +583,7 @@ class Wannier90data:
             True if the symmetrizer is set, False otherwise
         """
         return self.has_file("symmetrizer")
-    
+
     def unset_file(self, key, ignore_missing=False):
         if not self.has_file(key):
             if not ignore_missing:

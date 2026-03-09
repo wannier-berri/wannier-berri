@@ -424,6 +424,9 @@ class SymmetrizerSAWF:
             self.kpt_from_kptirr_isym = get_kpt_from_kptirr_isym(kptirr2kpt=self.kptirr2kpt,
                                                         kpt2kptirr=self.kpt2kptirr)
 
+        if not hasattr(self, "selected_kpoints"):
+            self.selected_kpoints = np.arange(self.NK)
+
 
         self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
         self.d_band_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]

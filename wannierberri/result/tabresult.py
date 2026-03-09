@@ -182,7 +182,7 @@ class TABresult(Result):
         assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
         self.results = {r: self.results[r].to_path(mapping) for r in self.results}
         self.kpoints = kpoints_path.copy()
-        
+
 
 
     def self_to_grid(self):

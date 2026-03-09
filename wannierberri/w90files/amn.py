@@ -112,7 +112,7 @@ class AMN(W90_file):
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        
+
 
         positions = []
         orbitals = []
