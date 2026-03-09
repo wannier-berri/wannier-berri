@@ -113,7 +113,8 @@ class Kpoint_and_neighbours:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
             U_opt_full[self.frozen, range(self.nfrozen)] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
-            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) * wcc_bk_phase[None, :, ib]
+            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) *
+                                wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
             Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
             U = np.linalg.inv(Mmn_loc_sumb)
@@ -135,7 +136,7 @@ class Kpoint_and_neighbours:
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
         self.U_opt_full = self.symmetrizer_Uirr(self.U_opt_full)
-        self.update_Mmn_opt()
+        self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self.U_opt_full, self._wcc, self._r2
 
 
@@ -189,7 +190,7 @@ class Kpoint_and_neighbours:
         U[self.selected] = U_loc.dot(ZV)
         return U
 
-    def update_Mmn_opt(self):
+    def update_Mmn_opt(self, wcc_bk_phase):
         """
         update the Mmn matrix for the optimized U matrix
         """
@@ -197,12 +198,13 @@ class Kpoint_and_neighbours:
             return
         UT = self.U_opt_full.T.conj()
         self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
-        Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)]
+        Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)] \
+            * wcc_bk_phase.T
         Mmn_opt_diag_angle = np.angle(Mmn_opt_diag)
         self._wcc = -Mmn_opt_diag_angle.T @ self.wbk * self.weight
         self._r2 = self.wb @ (1 - abs(Mmn_opt_diag)**2 + Mmn_opt_diag_angle ** 2) * self.weight
 
-    def update_Unb(self, U_nb=None):
+    def update_Unb(self, U_nb=None, wcc_bk_phase=None):
         """
         update the U matrix at neighbouring k-points
 
@@ -220,7 +222,7 @@ class Kpoint_and_neighbours:
         """
         if U_nb is not None:
             self.U_nb = U_nb
-            self.update_Mmn_opt()
+            self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self._wcc, self._r2
 
 
@@ -234,16 +236,27 @@ class Kpoint_and_neighbours_ray(Kpoint_and_neighbours):
 
 class Wannierizer:
 
-    def __init__(self, parallel=True, symmetrizer=None):
+    def __init__(self,
+                 real_lattice,
+                 bk_cart,
+                 wcc_red,
+                 parallel=True, symmetrizer=None,
+                 ):
+        self.real_lattice = real_lattice
         self.kpoints = []
         if parallel and not ray.is_initialized():
             warnings.warn("Ray is not initialized, running in serial mode")
             parallel = False
         self.parallel = parallel
+        self.bk_cart = bk_cart
         if symmetrizer is None:
             symmetrizer = VoidSymmetrizer()
         self.symmetrizer = symmetrizer
         # self.spacegroup = spacegroup
+        self.wcc_red = wcc_red
+        self.wcc_cart = wcc_red.dot(real_lattice)
+        self.spreads = None
+        self.wcc_bk_phase = np.exp(1j * self.wcc_cart.dot(self.bk_cart.T))
 
     def add_kpoint(self, **kwargs):
         """
@@ -267,25 +280,30 @@ class Wannierizer:
             return np.array([kpoint.get_U_opt_full() for kpoint in self.kpoints])
 
     def update_all(self, U_neigh, **kwargs):
+        kwargs_loc = {**kwargs, "wcc_bk_phase": self.wcc_bk_phase}
         if self.parallel:
-            remotes = [kpoint.update.remote(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
+            remotes = [kpoint.update.remote(U, **kwargs_loc) for kpoint, U in zip(self.kpoints, U_neigh)]
             list = ray.get(remotes)
         else:
-            list = [kpoint.update(U, **kwargs) for kpoint, U in zip(self.kpoints, U_neigh)]
+            list = [kpoint.update(U, **kwargs_loc) for kpoint, U in zip(self.kpoints, U_neigh)]
         U_k = [x[0] for x in list]
         self.update_wcc([x[1] for x in list], [x[2] for x in list])
         return U_k
 
     def update_Unb_all(self, U_neigh):
         if self.parallel:
-            remotes = [kpoint.update_Unb.remote(U) for kpoint, U in zip(self.kpoints, U_neigh)]
+            remotes = [kpoint.update_Unb.remote(U, wcc_bk_phase=self.wcc_bk_phase) for kpoint, U in zip(self.kpoints, U_neigh)]
             list = ray.get(remotes)
         else:
-            list = [kpoint.update_Unb(U) for kpoint, U in zip(self.kpoints, U_neigh)]
+            list = [kpoint.update_Unb(U, wcc_bk_phase=self.wcc_bk_phase) for kpoint, U in zip(self.kpoints, U_neigh)]
         self.update_wcc([x[0] for x in list], [x[1] for x in list])
 
 
     def update_wcc(self, wcc_k, r2_k):
-        self.wcc = self.symmetrizer.symmetrize_WCC(sum(wcc_k))
-        self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(self.wcc, axis=1)**2)
-        return self.wcc, self.spreads
+        wcc = self.symmetrizer.symmetrize_WCC(self.wcc_cart + sum(wcc_k))
+        d_wcc = wcc - self.wcc_cart
+        self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(d_wcc, axis=1)**2)
+        self.wcc_cart = wcc
+        self.wcc_red = wcc.dot(np.linalg.inv(self.real_lattice))
+        self.wcc_bk_phase = np.exp(1j * self.wcc_cart.dot(self.bk_cart.T))
+        return self.wcc_cart, self.spreads
