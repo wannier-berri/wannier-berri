@@ -30,7 +30,8 @@ def wannierise(w90data,
                symmetrize_Z=True,
                irreducible=False,
                print_wcc_chk=False,
-               savechk=True
+               savechk=True,
+               wcc_start_red=None,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in w90data.
@@ -187,6 +188,7 @@ def wannierise(w90data,
                                            real_lattice=w90data.bkvec.real_lattice,
                                            num_wann=0))  # num_wann will be set later from amn
 
+
     if init == "amn":
         amn = {kpt: w90data.amn.data[kpt] for kpt in kptirr}
         w90data.chk.num_wann = w90data.amn.NW
@@ -204,6 +206,16 @@ def wannierise(w90data,
     else:
         raise ValueError("init should be 'amn' or 'random'")
 
+    if hasattr(w90data.chk, "wannier_centers_cart") and wcc_start_red is None:
+        wcc_cart = w90data.chk.wannier_centers_cart
+        if wcc_cart is not None:
+            wcc_start_red = wcc_cart.dot(np.linalg.inv(w90data.bkvec.real_lattice))
+    if wcc_start_red is not None:
+        wcc_start_red = np.array(wcc_start_red, dtype=float)
+    if wcc_start_red is None or wcc_start_red.shape != (w90data.chk.num_wann, 3):
+        wcc_start_red = np.zeros((w90data.chk.num_wann, 3))
+
+
     neighbours_all = w90data.bkvec.neighbours
     neighbours_irreducible = np.array([[symmetrizer.kpt2kptirr[ikb] for ikb in w90data.bkvec.neighbours[ik]]
                                        for ik in kptirr])
@@ -211,7 +223,11 @@ def wannierise(w90data,
     # wk = w90data.bkvec.wk_unique
     bk_cart = w90data.bkvec.bk_cart
     t1 = time()
-    wannierizer = Wannierizer(parallel=parallel, symmetrizer=symmetrizer)
+    wannierizer = Wannierizer(real_lattice=w90data.bkvec.real_lattice,
+                              bk_cart=bk_cart,
+                              parallel=parallel, symmetrizer=symmetrizer,
+                              wcc_red=wcc_start_red)
+
     for ik, kpt in enumerate(kptirr):
         wannierizer.add_kpoint(Mmn=w90data.mmn.data[kpt],
                             frozen=frozen[ik],
@@ -235,7 +251,7 @@ def wannierise(w90data,
 
     wannierizer.update_Unb_all([[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr])
 
-    wcc = wannierizer.wcc
+    wcc = wannierizer.wcc_cart
     spreads = wannierizer.spreads
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="starting WFs")
 
@@ -244,18 +260,16 @@ def wannierise(w90data,
     t_update = 0
     t01 = time()
     for i_iter in range(num_iter):
-        wcc_bk_phase = np.exp(1j * wcc.dot(bk_cart.T))
         U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
         tx = time()
         U_opt_full_IR = wannierizer.update_all(U_neigh, mix_ratio=mix_ratio_z,
                                                mix_ratio_u=mix_ratio_u,
-                                               localise=localise,
-                                               wcc_bk_phase=wcc_bk_phase)
+                                               localise=localise)
         t_update += time() - tx
 
         U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k)
 
-        wcc = wannierizer.wcc
+        wcc = wannierizer.wcc_cart
         spreads = wannierizer.spreads
         converge_list.append(np.hstack((wcc, spreads[:, None])))
         delta_std = np.std(converge_list[-num_iter_converge:], axis=0).max()
