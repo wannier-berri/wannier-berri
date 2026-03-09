@@ -118,7 +118,7 @@ def grid_from_kpoints(kpoints, grid=None):
     else:
         returngrid = False
     npgrid = np.array(grid)
-    print(f"mpgrid = {npgrid}, {len(kpoints)}")
+    # print(f"mpgrid = {npgrid}, {len(kpoints)}")
     kpoints_unique = set()
     selected_kpoints = []
     for i, k in enumerate(kpoints):

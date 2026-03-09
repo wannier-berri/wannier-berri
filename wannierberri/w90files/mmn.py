@@ -2,7 +2,6 @@ from collections import defaultdict
 import functools
 from itertools import islice
 import multiprocessing
-from time import time
 import numpy as np
 
 from .utility import convert
@@ -53,7 +52,6 @@ class MMN(W90_file):
 
     @classmethod
     def from_w90_file(cls, seedname, bkvec, npar=multiprocessing.cpu_count(), selected_kpoints=None):
-        t0 = time()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
@@ -83,7 +81,6 @@ class MMN(W90_file):
             pool.close()
             pool.join()
         f_mmn_in.close()
-        t1 = time()
         data = [d[:, 0] + 1j * d[:, 1] for d in data]
         data = np.array(data).reshape(NK, NNB, NB, NB).transpose((0, 1, 3, 2))
         data = {ik: data[ik] for ik in selected_kpoints}
@@ -91,9 +88,6 @@ class MMN(W90_file):
         assert np.all(headstring[:, :, 0] - 1 == np.arange(NK)[:, None])
         neighbours = headstring[:, :, 1] - 1
         G = headstring[:, :, 2:]
-        t2 = time()
-        print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
-
         bk_reorder = [None for _ in range(NK)]
         for ik in selected_kpoints:
             bk_reorder[ik] = bkvec.reorder_bk_vectors(ik, neighbours[ik], G[ik], data[ik])

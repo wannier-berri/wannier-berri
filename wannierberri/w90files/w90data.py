@@ -135,7 +135,7 @@ class Wannier90data:
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
             kpt_red = np.array([KP.K  for KP in bandstructure.kpoints])
-            print(f"kpt_red={kpt_red}")
+            # print(f"kpt_red={kpt_red}")
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
             print(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
             if len(selected_kpoints) < np.prod(grid):
@@ -269,14 +269,19 @@ class Wannier90data:
             if not all_kpoints:
                 kwargs["kptirr"] = self.symmetrizer.kptirr
                 kwargs["NK"] = self.symmetrizer.NK
+            kwargs["selected_kpoints"] = self.symmetrizer.selected_kpoints
         amn = AMN.from_bandstructure(bandstructure=bandstructure,
                             projections=projectionsSet,
-                        #  selected_kpoints=symmetrizer.selected_kpoints,
                             normalize=normalize,
                             **kwargs)
         if self.bands_were_selected:
             amn.select_bands(selected_bands=self.selected_bands)
         self.set_file('amn', amn, overwrite=True, allow_selected_bands=True)
+        self.wannierised = False
+        if self.has_file("chk"):
+            self.chk.num_wann = projectionsSet.num_wann
+            self.chk.wannier_centers_cart = None  # projectionsSet.centers_cart
+            self.chk.wannier_spreads = None  # np.array([100] * projectionsSet.num_wann)
 
 
     @classmethod
@@ -347,6 +352,7 @@ class Wannier90data:
     def from_npz(cls,
                 seedname="wannier90",
                 files=("mmn", "eig", "amn"),
+                ignore_missing_files=True,
                 irreducible=False):
         self = cls()
         self.seedname = copy(seedname)
@@ -368,7 +374,10 @@ class Wannier90data:
                 print(f"setting file {f} from npz {seedname}.{f}.npz as {val}")
                 self.set_file(f, val=val)
             except FileNotFoundError as e:
-                warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                if ignore_missing_files:
+                    warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                else:
+                    raise FileNotFoundError(f"Missing required npz file: {seedname}.{f}.npz ({e}). aborting")
         for f in self._files:
             ff = self.get_file(f)
             if f == "symmetrizer":
@@ -575,6 +584,14 @@ class Wannier90data:
         """
         return self.has_file("symmetrizer")
 
+    def unset_file(self, key, ignore_missing=False):
+        if not self.has_file(key):
+            if not ignore_missing:
+                raise ValueError(f"cannot unset file `{key}` because it was not set. If you want to avoid this message use ignore_missing=True")
+        else:
+            del self._files[key]
+
+
     def set_file(self, key, val,
                  overwrite=False,
                  allow_selected_bands=False,
@@ -606,8 +623,12 @@ class Wannier90data:
         if key == "chk":
             self.set_chk(val=val, read=True, overwrite=overwrite, **kwargs)
             return
-        if not overwrite and self.has_file(key):
-            raise RuntimeError(f"file '{key}' was already set")
+        if self.has_file(key):
+            if overwrite:
+                self.unset_file(key)
+                warnings.warn(f"file '{key}' was already set, overwriting it")
+            else:
+                raise RuntimeError(f"file '{key}' was already set")
         # if val is None:
         #     if key not in FILES_CLASSES:
         #         raise ValueError(f"key '{key}' is not a valid w90 file")

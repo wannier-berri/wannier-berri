@@ -113,6 +113,7 @@ class AMN(W90_file):
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
+
         positions = []
         orbitals = []
         radial_nodes_list = []
@@ -138,11 +139,10 @@ class AMN(W90_file):
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
         unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
-        print(f"unit cell volume = {unit_cell_volume} ")
         bessel = Bessel_j_radial_int()
 
-        for i, ikirr in enumerate(kptirr):
-            kp = bandstructure.kpoints[selected_kpoints[i]]
+        for ikirr in kptirr:
+            kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             igk = kp.ig[:, :3] + kp.k[None, :]
             expgk = np.exp(-2j * np.pi * (pos @ igk.T))
             wf = kp.WF
@@ -155,7 +155,6 @@ class AMN(W90_file):
                 wf_down = wf[:, :, 1]
 
             gk = igk @ rec_latt
-            print(f"{gk.shape=}, {expgk.shape=}, {wf.shape=}, {pos.shape=}")
             prj = []
             projector_dict = {}
             for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
@@ -163,15 +162,8 @@ class AMN(W90_file):
                     projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
                 projector = projector_dict[spread_factor]
                 prj.append(projector(orb, basis, radial_nodes))
-            # prj = list([projector(orb, basis, radial_nodes) for orb, basis, radial_nodes in zip(orbitals, basis_list, radial_nodes_list)])
-            # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
-            # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
             proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
-            proj_proj = proj_gk.conj() @ proj_gk.T
-            print(f"projector on itself ({proj_proj.shape}): \n {np.round(proj_proj.real, 3)} ")
-            # exit()
             if spinor:
-                # print(f"shapes proj_gk:{proj_gk.shape}, wf_up : {wf_up.shape}, wf_down : {wf_down.shape}, ")
                 proj_up = wf_up @ proj_gk.T
                 proj_down = wf_down @ proj_gk.T
                 datak = []

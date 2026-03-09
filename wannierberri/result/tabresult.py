@@ -173,21 +173,16 @@ class TABresult(Result):
         kpoints_path = path.get_kpoints()
         mapping = -np.ones(len(kpoints_path), dtype=int)
         kpoints = self.kpoints
-        for i, k1 in enumerate(kpoints_path):
-            found = False
-            for j, k2 in enumerate(kpoints):
-                diff = k1 - k2
-                diff -= np.round(diff)  # account for periodicity
-                if np.allclose(diff, 0, atol=1e-5):
-                    found = True
-                    mapping[i] = j
-                    break
-            assert found, f"kpoint {i}:{k1} from path not found in result kpoints"
+        diff = abs(kpoints[:, None, :] - kpoints_path[None, :, :])
+        diff -= np.round(diff)  # account for periodicity
+        norm = np.linalg.norm(diff, axis=2)
+        mapping = np.argmin(norm, axis=0)
         diff = abs(kpoints[mapping] - kpoints_path)
         diff -= np.round(diff)  # account for periodicity
         assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
         self.results = {r: self.results[r].to_path(mapping) for r in self.results}
         self.kpoints = kpoints_path.copy()
+
 
 
     def self_to_grid(self):

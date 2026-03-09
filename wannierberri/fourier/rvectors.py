@@ -512,7 +512,7 @@ class Rvectors:
             kpt_red = np.array(kpt_red)
             kpt_red_mp = kpt_red * self.mp_grid[None, :]
             kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
-            print(f"{kpt_red=} \n {kpt_red_mp_int=} \n {kpt_red_mp=}")
+            # print(f"{kpt_red=} \n {kpt_red_mp_int=} \n {kpt_red_mp=}")
             assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
             assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"
         else:
