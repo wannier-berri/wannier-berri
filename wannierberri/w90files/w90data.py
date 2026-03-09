@@ -277,6 +277,11 @@ class Wannier90data:
         if self.bands_were_selected:
             amn.select_bands(selected_bands=self.selected_bands)
         self.set_file('amn', amn, overwrite=True, allow_selected_bands=True)
+        self.wannierised = False
+        if self.has_file("chk"):
+            self.chk.num_wann = projectionsSet.num_wann
+            self.chk.wannier_centers_cart = None # projectionsSet.centers_cart
+            self.chk.wannier_spreads = None # np.array([100] * projectionsSet.num_wann)
 
 
     @classmethod
@@ -578,6 +583,14 @@ class Wannier90data:
             True if the symmetrizer is set, False otherwise
         """
         return self.has_file("symmetrizer")
+    
+    def unset_file(self, key, ignore_missing=False):
+        if not self.has_file(key):
+            if not ignore_missing:
+                raise ValueError(f"cannot unset file `{key}` because it was not set. If you want to avoid this message use ignore_missing=True")
+        else:
+            del self._files[key]
+
 
     def set_file(self, key, val,
                  overwrite=False,
@@ -610,8 +623,12 @@ class Wannier90data:
         if key == "chk":
             self.set_chk(val=val, read=True, overwrite=overwrite, **kwargs)
             return
-        if not overwrite and self.has_file(key):
-            raise RuntimeError(f"file '{key}' was already set")
+        if self.has_file(key):
+            if overwrite:
+                self.unset_file(key)
+                warnings.warn(f"file '{key}' was already set, overwriting it")
+            else:
+                raise RuntimeError(f"file '{key}' was already set")
         # if val is None:
         #     if key not in FILES_CLASSES:
         #         raise ValueError(f"key '{key}' is not a valid w90 file")
