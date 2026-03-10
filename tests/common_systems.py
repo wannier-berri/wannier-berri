@@ -199,7 +199,7 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
     """Create convert to sparse format (keeping all matrix elements) and back, to test interface"""
 
     params = system_Fe_W90.get_sparse({X: -1 for X in system_Fe_W90._XX_R.keys()})
-    system = wberri.system.SystemSparse(**params)
+    system = wberri.system.System_R.from_sparse(**params)
     system.set_pointgroup(symmetries_Fe)
     return system
 
@@ -233,10 +233,10 @@ def get_system_Fe_sym_W90(symmetrize=False,
     )
 
     system = System_R.from_w90data(w90data=w90data,
-                                      **matrices,
-                                      ws_dist_tol=1e-5,
-                                      transl_inv_MV=True,  # legacy
-                                      **kwargs)
+                                   **matrices,
+                                   ws_dist_tol=1e-5,
+                                   transl_inv_MV=True,  # legacy
+                                   **kwargs)
     system.set_pointgroup(symmetries_Fe)
     if symmetrize:
         system.symmetrize(
@@ -428,9 +428,9 @@ def system_GaAs_W90(create_files_GaAs_W90):
         files=NeededData(**matrices).files,
     )
     system = System_R.from_w90data(w90data=w90data,
-                                      **matrices,
-                                      transl_inv_MV=True,  # legacy
-                                      ws_dist_tol=-1e-5)
+                                   **matrices,
+                                   transl_inv_MV=True,  # legacy
+                                   ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -448,9 +448,9 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
         files=NeededData(**matrices).files,
     )
     system = System_R.from_w90data(w90data=w90data,
-                                      **matrices,
-                                      transl_inv_JM=True,
-                                      ws_dist_tol=-1e-5)
+                                   **matrices,
+                                   transl_inv_JM=True,
+                                   ws_dist_tol=-1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -511,9 +511,9 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
         files=NeededData(**matrices).files,
     )
     system = System_R.from_w90data(w90data=w90data,
-                                      transl_inv_MV=transl_inv,
-                                      transl_inv_JM=transl_inv_JM,
-                                      **matrices)
+                                   transl_inv_MV=transl_inv,
+                                   transl_inv_JM=transl_inv_JM,
+                                   **matrices)
     if double:
         system.double_spin()
     if symmetrize:
@@ -739,7 +739,7 @@ def system_Te_sparse():
     param = pickle.load(open(path, "rb"))
     param["wannier_centers_red"] = param["wannier_centers_reduced"]
     del param["wannier_centers_reduced"]
-    system = wberri.system.SystemSparse(**param)
+    system = wberri.system.System_R.from_sparse(**param)
     system.set_pointgroup(symmetries_Te)
     return system
 
@@ -914,7 +914,7 @@ def model_1d_pythtb():
 
 @pytest.fixture(scope="session")
 def system_random():
-    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
+    system = wberri.system.System_R.from_random(num_wann=6, nRvec=20, max_R=4,
                                         berry=True, morb=True, spin=True,
                                         SHCryoo=True, SHCqiao=True, OSD=True,)
     # system.save_npz("randomsys")
@@ -929,7 +929,7 @@ def system_random_load_bare():
 
 @pytest.fixture(scope="session")
 def system_random_GaAs():
-    return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
+    return wberri.system.System_R.from_random(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
                                       berry=True, spin=True, SHCryoo=True,
                                       )
