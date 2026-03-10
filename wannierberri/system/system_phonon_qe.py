@@ -4,7 +4,6 @@ import numpy as np
 import xmltodict
 
 from ..fourier.rvectors import Rvectors
-from .deprecated_constructors import System_Phonon_QE
 from scipy import constants as const
 from ..factors import Ry_eV
 

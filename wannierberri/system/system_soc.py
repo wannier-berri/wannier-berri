@@ -11,8 +11,6 @@ from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
 from .system_R import System_R
-from .system_w90 import System_w90
-
 
 
 class SystemSOC(System_R):
@@ -397,9 +395,9 @@ class SystemSOC(System_R):
 
     @classmethod
     def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
-        system_up = System_w90(w90data=w90data.data_up, **kwargs)
+        system_up = System_R.from_w90data(w90data=w90data.data_up, **kwargs)
         if w90data.nspin == 2:
-            system_down = System_w90(w90data=w90data.data_down, **kwargs)
+            system_down = System_R.from_w90data(w90data=w90data.data_down, **kwargs)
         else:
             system_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)

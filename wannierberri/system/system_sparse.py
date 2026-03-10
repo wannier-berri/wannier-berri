@@ -15,7 +15,6 @@ import numpy as np
 
 from ..fourier.rvectors import Rvectors
 from .system_R import System_R
-from .deprecated_constructors import SystemSparse
 
 
 def get_system_sparse(real_lattice,

@@ -17,7 +17,6 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
-from .deprecated_constructors import System_tb
 
 
 def system_tb(tb_file="wannier90_tb.dat",

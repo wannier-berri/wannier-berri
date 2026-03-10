@@ -15,6 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
+from importlib.metadata import version as get_package_version, PackageNotFoundError
 __version__ = "1.8.0"
 
 from .run import run
@@ -31,18 +32,15 @@ from .grid import Grid, Path
 from . import calculators
 from . import result
 from . import wannierise
-from .smoother import get_smoother
 from .evaluate_k import evaluate_k, evaluate_k_path
-from . import utils
-# from . import data_K
 from .result.tabresult import npz_to_fermisurfer
 from termcolor import cprint
 
 
-from packaging import version
-import irrep
-assert version.parse(irrep.__version__) >= version.parse("2.3.2"), \
-    f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
+# from packaging import version
+# import irrep
+# assert version.parse(irrep.__version__) >= version.parse("2.3.2"), \
+#     f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
 
 
 def welcome():
@@ -56,8 +54,49 @@ def welcome():
     "88"888      888   888,  888    Y88  888    Y88 888 888oo,__  888b "88bo,    _88o,,od8P 888oo,__  888b "88bo, 888b "88bo,888
      "M "M"      YMM   ""`   MMM     YM  MMM     YM MMM \"\"\"\"YUMMM MMMM   "W"     ""YUMMMP"  \"\"\"\"YUMMM MMMM   "W"  MMMM   "W" MMM
 """
-    cprint(logo, 'yellow')
+    cprint(logo, 'green')
+    cprint(f"Version: {__version__}\n", 'cyan', attrs=['bold'])
+    cprint("""\n   HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
 
-    cprint("""\n  The Web page is :  HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
+    print("Checking dependencies …")
+    not_found = []
+    symmetry = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
+    needed_for = {
+        "irrep": "symmetry related ",
+        "spglib": symmetry,
+        "numpy": "ESSENTIAL",
+        "scipy": "ESSENTIAL",
+        "spgrep": "projections searcher",
+        "numba": "tetrahedron integration",
+        "pyfftw": "fast Fourier transforms (optional, otherwise uses numpy's FFT)",
+        "seekpath": "automatic generation of k-point paths",
+        "matplotlib": "plotting",
+        "sympy": symmetry,
+        "fortio": "reading Fortran unformatted files (uHu, chk, spn, unk, …)",
+        "gpaw": "interface with GPAW",
+        "ase": "interface with ASE and GPAW",
+        "pythtb": "interface with PythTB (optional)",
+        "xmltodict": "reading QuantumEspresso dynamical matrices for phonons",
+    }
+    for package in needed_for.keys():
+        try:
+            mod = __import__(package)
+            # Try module's __version__ first, then fall back to package metadata
+            version = getattr(mod, '__version__', None)
+            if version is None:
+                try:
+                    version = get_package_version(package)
+                except PackageNotFoundError:
+                    version = 'version unknown'
+            cprint(f"{package} : {version}", 'cyan')
+        except ImportError:
+            nfor = needed_for.get(package, "No description available")
+            if nfor == "ESSENTIAL":
+                cprint(f"{package} : not found. {nfor}. Please install it to use wannierberri.", 'red')
+            else:
+                cprint(f"{package} : not found. {nfor}", 'yellow')
+            not_found.append(package)
+    print("#")
 
-    cprint(f"\nVersion: {__version__}\n", 'cyan', attrs=['bold'])
+
+welcome()

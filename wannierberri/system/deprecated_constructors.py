@@ -13,11 +13,13 @@
 
 import warnings
 
+
 def constructor_deprecation_warning(old_constructor_name, new_constructor_name):
     warnings.warn(f"DeprecationWarning: {old_constructor_name} is deprecated "
                   "and will be removed in the future. Use "
-                  f"System_R.from_{new_constructor_name} instead.", 
+                  f"System_R.from_{new_constructor_name} instead.",
                   DeprecationWarning)
+
 
 def System_w90(*args, **kwargs):
     constructor_deprecation_warning("System_w90", "w90data")

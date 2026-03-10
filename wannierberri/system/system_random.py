@@ -3,7 +3,6 @@ import numpy as np
 from .system import num_cart_dim
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
-from .deprecated_constructors import SystemRandom
 
 
 def get_system_random(num_wann,

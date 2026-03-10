@@ -18,7 +18,6 @@ from ..fourier.rvectors import Rvectors
 from ..utility import str2bool
 from termcolor import cprint
 from .system_R import System_R
-from .deprecated_constructors import System_fplo
 from collections import defaultdict
 from scipy.constants import physical_constants, angstrom
 from .needed_data import NeededData

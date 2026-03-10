@@ -16,7 +16,6 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
-from .deprecated_constructors import System_PythTB, System_TBmodels
 from packaging import version
 # from .Rvec import Rvec
 

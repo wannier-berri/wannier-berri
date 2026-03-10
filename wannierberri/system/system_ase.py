@@ -16,7 +16,6 @@ import numpy as np
 from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
-from .deprecated_constructors import System_ASE
 
 
 def get_system_ase(

@@ -39,7 +39,7 @@ class System:
 
     """
     The base class for describing a system. Does not have its own constructor,
-    please use the child classes, e.g  :class:`System_R`, :class:`System_k`, :class:`System_w90`, :class:`System_fplo`, :class:`System_TB`, :class:`System_PythTB`, :class:`System_TBmodels`, :class:`System_ASE`, :class:`SystemSparse`, :class:`SystemRandom`, or :class:`System_SOC`.
+    please use the child classes, e.g  :class:`System_R`, :class:`System_KP` or :class:`System_SOC`.
 
 
     Parameters
@@ -428,4 +428,3 @@ class System_k(System):
     please use the child classes, e.g  :class:`SystemKP`.
     """
     pass
-

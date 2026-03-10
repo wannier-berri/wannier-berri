@@ -838,7 +838,7 @@ class System_R(System):
         Create a System_R object from a Wannier90 data object (w90data). 
         Wannierized either by wannier90 or by WannierBerri
 
-        see :func:`~wannierberri.system.system_w90.system_w90` for input data and details
+        see :func:`~wannierberri.system.system_w90.get_system_w90` for input data and details
         """
         from .system_w90 import get_system_w90
         return get_system_w90(w90data=w90data, *args, **kwargs)
@@ -848,7 +848,7 @@ class System_R(System):
     def from_tb_dat(cls, *args, **kwargs):
         """
         Create a System_R object from a wannier90_tb.dat file. 
-        see :func:`~wannierberri.system.system_tb.system_tb` for input data and details
+        see :func:`~wannierberri.system.system_tb.get_system_tb` for input data and details
         """
         from .system_tb import system_tb
         return system_tb(*args, **kwargs)
@@ -857,7 +857,7 @@ class System_R(System):
     def from_pythtb(cls, *args, **kwargs):
         """
         Create a System_R object from a pythtb model. 
-        see :func:`~wannierberri.system.system_tb_py.system_PythTB` for input data and details
+        see :func:`~wannierberri.system.system_tb_py.get_system_pythtb` for input data and details
         """
         from .system_tb_py import get_system_pythtb
         return get_system_pythtb(*args, **kwargs)
@@ -866,7 +866,7 @@ class System_R(System):
     def from_tbmodels(cls, *args, **kwargs):
         """
         Create a System_R object from a TBmodels model. 
-        see :func:`~wannierberri.system.system_tb_py.system_TBmodels` for input data and details
+        see :func:`~wannierberri.system.system_tb_py.get_system_tbmodels` for input data and details
         """
         from .system_tb_py import get_system_tbmodels
         return get_system_tbmodels(*args, **kwargs)
@@ -875,7 +875,7 @@ class System_R(System):
     def from_fplo(cls, *args, **kwargs):
         """
         Create a System_R object from a FPLO calculation. 
-        see :func:`~wannierberri.system.system_fplo.system_fplo` for input data and details
+        see :func:`~wannierberri.system.system_fplo.get_system_fplo` for input data and details
         """
         from .system_fplo import get_system_fplo
         return get_system_fplo(*args, **kwargs)
@@ -884,7 +884,7 @@ class System_R(System):
     def from_ase(cls, *args, **kwargs):
         """
         Create a System_R object from an ASE Atoms object. 
-        see :func:`~wannierberri.system.system_ASE.system_ase` for input data and details
+        see :func:`~wannierberri.system.system_ase.get_system_ase` for input data and details
         """
         from .system_ase import get_system_ase
         return get_system_ase(*args, **kwargs)
@@ -893,7 +893,7 @@ class System_R(System):
     def from_phonons_qe(cls, *args, **kwargs):
         """
         Create a System_R object for phonons from a Quantum Espresso calculation. 
-        see :func:`~wannierberri.system.system_phonon_qe.system_phonon_qe` for input data and details
+        see :func:`~wannierberri.system.system_phonon_qe.get_system_phonons_qe` for input data and details
         """
         from .system_phonon_qe import get_system_phonons_qe
         return get_system_phonons_qe(*args, **kwargs)
@@ -902,7 +902,7 @@ class System_R(System):
     def from_random(cls, *args, **kwargs):
         """
         Create a System_R object with random parameters. 
-        see :func:`~wannierberri.system.system_random.system_random` for input data and details
+        see :func:`~wannierberri.system.system_random.get_system_random` for input data and details
         """
         from .system_random import get_system_random
         return get_system_random(*args, **kwargs)
@@ -911,7 +911,7 @@ class System_R(System):
     def from_sparse(cls, *args, **kwargs):
         """
         Create a System_R object from a sparse representation. 
-        see :func:`~wannierberri.system.system_sparse.system_sparse` for input data and details
+        see :func:`~wannierberri.system.system_sparse.get_system_sparse` for input data and details
         """
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)

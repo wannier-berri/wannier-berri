@@ -6,11 +6,9 @@ from packaging import version
 
 from .common import OUTPUT_DIR, REF_DIR
 
-from .common_systems import model_1d_pythtb
 import wannierberri as wberri
 
 from wannierberri.system.system_R import System_R
-from wannierberri.system.system_tb import System_tb
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
@@ -458,7 +456,11 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
 
 
 def test_system_pythtb_spinor():
-    model1, model2 = model_1d_pythtb()
+    from wannierberri.models import model_1d_pythtb
+    rnd = np.random.random(8)
+
+    model1 = model_1d_pythtb(Delta=1, hoppings=rnd, spinor_manual=False)
+    model2 = model_1d_pythtb(Delta=1, hoppings=rnd, spinor_manual=True)
     k = np.linspace(0, 1, 20, endpoint=False)
     import pythtb
     if version.parse(pythtb.__version__) < version.parse("2.0.0"):
@@ -502,7 +504,7 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
 def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
     path = os.path.join(OUTPUT_DIR, "random_GaAS_tb")
     system_random_GaAs_load_bare.to_tb_file(path)
-    system_tb = System_tb(path, berry=True)
+    system_tb = System_R.from_tb_dat(path, berry=True)
     print(system_tb.wannier_centers_cart)
     print(system_random_GaAs_load_bare.wannier_centers_cart)
 
