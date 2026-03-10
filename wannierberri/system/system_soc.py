@@ -2,7 +2,6 @@ from functools import cached_property
 import os
 import warnings
 import numpy as np
-from irrep.spacegroup import SpaceGroup
 
 from ..symmetry.point_symmetry import PointGroup
 
@@ -247,6 +246,7 @@ class SystemSOC(System_R):
             axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
             magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
             print(f"using magmoms \n {magmoms}")
+            from irrep.spacegroup import SpaceGroup
             mag_group = SpaceGroup.from_cell(real_lattice=self.real_lattice,
                                     positions=self.cell["positions"],
                                     typat=self.cell["typat"],

@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 from scipy.constants import physical_constants
 from .utility import get_mp_grid
-from ..io import SavableNPZ
+from .io import SavableNPZ
 
 
 class WIN(SavableNPZ):

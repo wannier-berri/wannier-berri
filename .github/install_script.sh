@@ -8,12 +8,5 @@ set -ev
 pip install codecov
 pip install -U pip setuptools wheel 
 
-# install optional dependencies
-pip install pythtb # tbmodels spglib
-# pip install ase
-pip install gpaw
-# gpaw info
-# gpaw install-data --register ~/gpaw-data
-pip install -U .[all]
-# sudo apt-get install wannier90
+pip install -U .[default,tests,symmetry,parallel,fftw]
 

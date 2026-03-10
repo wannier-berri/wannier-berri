@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wannierberri"
+dynamic = ["version"]
+authors = [
+    { name = "Stepan S. Tsirkin", email = "stepan.tsirkin@epfl.ch" },
+]
+description = "Constructuion of Wannier functions and Wannier interpolation"
+readme = { file = "README.rst", content-type = "text/x-rst" }
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "colorama",
+    "termcolor",
+    "packaging>=20.8",
+    "wannier90io",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://wannier-berri.org"
+
+[project.optional-dependencies]
+parallel = [
+    "ray[default]",
+    "protobuf==3.20.2",
+]
+fftw = [
+    "pyFFTW>=0.12.0",
+]
+symmetry = [
+    "sympy",
+    "spglib>=2",
+    "irrep>=2.5.0",
+    "spgrep",
+    "seekpath",
+]
+default = [
+    "ray[default]",
+    "protobuf==3.20.2",
+    "sympy",
+    "spglib>=2",
+    "irrep>=2.5.0",
+    "spgrep",
+    "seekpath",
+    "numba>=0.60.0",
+    "matplotlib",
+    "fortio>=0.4",
+    "xmltodict",
+]
+tests = [
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "pythtb",
+    "gpaw",
+    "tbmodels",
+    "seekpath",
+    "flake8",
+    "autopep8",
+]
+
+[tool.setuptools]
+include-package-data = false
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*", "_trash*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "wannierberri.__version__" }

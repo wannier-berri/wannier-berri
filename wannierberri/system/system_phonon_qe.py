@@ -1,7 +1,6 @@
 import os.path
 
 import numpy as np
-import xmltodict
 
 from ..fourier.rvectors import Rvectors
 from .system_R import System_R
@@ -64,6 +63,7 @@ def System_Phonon_QE(
     for ifile in range(1, nqirr + 1):
         fname = f"{seedname}.dyn{ifile}.xml"
         with open(fname) as f:
+            import xmltodict
             data = xmltodict.parse(f.read().lower())['root']
             geometry = data['geometry_info']
             if ifile == 1:
