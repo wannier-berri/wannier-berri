@@ -841,10 +841,7 @@ class System_R(System):
         see :func:`~wannierberri.system.system_w90.system_w90` for input data and details
         """
         from .system_w90 import system_w90
-        return system_w90.from_w90data(
-            w90data=w90data,
-            *args, **kwargs,
-        )
+        return system_w90(w90data=w90data, *args, **kwargs)
 
 
     @classmethod
@@ -854,20 +851,16 @@ class System_R(System):
         see :func:`~wannierberri.system.system_tb.system_tb` for input data and details
         """
         from .system_tb import system_tb
-        return system_tb.from_tb_dat(
-            *args, **kwargs,
-        )
+        return system_tb(*args, **kwargs)
 
     @classmethod
-    def from_pythtb(cls, *args, **kwargs):
+    def from_PythTB(cls, *args, **kwargs):
         """
         Create a System_R object from a pythtb model. 
         see :func:`~wannierberri.system.system_tb_py.system_PythTB` for input data and details
         """
         from .system_tb_py import system_PythTB
-        return system_PythTB.from_pythtb(
-            *args, **kwargs,
-        )
+        return system_PythTB(*args, **kwargs)
 
     @classmethod
     def from_TBmodels(cls, *args, **kwargs):
@@ -902,8 +895,8 @@ class System_R(System):
         Create a System_R object for phonons from a Quantum Espresso calculation. 
         see :func:`~wannierberri.system.system_phonon_qe.system_phonon_qe` for input data and details
         """
-        from .system_phonon_qe import system_phonon_qe
-        return system_phonon_qe(*args, **kwargs)
+        from .system_phonon_qe import system_phonons_qe
+        return system_phonons_qe(*args, **kwargs)
 
     @classmethod
     def from_random(cls, *args, **kwargs):

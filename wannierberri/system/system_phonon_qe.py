@@ -29,10 +29,10 @@ def _str2array(s, dtype=float):
 
 def System_Phonon_QE(*args, **kwargs):
     constructor_deprecation_warning("System_Phonon_QE", "phonons_qe")
-    return system_phonons_QE(*args, **kwargs)
+    return system_phonons_qe(*args, **kwargs)
 
 
-def system_phonons_QE(
+def system_phonons_qe(
         seedname,
         fftlib='fftw',
         asr=True,
