@@ -15,6 +15,7 @@ wannierberri - a module for Wannier interpolation
 """
 
 import warnings
+from importlib.metadata import version as get_package_version, PackageNotFoundError
 __version__ = "1.8.0"
 
 from .run import run
@@ -80,7 +81,14 @@ def welcome():
     for package in needed_for.keys():
         try:
             mod = __import__(package)
-            cprint(f"{package} : {mod.__version__}", 'cyan')
+            # Try module's __version__ first, then fall back to package metadata
+            version = getattr(mod, '__version__', None)
+            if version is None:
+                try:
+                    version = get_package_version(package)
+                except PackageNotFoundError:
+                    version = 'version unknown'
+            cprint(f"{package} : {version}", 'cyan')
         except ImportError:
             nfor = needed_for.get(package, "No description available")
             if nfor == "ESSENTIAL":
@@ -88,5 +96,6 @@ def welcome():
             else:
                 cprint(f"{package} : not found. {nfor}", 'yellow')
             not_found.append(package)
+    print("#" * 50)
 
 welcome()

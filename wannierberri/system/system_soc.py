@@ -215,7 +215,6 @@ class SystemSOC(System_R):
             soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_1'), pauli_rotated[1, 1, :])
             dV01 = self.get_R_mat('dV_soc_wann_0_1')
             soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", dV01, pauli_rotated[0, 1, :])
-            # soc_R_W[:,1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_0'), pauli_rotated[1, 0, :])
             soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.rvec.conj_XX_R(dV01), pauli_rotated[1, 0, :])
         elif self.nspin == 1:
             soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])

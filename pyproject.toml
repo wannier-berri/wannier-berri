@@ -45,16 +45,15 @@ symmetry = [
     "seekpath",
 ]
 default = [
-    "ray[default]",
-    "protobuf==3.20.2",
-    "sympy",
-    "spglib>=2",
-    "irrep>=2.5.0",
-    "spgrep",
-    "seekpath",
+    "wannierberri[parallel]",
+    "wannierberri[symmetry]",
     "numba>=0.60.0",
     "matplotlib",
     "fortio>=0.4",
+]
+all = [
+    "wannierberri[default]",
+    "wannierberri[fftw]",
     "xmltodict",
 ]
 tests = [
@@ -64,7 +63,6 @@ tests = [
     "pythtb",
     "gpaw",
     "tbmodels",
-    "seekpath",
     "flake8",
     "autopep8",
 ]
