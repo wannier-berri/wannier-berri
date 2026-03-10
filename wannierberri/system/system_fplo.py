@@ -18,6 +18,7 @@ from ..fourier.rvectors import Rvectors
 from ..utility import str2bool
 from termcolor import cprint
 from .system_R import System_R
+from .deprecated_constructors import System_fplo
 from collections import defaultdict
 from scipy.constants import physical_constants, angstrom
 from .needed_data import NeededData
@@ -25,13 +26,7 @@ from .needed_data import NeededData
 bohr = physical_constants['Bohr radius'][0] / angstrom
 
 
-def System_fplo(*args, **kwargs):
-    from .system import constructor_deprecation_warning
-    constructor_deprecation_warning("System_fplo", "FPLO")
-    return system_fplo(*args, **kwargs)
-
-
-def system_fplo(hamdata="+hamdata",
+def get_system_fplo(hamdata="+hamdata",
                 mp_grid=None,
                 **parameters):
     """

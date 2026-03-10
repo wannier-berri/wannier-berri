@@ -36,12 +36,12 @@ if True:
 
 
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
-                        bandstructure,
-                        seedname="./Fe",
-                        files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
-                        projections=projections_set,
-                        normalize=False
-                        )
+        bandstructure,
+        seedname="./Fe",
+        files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
+        projections=projections_set,
+        normalize=False
+    )
 
     w90data.select_bands(win_min=-8, win_max=50)
 
@@ -62,7 +62,7 @@ else:
     w90data = wberri.w90files.Wannier90data.from_npz(seedname="./Fe_wan",
                                                    files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
-system = wberri.system.System_w90(w90data=w90data, spin=True, berry=True)
+system = wberri.System_R.from_w90data(w90data=w90data, spin=True, berry=True)
 
 
 # all kpoints given in reduced coordinates

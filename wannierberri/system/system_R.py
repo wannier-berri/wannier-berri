@@ -840,8 +840,8 @@ class System_R(System):
 
         see :func:`~wannierberri.system.system_w90.system_w90` for input data and details
         """
-        from .system_w90 import system_w90
-        return system_w90(w90data=w90data, *args, **kwargs)
+        from .system_w90 import get_system_w90
+        return get_system_w90(w90data=w90data, *args, **kwargs)
 
 
     @classmethod
@@ -854,22 +854,22 @@ class System_R(System):
         return system_tb(*args, **kwargs)
 
     @classmethod
-    def from_PythTB(cls, *args, **kwargs):
+    def from_pythtb(cls, *args, **kwargs):
         """
         Create a System_R object from a pythtb model. 
         see :func:`~wannierberri.system.system_tb_py.system_PythTB` for input data and details
         """
-        from .system_tb_py import system_PythTB
-        return system_PythTB(*args, **kwargs)
+        from .system_tb_py import get_system_pythtb
+        return get_system_pythtb(*args, **kwargs)
 
     @classmethod
-    def from_TBmodels(cls, *args, **kwargs):
+    def from_tbmodels(cls, *args, **kwargs):
         """
         Create a System_R object from a TBmodels model. 
         see :func:`~wannierberri.system.system_tb_py.system_TBmodels` for input data and details
         """
-        from .system_tb_py import system_TBmodels
-        return system_TBmodels(*args, **kwargs)
+        from .system_tb_py import get_system_tbmodels
+        return get_system_tbmodels(*args, **kwargs)
 
     @classmethod
     def from_fplo(cls, *args, **kwargs):
@@ -877,8 +877,8 @@ class System_R(System):
         Create a System_R object from a FPLO calculation. 
         see :func:`~wannierberri.system.system_fplo.system_fplo` for input data and details
         """
-        from .system_fplo import system_fplo
-        return system_fplo(*args, **kwargs)
+        from .system_fplo import get_system_fplo
+        return get_system_fplo(*args, **kwargs)
 
     @classmethod
     def from_ase(cls, *args, **kwargs):
@@ -886,8 +886,8 @@ class System_R(System):
         Create a System_R object from an ASE Atoms object. 
         see :func:`~wannierberri.system.system_ASE.system_ase` for input data and details
         """
-        from .system_ASE import system_ase
-        return system_ase(*args, **kwargs)
+        from .system_ase import get_system_ase
+        return get_system_ase(*args, **kwargs)
 
     @classmethod
     def from_phonons_qe(cls, *args, **kwargs):
@@ -895,8 +895,8 @@ class System_R(System):
         Create a System_R object for phonons from a Quantum Espresso calculation. 
         see :func:`~wannierberri.system.system_phonon_qe.system_phonon_qe` for input data and details
         """
-        from .system_phonon_qe import system_phonons_qe
-        return system_phonons_qe(*args, **kwargs)
+        from .system_phonon_qe import get_system_phonons_qe
+        return get_system_phonons_qe(*args, **kwargs)
 
     @classmethod
     def from_random(cls, *args, **kwargs):
@@ -904,8 +904,8 @@ class System_R(System):
         Create a System_R object with random parameters. 
         see :func:`~wannierberri.system.system_random.system_random` for input data and details
         """
-        from .system_random import system_random
-        return system_random(*args, **kwargs)
+        from .system_random import get_system_random
+        return get_system_random(*args, **kwargs)
 
     @classmethod
     def from_sparse(cls, *args, **kwargs):
@@ -913,5 +913,5 @@ class System_R(System):
         Create a System_R object from a sparse representation. 
         see :func:`~wannierberri.system.system_sparse.system_sparse` for input data and details
         """
-        from .system_sparse import system_sparse
-        return system_sparse(*args, **kwargs)
+        from .system_sparse import get_system_sparse
+        return get_system_sparse(*args, **kwargs)

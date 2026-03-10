@@ -17,11 +17,7 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
-
-
-def System_tb(*args, **kwargs):
-    DeprecationWarning("System_tb is deprecated and will be removed in the future. Use System_R.from_tb_file instead.")
-    return system_tb(*args, **kwargs)
+from .deprecated_constructors import System_tb
 
 
 def system_tb(tb_file="wannier90_tb.dat",

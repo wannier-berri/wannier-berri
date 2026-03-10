@@ -39,7 +39,7 @@ class System:
 
     """
     The base class for describing a system. Does not have its own constructor,
-    please use the child classes, e.g  :class:`System_w90` or :class:`System_tb`
+    please use the child classes, e.g  :class:`System_R`, :class:`System_k`, :class:`System_w90`, :class:`System_fplo`, :class:`System_TB`, :class:`System_PythTB`, :class:`System_TBmodels`, :class:`System_ASE`, :class:`SystemSparse`, :class:`SystemRandom`, or :class:`System_SOC`.
 
 
     Parameters
@@ -429,6 +429,3 @@ class System_k(System):
     """
     pass
 
-
-def constructor_deprecation_warning(old_constructor_name, new_constructor_name):
-    warnings.warn(f"DeprecationWarning: {old_constructor_name} is deprecated and will be removed in the future. Use System_R.from_{new_constructor_name} instead.", DeprecationWarning)

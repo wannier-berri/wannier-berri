@@ -18,16 +18,16 @@ omega = np.linspace(0, 1., 1001)
 
 seedname = '../tests/data/Fe_Wannier90/Fe'
 try:
-    for ext in ['mmn','eig','chk','bkvec']:
+    for ext in ['mmn', 'eig', 'chk', 'bkvec']:
         if not os.path.isfile(f"{seedname}.{ext}.npz"):
             raise FileNotFoundError(f"{seedname}.{ext}.npz not found")
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname=seedname, files=['mmn','eig','chk','bkvec'],)
+    w90data = wberri.w90files.Wannier90data.from_npz(seedname=seedname, files=['mmn', 'eig', 'chk', 'bkvec'],)
 except FileNotFoundError as e:
     print(f"npz files not found, reading from w90 files and creating npz files for next time : {e}")
     w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=seedname,
-                                        files=['mmn','eig','chk'],)
+                                        files=['mmn', 'eig', 'chk'],)
     w90data.to_npz(seedname=seedname)
-system = wberri.system.System_w90(w90data=w90data, berry=True)
+system = wberri.System_R.from_w90data(w90data=w90data, berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)

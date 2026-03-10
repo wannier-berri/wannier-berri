@@ -16,12 +16,13 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
+from .deprecated_constructors import System_PythTB, System_TBmodels
 from packaging import version
 # from .Rvec import Rvec
 
 
 
-def System_tb_py(model,
+def get_system_tb_py(model,
                  module,
                  **parameters):
     """This interface initializes the System class from a tight-binding
@@ -169,13 +170,7 @@ def System_tb_py(model,
     return system
 
 
-def System_TBmodels(*args, **kwargs):
-    from .system import constructor_deprecation_warning
-    constructor_deprecation_warning("System_TBmodels", "TBmodels")
-    return system_TBmodels(*args, **kwargs)
-
-
-def system_TBmodels(tbmodel, **parameters):
+def get_system_tbmodels(tbmodel, **parameters):
     """This interface initializes the System class from a tight-binding
     model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
@@ -193,16 +188,10 @@ def system_TBmodels(tbmodel, **parameters):
     see also  parameters of the :class:`~wannierberri.System_tb_py`
     """
 
-    return System_tb_py(tbmodel, module='tbmodels', **parameters)
+    return get_system_tb_py(tbmodel, module='tbmodels', **parameters)
 
 
-def System_PythTB(*args, **kwargs):
-    from .system import constructor_deprecation_warning
-    constructor_deprecation_warning("System_PythTB", "PythTB")
-    return system_PythTB(*args, **kwargs)
-
-
-def system_PythTB(ptb_model, **parameters):
+def get_system_pythtb(ptb_model, **parameters):
     """This interface is a way to initialize the System class from a tight-binding
     model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
@@ -219,4 +208,4 @@ def system_PythTB(ptb_model, **parameters):
     -----
     see also  parameters of the :class:`~wannierberri.System_tb_py`
     """
-    return System_tb_py(ptb_model, module='pythtb', **parameters)
+    return get_system_tb_py(ptb_model, module='pythtb', **parameters)

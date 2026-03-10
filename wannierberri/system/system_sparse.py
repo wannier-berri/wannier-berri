@@ -15,15 +15,10 @@ import numpy as np
 
 from ..fourier.rvectors import Rvectors
 from .system_R import System_R
+from .deprecated_constructors import SystemSparse
 
 
-def SystemSparse(*args, **kwargs):
-    from .system import constructor_deprecation_warning
-    constructor_deprecation_warning("SystemSparse", "sparse")
-    return systemSparse(*args, **kwargs)
-
-
-def systemSparse(real_lattice,
+def get_system_sparse(real_lattice,
                  wannier_centers_red=None,
                  wannier_centers_cart=None,
                  matrices=None,

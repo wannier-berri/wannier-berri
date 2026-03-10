@@ -21,15 +21,10 @@ from .needed_data import NeededData
 from ..fourier.rvectors import Rvectors
 from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
-from .system import constructor_deprecation_warning
+from .deprecated_constructors import System_w90
 
 
-def System_w90(*args, **kwargs):
-    constructor_deprecation_warning("System_w90", "w90data")
-    return system_w90(*args, **kwargs)
-
-
-def system_w90(
+def get_system_w90(
     w90data,
     transl_inv_JM=False,
     transl_inv_MV=False,

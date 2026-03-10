@@ -606,7 +606,7 @@ def system_Haldane_TBmodels():
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import tbmodels")
     model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = System_R.from_TBmodels(model_tbmodels_Haldane)
+    system = System_R.from_tbmodels(model_tbmodels_Haldane)
     system.set_pointgroup(["C3z"])
     return system
 
@@ -618,7 +618,7 @@ def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
     model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = System_R.from_PythTB(model_pythtb_Haldane)
+    system = System_R.from_pythtb(model_pythtb_Haldane)
     system.set_pointgroup(["C3z"])
     return system
 
@@ -628,7 +628,7 @@ def system_SSH_PythTB():
     """Create system for SSH model using PythTB"""
     # Load system
     model_pythtb_SSH = wb_models.SSH_ptb(delta=0.1, hop1=1.0, hop2=0.5)
-    system = System_R.from_PythTB(model_pythtb_SSH)
+    system = System_R.from_pythtb(model_pythtb_SSH)
     return system
 
 
@@ -637,7 +637,7 @@ def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
     model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
-    system = System_R.from_PythTB(model_pythtb_KaneMele_odd, spin=True)
+    system = System_R.from_pythtb(model_pythtb_KaneMele_odd, spin=True)
     system.set_pointgroup(["C3z", "TimeReversal"])
     return system
 
@@ -647,7 +647,7 @@ def system_Chiral_OSD():
     """Create system for Haldane model using PythTB"""
     # Load system
     model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
-    system = System_R.from_PythTB(model_pythtb_Chiral_OSD, spin=True)
+    system = System_R.from_pythtb(model_pythtb_Chiral_OSD, spin=True)
     # system.set_pointgroup(["C3z","TimeReversal"])
     return system
 
@@ -660,7 +660,7 @@ def system_Chiral_OSD():
 def system_Chiral_left():
     model_Chiral_left = wb_models.Chiral(
         delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
-    system = System_R.from_PythTB(model_Chiral_left)
+    system = System_R.from_pythtb(model_Chiral_left)
     system.set_pointgroup(["C3z"])
     system.set_spin_eigenstates([1, -1])
     return system
@@ -670,7 +670,7 @@ def system_Chiral_left():
 def system_Chiral_left_TR():
     model_Chiral_left_TR = wb_models.Chiral(
         delta=2, hop1=1, hop2=1. / 3, phi=-np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
-    system = System_R.from_PythTB(model_Chiral_left_TR)
+    system = System_R.from_pythtb(model_Chiral_left_TR)
     system.set_pointgroup(["C3z"])
     system.set_spin_eigenstates([-1, 1])
     return system
@@ -680,7 +680,7 @@ def system_Chiral_left_TR():
 def system_Chiral_right():
     model_Chiral_right = wb_models.Chiral(
         delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.0, hopz_right=0.2, hopz_vert=0)
-    system = System_R.from_PythTB(model_Chiral_right)
+    system = System_R.from_pythtb(model_Chiral_right)
     system.set_pointgroup(["C3z"])
     system.set_spin_eigenstates([1, -1])
     return system
@@ -702,7 +702,7 @@ def system_CuMnAs_2d_broken():
     # These parameters provide ~0.4eV gap between conduction and valence bands
     # and splitting into subbands is within 0.04 eV
     model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08, l=0.8, J=1, dt=0.01)
-    system = System_R.from_PythTB(model_CuMnAs_2d_broken)
+    system = System_R.from_pythtb(model_CuMnAs_2d_broken)
     return system
 
 

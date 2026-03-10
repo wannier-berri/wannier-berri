@@ -2,7 +2,7 @@ import pickle
 from gpaw import GPAW
 # import numpy as np
 import ray
-from wannierberri.system.system_w90 import System_w90
+from wannierberri.system import System_R
 from wannierberri.w90files.amn import AMN
 from wannierberri.w90files.w90data import Wannier90data
 from irrep.bandstructure import BandStructure
@@ -75,9 +75,9 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         symmetrizer = SAWF.from_npz(f"symmetrizer-spin-{spin_channel}.npz")
     except FileNotFoundError:
         symmetrizer = SAWF.from_irrep(bandstructure,
-                                        unitary_params={'error_threshold': 0.1,
-                                                        'warning_threshold': 0.01,
-                                                        'nbands_upper_skip': 8})
+                                      unitary_params={'error_threshold': 0.1,
+                                                      'warning_threshold': 0.01,
+                                                      'nbands_upper_skip': 8})
         symmetrizer.to_npz(f"symmetrizer-spin-{spin_channel}.npz")
     symmetrizer.set_D_wann_from_projections(proj_set)
 
@@ -96,7 +96,7 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
+    System_R.from_w90data(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
     w90data.get_file('chk').to_npz(save_name + ".chk.npz")
 
 

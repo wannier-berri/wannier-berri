@@ -34,7 +34,7 @@ for data_dir in ['diamond']:
 
 
     # for projname in ['s_bond', 'p_bond', 'sp_bond', 'sp3']:
-    for projname in [ 's_bond']:
+    for projname in ['s_bond']:
         # for projname in ['sp3']:
         if projname == 's_bond':
             projset = ProjectionsSet([proj_s_bond])
@@ -74,8 +74,8 @@ for data_dir in ['diamond']:
         exit()
 
         w90data = wberri.w90files.Wannier90data.from_w90_files(
-                        seedname='../../tests/data/' + data_dir + '/diamond', 
-                        files=['mmn', 'eig', 'win'])
+            seedname='../../tests/data/' + data_dir + '/diamond',
+            files=['mmn', 'eig', 'win'])
         w90data.set_file("amn", amn)
         w90data.set_symmetrizer(symmetrizer)
         w90data.select_bands(win_min=win_min, win_max=win_max)
@@ -90,7 +90,7 @@ for data_dir in ['diamond']:
             localise=True,
         )
 
-        systems[data_dir + "-" + projname] = wberri.system.System_w90(w90data=w90data, symmetrize=False)
+        systems[data_dir + "-" + projname] = wberri.System_R.from_w90data(w90data=w90data, symmetrize=False)
 
 system = list(systems.values())[0]
 # Now calculate bandstructure
