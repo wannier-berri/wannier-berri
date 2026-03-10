@@ -428,3 +428,7 @@ class System_k(System):
     please use the child classes, e.g  :class:`SystemKP`.
     """
     pass
+
+
+def constructor_deprecation_warning(old_constructor_name, new_constructor_name):
+    warnings.warn(f"DeprecationWarning: {old_constructor_name} is deprecated and will be removed in the future. Use System_R.from_{new_constructor_name} instead.", DeprecationWarning)

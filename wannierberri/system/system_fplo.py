@@ -25,7 +25,13 @@ from .needed_data import NeededData
 bohr = physical_constants['Bohr radius'][0] / angstrom
 
 
-def System_fplo(hamdata="+hamdata",
+def System_fplo(*args, **kwargs):
+    from .system import constructor_deprecation_warning
+    constructor_deprecation_warning("System_fplo", "FPLO")
+    return system_fplo(*args, **kwargs)
+
+
+def system_fplo(hamdata="+hamdata",
                 mp_grid=None,
                 **parameters):
     """

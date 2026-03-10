@@ -17,7 +17,13 @@ from ..fourier.rvectors import Rvectors
 from .system_R import System_R
 
 
-def SystemSparse(real_lattice,
+def SystemSparse(*args, **kwargs):
+    from .system import constructor_deprecation_warning
+    constructor_deprecation_warning("SystemSparse", "sparse")
+    return systemSparse(*args, **kwargs)
+
+
+def systemSparse(real_lattice,
                  wannier_centers_red=None,
                  wannier_centers_cart=None,
                  matrices=None,

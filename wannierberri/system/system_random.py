@@ -1,12 +1,17 @@
 import warnings
 import numpy as np
-from .system_R import System_R
 from .system import num_cart_dim
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
 
 
-def SystemRandom(num_wann,
+def SystemRandom(*args, **kwargs):
+    from .system import constructor_deprecation_warning
+    constructor_deprecation_warning("SystemRandom", "random")
+    return systemRandom(*args, **kwargs)
+
+
+def systemRandom(num_wann,
                  nRvec=10,
                  real_lattice=None,
                  max_R=5,
@@ -31,6 +36,7 @@ def SystemRandom(num_wann,
         parameters["name"] = "random"
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
+    from .system_R import System_R
     self = System_R(**parameters)
     if real_lattice is None:
         while True:
