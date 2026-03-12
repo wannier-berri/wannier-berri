@@ -15,11 +15,10 @@
 import numpy as np
 from termcolor import cprint
 
-from .system_R import System_R
 from ..fourier.rvectors import Rvectors
 
 
-def System_ASE(
+def get_system_ase(
         ase_wannier,
         ws_dist_tol=1e-5,
         **parameters):
@@ -38,6 +37,7 @@ def System_ASE(
 
     if "name" not in parameters:
         parameters["name"] = "ASE"
+    from .system_R import System_R
     system = System_R(force_internal_terms_only=True, **parameters)
     ase_wannier.translate_all_to_cell()
     system.set_real_lattice(np.array(ase_wannier.unitcell_cc))

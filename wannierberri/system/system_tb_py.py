@@ -15,14 +15,13 @@ import numpy as np
 from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
-from .system_R import System_R
 from .needed_data import NeededData
 from packaging import version
 # from .Rvec import Rvec
 
 
 
-def System_tb_py(model,
+def get_system_tb_py(model,
                  module,
                  **parameters):
     """This interface initializes the System class from a tight-binding
@@ -45,6 +44,7 @@ def System_tb_py(model,
     names = {'tbmodels': 'TBmodels', 'pythtb': 'PythTB'}
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
+    from .system_R import System_R
     system = System_R(force_internal_terms_only=True,
                      name=f'model_{names[module]}',
                      **parameters)
@@ -121,8 +121,9 @@ def System_tb_py(model,
         for hop in model.hop.items():
             R = np.array(hop[0], dtype=int)
             hops = np.array(hop[1]).reshape((system.num_wann, system.num_wann))
-            iR = int(np.argwhere(np.all((R - iRvec[:, :dimr]) == 0, axis=1)))
-            inR = int(np.argwhere(np.all((-R - iRvec[:, :dimr]) == 0, axis=1)))
+            print(np.argwhere(np.all((R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0])
+            iR = int(np.argwhere(np.all((R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0][0])
+            inR = int(np.argwhere(np.all((-R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0][0])
             Ham_R[iR] += hops
             Ham_R[inR] += np.conjugate(hops.T)
     elif module == 'pythtb':
@@ -168,7 +169,7 @@ def System_tb_py(model,
     return system
 
 
-def System_TBmodels(tbmodel, **parameters):
+def get_system_tbmodels(tbmodel, **parameters):
     """This interface initializes the System class from a tight-binding
     model created with `TBmodels. <http://z2pack.ethz.ch/tbmodels/doc/1.3/index.html>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
@@ -186,10 +187,10 @@ def System_TBmodels(tbmodel, **parameters):
     see also  parameters of the :class:`~wannierberri.System_tb_py`
     """
 
-    return System_tb_py(tbmodel, module='tbmodels', **parameters)
+    return get_system_tb_py(tbmodel, module='tbmodels', **parameters)
 
 
-def System_PythTB(ptb_model, **parameters):
+def get_system_pythtb(ptb_model, **parameters):
     """This interface is a way to initialize the System class from a tight-binding
     model created with  `PythTB. <http://www.physics.rutgers.edu/pythtb/>`_
     It defines the Hamiltonian matrix Ham_R (from hoppings matrix elements)
@@ -206,5 +207,4 @@ def System_PythTB(ptb_model, **parameters):
     -----
     see also  parameters of the :class:`~wannierberri.System_tb_py`
     """
-
-    return System_tb_py(ptb_model, module='pythtb', **parameters)
+    return get_system_tb_py(ptb_model, module='pythtb', **parameters)

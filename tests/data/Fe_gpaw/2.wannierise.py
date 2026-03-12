@@ -1,6 +1,6 @@
 import numpy as np
 import ray
-from wannierberri.system.system_w90 import System_w90
+from wannierberri.system import System_w90
 from wannierberri.w90files.amn import AMN
 from wannierberri.w90files.w90data import Wannier90data
 from irrep.bandstructure import BandStructure

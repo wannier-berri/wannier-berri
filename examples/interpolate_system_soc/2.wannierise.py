@@ -19,12 +19,12 @@ for m in 0.0, 2.2:
     w90data = Wannier90dataSOC.from_gpaw(
         calculator=gpaw_calc,
         projections=proj_set,
-        mp_grid=(4,4,4),
+        mp_grid=(4, 4, 4),
         spacegroup=sg,
     )
 
     w90data.select_bands(win_min=-100,
-                            win_max=50)
+                         win_max=50)
 
     w90data.wannierise(
         froz_min=-np.inf,
@@ -41,4 +41,3 @@ for m in 0.0, 2.2:
     system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False)
     system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
     system.save_npz(f"system_soc_m{m:.1f}")
-

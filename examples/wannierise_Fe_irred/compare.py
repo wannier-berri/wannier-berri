@@ -85,8 +85,8 @@ print(f"Wannier centers differ between full and irreducible bandstructure: "
 )
 
 
-system_irr = wberri.system.System_w90(w90data=w90data_irr, spin=True, berry=True, SHCqiao=True)
-system_full = wberri.system.System_w90(w90data=w90data_full, spin=True, berry=True, SHCqiao=True)
+system_irr = wberri.System_R.from_w90data(w90data=w90data_irr, spin=True, berry=True, SHCqiao=True)
+system_full = wberri.System_R.from_w90data(w90data=w90data_full, spin=True, berry=True, SHCqiao=True)
 
 print(system_irr.pointgroup)
 print(system_full.pointgroup)

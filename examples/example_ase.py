@@ -52,7 +52,7 @@ else:
 k1 = k2 = 1. / 3
 
 if do_wberri:
-    system = wberri.System_ASE(wan, berry=True)
+    system = wberri.System_R.from_ase(wan, berry=True)
     wberri.ray_init()
 
 
