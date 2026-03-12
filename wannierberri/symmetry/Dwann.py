@@ -1,7 +1,6 @@
 import numpy as np
 from .orbitals import num_orbitals
 from .unique_list import UniqueListMod1
-from irrep.symmetry_operation import get_atom_map
 
 
 class Dwann:
@@ -57,7 +56,7 @@ class Dwann:
                 orbitalrotator=None,
                 basis_list=None,
                 spinor=False):
-
+        
         self.nsym = spacegroup.size
         if spinor:
             self.spinor = True
@@ -88,6 +87,7 @@ class Dwann:
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=int)
 
+        from irrep.symmetry_operation import get_atom_map
         for isym, symop in enumerate(spacegroup.symmetries):
             self.atommap[:, isym], self.T[:, isym, :] = get_atom_map(symop=symop, positions=self.orbit)
 

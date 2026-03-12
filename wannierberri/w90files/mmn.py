@@ -6,7 +6,7 @@ import numpy as np
 
 from .utility import convert
 from .w90file import W90_file, auto_kptirr, check_shape
-from ..io import sparselist_to_dict
+from .io import sparselist_to_dict
 from ..utility import cached_einsum
 
 

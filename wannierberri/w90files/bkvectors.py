@@ -1,7 +1,7 @@
 import numpy as np
 
 from .utility import get_mp_grid
-from ..io import sparselist_to_dict
+from .io import sparselist_to_dict
 from .w90file import W90_file, check_shape
 
 

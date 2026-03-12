@@ -3,8 +3,8 @@ from time import time
 import warnings
 import numpy as np
 from .utility import readstr
-from ..io import FortranFileR, SavableNPZ
 from ..utility import alpha_A, beta_A
+from .io import SavableNPZ
 
 
 class CheckPoint(SavableNPZ):
@@ -128,6 +128,7 @@ class CheckPoint(SavableNPZ):
         bk_complete_tol = bk_complete_tol  # will be used in set_bk
         t0 = time()
         seedname = seedname.strip()
+        from .fortio import FortranFileR
         FIN = FortranFileR(seedname + '.chk')
         readint = lambda: FIN.read_record('i4')
         readfloat = lambda: FIN.read_record('f8')

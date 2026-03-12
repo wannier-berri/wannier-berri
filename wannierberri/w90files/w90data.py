@@ -8,8 +8,6 @@
 # https://github.com/stepan-tsirkin/wannier-berri            #
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
-#   some parts of this file are originate                    #
-# from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
 import datetime
@@ -408,6 +406,7 @@ class Wannier90data:
                seedname="wannier90",
                files=None
                ):
+        os.makedirs(os.path.dirname(seedname), exist_ok=True)
         if files is None:
             files = self._files.keys()
         for f in files:

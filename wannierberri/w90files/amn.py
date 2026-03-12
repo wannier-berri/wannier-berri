@@ -4,7 +4,6 @@ import numpy as np
 from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_radial_int, Projector
-from .utility import str2arraymmn
 from .w90file import W90_file, auto_kptirr, check_shape
 
 
@@ -58,6 +57,7 @@ class AMN(W90_file):
         block = NW * NB
         allmmn = (f_amn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
+        from .utility import str2arraymmn
         data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
         return AMN(data=data)
 

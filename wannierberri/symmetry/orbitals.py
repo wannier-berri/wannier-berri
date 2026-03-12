@@ -1,6 +1,6 @@
 from numpy import sqrt as sq
 import numpy as np
-import sympy as sym
+
 from functools import cached_property, lru_cache
 from scipy.special import spherical_jn
 from scipy.interpolate import CubicSpline
@@ -79,9 +79,10 @@ for k in basis_orbital_list:
 class Orbitals:
 
     def __init__(self):
-        x = sym.Symbol('x')
-        y = sym.Symbol('y')
-        z = sym.Symbol('z')
+        import sympy
+        x = sympy.Symbol('x')
+        y = sympy.Symbol('y')
+        z = sympy.Symbol('z')
         self.xyz = np.transpose([x, y, z])
         orbitals = {}
         orbitals['s'] = lambda x, y, z: 1 + 0 * x
@@ -90,19 +91,19 @@ class Orbitals:
         orbitals['py'] = lambda x, y, z: y
         orbitals['pz'] = lambda x, y, z: z
 
-        orbitals['dz2'] = lambda x, y, z: (2 * z * z - x * x - y * y) / (2 * sym.sqrt(3.0))
+        orbitals['dz2'] = lambda x, y, z: (2 * z * z - x * x - y * y) / (2 * sympy.sqrt(3.0))
         orbitals['dxz'] = lambda x, y, z: x * z
         orbitals['dyz'] = lambda x, y, z: y * z
         orbitals['dx2-y2'] = lambda x, y, z: (x * x - y * y) / 2
         orbitals['dxy'] = lambda x, y, z: x * y
 
-        orbitals['fz3'] = lambda x, y, z: z * (2 * z * z - 3 * x * x - 3 * y * y) / (2 * sym.sqrt(15.0))
-        orbitals['fxz2'] = lambda x, y, z: x * (4 * z * z - x * x - y * y) / (2 * sym.sqrt(10.0))
-        orbitals['fyz2'] = lambda x, y, z: y * (4 * z * z - x * x - y * y) / (2 * sym.sqrt(10.0))
+        orbitals['fz3'] = lambda x, y, z: z * (2 * z * z - 3 * x * x - 3 * y * y) / (2 * sympy.sqrt(15.0))
+        orbitals['fxz2'] = lambda x, y, z: x * (4 * z * z - x * x - y * y) / (2 * sympy.sqrt(10.0))
+        orbitals['fyz2'] = lambda x, y, z: y * (4 * z * z - x * x - y * y) / (2 * sympy.sqrt(10.0))
         orbitals['fzx2-zy2'] = lambda x, y, z: z * (x * x - y * y) / 2
         orbitals['fxyz'] = lambda x, y, z: x * y * z
-        orbitals['fx3-3xy2'] = lambda x, y, z: x * (x * x - 3 * y * y) / (2 * sym.sqrt(6.0))
-        orbitals['f3yx2-y3'] = lambda x, y, z: y * (3 * x * x - y * y) / (2 * sym.sqrt(6.0))
+        orbitals['fx3-3xy2'] = lambda x, y, z: x * (x * x - 3 * y * y) / (2 * sympy.sqrt(6.0))
+        orbitals['f3yx2-y3'] = lambda x, y, z: y * (3 * x * x - y * y) / (2 * sympy.sqrt(6.0))
 
         self.orb_function_dic = {key: [orbitals[k] for k in val] for key, val in orbitals_sets_dic.items() if key in basis_shells_list}
         self.orb_chara_dic = {
@@ -173,6 +174,7 @@ class Orbitals:
         The rotation matrix A is defined as
         phi_j(R^-1 r) = phi_i(r) A_ij where phi_i is the original orbital, phi'_i is the rotated orbital
         """
+        import sympy
         orb_dim = num_orbitals(orb_symbol)
         orb_rot_mat = np.zeros((orb_dim, orb_dim), dtype=float)
         xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz)
@@ -193,19 +195,19 @@ class Orbitals:
                 orb_rot_mat[1, i] = subs[1].evalf()
                 orb_rot_mat[2, i] = subs[2].evalf()
             elif orb_symbol == 'd':
-                orb_rot_mat[0, i] = (2 * subs[0] - subs[3] - subs[5]) / sym.sqrt(3.0)
+                orb_rot_mat[0, i] = (2 * subs[0] - subs[3] - subs[5]) / sympy.sqrt(3.0)
                 orb_rot_mat[1, i] = subs[1].evalf()
                 orb_rot_mat[2, i] = subs[2].evalf()
                 orb_rot_mat[3, i] = (subs[3] - subs[5]).evalf()
                 orb_rot_mat[4, i] = subs[4].evalf()
             elif orb_symbol == 'f':
-                orb_rot_mat[0, i] = (subs[0] * sym.sqrt(15.0)).evalf()
-                orb_rot_mat[1, i] = (subs[1] * sym.sqrt(10.0) / 2).evalf()
-                orb_rot_mat[2, i] = (subs[2] * sym.sqrt(10.0) / 2).evalf()
+                orb_rot_mat[0, i] = (subs[0] * sympy.sqrt(15.0)).evalf()
+                orb_rot_mat[1, i] = (subs[1] * sympy.sqrt(10.0) / 2).evalf()
+                orb_rot_mat[2, i] = (subs[2] * sympy.sqrt(10.0) / 2).evalf()
                 orb_rot_mat[3, i] = (2 * subs[3] + 3 * subs[0]).evalf()
                 orb_rot_mat[4, i] = subs[4].evalf()
-                orb_rot_mat[5, i] = ((2 * subs[5] + subs[1] / 2) * sym.sqrt(6.0)).evalf()
-                orb_rot_mat[6, i] = ((-2 * subs[6] - subs[2] / 2) * sym.sqrt(6.0)).evalf()
+                orb_rot_mat[5, i] = ((2 * subs[5] + subs[1] / 2) * sympy.sqrt(6.0)).evalf()
+                orb_rot_mat[6, i] = ((-2 * subs[6] - subs[2] / 2) * sympy.sqrt(6.0)).evalf()
 
         return orb_rot_mat
 
@@ -349,8 +351,6 @@ class Bessel_j_radial_int:
         self.kmax = kmax
         self.kgrid = self._get_grid(k0, kmax, dk, dtk)
         self.xgrid = self._get_grid(x0, xmax, dx, dtx)
-        # print(f"the xgrid has {len(self.xgrid)} points")
-        # print(f"the kgrid has {len(self.kgrid)} points")
         self.kmin = kmin
 
     @classmethod
@@ -362,25 +362,6 @@ class Bessel_j_radial_int:
             xgrid.append(x0 * np.exp(t))
             t += dt
         return np.array(xgrid)
-
-    # @classmethod
-    # def _get_grid_wannier90(cls, x0, xmax, dx, dtx):
-    #     xmin=-6
-    #     dx=0.025
-    #     rmax = 10
-    #     mesh_r = int((np.log(rmax)-xmin)/dx) +1
-    #     r = np.zeros(mesh_r)
-    #     rij = np.zeros(mesh_r)
-    #     for ir in range(mesh_r):
-    #         x = xmin + ir*dx
-    #         r[ir] = np.exp(x)
-
-
-
-        # def set_spline(self, l, n=1):
-        #     if (l, n) not in self.splines:
-        #         self.splines[(l, n)] = self.get_spline(l, n)
-        #     return self.splines[(l, n)]
 
 
     @lru_cache
