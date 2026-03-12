@@ -105,7 +105,7 @@ def test_create_w90files_diamond_irred(select_grid):
                             orbital='s',
                             spacegroup=bandstructure.spacegroup
                             )
-    proj_set = wberri._symmetry_str.projections.ProjectionsSet(projections=[projection])
+    proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[projection])
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "symmetrizer"],
@@ -324,7 +324,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
     proj_p = Projection(position_num=pos, orbital='p', spacegroup=bandstructure.spacegroup)
     proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
-    proj_set = wberri._symmetry_str.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
+    proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
 
     w90data = wberri.w90files.Wannier90data.from_bandstructure(
         bandstructure,

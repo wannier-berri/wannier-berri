@@ -18,7 +18,7 @@ spacegroup = bandstructure.spacegroup
 spacegroup.show()
 # exit()
 # symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={False}.sawf.npz")
-symmetrizer = wb._symmetry_str.sawf.SymmetrizerSAWF.from_irrep(bandstructure)
+symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_irrep(bandstructure)
 
 projection_s = Projection(orbital='s', position_num=[0, 0, 0], spacegroup=spacegroup)
 projection_p = Projection(orbital='p', position_num=[0, 0, 0], spacegroup=spacegroup)

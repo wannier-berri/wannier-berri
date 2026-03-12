@@ -41,10 +41,10 @@ from termcolor import cprint
 # import irrep
 # assert version.parse(irrep.__version__) >= version.parse("2.3.2"), \
 #     f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
-_symmetry_str = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
+_need_for_symmetry_str = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
 _needed_packages = {
     "irrep": "symmetry related ",
-    "spglib": _symmetry_str,
+    "spglib": _need_for_symmetry_str,
     "numpy": "ESSENTIAL",
     "scipy": "ESSENTIAL",
     "spgrep": "projections searcher",
@@ -52,7 +52,7 @@ _needed_packages = {
     "pyfftw": "fast Fourier transforms (optional, otherwise uses numpy's FFT)",
     "seekpath": "automatic generation of k-point paths",
     "matplotlib": "plotting",
-    "sympy": _symmetry_str,
+    "sympy": _need_for_symmetry_str,
     "fortio": "reading Fortran unformatted files (uHu, chk, spn, unk, …)",
     "gpaw": "interface with GPAW",
     "ase": "interface with ASE and GPAW",
