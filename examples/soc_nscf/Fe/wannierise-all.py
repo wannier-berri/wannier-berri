@@ -1,7 +1,7 @@
 from gpaw import GPAW
 import numpy as np
 import ray
-from wannierberri.system.system_w90 import System_w90
+from wannierberri.system import System_R
 from wannierberri.w90files.amn import AMN
 from wannierberri.w90files.w90data import Wannier90data
 from irrep.bandstructure import BandStructure
@@ -37,9 +37,9 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
 
     amn = AMN.from_bandstructure(bandstructure, projections=proj_set)
     symmetrizer = SAWF.from_irrep(bandstructure,
-                                    unitary_params={'error_threshold': 0.1,
-                                                    'warning_threshold': 0.01,
-                                                    'nbands_upper_skip': 8 * (2 if spinor else 1)})
+                                  unitary_params={'error_threshold': 0.1,
+                                                  'warning_threshold': 0.01,
+                                                  'nbands_upper_skip': 8 * (2 if spinor else 1)})
     symmetrizer.set_D_wann_from_projections(proj_set)
 
     w90data = Wannier90data.from_w90_files(prefix, files=["win", "eig", "mmn", "amn"])
@@ -57,7 +57,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=False, berry=True).save_npz(save_name)
+    System_R.from_w90data(w90data=w90data, symmetrize=False, berry=True).save_npz(save_name)
     w90data.get_file('chk').to_npz(save_name + ".chk.npz")
 
 

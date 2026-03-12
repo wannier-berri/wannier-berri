@@ -9,7 +9,7 @@ import os
 import shutil
 
 from wannierberri.evaluate_k import evaluate_k_path
-from wannierberri.system.system_w90 import System_w90
+from wannierberri.system import System_w90
 # from wannierberri.w90files.win import WIN
 # from wannierberri.w90files.chk import CheckPoint as CHK
 

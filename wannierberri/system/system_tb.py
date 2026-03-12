@@ -17,10 +17,9 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
-from .system_R import System_R
 
 
-def System_tb(tb_file="wannier90_tb.dat",
+def system_tb(tb_file="wannier90_tb.dat",
               convention_II_to_I=True,
               wannier_centers_cart=None,
               **parameters):
@@ -49,6 +48,7 @@ def System_tb(tb_file="wannier90_tb.dat",
         parameters["name"] = os.path.splitext(os.path.split(tb_file)[-1])[0]
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
+    from .system_R import System_R
     system = System_R(**parameters)
     for key in needed_data.matrices:
         if key not in ['Ham', 'AA']:

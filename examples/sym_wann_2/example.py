@@ -9,21 +9,24 @@ from irrep.spacegroup import SpaceGroup
 from matplotlib import pyplot
 import numpy as np
 import wannierberri as wberri
-from wannierberri.system import System_w90
-from wannierberri.symmetry.sawf import SymmetrizerSAWF
+from wannierberri.system import System_R
+from wannierberri.w90files import Wannier90data
 from wannierberri.symmetry.projections import Projection
+from wannierberri.symmetry.sawf import SymmetrizerSAWF
 from time import time
 
 path_data = "../../tests/data/Fe_sym_Wannier90/Fe_sym."
 for ext in ["amn", "mmn", "eig", "win", "chk"]:
     shutil.copyfile(path_data + ext, "./Fe_sym." + ext)
 
-system_1 = System_w90("Fe_sym", berry=True, silent=True)
+w90data_1 = Wannier90data.from_w90_files("Fe_sym", files=['mmn', 'eig', 'chk'],)
+system_1 = System_R.from_w90data(w90data_1, berry=True, silent=True)
 
 t10 = time()
 system_1.symmetrize(proj=["Fe:sp3d2;t2g"], atom_name=["Fe"], positions=[[0, 0, 0]], magmom=[[0, 0, 1]], soc=True)
 t11 = time()
-system_2 = System_w90("Fe_sym", berry=True, silent=True)
+w90data_2 = Wannier90data.from_w90_files("Fe_sym", files=['mmn', 'eig', 'chk'],)
+system_2 = System_R.from_w90data(w90data_2, berry=True, silent=True)
 #
 t20 = time()
 symmetrizer = SymmetrizerSAWF()

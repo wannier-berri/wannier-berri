@@ -8,7 +8,9 @@ import numpy as np
 
 
 seedname = "../../tests/data/Fe_sym_Wannier90/Fe_sym"
-system0 = wberri.system.System_w90(seedname, berry=True, spin=True, )
+w90data = wberri.w90files.Wannier90data.from_w90_files(seedname, 
+                                                       files=['mmn', 'eig', 'chk', 'spn'],)
+system0 = wberri.System_R.from_w90data(w90data, berry=True, spin=True)
 
 system_raw = copy.deepcopy(system0)
 

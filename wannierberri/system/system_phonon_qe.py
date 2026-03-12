@@ -3,7 +3,6 @@ import os.path
 import numpy as np
 
 from ..fourier.rvectors import Rvectors
-from .system_R import System_R
 from scipy import constants as const
 from ..factors import Ry_eV
 
@@ -26,7 +25,7 @@ def _str2array(s, dtype=float):
         raise ValueError(f"dtype = '{dtype}' is not supported by _str2array")
 
 
-def System_Phonon_QE(
+def get_system_phonons_qe(
         seedname,
         fftlib='fftw',
         asr=True,
@@ -52,6 +51,7 @@ def System_Phonon_QE(
 
     if "name" not in parameters:
         parameters["name"] = os.path.split(seedname)[-1]
+    from .system_R import System_R
     system = System_R(**parameters)
     system.is_phonon = True
     with open(seedname + ".dyn0", "r") as f:

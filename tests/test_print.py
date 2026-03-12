@@ -3,4 +3,6 @@ import wannierberri as wb
 
 
 def test_print():
-    wb.welcome()
+    versions = wb.welcome()
+    for k in wb._needed_packages.keys():
+        assert k in versions

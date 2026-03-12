@@ -39,7 +39,7 @@ class System:
 
     """
     The base class for describing a system. Does not have its own constructor,
-    please use the child classes, e.g  :class:`System_w90` or :class:`System_tb`
+    please use the child classes, e.g  :class:`System_R`, :class:`System_KP` or :class:`System_SOC`.
 
 
     Parameters

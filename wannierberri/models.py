@@ -437,3 +437,52 @@ def Chiral_OSD():
     my_model.set_hop((1.j * l2 / a) * (-a1[0] * P1 - a1[1] * P2 + a3[2] * P3), 1, 1, [-1, 0, 1])
     my_model.set_hop((1.j * l2 / a) * ((a1[0] - a2[0]) * P1 + (a1[1] - a2[1]) * P2 + a3[2] * P3), 1, 1, [1, -1, 1])
     return my_model
+
+
+def model_1d_pythtb(Delta=1, spinor_manual=False,
+                    hoppings=None):
+    """
+    Create a 1D model with two orbitals and spin, where the spin is 
+    either implemented manually (with 4 orbitals) or using the spinor 
+    features of PythTB (with 2 spinzul orbitals). 
+
+    Parameters
+    -----------
+    Delta : float
+        half difference between the on-site potentials of the two atoms
+    spinor_manual : bool
+        whether to implement the spin degree of freedom manually (with 4 orbitals) or using the spinor features of PythTB (with 2 spinful orbitals)
+    hoppings : list of 8 floats, optional
+        list of 8 hopping parameters. If None, random hoppings will be generated. The first 4 hoppings will be used for the spin-independent
+    """
+    import pythtb
+    from wannierberri.models import NEW_PYTHTB_VERSION
+    from packaging import version
+    lat = [[1.0]]
+    double = 2 if spinor_manual else 1
+    orb = [[0]] * double + [[0.5]] * double
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        model1d = pythtb.tb_model(1, 1, lat, orb,
+                                  nspin=1 if spinor_manual else 2)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0])
+        model1d = pythtb.TBModel(lattice, spinful=not spinor_manual)
+
+    model1d.set_onsite([-Delta] * double + [Delta] * double)
+
+    if hoppings is None:
+        hoppings = np.random.random(8)
+    a = hoppings[:4]
+    b = hoppings[4:8]
+
+    if spinor_manual:
+        pauli = np.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[0, -1j], [1j, 0]], [[1, 0], [0, -1]]])
+        for i in range(2):
+            for j in range(2):
+                model1d.set_hop(a.dot(pauli[:, i, j]), 0 + i, 2 + j, [0])
+                model1d.set_hop(b.dot(pauli[:, i, j]), 2 + i, 0 + j, [-1])
+    else:
+        model1d.set_hop(a, 0, 1, [0])
+        model1d.set_hop(b, 1, 0, [-1])
+
+    return model1d

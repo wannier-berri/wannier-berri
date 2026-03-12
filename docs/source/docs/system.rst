@@ -50,24 +50,20 @@ Now WannierBerri can construct wannier functions on its own.see :ref:`sec-wannie
 Wannier90
 +++++++++++++++++++++++++
 
-.. autoclass:: wannierberri.system.System_w90
-   :show-inheritance:
-
-
+.. automethod:: wannierberri.system_R.from_w90_data
 
 
 FPLO
 +++++++++++++++++++++++++
 
-.. autoclass:: wannierberri.system.System_fplo
-   :show-inheritance:
+.. automethod:: wannierberri.system_R.from_fplo
+
 
 
 ASE
 +++++++++++++++++++++++++
 
-.. autoclass:: wannierberri.system.System_ASE
-   :show-inheritance:
+.. automethod:: wannierberri.system_R.from_ase
 
 
 
@@ -80,27 +76,22 @@ From tight-binding models
 ``wannier90_tb.dat`` file
 +++++++++++++++++++++++++
 
-.. autoclass:: wannierberri.system.System_tb
-   :show-inheritance:
+.. automethod:: wannierberri.system_R.from_tb_dat
 
 PythTB
 +++++++++
 
-.. autoclass:: wannierberri.system.System_PythTB
-   :show-inheritance:
+.. automethod:: wannierberri.system_R.from_pythtb
 
 TBmodels
 +++++++++
 
-.. autoclass:: wannierberri.system.System_TBmodels
-   :show-inheritance:
+.. automethod:: wannierberri.system_R.from_tbmodels
 
 Randomly generated
 ----------------------------------
 
-.. autoclass:: wannierberri.system.SystemRandom
-   :show-inheritance:
-
+.. automethod:: wannierberri.system.random_system
 
 k-space systems
 ================

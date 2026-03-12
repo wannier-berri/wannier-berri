@@ -25,7 +25,7 @@ from .needed_data import NeededData
 bohr = physical_constants['Bohr radius'][0] / angstrom
 
 
-def System_fplo(hamdata="+hamdata",
+def get_system_fplo(hamdata="+hamdata",
                 mp_grid=None,
                 **parameters):
     """
