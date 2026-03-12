@@ -258,13 +258,13 @@ class SystemSOC(System_R):
     def essential_properties(self):
         return super().essential_properties + ['cell']
 
-    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         # if not self.silent:
         print(f"Saving SystemSOC to {path}")
-        super().save_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
-        self.system_up.save_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+        super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
         if self.nspin == 2:
-            self.system_down.save_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+            self.system_down.to_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
 
     @property
     def has_soc_R(self):

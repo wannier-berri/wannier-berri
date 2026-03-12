@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 import pickle
 import wannierberri as wberri
-from wannierberri import point_symmetry as SYM
+from wannierberri.symmetry import point_symmetry as SYM
 from pathlib import Path
 from wannierberri import models as wb_models
 from irrep.spacegroup import SpaceGroup

@@ -408,6 +408,7 @@ class Wannier90data:
                seedname="wannier90",
                files=None
                ):
+        os.makedirs(os.path.dirname(seedname), exist_ok=True)
         if files is None:
             files = self._files.keys()
         for f in files:

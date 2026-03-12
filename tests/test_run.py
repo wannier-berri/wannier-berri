@@ -309,7 +309,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         _comp = "-" + comp if comp not in ("", None) else ""
         prec = extra_precision[quant] if quant in extra_precision else 2e-8
 
-        wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
+        wberri.result.tabresult.npz_to_fermisurfer(npz_file=npz_tabulate,
                                   quantity=None if quant == "Energy" else quant,
                                   component=comp,
                                   frmsf_file=os.path.join(OUTPUT_DIR_RUN,
