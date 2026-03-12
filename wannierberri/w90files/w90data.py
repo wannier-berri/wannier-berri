@@ -8,8 +8,6 @@
 # https://github.com/stepan-tsirkin/wannier-berri            #
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
-#   some parts of this file are originate                    #
-# from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
 import datetime
