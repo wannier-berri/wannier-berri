@@ -41,6 +41,24 @@ from termcolor import cprint
 # import irrep
 # assert version.parse(irrep.__version__) >= version.parse("2.3.2"), \
 #     f"irrep version >= 2.3.2 is required, found {irrep.__version__}"
+_symmetry_str = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
+_needed_packages = {
+    "irrep": "symmetry related ",
+    "spglib": _symmetry_str,
+    "numpy": "ESSENTIAL",
+    "scipy": "ESSENTIAL",
+    "spgrep": "projections searcher",
+    "numba": "tetrahedron integration",
+    "pyfftw": "fast Fourier transforms (optional, otherwise uses numpy's FFT)",
+    "seekpath": "automatic generation of k-point paths",
+    "matplotlib": "plotting",
+    "sympy": _symmetry_str,
+    "fortio": "reading Fortran unformatted files (uHu, chk, spn, unk, …)",
+    "gpaw": "interface with GPAW",
+    "ase": "interface with ASE and GPAW",
+    "pythtb": "interface with PythTB (optional)",
+    "xmltodict": "reading QuantumEspresso dynamical matrices for phonons",
+}
 
 
 def welcome():
@@ -59,26 +77,8 @@ def welcome():
     cprint("""\n   HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
 
     print("Checking dependencies …")
-    not_found = []
-    symmetry = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
-    needed_for = {
-        "irrep": "symmetry related ",
-        "spglib": symmetry,
-        "numpy": "ESSENTIAL",
-        "scipy": "ESSENTIAL",
-        "spgrep": "projections searcher",
-        "numba": "tetrahedron integration",
-        "pyfftw": "fast Fourier transforms (optional, otherwise uses numpy's FFT)",
-        "seekpath": "automatic generation of k-point paths",
-        "matplotlib": "plotting",
-        "sympy": symmetry,
-        "fortio": "reading Fortran unformatted files (uHu, chk, spn, unk, …)",
-        "gpaw": "interface with GPAW",
-        "ase": "interface with ASE and GPAW",
-        "pythtb": "interface with PythTB (optional)",
-        "xmltodict": "reading QuantumEspresso dynamical matrices for phonons",
-    }
-    for package in needed_for.keys():
+    versions = {}
+    for package in _needed_packages.keys():
         try:
             mod = __import__(package)
             # Try module's __version__ first, then fall back to package metadata
@@ -87,16 +87,18 @@ def welcome():
                 try:
                     version = get_package_version(package)
                 except PackageNotFoundError:
-                    version = 'version unknown'
+                    version = 'unknown'
             cprint(f"{package} : {version}", 'cyan')
+            versions[package] = version
         except ImportError:
-            nfor = needed_for.get(package, "No description available")
+            nfor = _needed_packages.get(package, "No description available")
             if nfor == "ESSENTIAL":
                 cprint(f"{package} : not found. {nfor}. Please install it to use wannierberri.", 'red')
             else:
                 cprint(f"{package} : not found. {nfor}", 'yellow')
-            not_found.append(package)
+            versions[package] = None
     print("#")
+    return versions
 
 
-welcome()
+# welcome()

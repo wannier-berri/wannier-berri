@@ -11,7 +11,7 @@ bandstructure = BandStructure(code='espresso',
                             magmom=True,
                             include_TR=True)
 spacegroup = bandstructure.spacegroup
-symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_irrep(bandstructure)
+symmetrizer = wb._symmetry_str.sawf.SymmetrizerSAWF.from_irrep(bandstructure)
 
 x = 0.27
 positions = [[x, x, 0], [-x, 0, 1 / 3], [0, -x, -1 / 3]]
