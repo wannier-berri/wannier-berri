@@ -2,7 +2,6 @@
 import numpy as np
 import wannierberri as wberri
 import wannierberri.calculators as calculators
-from wannierberri.symmetry import point_symmetry as SYM
 from wannierberri.parallel import ray_init
 from wannierberri.system import System_R
 from time import time

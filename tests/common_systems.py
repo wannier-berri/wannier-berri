@@ -16,8 +16,8 @@ from wannierberri.system.needed_data import NeededData
 from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.w90files.w90data import WannierData
-from wannierberri.w90files.w90data_soc import WannierDataSOC
+from wannierberri.w90files.wandata import WannierData
+from wannierberri.w90files.wandata_soc import WannierDataSOC
 
 
 from wannierberri.system.system_soc import SystemSOC
@@ -103,11 +103,11 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     data_dir_new = data_dir.joinpath("NPZ")
     data_dir_new.mkdir(exist_ok=True)
 
-    w90data = WannierData.from_w90_files(seedname=str(data_dir / seedname),
-                                           files=["amn", "mmn", "eig", "chk", "spn", "win",
-                                                  "uHu", "uIu", "sHu", "sIu"],
-                                           readnnkp=False)
-    w90data.to_npz(data_dir_new / seedname)
+    wandata = WannierData.from_w90_files(seedname=str(data_dir / seedname),
+                                         files=["amn", "mmn", "eig", "chk", "spn", "win",
+                                                "uHu", "uIu", "sHu", "sIu"],
+                                         readnnkp=False)
+    wandata.to_npz(data_dir_new / seedname)
 
     return data_dir_new
 
@@ -157,13 +157,13 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    w90data = WannierData.from_w90_files(
+    wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
         readnnkp=False,  # to reproduce the old behavior of not reading bkvec from nnkp file
     )
-    system = System_R.from_w90data(
-        w90data=w90data,
+    system = System_R.from_wannierdata(
+        wandata=wandata,
         **matrices,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
@@ -179,15 +179,15 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    w90data = WannierData.from_npz(
+    wandata = WannierData.from_npz(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
     # chk = CHK.from_w90_file(seedname=seedname)
     # chk.to_npz(seedname+".chk.npz")
-    # w90data.set_file("chk", chk)
-    system = System_R.from_w90data(
-        w90data=w90data,
+    # wandata.set_file("chk", chk)
+    system = System_R.from_wannierdata(
+        wandata=wandata,
         **matrices,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
@@ -207,12 +207,12 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
 @pytest.fixture(scope="session")
 def system_Fe_WB_irreducible():
     """Create system for Fe from WB wannierisation based on irreducible kpoints only"""
-    w90data = wberri.w90files.WannierData.from_npz(
+    wandata = wberri.WannierData.from_npz(
         seedname=os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "wann-irred", "Fe_wan"),
         files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer', "bkvec"],
     )
-    return System_R.from_w90data(
-        w90data=w90data, berry=True, spin=True, SHCqiao=True, ws_dist_tol=0.05)
+    return System_R.from_wannierdata(
+        wandata=wandata, berry=True, spin=True, SHCqiao=True, ws_dist_tol=0.05)
 
 
 
@@ -227,12 +227,12 @@ def get_system_Fe_sym_W90(symmetrize=False,
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    w90data = WannierData.from_w90_files(
+    wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
 
-    system = System_R.from_w90data(w90data=w90data,
+    system = System_R.from_wannierdata(wandata=wandata,
                                    **matrices,
                                    ws_dist_tol=1e-5,
                                    transl_inv_MV=True,  # legacy
@@ -384,7 +384,7 @@ def system_Fe_gpaw_soc_111_irred():
 
     # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
     # os.makedirs(path, exist_ok=True)
-    w90data = WannierDataSOC.from_gpaw(
+    wandata = WannierDataSOC.from_gpaw(
         calculator=gpaw_calc,
         projections=proj_set,
         mp_grid=(2, 2, 2),
@@ -392,10 +392,10 @@ def system_Fe_gpaw_soc_111_irred():
         spacegroup=sg,
     )
 
-    w90data.select_bands(win_min=-100,
+    wandata.select_bands(win_min=-100,
                          win_max=50)
 
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-np.inf,
         froz_max=17,
         num_iter=500,
@@ -407,7 +407,7 @@ def system_Fe_gpaw_soc_111_irred():
     theta = np.arccos(1 / np.sqrt(3))
     phi = np.pi / 4
 
-    system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False)
+    system = SystemSOC.from_wannierdata(wandata=wandata, berry=True, silent=False)
     system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
     system.save_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred"))
 
@@ -423,11 +423,11 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    w90data = WannierData.from_w90_files(
+    wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
-    system = System_R.from_w90data(w90data=w90data,
+    system = System_R.from_wannierdata(wandata=wandata,
                                    **matrices,
                                    transl_inv_MV=True,  # legacy
                                    ws_dist_tol=-1e-5)
@@ -443,11 +443,11 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
-    w90data = WannierData.from_w90_files(
+    wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
-    system = System_R.from_w90data(w90data=w90data,
+    system = System_R.from_wannierdata(wandata=wandata,
                                    **matrices,
                                    transl_inv_JM=True,
                                    ws_dist_tol=-1e-5)
@@ -506,11 +506,11 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    w90data = WannierData.from_w90_files(
+    wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
-    system = System_R.from_w90data(w90data=w90data,
+    system = System_R.from_wannierdata(wandata=wandata,
                                    transl_inv_MV=transl_inv,
                                    transl_inv_JM=transl_inv_JM,
                                    **matrices)

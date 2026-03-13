@@ -7,7 +7,7 @@ import warnings
 from irrep.bandstructure import BandStructure
 from matplotlib import pyplot as plt
 import numpy as np
-from ..w90files.w90data import FILES_CLASSES
+from ..w90files.wandata import FILES_CLASSES
 # from ..symmetry.sawf import SymmetrizerSAWF
 from ..symmetry.projections import ORBITALS, ProjectionsSet
 from ..w90files import WIN, WannierData
@@ -473,10 +473,10 @@ class WorkflowQE:
     def wannierise_wberri(self, enforce=False, kwargs_system={}, kwargs_window={}, files=["mmn", "amn", "eig", "win"], **kwargs):
         if self.flags.check('wannierise_wberri') and not enforce:
             return
-        w90data = WannierData.from_w90_files(seedname=self.prefix, files=files)
-        w90data.select_bands(**kwargs_window)
-        w90data.wannierise(**kwargs)
-        self.system_wberri = System_w90(w90data=w90data, **kwargs_system)
+        wandata = WannierData.from_w90_files(seedname=self.prefix, files=files)
+        wandata.select_bands(**kwargs_window)
+        wandata.wannierise(**kwargs)
+        self.system_wberri = System_w90(wandata=wandata, **kwargs_system)
         self.flags.on('wannierise_wberri')
         self.pickle()
 

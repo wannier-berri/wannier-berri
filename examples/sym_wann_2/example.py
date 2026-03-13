@@ -20,14 +20,14 @@ path_data = "../../tests/data/Fe_sym_Wannier90/Fe_sym."
 for ext in ["amn", "mmn", "eig", "win", "chk"]:
     shutil.copyfile(path_data + ext, "./Fe_sym." + ext)
 
-w90data_1 = WannierData.from_w90_files("Fe_sym", files=['mmn', 'eig', 'chk'],)
-system_1 = System_R.from_w90data(w90data_1, berry=True, silent=True)
+wandata_1 = WannierData.from_w90_files("Fe_sym", files=['mmn', 'eig', 'chk'],)
+system_1 = System_R.from_wannierdata(wandata_1, berry=True, silent=True)
 
 t10 = time()
 system_1.symmetrize(proj=["Fe:sp3d2;t2g"], atom_name=["Fe"], positions=[[0, 0, 0]], magmom=[[0, 0, 1]], soc=True)
 t11 = time()
-w90data_2 = WannierData.from_w90_files("Fe_sym", files=['mmn', 'eig', 'chk'],)
-system_2 = System_R.from_w90data(w90data_2, berry=True, silent=True)
+wandata_2 = WannierData.from_w90_files("Fe_sym", files=['mmn', 'eig', 'chk'],)
+system_2 = System_R.from_wannierdata(wandata_2, berry=True, silent=True)
 #
 t20 = time()
 symmetrizer = SymmetrizerSAWF()
@@ -48,9 +48,9 @@ system_2.symmetrize2(symmetrizer)
 t23 = time()
 
 tabulators = {"Energy": calculators.tabulate.Energy(),
-                            "berry_int": calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False, "internal_terms": True}),
-                            "berry_ext": calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": True, "internal_terms": False}),
-                        #    "spin" : calculators.tabulate.Spin(),
+              "berry_int": calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": False, "internal_terms": True}),
+              "berry_ext": calculators.tabulate.BerryCurvature(kwargs_formula={"external_terms": True, "internal_terms": False}),
+              #    "spin" : calculators.tabulate.Spin(),
              }
 
 tab_all_path = calculators.TabulatorAll(

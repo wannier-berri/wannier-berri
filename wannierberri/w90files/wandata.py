@@ -60,16 +60,15 @@ class WannierData:
             list of files which should be read as formatted files (uHu, uIu, etc)
         read_chk : bool
             if True, read the :class:`~wannierberri.w90files.CheckPoint` file,
-            otherwise create a bare :class:`~wannierberri.w90files.chk.CheckPoint` object and prepare for wannierisation
+            otherwise create a bare :class:`~wannierberri.w90files.CheckPoint` object and prepare for wannierisation
         kmesh_tol : float
-            see :class:`~wannierberri.w90files.chk.CheckPoint`
+            see :class:`~wannierberri.w90files.CheckPoint`
         bk_complete_tol : float
-            see :class:`~wannierberri.w90files.chk.CheckPoint`
+            see :class:`~wannierberri.w90files.CheckPoint`
 
     Attributes
     ----------
-    chk : :class:`~wannierberri.w90files.CheckPoint` or :class:`~wannierberri.w90files.CheckPoint_bare`
-        the checkpoint file
+    chk : :class:`~wannierberri.w90files.CheckPoint` 
     seedname : str
         the prefix of the file (including relative/absolute path, but not including the extensions, like ``.chk``, ``.mmn``, etc)
     wannierised : bool
@@ -77,7 +76,9 @@ class WannierData:
     formatted_list : list(str)
         list of files which should be read as formatted files (uHu, uIu, etc)
     _files : dict(str, :class:`~wannierberri.w90files.W90_file`)
-        the dictionary containing the files, with the keys being the file names (e.g. ``mmn``, ``eig``, etc) and the values being the corresponding file objects (e.g. :class:`~wannierberri.w90files.mmn.MMN`, :class:`~wannierberri.w90files.eig.EIG`, etc)
+        the dictionary containing the files, with the keys being the file names 
+        (e.g. ``mmn``, ``eig``, etc) and the values being the corresponding file objects 
+        (e.g. :class:`~wannierberri.w90files.MMN`, :class:`~wannierberri.w90files.EIG`, etc)
     """
     # todo :  rotate uHu and spn
     # todo : symmetry
@@ -280,7 +281,7 @@ class WannierData:
         self.wannierised = False
         if self.has_file("chk"):
             self.chk.num_wann = projectionsSet.num_wann
-            self.chk.wannier_centers_cart =  projectionsSet.wannier_centers_cart
+            self.chk.wannier_centers_cart = projectionsSet.wannier_centers_cart
             self.chk.wannier_spreads = np.array([666] * projectionsSet.num_wann)
 
 
@@ -486,7 +487,7 @@ class WannierData:
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             if f not in FILES_CLASSES:
-                warnings.warn(f"file {f} is not a valid w90 file, skipping it")
+                warnings.warn(f"file {f} is not a valid Wannier file, skipping it")
                 continue
             kwargs_w90 = {}
             if f in ['uhu', 'uiu', 'shu', 'siu']:
@@ -613,7 +614,9 @@ class WannierData:
         kwargs : dict
             the keyword arguments to be passed to the constructor of the file
             see `~wannierberri.w90files.W90_file`, 
-            `~wannierberri.w90files.MMN`, `~wannierberri.w90files.EIG`, `~wannierberri.w90files.AMN`, `~wannierberri.w90files.UIU`, `~wannierberri.w90files.UHU`, `~wannierberri.w90files.SIU`, `~wannierberri.w90files.SHU`, `~wannierberri.w90files.SPN`
+            `~wannierberri.w90files.MMN`, `~wannierberri.w90files.EIG`, `~wannierberri.w90files.AMN`, 
+            `~wannierberri.w90files.UIU`, `~wannierberri.w90files.UHU`, `~wannierberri.w90files.SIU`, 
+            `~wannierberri.w90files.SHU`, `~wannierberri.w90files.SPN`
             for more details        
         """
         if self.bands_were_selected:
@@ -630,20 +633,6 @@ class WannierData:
                 warnings.warn(f"file '{key}' was already set, overwriting it")
             else:
                 raise RuntimeError(f"file '{key}' was already set")
-        # if val is None:
-        #     if key not in FILES_CLASSES:
-        #         raise ValueError(f"key '{key}' is not a valid w90 file")
-        #     # kwargs_auto = self.auto_kwargs_files(key)
-        #     # kwargs_auto.update(kwargs)
-        #     kwargs_w90 = copy(kwargs_w90)
-        #     if key in ['uhu', 'uiu', 'shu', 'siu']:
-        #         assert self.has_file('mmn'), "cannot read uHu/uIu/sHu/sIu without mmn file"
-        #         assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
-        #         assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
-        #         kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
-        #     if key in ["spn", "uhu", "uiu", "shu", "siu", ]:
-        #         kwargs_w90['formatted'] = key in self.formatted_list
-        #     val = FILES_CLASSES[key].autoread(self.seedname, kwargs_w90=kwargs_w90)
         self.check_conform(key, val)
         if key == 'amn' and self.has_file('chk'):
             self.get_file('chk').num_wann = val.NW
@@ -878,7 +867,7 @@ class WannierData:
             if the system was not wannierised
         """
         if not (self.wannierised):
-            raise RuntimeError(f"no wannierisation was performed on the w90 input files, cannot proceed with {msg}")
+            raise RuntimeError(f"no wannierisation was performed on the WannierData, cannot proceed with {msg}")
 
     def wannierise(self, **kwargs):
         """

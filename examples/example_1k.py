@@ -2,7 +2,6 @@
 import numpy as np
 import wannierberri as wberri
 import wannierberri.formula as formula
-import wannierberri.w90files as w90files
 from wannierberri.symmetry import point_symmetry as SYM
 from wannierberri.system import System_R
 import os
@@ -14,7 +13,7 @@ os.environ['MKL_NUM_THREADS'] = '1'
 
 Efermi = np.linspace(12., 13., 11)
 omega = np.linspace(0, 1., 1001)
-system = System_R.from_w90data(w90files.WannierData.from_w90_files('../tests/data/Fe_Wannier90/Fe'), berry=True)
+system = System_R.from_wannierdata(wberri.WannierData.from_w90_files('../tests/data/Fe_Wannier90/Fe'), berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)

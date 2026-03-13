@@ -1,7 +1,6 @@
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as wberri
-import wannierberri.w90files as w90files
 from wannierberri.parallel import ray_init
 from wannierberri.system import System_R
 
@@ -38,7 +37,7 @@ if True:
     # projections_set = ProjectionsSet(projections=projections_spd)
 
 
-    w90data = w90files.WannierData.from_bandstructure(
+    wandata = wberri.WannierData.from_bandstructure(
         bandstructure,
         seedname="./Fe",
         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
@@ -46,7 +45,7 @@ if True:
         normalize=False
     )
 
-    wberri.wannierise(w90data=w90data,
+    wberri.wannierise(wandata=wandata,
                     init="amn",
                     froz_min=-10,
                     froz_max=20,
@@ -59,14 +58,14 @@ if True:
                     sitesym=True,
                     parallel=True
                         )
-    w90data.to_npz(seedname="./Fe_wan")
+    wandata.to_npz(seedname="./Fe_wan")
 
 else:
     # for further runs just load the data
-    w90data = w90files.WannierData.from_npz(seedname="./Fe_wan",
+    wandata = wberri.WannierData.from_npz(seedname="./Fe_wan",
                                                    files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
-system = System_R.from_w90data(w90data=w90data, spin=True, berry=True)
+system = System_R.from_wannierdata(wandata=wandata, spin=True, berry=True)
 
 
 # all kpoints given in reduced coordinates
@@ -82,8 +81,7 @@ path = wberri.Path(system=system,
 
 
 bands = wberri.evaluate_k_path(system=system,
-                           path=path,
-                            parallel=parallel
+                           path=path
                            )
 
 bands.plot_path_fat(path,

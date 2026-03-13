@@ -2,7 +2,7 @@ import numpy as np
 from gpaw import GPAW
 from irrep.spacegroup import SpaceGroup
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from wannierberri.w90files.w90data_soc import WannierDataSOC
+from wannierberri import WannierDataSOC
 from wannierberri.system.system_soc import SystemSOC
 import wannierberri as wberri
 
@@ -17,7 +17,7 @@ for m in 0.0, 2.2:
 
     # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
     # os.makedirs(path, exist_ok=True)
-    w90data = WannierDataSOC.from_gpaw(
+    wandata = WannierDataSOC.from_gpaw(
         calculator=gpaw_calc,
         projections=proj_set,
         mp_grid=(4, 4, 4),
@@ -25,7 +25,7 @@ for m in 0.0, 2.2:
     )
 
     wberri.wannierise(
-        w90data=w90data,
+        wandata=wandata,
         froz_min=-np.inf,
         froz_max=17,
         outer_min=-100,
@@ -39,6 +39,6 @@ for m in 0.0, 2.2:
     theta = 0
     phi = 0
 
-    system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False)
+    system = SystemSOC.from_wannierdata(wandata=wandata, berry=True, silent=False)
     system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
     system.save_npz(f"system_soc_m{m:.1f}")

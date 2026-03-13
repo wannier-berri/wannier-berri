@@ -46,7 +46,7 @@ def ray_init_cluster(
 def ray_init(**kwargs):
     """tries to import and initialize ray, but does nothing if it cannot be imported, 
     or if it is already initialized
-    
+
     Parameters
     ----------
     kwargs:

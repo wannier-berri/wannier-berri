@@ -106,7 +106,7 @@ def test_create_w90files_diamond_irred(select_grid):
                             spacegroup=bandstructure.spacegroup
                             )
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[projection])
-    w90data = wberri.w90files.WannierData.from_bandstructure(
+    wandata = wberri.WannierData.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "symmetrizer"],
         seedname=os.path.join(path_tmp, prefix),
@@ -114,7 +114,7 @@ def test_create_w90files_diamond_irred(select_grid):
         normalize=False,
         irreducible=True,
     )
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-8,
         froz_max=20,
         num_iter=1000,
@@ -125,8 +125,8 @@ def test_create_w90files_diamond_irred(select_grid):
         sitesym=True,
         localise=True
     )
-    wannier_centers = w90data.chk.wannier_centers_cart
-    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_centers = wandata.chk.wannier_centers_cart
+    wannier_spreads = wandata.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     spread_ref = 0.39865686  if select_grid == (2, 2, 2) else 0.580249066578
@@ -135,7 +135,7 @@ def test_create_w90files_diamond_irred(select_grid):
                                             [0, 0, 1],
         [0, 1, 0],
         [1, 0, 0]
-    ]).dot(w90data.chk.real_lattice) / 2,
+    ]).dot(wandata.chk.real_lattice) / 2,
         abs=1e-6)
 
 
@@ -217,18 +217,18 @@ def test_irreducible_vs_full_Fe():
         projections=projections_set,
         normalize=False)
 
-    w90data_full = wberri.w90files.WannierData.from_bandstructure(bandstructure_full, **kwargs_w90file)
-    w90data_irr = wberri.w90files.WannierData.from_bandstructure(bandstructure_irr, **kwargs_w90file)
-    assert w90data_full.irreducible is False, "w90data_full should not be irreducible"
-    assert w90data_irr.irreducible is True, "w90data_irr should be irreducible"
-    nkp_full = len(w90data_full.mmn.data)
-    nkp_irr = len(w90data_irr.mmn.data)
-    assert nkp_full == 8, f"Expected 8 k-points in full w90data, got {nkp_full}"
-    assert nkp_irr == 4, f"Expected 4 k-points in irreducible w90data, got {nkp_irr}"
+    wandata_full = wberri.WannierData.from_bandstructure(bandstructure_full, **kwargs_w90file)
+    wandata_irr = wberri.WannierData.from_bandstructure(bandstructure_irr, **kwargs_w90file)
+    assert wandata_full.irreducible is False, "wandata_full should not be irreducible"
+    assert wandata_irr.irreducible is True, "wandata_irr should be irreducible"
+    nkp_full = len(wandata_full.mmn.data)
+    nkp_irr = len(wandata_irr.mmn.data)
+    assert nkp_full == 8, f"Expected 8 k-points in full wandata, got {nkp_full}"
+    assert nkp_irr == 4, f"Expected 4 k-points in irreducible wandata, got {nkp_irr}"
 
 
-    w90data_full.select_bands(win_min=-8, win_max=50)
-    w90data_irr.select_bands(win_min=-8, win_max=50)
+    wandata_full.select_bands(win_min=-8, win_max=50)
+    wandata_irr.select_bands(win_min=-8, win_max=50)
 
     kwargs_wannierise = dict(
         init="amn",
@@ -240,23 +240,23 @@ def test_irreducible_vs_full_Fe():
         mix_ratio_z=1.0,
         sitesym=True)
 
-    w90data_full.wannierise(**kwargs_wannierise)
-    w90data_irr.wannierise(**kwargs_wannierise)
+    wandata_full.wannierise(**kwargs_wannierise)
+    wandata_irr.wannierise(**kwargs_wannierise)
 
-    assert w90data_full.chk.wannier_spreads == approx(
-        w90data_irr.chk.wannier_spreads, abs=0.01), (
+    assert wandata_full.chk.wannier_spreads == approx(
+        wandata_irr.chk.wannier_spreads, abs=0.01), (
         f"Wannier spreads differ between full and irreducible bandstructure: "
-        f"{w90data_full.chk.wannier_spreads} != {w90data_irr.chk.wannier_spreads}"
+        f"{wandata_full.chk.wannier_spreads} != {wandata_irr.chk.wannier_spreads}"
     )
 
-    assert w90data_full.chk.wannier_centers_cart == approx(
-        w90data_irr.chk.wannier_centers_cart, abs=0.01), (
+    assert wandata_full.chk.wannier_centers_cart == approx(
+        wandata_irr.chk.wannier_centers_cart, abs=0.01), (
         f"Wannier centers differ between full and irreducible bandstructure: "
-        f"{w90data_full.chk.wannier_centers_cart} != {w90data_irr.chk.wannier_centers_cart}"
+        f"{wandata_full.chk.wannier_centers_cart} != {wandata_irr.chk.wannier_centers_cart}"
     )
     kwargs_system = dict(spin=True, berry=True, symmetrize=True)
-    system_irr = wberri.system.System_w90(w90data=w90data_irr, **kwargs_system)
-    system_full = wberri.system.System_w90(w90data=w90data_full, **kwargs_system)
+    system_irr = wberri.system.System_w90(wandata=wandata_irr, **kwargs_system)
+    system_full = wberri.system.System_w90(wandata=wandata_full, **kwargs_system)
 
 
     Efermi = np.linspace(12, 13, 1001)
@@ -326,7 +326,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
 
-    w90data = wberri.w90files.WannierData.from_bandstructure(
+    wandata = wberri.WannierData.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
         seedname=os.path.join(path_tmp, prefix),
@@ -335,11 +335,11 @@ def check_create_w90files_Fe(path_data, path_ref=None,
         unk_grid=(18,) * 3,
         irreducible=irreducible,
     )
-    print(f"kpoints in w90data: {w90data.get_file('mmn').data.keys()} irreducible={w90data.irreducible} /{irreducible}")
+    print(f"kpoints in wandata: {wandata.get_file('mmn').data.keys()} irreducible={wandata.irreducible} /{irreducible}")
 
 
     if wannierise:
-        w90data.wannierise(init="amn",
+        wandata.wannierise(init="amn",
                            froz_min=-8,
                            froz_max=30,
                            print_progress_every=20,
@@ -349,41 +349,41 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                            localise=True,
                            sitesym=True,
                             )
-        spreads = w90data.chk.wannier_spreads
+        spreads = wandata.chk.wannier_spreads
         print(f"Wannier spreads: {repr(spreads)}")
         if spreads_ref is not None:
-            assert w90data.chk.wannier_spreads == approx(spreads_ref, abs=0.01), (
-                f"Wannier spreads differ from reference: {w90data.chk.wannier_spreads} != {spreads_ref}"
-                f" max diff: {np.max(np.abs(w90data.chk.wannier_spreads - spreads_ref))} > 0.01"
+            assert wandata.chk.wannier_spreads == approx(spreads_ref, abs=0.01), (
+                f"Wannier spreads differ from reference: {wandata.chk.wannier_spreads} != {spreads_ref}"
+                f" max diff: {np.max(np.abs(wandata.chk.wannier_spreads - spreads_ref))} > 0.01"
             )
 
 
     if path_ref is not None:
-        eig = w90data.get_file("eig")
+        eig = wandata.get_file("eig")
         eig_ref = EIG.from_npz(os.path.join(path_ref, f"{prefix}.eig.npz"))
         eql, msg = eig.equals(eig_ref, tolerance=1e-6)
         assert eql, f"EIG files differ: {msg}"
 
-        bkvec_new = w90data.get_file("bkvec")
+        bkvec_new = wandata.get_file("bkvec")
         bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(os.path.join(path_ref, f"{prefix}.bkvec.npz"))
 
-        mmn_new = w90data.get_file("mmn")
+        mmn_new = wandata.get_file("mmn")
         mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_ref, f"{prefix}.mmn.npz"))
         bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
         eql, msg = mmn_new.equals(mmn_ref, tolerance=1e-4, check_reorder=False)
         assert eql, f"MMN files differ: {msg}"
 
-        amn = w90data.get_file("amn")
+        amn = wandata.get_file("amn")
         amn_ref = wberri.w90files.AMN.from_npz(os.path.join(path_ref, f"{prefix}.amn.npz"))  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
         eql, msg = amn.equals(amn_ref, tolerance=1e-6)
         assert eql, f"AMN files differ: {msg}"
 
-        spn = w90data.get_file("spn")
+        spn = wandata.get_file("spn")
         spn_ref = wberri.w90files.SPN.from_npz(os.path.join(path_ref, f"{prefix}.spn.npz"))
         eql, msg = spn.equals(spn_ref, tolerance=1e-6)
         assert eql, f"SPN files differ: {msg}"
 
-        unk_new = w90data.get_file("unk")
+        unk_new = wandata.get_file("unk")
         unk_new.select_kpoints((0, 3))  # select only k=0 and k=3
         unk_ref = wberri.w90files.unk.UNK.from_npz(os.path.join(path_ref, f"{prefix}-kp03-red18.unk.npz"))
         eql, msg = unk_new.equals(unk_ref, tolerance=1e-6)
@@ -452,7 +452,7 @@ def test_create_w90files_Fe_gpaw(ispin):
     proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
     proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
     proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
-    w90files = wberri.w90files.WannierData.from_gpaw(
+    w90files = wberri.WannierData.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
@@ -514,7 +514,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
     seedname = os.path.join(path_output, f"Fe-irred-spin-{ispin}")
     seedname_ref = os.path.join(path_data, f"Fe-irred-spin-{ispin}")
-    w90files = wberri.w90files.WannierData.from_gpaw(
+    w90files = wberri.WannierData.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
@@ -588,7 +588,7 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     proj_set = ProjectionsSet(projections=[proj_s])
     seedname = os.path.join(path_output, "diamond-irred")
     # seedname_ref = os.path.join(path_data, "diamond-irred")
-    w90data = wberri.w90files.WannierData.from_gpaw(
+    wandata = wberri.WannierData.from_gpaw(
         calculator=calc,
         spin_channel=0,
         projections=proj_set,
@@ -602,7 +602,7 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     )
 
 
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-np.inf,
         froz_max=20,
         num_iter=1000,
@@ -613,13 +613,13 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
         sitesym=True,
         localise=True
     )
-    wannier_centers = w90data.chk.wannier_centers_cart
-    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_centers = wandata.chk.wannier_centers_cart
+    wannier_spreads = wandata.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     spread_ref = 0.39536796  if select_grid == (2, 2, 2) else 0.57345447
     assert wannier_spreads == approx(spread_ref, abs=2e-5)
-    assert wannier_centers == approx(pos @ w90data.chk.real_lattice, abs=1e-6)
+    assert wannier_centers == approx(pos @ wandata.chk.real_lattice, abs=1e-6)
 
 
 

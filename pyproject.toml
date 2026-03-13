@@ -77,3 +77,10 @@ exclude = ["tests*", "_trash*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "wannierberri.__version__" }
+
+[tool.coverage.run]
+omit = [
+    "wannierberri/system/deprecated_constructors.py",
+    "wannierberri/w90files/w90data.py",
+    "wannierberri/w90files/w90data_soc.py",
+]

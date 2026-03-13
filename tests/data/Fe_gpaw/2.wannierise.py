@@ -2,7 +2,7 @@ import numpy as np
 import ray
 from wannierberri.system import System_w90
 from wannierberri.w90files.amn import AMN
-from wannierberri.w90files.w90data import WannierData
+from wannierberri.w90files.wandata import WannierData
 from irrep.bandstructure import BandStructure
 
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
@@ -40,14 +40,14 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                                   'nbands_upper_skip': 4 * (2 if spinor else 1)})
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = WannierData.from_w90_files(prefix, files=["win", "eig", "mmn"])
+    wandata = WannierData.from_w90_files(prefix, files=["win", "eig", "mmn"])
     # exit()
-    w90data.set_file("amn", amn, overwrite=True)
-    w90data.set_file("symmetrizer", symmetrizer)
-    w90data.select_bands(win_min=-100,
+    wandata.set_file("amn", amn, overwrite=True)
+    wandata.set_file("symmetrizer", symmetrizer)
+    wandata.select_bands(win_min=-100,
                          win_max=50)
 
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-np.inf,
         froz_max=17,
         num_iter=500,
@@ -56,8 +56,8 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
         localise=True,
 
     )
-    System_w90(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
-    w90data.get_file('chk').to_npz(save_name + ".chk.npz")
+    System_w90(wandata=wandata, symmetrize=True, berry=True).save_npz(save_name)
+    wandata.get_file('chk').to_npz(save_name + ".chk.npz")
 
 
 get_wannierised("Fe-spin-0", spin_channel=0, save_name="system_up")

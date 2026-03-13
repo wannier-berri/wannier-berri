@@ -71,13 +71,13 @@ for data_dir in ['diamond']:
 
         amn = w90files.AMN.from_bandstructure(bandstructure, projections=projset)
 
-        w90data = w90files.WannierData.from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond',
-                                                               files=['mmn', 'eig', 'win'])
-        w90data.set_file("amn", amn)
-        w90data.set_symmetrizer(symmetrizer)
-        
+        wandata = wberri.WannierData.from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond',
+                                                    files=['mmn', 'eig', 'win'])
+        wandata.set_file("amn", amn)
+        wandata.set_symmetrizer(symmetrizer)
+
         wberri.wannierise(
-            w90data=w90data,
+            wandata=wandata,
             froz_min=froz_min,
             froz_max=froz_max,
             outer_min=win_min,
@@ -89,7 +89,7 @@ for data_dir in ['diamond']:
             localise=True,
         )
 
-        systems[data_dir + "-" + projname] = System_R.from_w90data(w90data=w90data, symmetrize=False)
+        systems[data_dir + "-" + projname] = System_R.from_wannierdata(wandata=wandata, symmetrize=False)
 
 system = list(systems.values())[0]
 # Now calculate bandstructure

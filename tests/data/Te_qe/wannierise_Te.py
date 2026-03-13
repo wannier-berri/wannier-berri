@@ -2,7 +2,7 @@ from wannierberri.wannierise.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as wb
 prefix = "tellurium"
-w90data = wb.w90files.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win", "uhu", "spn"])
+wandata = wb.wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win", "uhu", "spn"])
 
 bandstructure = BandStructure(code='espresso',
                             prefix=prefix,
@@ -23,27 +23,27 @@ projections_set = ProjectionsSet(projections=[projection_s, projection_p])
 
 symmetrizer.set_D_wann_from_projections(projections_obj=projections_set)
 amn = wb.w90files.AMN.from_bandstructure(bandstructure, projections_set=projections_set)
-w90data.set_symmetrizer(symmetrizer)
-w90data.set_file("amn", amn)
+wandata.set_symmetrizer(symmetrizer)
+wandata.set_file("amn", amn)
 print(f"amn {amn.data.shape}")
 
 
 wb.wannierise(
-        w90data=w90data,
-        init="amn",
-        froz_min=-100,
-        froz_max=8,
-        print_progress_every=1,
-        num_iter=11,
-        conv_tol=1e-6,
-        mix_ratio_z=1.0,
-        sitesym=True,
-        parallel=False
-        )
+    wandata=wandata,
+    init="amn",
+    froz_min=-100,
+    froz_max=8,
+    print_progress_every=1,
+    num_iter=11,
+    conv_tol=1e-6,
+    mix_ratio_z=1.0,
+    sitesym=True,
+    parallel=False
+)
 
 
 
-system = wb.system.System_w90(w90data=w90data, morb=True, spin=True)
+system = wb.system.System_w90(wandata=wandata, morb=True, spin=True)
 system.symmetrize2(symmetrizer=symmetrizer)
 
 system.save_npz(path="Te-sys", overwrite=True)

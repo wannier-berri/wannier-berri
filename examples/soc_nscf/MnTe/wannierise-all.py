@@ -5,7 +5,7 @@ import ray
 import wannierberri as wberri
 from wannierberri.system import System_R
 from wannierberri.w90files.amn import AMN
-from wannierberri.w90files.w90data import WannierData
+from wannierberri.w90files.wandata import WannierData
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroup
 
@@ -82,12 +82,12 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         symmetrizer.to_npz(f"symmetrizer-spin-{spin_channel}.npz")
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = WannierData.from_w90_files(prefix, files=["win", "eig", "mmn"])
-    w90data.set_file("amn", amn, overwrite=True)
-    w90data.set_file("symmetrizer", symmetrizer)
+    wandata = WannierData.from_w90_files(prefix, files=["win", "eig", "mmn"])
+    wandata.set_file("amn", amn, overwrite=True)
+    wandata.set_file("symmetrizer", symmetrizer)
 
     wberri.wannierise(
-        w90data=w90data,
+        wandata=wandata,
         froz_min=-10,
         froz_max=7,
         # outer_min=-10,
@@ -98,8 +98,8 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         localise=True,
 
     )
-    System_R.from_w90data(w90data=w90data, symmetrize=True, berry=True).save_npz(save_name)
-    w90data.get_file('chk').to_npz(save_name + ".chk.npz")
+    System_R.from_wannierdata(wandata=wandata, symmetrize=True, berry=True).save_npz(save_name)
+    wandata.get_file('chk').to_npz(save_name + ".chk.npz")
 
 
 get_wannierised("mnte-spin-0", spin_channel=0, save_name="system_up")

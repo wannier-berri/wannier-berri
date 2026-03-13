@@ -44,7 +44,7 @@ class UNK(W90_file):
     @classmethod
     def from_w90_file(cls, seedname=None,
                       path=None,
-                      NK=None, NKmax=10000, spinor=False,
+                      NK=None, spinor=False,
                       spin_channel=1,
                       reduce_grid=(1, 1, 1),
                       selected_kpoints=None,

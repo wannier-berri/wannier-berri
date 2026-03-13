@@ -50,7 +50,7 @@ Now WannierBerri can construct Wannier functions on its own. See :ref:`sec-wanni
 Wannier90
 +++++++++++++++++++++++++
 
-.. automethod:: wannierberri.system.System_R.from_w90data
+.. automethod:: wannierberri.system.System_R.from_wannierdata
 
 .. autofunction:: wannierberri.system.system_w90.get_system_w90
 

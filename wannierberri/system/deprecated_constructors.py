@@ -22,7 +22,7 @@ def constructor_deprecation_warning(old_constructor_name, new_constructor_name):
 
 
 def System_w90(*args, **kwargs):
-    constructor_deprecation_warning("System_w90", "w90data")
+    constructor_deprecation_warning("System_w90", "wandata")
     from .system_w90 import get_system_w90
     return get_system_w90(*args, **kwargs)
 

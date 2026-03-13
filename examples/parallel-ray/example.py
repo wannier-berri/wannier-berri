@@ -2,7 +2,6 @@
 import numpy as np
 import wannierberri as wberri
 import wannierberri.calculators as calculators
-import wannierberri.w90files as w90files
 from wannierberri.symmetry import point_symmetry as SYM
 from wannierberri.parallel import ray_init
 from wannierberri.system import System_R
@@ -28,10 +27,10 @@ else:
 
 
 Efermi = np.linspace(12., 13., 1001)
-w90data = w90files.WannierData.from_w90_files(
-    '../../tests/data/Fe_Wannier90/Fe', 
+wandata = wberri.WannierData.from_w90_files(
+    '../../tests/data/Fe_Wannier90/Fe',
     files=['mmn', 'eig', 'chk'],)
-system = System_R.from_w90data(w90data, berry=True)
+system = System_R.from_wannierdata(wandata, berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)

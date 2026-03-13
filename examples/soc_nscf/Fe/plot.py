@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import numpy as np
-import wannierberri as wberri
 from wannierberri.system.system_R import System_R
 from wannierberri.grid import Path
 from wannierberri.evaluate_k import evaluate_k_path

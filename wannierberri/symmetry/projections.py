@@ -153,11 +153,11 @@ class Projection:
     def wannier_centers_red(self):
         """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
         return np.array([pos for pos in self.wyckoff_position.positions for _ in range(self.num_wann_per_site)], dtype=float)
-    
+
     @property
     def wannier_centers_cart(self):
         return self.wannier_centers_red @ self.wyckoff_position.spacegroup.lattice
-        
+
 
     @property
     def positions(self):
@@ -224,7 +224,7 @@ class Projection:
 
     def __radd__(self, other):
         return self.__add__(other)
-    
+
     def __str__(self):
         return (f"Projection {self.wyckoff_position.string}:{self.orbitals} with {self.num_wann} Wannier functions ({self.num_wann_scalar} per spin x{self.nspinor} spins) \n" +
                 f" on {self.num_points} points ({self.num_wann_per_site} per site)"
@@ -308,7 +308,7 @@ class ProjectionsSet:
     def set_spinor(self, spinor: bool):
         """Set if the projection is a spinor or not. 
         If it is already set, the new value should be the same as the old one, otherwise an error is raised.
-        
+
         Parameters
         ----------
         spinor : bool
@@ -339,7 +339,7 @@ class ProjectionsSet:
         """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
         with spin TAKEN into account (i.e. multiplied by 2 if spinor)"""
         return sum([p.num_wann for p in self.projections])
-    
+
     @property
     def num_wann_scalar(self):
         """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
@@ -364,7 +364,7 @@ class ProjectionsSet:
     def wannier_centers_red(self):
         """Initial Wannier centers in reduced coordinates (corresponding to the sites of the projections). Shape (num_wann, 3) The final Wannier centers after wannierisation may be different"""
         return np.concatenate([p.wannier_centers_red for p in self.projections], axis=0)
-    
+
     @property
     def real_lattice(self):
         if len(self.projections) == 0:
@@ -433,7 +433,7 @@ class ProjectionsSet:
             for each point - a value od how many wannier functioons there are on this point
         """
         return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
-    
+
     @property
     def num_wann_per_site_scalar_list(self):
         """

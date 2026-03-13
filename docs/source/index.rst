@@ -14,7 +14,6 @@
    symmetries
    docs/utils
    install
-   benchmark
    methods
    software
 

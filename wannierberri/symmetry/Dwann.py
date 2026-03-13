@@ -49,14 +49,14 @@ class Dwann:
     Notes
     -----
     * the spin ordering is always assumed "iterlaced", i.e. like in QE (or new VASP). If you are using an old VASP version,
-    you should change the spin_ordering to "block" in the of w90data.amn object.
+    you should change the spin_ordering to "block" in the of wandata.amn object.
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
                 orbitalrotator=None,
                 basis_list=None,
                 spinor=False):
-        
+
         self.nsym = spacegroup.size
         if spinor:
             self.spinor = True

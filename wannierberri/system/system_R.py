@@ -375,7 +375,7 @@ class System_R(System):
                                   do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
                 print(f"proj: {proj}")
-                num_wann_per_position = proj.num_wann_per_site_spinor
+                num_wann_per_position = proj.num_wann_per_site
                 print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:
                     for j in range(num_wann_per_position):
@@ -828,18 +828,18 @@ class System_R(System):
         return self
 
     @classmethod
-    def from_w90data(cls,
-        w90data,
+    def from_wannierdata(cls,
+        wandata,
         *args, **kwargs,
     ):
         """
-        Create a System_R object from a Wannier90 data object (w90data). 
+        Create a System_R object from a Wannier90 data object (wandata). 
         Wannierized either by wannier90 or by WannierBerri
 
         see :func:`~wannierberri.system.system_w90.get_system_w90` for input data and details
         """
         from .system_w90 import get_system_w90
-        return get_system_w90(w90data=w90data, *args, **kwargs)
+        return get_system_w90(wandata=wandata, *args, **kwargs)
 
 
     @classmethod

@@ -5,16 +5,15 @@ import copy
 from matplotlib import pyplot
 import wannierberri as wberri
 import wannierberri.calculators as calculators
-import wannierberri.w90files as w90files
 import numpy as np
 from wannierberri.system import System_R
 from wannierberri.system.interpolate import SystemInterpolator
 
 
 seedname = "../../tests/data/Fe_sym_Wannier90/Fe_sym"
-w90data = w90files.WannierData.from_w90_files(seedname, 
-                                                       files=['mmn', 'eig', 'chk', 'spn'],)
-system0 = System_R.from_w90data(w90data, berry=True, spin=True)
+wandata = wberri.WannierData.from_w90_files(seedname,
+                                            files=['mmn', 'eig', 'chk', 'spn'],)
+system0 = System_R.from_wannierdata(wandata, berry=True, spin=True)
 
 system_raw = copy.deepcopy(system0)
 
