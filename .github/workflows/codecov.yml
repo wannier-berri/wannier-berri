@@ -30,8 +30,12 @@ jobs:
       run: .github/install_script.sh
     - name: Test with pytest, generate coverage report
       run: |
-        pytest tests   --cov=./wannierberri --cov-config=pyproject.toml --cov-report=xml
+        pytest tests --cov=./wannierberri --cov-config=pyproject.toml --cov-report=xml:coverage.xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: true
+        verbose: true
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

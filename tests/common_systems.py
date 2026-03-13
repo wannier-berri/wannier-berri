@@ -382,10 +382,10 @@ def system_Fe_gpaw_soc_111_irred():
     projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
     proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
 
-    # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
-    # os.makedirs(path, exist_ok=True)
+    seedname_soc = os.path.join(OUTPUT_DIR, "wannier_soc")
     wandata = WannierDataSOC.from_gpaw(
         calculator=gpaw_calc,
+        seedname=seedname_soc,
         projections=proj_set,
         mp_grid=(2, 2, 2),
         files=["mmn", "eig", "amn", "symmetrizer", "soc", "mmn_ud"],
