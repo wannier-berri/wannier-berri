@@ -1,37 +1,45 @@
-name: wannier-berri
+name: "WannierBerri CI Matrix"
 
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
     branches:
-    - master
+      - master
 
 jobs:
   build:
-
+    name: "Build (${{ matrix.python-version }}, ${{ matrix.install-type }})"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       matrix:
         python-version: ['3.12', '3.13']
-        install-type: [dev]
+        install-type: [tests]
 
     steps:
+    # Checkout full history including tags for setuptools-scm
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest
+
+    - name: Upgrade pip
+      run: python -m pip install --upgrade pip
+
+    - name: Install test dependencies
+      run: pip install pytest
+
     - name: Install the python project
       env:
         INSTALL_TYPE: ${{ matrix.install-type }}
-      run: .github/install_script.sh
-    - name: Test with pytest
       run: |
-        pytest
+        pip install -e ".[${INSTALL_TYPE}]"
+
+    - name: Run tests
+      run: pytest

@@ -1,4 +1,5 @@
 """Test symmetrization of Wannier models"""
+import os
 import numpy as np
 import pytest
 from pytest import approx
@@ -18,6 +19,8 @@ from .test_run import (
     calculators_GaAs_internal,
     calculators_Te,
 )
+
+from .common import OUTPUT_DIR
 
 
 
@@ -473,6 +476,7 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
     results_tab = wberri.run(system,
                              parallel=False,
                     grid=grid,
+                    fout_name=os.path.join(OUTPUT_DIR, "result"),
                     calculators=calculators,
                     use_irred_kpt=False,
                         symmetrize=False,)
@@ -480,6 +484,7 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
     results_tab_sym = wberri.run(system,
                                 parallel=False,
                     grid=grid,
+                    fout_name=os.path.join(OUTPUT_DIR, "result"),
                     calculators=calculators,
                     use_irred_kpt=True,
                         symmetrize=True,)

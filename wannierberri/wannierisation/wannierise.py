@@ -100,8 +100,6 @@ def wannierise(wandata,
 
         * Also updates ``wandata.wannierised``, ``wandata.chk.wannier_centers_cart``,
             and ``wandata.chk.wannier_spreads``.
-        * If an outer window is needed, call :func:`~wannierberri.w90files.WannierData.select_bands`
-            before this function.
         * Disentanglement and localization are done together in a single loop.
         * If ``sitesym=True``, the optimization is carried out in the irreducible BZ and
             then symmetrized to the full BZ.
