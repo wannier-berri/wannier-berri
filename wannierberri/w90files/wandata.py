@@ -8,6 +8,8 @@
 # https://github.com/stepan-tsirkin/wannier-berri            #
 #                     written by                             #
 #           Stepan Tsirkin, University of Zurich             #
+#   some parts of this file are originate                    #
+# from the translation of Wannier90 code                     #
 # ------------------------------------------------------------#
 
 import datetime
@@ -17,13 +19,7 @@ import os
 import warnings
 import numpy as np
 
-from ..symmetry.projections import ProjectionsSet
-
-
 from ..utility import cached_einsum
-from ..wannierise import wannierise
-from ..symmetry.sawf import SymmetrizerSAWF
-from .utility import grid_from_kpoints
 
 from .bkvectors import BKVectors
 from .soc import SOC
@@ -51,8 +47,10 @@ FILES_CLASSES = {'win': WIN,
                 }
 
 
-class Wannier90data:
-    """A class to describe all input files of wannier90, and to construct the Wannier functions
+class WannierData:
+    """A class to read all input files of wannier90, or create the corresponding data from 
+    a bandstructure object, and to store them in a way that they can be easily accessed and used 
+    to create the Wannier functions or System_R from them.
 
     Parameters
     ----------
@@ -106,7 +104,7 @@ class Wannier90data:
                           include_pseudo=True,
                           bkvec=None):
         """
-        Create a Wannier90data object from a bandstructure object
+        Create a WannierData object from a bandstructure object
 
         Parameters
         ----------
@@ -125,10 +123,11 @@ class Wannier90data:
 
         Returns
         -------
-        Wannier90data
-            the Wannier90data object containing the files specified in `files`
+        WannierData
+            the WannierData object containing the files specified in `files`
 
         """
+        from .utility import grid_from_kpoints
         self = cls()
         print(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files},  projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
         if irreducible is None:
@@ -156,6 +155,7 @@ class Wannier90data:
                 files = list(files) + ["symmetrizer"]
 
         if "symmetrizer" in files:
+            from ..symmetry.sawf import SymmetrizerSAWF
             symmetrizer = SymmetrizerSAWF.from_irrep(bandstructure,
                                                      grid=mp_grid,
                                                      irreducible=irreducible,
@@ -261,6 +261,7 @@ class Wannier90data:
         projections : `~wannierberri.symmetry.projections.ProjectionSet`
             the projections to be used for the AMN and symmetrizer files.
         """
+        from ..symmetry.projections import ProjectionsSet
         projectionsSet = ProjectionsSet(projections)
         kwargs = {}
         if self.has_symmetrizer:
@@ -279,8 +280,8 @@ class Wannier90data:
         self.wannierised = False
         if self.has_file("chk"):
             self.chk.num_wann = projectionsSet.num_wann
-            self.chk.wannier_centers_cart = None  # projectionsSet.centers_cart
-            self.chk.wannier_spreads = None  # np.array([100] * projectionsSet.num_wann)
+            self.chk.wannier_centers_cart =  projectionsSet.wannier_centers_cart
+            self.chk.wannier_spreads = np.array([666] * projectionsSet.num_wann)
 
 
     @classmethod
@@ -364,6 +365,7 @@ class Wannier90data:
             print(f"Trying to read file {f} from npz {seedname}.{f}.npz")
             try:
                 if f == "symmetrizer":
+                    from ..symmetry.sawf import SymmetrizerSAWF
                     val = SymmetrizerSAWF.from_npz(seedname + ".sawf.npz")
                 elif f in FILES_CLASSES:
                     cls = FILES_CLASSES[f]
@@ -407,7 +409,6 @@ class Wannier90data:
                seedname="wannier90",
                files=None
                ):
-        os.makedirs(os.path.dirname(seedname), exist_ok=True)
         if files is None:
             files = self._files.keys()
         for f in files:
@@ -888,6 +889,7 @@ class Wannier90data:
         kwargs : dict
             the keyword arguments to be passed to `~wannierberri.wannierise.wannierise`
         """
+        from .. import wannierise
         wannierise(self,
                    irreducible=self.irreducible,
                    **kwargs)

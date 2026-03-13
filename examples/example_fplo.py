@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+from wannierberri.symmetry import point_symmetry as SYM
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -22,21 +26,19 @@ else:
 
 
 
-SYM = wberri.point_symmetry
-
 # Efermi=np.linspace(12.,13.,1001)
 Efermi = np.linspace(-0.5, 0.5, 1001)
-system = wberri.System_R.from_fplo('../tests/data/Fe_FPLO/+hamdata', berry=False, spin=False)
+system = System_R.from_fplo('../tests/data/Fe_FPLO/+hamdata', berry=False, spin=False)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system=system, length=300, length_FFT=50)
 
-wberri.ray_init()
+ray_init()
 wberri.run(system,
            grid=grid,
            calculators={
-               "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False),
+               "ahc": calculators.static.AHC(Efermi=Efermi, tetra=False),
            },
            adpt_num_iter=0,
            fout_name='Fe',

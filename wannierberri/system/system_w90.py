@@ -39,7 +39,7 @@ def get_system_w90(
 
     Parameters
     ----------
-    w90data : :class:`~wannierberri.w90files.Wannier90data`
+    w90data : :class:`~wannierberri.w90files.WannierData`
         Object that contains all Wannier90 input files and the checkpoint data.
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm

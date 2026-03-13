@@ -106,7 +106,7 @@ def test_create_w90files_diamond_irred(select_grid):
                             spacegroup=bandstructure.spacegroup
                             )
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[projection])
-    w90data = wberri.w90files.Wannier90data.from_bandstructure(
+    w90data = wberri.w90files.WannierData.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "symmetrizer"],
         seedname=os.path.join(path_tmp, prefix),
@@ -217,8 +217,8 @@ def test_irreducible_vs_full_Fe():
         projections=projections_set,
         normalize=False)
 
-    w90data_full = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_full, **kwargs_w90file)
-    w90data_irr = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_irr, **kwargs_w90file)
+    w90data_full = wberri.w90files.WannierData.from_bandstructure(bandstructure_full, **kwargs_w90file)
+    w90data_irr = wberri.w90files.WannierData.from_bandstructure(bandstructure_irr, **kwargs_w90file)
     assert w90data_full.irreducible is False, "w90data_full should not be irreducible"
     assert w90data_irr.irreducible is True, "w90data_irr should be irreducible"
     nkp_full = len(w90data_full.mmn.data)
@@ -326,7 +326,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     proj_d = Projection(position_num=pos, orbital='d', spacegroup=bandstructure.spacegroup)
     proj_set = wberri.symmetry.projections.ProjectionsSet(projections=[proj_s, proj_p, proj_d])
 
-    w90data = wberri.w90files.Wannier90data.from_bandstructure(
+    w90data = wberri.w90files.WannierData.from_bandstructure(
         bandstructure,
         files=["mmn", "eig", "amn", "unk", "spn", "symmetrizer"],
         seedname=os.path.join(path_tmp, prefix),
@@ -452,7 +452,7 @@ def test_create_w90files_Fe_gpaw(ispin):
     proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
     proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
     proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
-    w90files = wberri.w90files.Wannier90data.from_gpaw(
+    w90files = wberri.w90files.WannierData.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
@@ -514,7 +514,7 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
     seedname = os.path.join(path_output, f"Fe-irred-spin-{ispin}")
     seedname_ref = os.path.join(path_data, f"Fe-irred-spin-{ispin}")
-    w90files = wberri.w90files.Wannier90data.from_gpaw(
+    w90files = wberri.w90files.WannierData.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
@@ -588,7 +588,7 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
     proj_set = ProjectionsSet(projections=[proj_s])
     seedname = os.path.join(path_output, "diamond-irred")
     # seedname_ref = os.path.join(path_data, "diamond-irred")
-    w90data = wberri.w90files.Wannier90data.from_gpaw(
+    w90data = wberri.w90files.WannierData.from_gpaw(
         calculator=calc,
         spin_channel=0,
         projections=proj_set,

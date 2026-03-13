@@ -42,7 +42,7 @@ def wannierise(w90data,
 
     Parameters
     ----------
-    w90data : :class:`~wannierberri.w90files.Wannier90data`
+    w90data : :class:`~wannierberri.w90files.WannierData`
         Input Wannier90 data container.
     froz_min, froz_max : float
         Lower and upper bounds of the frozen window.
@@ -100,7 +100,7 @@ def wannierise(w90data,
 
         * Also updates ``w90data.wannierised``, ``w90data.chk.wannier_centers_cart``,
             and ``w90data.chk.wannier_spreads``.
-        * If an outer window is needed, call :func:`~wannierberri.w90files.Wannier90data.select_bands`
+        * If an outer window is needed, call :func:`~wannierberri.w90files.WannierData.select_bands`
             before this function.
         * Disentanglement and localization are done together in a single loop.
         * If ``sitesym=True``, the optimization is carried out in the irreducible BZ and
@@ -314,7 +314,7 @@ def update_chk(w90data, U_opt_full_BZ,
 
     Parameters
     ----------
-    w90data : Wannier90data
+    w90data : WannierData
         the data (inputs of wannier90)
     U_opt_free_BZ : list of numpy.ndarray(nBfree,nW)
         the optimized U matrix for the free bands and wannier functions

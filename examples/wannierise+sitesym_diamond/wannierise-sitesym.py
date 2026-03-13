@@ -6,8 +6,11 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+import wannierberri.w90files as w90files
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
+from wannierberri.system import System_R
 
 
 
@@ -66,17 +69,19 @@ for data_dir in ['diamond']:
         symmetrizer.set_D_wann_from_projections(projections=projset)
         print("D_wann\n", symmetrizer.D_wann_blocks)
 
-        amn = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset)
+        amn = w90files.AMN.from_bandstructure(bandstructure, projections=projset)
 
-        w90data = wberri.w90files.Wannier90data.from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond',
+        w90data = w90files.WannierData.from_w90_files(seedname='../../tests/data/' + data_dir + '/diamond',
                                                                files=['mmn', 'eig', 'win'])
         w90data.set_file("amn", amn)
         w90data.set_symmetrizer(symmetrizer)
-        w90data.select_bands(win_min=win_min, win_max=win_max)
-
-        w90data.wannierise(
+        
+        wberri.wannierise(
+            w90data=w90data,
             froz_min=froz_min,
             froz_max=froz_max,
+            outer_min=win_min,
+            outer_max=win_max,
             num_iter=100,
             conv_tol=1e-10,
             print_progress_every=20,
@@ -84,7 +89,7 @@ for data_dir in ['diamond']:
             localise=True,
         )
 
-        systems[data_dir + "-" + projname] = wberri.System_R.from_w90data(w90data=w90data, symmetrize=False)
+        systems[data_dir + "-" + projname] = System_R.from_w90data(w90data=w90data, symmetrize=False)
 
 system = list(systems.values())[0]
 # Now calculate bandstructure
@@ -100,7 +105,7 @@ path = wberri.Path(system=system, nodes=[[1 / 2, 0, 0],
     [1 / 2, 0, 1 / 2],
     [3 / 8, -3 / 8, 0],
     [0, 0, 0]], labels=['L', 'G', 'X', 'K', 'G'], length=200)
-tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
+tabulator = calculators.TabulatorAll(tabulators={}, mode='path')
 calculators = {'tabulate': tabulator}
 
 colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown'][-1::-1]

@@ -10,7 +10,10 @@ from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 from time import time
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+import wannierberri.w90files as w90files
 from pathlib import Path
+from wannierberri.system import System_R
 
 parallel = False
 
@@ -18,7 +21,7 @@ t0 = time()
 path_data = Path("./pwscf/")  # adjust path if needed to point to the data in the tests fo wannier-berri repository
 
 includeTR = False
-w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=str(path_data / "Ni4W"), files=["amn", "mmn", "eig", "win"])
+w90data = w90files.WannierData.from_w90_files(seedname=str(path_data / "Ni4W"), files=["amn", "mmn", "eig", "win"])
 t1 = time()
 sitesym = True
 
@@ -123,12 +126,13 @@ if parallel:
 froz_max = 24
 t3 = time()
 
-w90data.select_bands(win_min=8, )
 t4 = time()
-w90data.wannierise(init="amn",
+wberri.wannierise(w90data=w90data,
+                   init="amn",
                    num_wann=34,
                    froz_min=8,
                    froz_max=froz_max,
+                   outer_min=8,
                    print_progress_every=10,
                    num_iter=30,
                    conv_tol=1e-6,
@@ -146,10 +150,10 @@ print("Time elapsed (Window): ", t4 - t3)
 print("Time elapsed (read data): ", t1 - t0)
 
 exit()
-system = wberri.System_R.from_w90data(w90data=w90data, silent=True)
+system = System_R.from_w90data(w90data=w90data, silent=True)
 
 path = wberri.Path(system=system, nodes=[[0, 0, 0], [1 / 2, 0, 0], [1, 0, 0]], labels=['G', 'L', 'G'], length=100)
-tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
+tabulator = calculators.TabulatorAll(tabulators={}, mode='path')
 calculators = {'tabulate': tabulator}
 
 result = wberri.run(system, grid=path, calculators=calculators)

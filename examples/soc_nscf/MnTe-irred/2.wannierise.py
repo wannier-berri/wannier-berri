@@ -1,7 +1,8 @@
 from gpaw import GPAW
 from irrep.spacegroup import SpaceGroup
+import wannierberri as wberri
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from wannierberri.w90files.w90data_soc import Wannier90dataSOC
+from wannierberri.w90files.w90data_soc import WannierDataSOC
 from wannierberri.system.system_soc import SystemSOC
 
 gpaw_calc = GPAW("MnTe-nscf-irred-664.gpw")
@@ -28,7 +29,7 @@ proj_Te_pz = Projection(position_num=positions_Te, orbital='pz', spacegroup=sg)
 proj_set_up = ProjectionsSet([proj_Mn1_d, proj_Te_sp2, proj_Te_pz])
 proj_set_down = ProjectionsSet([proj_Mn2_d, proj_Te_sp2, proj_Te_pz])
 
-w90data = Wannier90dataSOC.from_gpaw(
+w90data = WannierDataSOC.from_gpaw(
     seedname="wannier_soc",
     calculator=gpaw_calc,
     projections_up=proj_set_up,
@@ -37,12 +38,12 @@ w90data = Wannier90dataSOC.from_gpaw(
     spacegroup=sg,
 )
 
-w90data.select_bands(win_min=-10,
-                     win_max=50)
-
-w90data.wannierise(
+wberri.wannierise(
+    w90data=w90data,
     froz_min=-10,
     froz_max=7,
+    outer_min=-10,
+    outer_max=50,
     num_iter=0,
     print_progress_every=50,
     sitesym=True,

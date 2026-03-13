@@ -2,7 +2,7 @@ import numpy as np
 import ray
 from wannierberri.system import System_w90
 from wannierberri.w90files.amn import AMN
-from wannierberri.w90files.w90data import Wannier90data
+from wannierberri.w90files.w90data import WannierData
 from irrep.bandstructure import BandStructure
 
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
@@ -40,7 +40,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
                                                   'nbands_upper_skip': 4 * (2 if spinor else 1)})
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = Wannier90data.from_w90_files(prefix, files=["win", "eig", "mmn"])
+    w90data = WannierData.from_w90_files(prefix, files=["win", "eig", "mmn"])
     # exit()
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)

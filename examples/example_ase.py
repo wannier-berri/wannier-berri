@@ -9,6 +9,9 @@ from ase.dft.wannier import Wannier
 from matplotlib import pyplot as plt
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as wb_calculators
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 
 
 # you may set some of those flags to False to speed-up further runs
@@ -52,17 +55,17 @@ else:
 k1 = k2 = 1. / 3
 
 if do_wberri:
-    system = wberri.System_R.from_ase(wan, berry=True)
-    wberri.ray_init()
+    system = System_R.from_ase(wan, berry=True)
+    ray_init()
 
 
     path = wberri.Path(
         system, nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]], labels=["K<-", "H", "->K"], length=500)
 
 
-    calculators = {"tabulate": wberri.calculators.TabulatorAll({
-        "Energy": wberri.calculators.tabulate.Energy(),
-        "berry": wberri.calculators.tabulate.BerryCurvature(),
+    calculators = {"tabulate": wb_calculators.TabulatorAll({
+        "Energy": wb_calculators.tabulate.Energy(),
+        "berry": wb_calculators.tabulate.BerryCurvature(),
     }, mode="path"
     )
     }
@@ -108,8 +111,8 @@ if do_wberri:
         wberri.run(system,
             grid=grid,
             calculators={
-                "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False, kwargs_formula={"external_terms": False}),
-                "dos": wberri.calculators.static.DOS(Efermi=Efermi, tetra=False),
+                "ahc": wb_calculators.static.AHC(Efermi=Efermi, tetra=False, kwargs_formula={"external_terms": False}),
+                "dos": wb_calculators.static.DOS(Efermi=Efermi, tetra=False),
             },
             adpt_num_iter=0,
             fout_name='Fe',

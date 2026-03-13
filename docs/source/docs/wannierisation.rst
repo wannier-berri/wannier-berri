@@ -10,7 +10,7 @@ Wannierisation can be performed with both `sitesym=True` and **frozen window** (
 
 see examples in `examples/wannierise+sitesym-Fe` and `examples/wannierise+sitesym-diamond`
 
-.. automethod:: wannierberri.wannierise.wannierise
+.. automethod:: wannierberri.wannierise
 
 Example
 ====================
@@ -27,7 +27,7 @@ Example
    import wannierberri as wb
 
    path_data = "../../tests/data/Fe-222-pw/"
-   w90data = wb.w90files.Wannier90data.from_w90_files(seedname=path_data + "Fe", files=["mmn", "eig", "win", ])
+   w90data = wb.w90files.WannierData.from_w90_files(seedname=path_data + "Fe", files=["mmn", "eig", "win", ])
 
 
    bandstructure = BandStructure(code='espresso',
@@ -57,18 +57,19 @@ Example
    w90data.set_symmetrizer(symmetrizer)
    w90data.set_file("amn", amn)
 
-   w90data.select_bands(win_min=-8, win_max=50)
-
-   w90data.wannierise(init="amn",
-                     froz_min=-10,
-                     froz_max=20,
-                     print_progress_every=10,
-                     num_iter=101,
-                     conv_tol=1e-10,
-                     mix_ratio_z=1.0,
-                     sitesym=True,
-                     parallel=False
-                     )
+   wb.wannierise(w90data=w90data,
+                 init="amn",
+                 froz_min=-10,
+                 froz_max=20,
+                 outer_min=-8,
+                 outer_max=50,
+                 print_progress_every=10,
+                 num_iter=101,
+                 conv_tol=1e-10,
+                 mix_ratio_z=1.0,
+                 sitesym=True,
+                 parallel=False
+                 )
 
    system = wb.system.System_w90(w90data=w90data, berry=True)
    # Now do whatever you want with the system, as if it was created with Wannier90

@@ -57,7 +57,7 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
+    w90data = wberri.w90files.WannierData.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
     w90data.set_symmetrizer(symmetrizer=symmetrizer)
     outer_min = -np.inf
     outer_max = np.inf
@@ -169,7 +169,7 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window, parallel):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
+    w90data = wberri.w90files.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
     # win = WIN.from_w90_file(path_data + "/Fe")
     # chk = CHK.from_win(win)
     # chk.to_npz(path_data + f"/Fe.chk.npz")
@@ -295,7 +295,7 @@ def test_graphene_freeze_bands(outer_window, parallel, z0):
     else:
         path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw_z=1.5")
 
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer"], irreducible=True)
+    w90data = wberri.w90files.WannierData.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer"], irreducible=True)
     print(f"files in w90data: {w90data._files}")
     kwargs = dict(init="amn",
                   print_progress_every=20,

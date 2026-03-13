@@ -8,4 +8,4 @@ from .spn import SPN
 from .unk import UNK
 
 from .chk import CheckPoint
-from .w90data import Wannier90data
+from .w90data import WannierData

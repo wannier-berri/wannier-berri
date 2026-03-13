@@ -1,10 +1,10 @@
 from wannierberri.w90files.mmn import MMN
 from ..utility import group_numbers
 from .soc import SOC
-from .w90data import Wannier90data
+from .w90data import WannierData
 
 
-class Wannier90dataSOC(Wannier90data):
+class WannierDataSOC(WannierData):
     """Class to handle Wannier90 data with spin-orbit coupling (SOC)."""
 
     def __init__(self, data_up, data_down, cell=None):
@@ -27,11 +27,11 @@ class Wannier90dataSOC(Wannier90data):
         """Create Wannier90DataSOC from NPZ files."""
 
         files_ud = [f for f in files if f != "soc"] if files is not None else None
-        data_up = Wannier90data.from_npz(seedname=seedname + "-spin-0",
+        data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                          files=files_ud,
                                          irreducible=irreducible)
         try:
-            data_down = Wannier90data.from_npz(seedname=seedname + "-spin-1",
+            data_down = WannierData.from_npz(seedname=seedname + "-spin-1",
                                                files=files_ud,
                                                irreducible=irreducible)
         except FileNotFoundError:
@@ -89,7 +89,7 @@ class Wannier90dataSOC(Wannier90data):
             projections_down = projections_up
         return_bandstructure = "mmn_ud" in files and nspin == 2
 
-        data_up = Wannier90data.from_gpaw(spin_channel=0,
+        data_up = WannierData.from_gpaw(spin_channel=0,
                                           seedname=seedname + "-spin-0",
                                           projections=projections_up,
                                           return_bandstructure=return_bandstructure,
@@ -99,7 +99,7 @@ class Wannier90dataSOC(Wannier90data):
 
         if nspin == 2:
             bkvec = data_up.get_file('bkvec')
-            data_down = Wannier90data.from_gpaw(spin_channel=1,
+            data_down = WannierData.from_gpaw(spin_channel=1,
                                                 seedname=seedname + "-spin-1",
                                                 projections=projections_down,
                                                 return_bandstructure=return_bandstructure,

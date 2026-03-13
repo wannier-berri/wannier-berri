@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+from wannierberri.symmetry import point_symmetry as SYM
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 from time import time
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -16,25 +20,23 @@ num_proc = 4
 
 
 
-SYM = wberri.point_symmetry
-
 # Efermi = np.linspace(12.,13.,101)
 omega = np.linspace(-0.01, 0.1, 1101)
-system = wberri.System_R.from_phonons_qe('../tests/data/Si_phonons/si', asr=True)
+system = System_R.from_phonons_qe('../tests/data/Si_phonons/si', asr=True)
 
 generators = ["C4z", "C4x", "TimeReversal"]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system=system, length=10, NKFFT=4)
 
-wberri.ray_init()
+ray_init()
 
 t0 = time()
 wberri.run(system,
            grid=grid,
            calculators={
-               "dos": wberri.calculators.static.DOS(Efermi=omega, tetra=False),
-               "dos_tetra": wberri.calculators.static.DOS(Efermi=omega, tetra=True),
-               "cumdos_tetra": wberri.calculators.static.CumDOS(Efermi=omega, tetra=True),
+               "dos": calculators.static.DOS(Efermi=omega, tetra=False),
+               "dos_tetra": calculators.static.DOS(Efermi=omega, tetra=True),
+               "cumdos_tetra": calculators.static.CumDOS(Efermi=omega, tetra=True),
            },
            use_irred_kpt=False,
            symmetrize=True,
@@ -48,9 +50,9 @@ t_run = time() - t0
 wberri.run(system,
            grid=grid,
            calculators={
-               "dos": wberri.calculators.static.DOS(Efermi=omega, tetra=False),
-               "dos_tetra": wberri.calculators.static.DOS(Efermi=omega, tetra=True),
-               "cumdos_tetra": wberri.calculators.static.CumDOS(Efermi=omega, tetra=True),
+               "dos": calculators.static.DOS(Efermi=omega, tetra=False),
+               "dos_tetra": calculators.static.DOS(Efermi=omega, tetra=True),
+               "cumdos_tetra": calculators.static.CumDOS(Efermi=omega, tetra=True),
            },
            use_irred_kpt=True,
            symmetrize=True,
@@ -75,8 +77,8 @@ path = wberri.Path(system=system,
 result = wberri.run(system,
             grid=path,
             calculators={
-                "tabulate": wberri.calculators.TabulatorAll({
-                    "Energy": wberri.calculators.tabulate.Energy(),
+                "tabulate": calculators.TabulatorAll({
+                    "Energy": calculators.tabulate.Energy(),
                 }, mode="path"),
             },
     use_irred_kpt=True,

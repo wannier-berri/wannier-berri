@@ -16,8 +16,8 @@ from wannierberri.system.needed_data import NeededData
 from wannierberri.system.system_R import System_R
 from wannierberri.w90files.soc import SOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.w90files.w90data import Wannier90data
-from wannierberri.w90files.w90data_soc import Wannier90dataSOC
+from wannierberri.w90files.w90data import WannierData
+from wannierberri.w90files.w90data_soc import WannierDataSOC
 
 
 from wannierberri.system.system_soc import SystemSOC
@@ -103,7 +103,7 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     data_dir_new = data_dir.joinpath("NPZ")
     data_dir_new.mkdir(exist_ok=True)
 
-    w90data = Wannier90data.from_w90_files(seedname=str(data_dir / seedname),
+    w90data = WannierData.from_w90_files(seedname=str(data_dir / seedname),
                                            files=["amn", "mmn", "eig", "chk", "spn", "win",
                                                   "uHu", "uIu", "sHu", "sIu"],
                                            readnnkp=False)
@@ -157,7 +157,7 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    w90data = Wannier90data.from_w90_files(
+    w90data = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
         readnnkp=False,  # to reproduce the old behavior of not reading bkvec from nnkp file
@@ -179,7 +179,7 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    w90data = Wannier90data.from_npz(
+    w90data = WannierData.from_npz(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -207,7 +207,7 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
 @pytest.fixture(scope="session")
 def system_Fe_WB_irreducible():
     """Create system for Fe from WB wannierisation based on irreducible kpoints only"""
-    w90data = wberri.w90files.Wannier90data.from_npz(
+    w90data = wberri.w90files.WannierData.from_npz(
         seedname=os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "wann-irred", "Fe_wan"),
         files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer', "bkvec"],
     )
@@ -227,7 +227,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    w90data = Wannier90data.from_w90_files(
+    w90data = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -384,7 +384,7 @@ def system_Fe_gpaw_soc_111_irred():
 
     # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
     # os.makedirs(path, exist_ok=True)
-    w90data = Wannier90dataSOC.from_gpaw(
+    w90data = WannierDataSOC.from_gpaw(
         calculator=gpaw_calc,
         projections=proj_set,
         mp_grid=(2, 2, 2),
@@ -423,7 +423,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    w90data = Wannier90data.from_w90_files(
+    w90data = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -443,7 +443,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
-    w90data = Wannier90data.from_w90_files(
+    w90data = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -506,7 +506,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    w90data = Wannier90data.from_w90_files(
+    w90data = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )

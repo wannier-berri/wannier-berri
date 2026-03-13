@@ -1,7 +1,7 @@
 storing and handling Wannier90 input and output files
 =====================================================
 
-.. autoclass:: wannierberri.w90files.Wannier90data
+.. autoclass:: wannierberri.w90files.WannierData
    :members: __init__, write, select_bands, set_random_symmetric_projections, 
    :show-inheritance:
 

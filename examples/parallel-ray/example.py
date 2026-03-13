@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+import wannierberri.w90files as w90files
+from wannierberri.symmetry import point_symmetry as SYM
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -22,24 +27,22 @@ else:
 
 
 
-SYM = wberri.point_symmetry
-
 Efermi = np.linspace(12., 13., 1001)
-w90data = wberri.w90files.Wannier90data.from_w90_files(
+w90data = w90files.WannierData.from_w90_files(
     '../../tests/data/Fe_Wannier90/Fe', 
     files=['mmn', 'eig', 'chk'],)
-system = wberri.System_R.from_w90data(w90data, berry=True)
+system = System_R.from_w90data(w90data, berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
 grid = wberri.Grid(system=system, NKdiv=16, NKFFT=16)
 
-wberri.ray_init()
+ray_init()
 
 wberri.run(system,
            grid=grid,
            calculators={
-               "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False),
+               "ahc": calculators.static.AHC(Efermi=Efermi, tetra=False),
            },
            adpt_num_iter=0,
            fout_name='Fe',

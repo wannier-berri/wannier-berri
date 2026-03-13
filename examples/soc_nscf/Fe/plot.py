@@ -7,9 +7,10 @@ from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.w90files.soc import SOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.w90files.chk import CheckPoint as CHK
+from wannierberri.parallel import ray_init
 
 
-wberri.ray_init()
+ray_init()
 
 system_dw = System_R.from_npz("system_dw")
 system_up = System_R.from_npz("system_up")

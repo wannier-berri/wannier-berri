@@ -2,7 +2,7 @@ from wannierberri.wannierise.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as wb
 prefix = "tellurium"
-w90data = wb.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["mmn", "eig", "win", "uhu", "spn"])
+w90data = wb.w90files.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win", "uhu", "spn"])
 
 bandstructure = BandStructure(code='espresso',
                             prefix=prefix,
@@ -28,16 +28,18 @@ w90data.set_file("amn", amn)
 print(f"amn {amn.data.shape}")
 
 
-w90data.wannierise(init="amn",
-                   froz_min=-100,
-                   froz_max=8,
-                   print_progress_every=1,
-                   num_iter=11,
-                   conv_tol=1e-6,
-                   mix_ratio_z=1.0,
-                   sitesym=True,
-                   parallel=False
-                    )
+wb.wannierise(
+        w90data=w90data,
+        init="amn",
+        froz_min=-100,
+        froz_max=8,
+        print_progress_every=1,
+        num_iter=11,
+        conv_tol=1e-6,
+        mix_ratio_z=1.0,
+        sitesym=True,
+        parallel=False
+        )
 
 
 

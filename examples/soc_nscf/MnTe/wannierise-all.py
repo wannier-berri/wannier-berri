@@ -2,9 +2,10 @@ import pickle
 from gpaw import GPAW
 # import numpy as np
 import ray
+import wannierberri as wberri
 from wannierberri.system import System_R
 from wannierberri.w90files.amn import AMN
-from wannierberri.w90files.w90data import Wannier90data
+from wannierberri.w90files.w90data import WannierData
 from irrep.bandstructure import BandStructure
 from irrep.spacegroup import SpaceGroup
 
@@ -81,15 +82,16 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         symmetrizer.to_npz(f"symmetrizer-spin-{spin_channel}.npz")
     symmetrizer.set_D_wann_from_projections(proj_set)
 
-    w90data = Wannier90data.from_w90_files(prefix, files=["win", "eig", "mmn"])
+    w90data = WannierData.from_w90_files(prefix, files=["win", "eig", "mmn"])
     w90data.set_file("amn", amn, overwrite=True)
     w90data.set_file("symmetrizer", symmetrizer)
-    # w90data.select_bands(win_min=-10,
-    #                      win_max=50)
 
-    w90data.wannierise(
+    wberri.wannierise(
+        w90data=w90data,
         froz_min=-10,
         froz_max=7,
+        # outer_min=-10,
+        # outer_max=50,
         num_iter=500,
         print_progress_every=100,
         sitesym=True,
