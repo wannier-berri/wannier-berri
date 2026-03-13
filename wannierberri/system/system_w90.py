@@ -24,7 +24,7 @@ from .system_R import System_R
 
 
 def get_system_w90(
-    w90data,
+    wandata,
     transl_inv_JM=False,
     transl_inv_MV=False,
     fftlib='fftw',
@@ -39,25 +39,27 @@ def get_system_w90(
 
     Parameters
     ----------
-    w90data : `~wannierberri.w90files.Wannier90data`
-        object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
+    wandata : :class:`~wannierberri.WannierData`
+        Object that contains all Wannier90 input files and the checkpoint data.
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
     transl_inv_MV : bool
-    Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    Note : it applies only to the `AA` matrix for R+!=[0,0,0] and only if `transl_inv_JM` is False
-    Kept for legacy reasons, as it is not used recommended to use. 
+        Use Eq. (31) of `Marzari & Vanderbilt, PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_
+        for band-diagonal position matrix elements.
+        It applies only to the `AA` matrix for `R != [0, 0, 0]` and only if `transl_inv_JM` is False.
+        Kept for legacy reasons and not recommended for new calculations.
 
     wannier_centers_from_chk : bool
         If True, the centers of the Wannier functions are read from the ``.chk`` file. If False, the centers are recalculated from the ``.mmn`` file.
-    fft : str
+    fftlib : str
         library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
         anyway mostly time of the constructor is consumed by reading the input files)
     symmetrize : bool
         if True, the R-matrices and wannier centers are symmetrized (highly recommended, False is for debugging only)
-        works only if initialized from the w90data object, and that object has the symmetrizer
+        works only if initialized from the wandata object, and that object has the symmetrizer
     **parameters
-        see `~wannierberri.system.System_R` and `~wannierberri.system.system.System` for the rest of the parameters
+        See :class:`~wannierberri.system.System_R` and :class:`~wannierberri.system.system.System`
+        for the rest of the parameters.
 
     Notes
     -----
@@ -71,7 +73,7 @@ def get_system_w90(
 
     See Also
     --------
-    `~wannierberri.system.system.System_R`
+    :class:`~wannierberri.system.system.System_R`
     """
     if transl_inv_MV:
         warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
@@ -97,21 +99,21 @@ def get_system_w90(
         if len(unknown) > 0:
             raise NotImplementedError(f"unknown matrices requested: {list(unknown)} is not implemented")
 
-    w90data.check_wannierised(msg="creation of System_w90")
-    if w90data.irreducible:
+    wandata.check_wannierised(msg="creation of System_w90")
+    if wandata.irreducible:
         symmetrize = True
-    print(f"irreducible : {w90data.irreducible}, symmetrize set to {symmetrize}")
-    chk = w90data.chk
+    print(f"irreducible : {wandata.irreducible}, symmetrize set to {symmetrize}")
+    chk = wandata.chk
     system.real_lattice, system.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
-    system.set_pointgroup(spacegroup=w90data.get_spacegroup())
-    kptirr, weights_k = w90data.kptirr_system
-    mp_grid = w90data.mp_grid
+    system.set_pointgroup(spacegroup=wandata.get_spacegroup())
+    kptirr, weights_k = wandata.kptirr_system
+    mp_grid = wandata.mp_grid
 
     if wannier_centers_from_chk:
-        system.wannier_centers_cart = w90data.wannier_centers_cart
+        system.wannier_centers_cart = wandata.wannier_centers_cart
     else:
-        assert w90data.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
-        AA_q = chk.get_AA_q(w90data.mmn, kptirr=kptirr, weights_k=weights_k)
+        assert wandata.has_file('mmn'), "mmn file is needed to calculate the centers of the Wannier functions"
+        AA_q = chk.get_AA_q(wandata.mmn, kptirr=kptirr, weights_k=weights_k)
         AA_R0 = AA_q.sum(axis=0) / np.prod(mp_grid)
         system.wannier_centers_cart = np.diagonal(AA_R0, axis1=0, axis2=1).T
 
@@ -119,10 +121,10 @@ def get_system_w90(
     system._NKFFT_recommended = mp_grid
     system.rvec = Rvectors(lattice=system.real_lattice, shifts_left_red=system.wannier_centers_red)
     system.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
-    system.num_wann = w90data.num_wann
+    system.num_wann = wandata.num_wann
 
     system.rvec.set_fft_q_to_R(
-        kpt_red=w90data.kpt_red,
+        kpt_red=wandata.kpt_red,
         fftlib=fftlib,
     )
 
@@ -140,22 +142,22 @@ def get_system_w90(
 
     # H(R) matrix
 
-    HHq = chk.get_HH_q(w90data.eig, kptirr=kptirr, weights_k=weights_k)
+    HHq = chk.get_HH_q(wandata.eig, kptirr=kptirr, weights_k=weights_k)
 
     system.set_R_mat('Ham', system.rvec.q_to_R(HHq))
 
     if needed_data.need_any('SS'):
-        system.set_R_mat('SS', system.rvec.q_to_R(chk.get_SS_q(w90data.spn, kptirr=kptirr, weights_k=weights_k)))
+        system.set_R_mat('SS', system.rvec.q_to_R(chk.get_SS_q(wandata.spn, kptirr=kptirr, weights_k=weights_k)))
 
 
 
     # Wannier centers
     centers = system.wannier_centers_cart
     if needed_data.need_any(['AA', 'BB', 'CC', 'OO', 'GG', 'SR', 'SH', 'SHR', 'SA', 'SHA']):
-        assert w90data.has_file('bkvec'), "bkvec file is needed to calculate the position operator matrix elements"
-        NNB = w90data.bkvec.NNB
+        assert wandata.has_file('bkvec'), "bkvec file is needed to calculate the position operator matrix elements"
+        NNB = wandata.bkvec.NNB
         if transl_inv_JM:
-            bk_cart = w90data.bkvec.bk_cart
+            bk_cart = wandata.bkvec.bk_cart
             phaseR = cached_einsum('ba,Ra->Rb', bk_cart, - 0.5 * system.rvec.cRvec)
             expiRphase1 = np.exp(1j * phaseR)[:, None, None, :]
             expiRphase2 = expiRphase1[:, :, :, :, None] * expiRphase1[:, :, :, None, :]
@@ -198,7 +200,7 @@ def get_system_w90(
                 XX_R[:] += system.rvec.q_to_R(getter_from_chk(**db) * phase_loc_j[:, :, :, *ib]) * phase_loc_i[:, :, :, *ib]
             return XX_R
 
-        bk_cart = w90data.get_file("bkvec").bk_cart
+        bk_cart = wandata.get_file("bkvec").bk_cart
 
         if transl_inv_JM:
             _r0 = 0.5 * (centers[:, None, :] + centers[None, :, :])
@@ -213,8 +215,8 @@ def get_system_w90(
         if needed_data.need_any('AA'):
             print("setting AA..")
             getter_from_chk = functools.partial(chk.get_AABB_q_ib,
-                                                mmn=w90data.mmn,
-                                                bkvec=w90data.bkvec,
+                                                mmn=wandata.mmn,
+                                                bkvec=wandata.bkvec,
                                                 transl_inv=transl_inv_MV,
                                                 **kwargs_kpt)
             system.set_R_mat('AA',
@@ -228,9 +230,9 @@ def get_system_w90(
         if needed_data.need_any('BB'):
             print("setting BB...")
             getter_from_chk = functools.partial(chk.get_AABB_q_ib,
-                                                mmn=w90data.mmn,
-                                                bkvec=w90data.bkvec,
-                                                eig=w90data.eig,
+                                                mmn=wandata.mmn,
+                                                bkvec=wandata.bkvec,
+                                                eig=wandata.eig,
                                                 **kwargs_kpt)
             system.set_R_mat('BB', sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1))
             print("setting BB - OK")
@@ -240,8 +242,8 @@ def get_system_w90(
         if needed_data.need_any('CC'):
             print("setting CC..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                bkvec=w90data.bkvec,
-                                                uhu=w90data.uhu,
+                                                bkvec=wandata.bkvec,
+                                                uhu=wandata.uhu,
                                                 antisym=True,
                                                 **kwargs_kpt)
             system.set_R_mat('CC',
@@ -254,8 +256,8 @@ def get_system_w90(
         if needed_data.need_any('OO'):
             print("setting OO..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                uhu=w90data.uiu,
-                                                bkvec=w90data.bkvec,
+                                                uhu=wandata.uiu,
+                                                bkvec=wandata.bkvec,
                                                 antisym=True,
                                                 **kwargs_kpt)
             system.set_R_mat('OO',
@@ -268,8 +270,8 @@ def get_system_w90(
         if needed_data.need_any('GG'):
             print("setting GG..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                bkvec=w90data.bkvec,
-                                                uhu=w90data.uiu,
+                                                bkvec=wandata.bkvec,
+                                                uhu=wandata.uiu,
                                                 antisym=False,
                                                 **kwargs_kpt)
             system.set_R_mat('GG',
@@ -284,28 +286,28 @@ def get_system_w90(
 
         if needed_data.need_any('SR'):
             print("setting SR..")
-            system.set_R_mat('SR', system.rvec.q_to_R(chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
-                                                bkvec=w90data.bkvec,
+            system.set_R_mat('SR', system.rvec.q_to_R(chk.get_SHR_q(spn=wandata.spn, mmn=wandata.mmn,
+                                                bkvec=wandata.bkvec,
                                                                 **kwargs_kpt, phase=expjphase1)))
             print("setting SR - Ok")
         if needed_data.need_any('SH'):
             system.set_R_mat('SH',
-                            system.rvec.q_to_R(chk.get_SH_q(w90data.spn, w90data.eig, **kwargs_kpt)))
+                            system.rvec.q_to_R(chk.get_SH_q(wandata.spn, wandata.eig, **kwargs_kpt)))
             print("setting SH - Ok")
         if needed_data.need_any('SHR'):
             print("setting SHR..")
             system.set_R_mat('SHR', system.rvec.q_to_R(
-                chk.get_SHR_q(spn=w90data.spn, mmn=w90data.mmn,
-                              bkvec=w90data.bkvec,
+                chk.get_SHR_q(spn=wandata.spn, mmn=wandata.mmn,
+                              bkvec=wandata.bkvec,
                               **kwargs_kpt,
-                              eig=w90data.eig, phase=expjphase1)))
+                              eig=wandata.eig, phase=expjphase1)))
             print("setting SHR - OK")
 
         if needed_data.need_any('SA'):
             print("setting SA..")
             getter_from_chk = functools.partial(chk.get_SHA_q,
-                                                shu=w90data.siu,
-                                                bkvec=w90data.bkvec,
+                                                shu=wandata.siu,
+                                                bkvec=wandata.bkvec,
                                                 **kwargs_kpt)
             system.set_R_mat('SA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
@@ -314,8 +316,8 @@ def get_system_w90(
         if needed_data.need_any('SHA'):
             print("setting SHA..")
             getter_from_chk = functools.partial(chk.get_SHA_q,
-                                                shu=w90data.shu,
-                                                bkvec=w90data.bkvec,
+                                                shu=wandata.shu,
+                                                bkvec=wandata.bkvec,
                                                 **kwargs_kpt)
             system.set_R_mat('SHA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
@@ -332,8 +334,8 @@ def get_system_w90(
                         f"transl_inv_MV={transl_inv_MV}, transl_inv_JM={transl_inv_JM}",
                             set_zero=transl_inv_MV or transl_inv_JM,
                             threshold=0.1 if transl_inv_JM else 1e5)
-    if symmetrize and w90data.has_file('symmetrizer'):
-        system.symmetrize2(w90data.symmetrizer)
+    if symmetrize and wandata.has_file('symmetrizer'):
+        system.symmetrize2(wandata.symmetrizer)
     return system
 
     ###########################################################################

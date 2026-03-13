@@ -52,4 +52,4 @@ Tabulating
    :show-inheritance:
    :exclude-members: Tabulator
 
-.. autofunction:: wannierberri.npz_to_fermisurfer
+.. autofunction:: wannierberri.result.tabresult.npz_to_fermisurfer

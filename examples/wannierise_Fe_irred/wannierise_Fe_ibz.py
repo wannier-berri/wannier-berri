@@ -1,9 +1,11 @@
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 from irrep.bandstructure import BandStructure
 import wannierberri as wberri
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 
 
-wberri.ray_init()
+ray_init()
 path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
 bandstructure = BandStructure(code='espresso',
@@ -35,7 +37,7 @@ if True:
     # projections_set = ProjectionsSet(projections=projections_spd)
 
 
-    w90data = wberri.w90files.Wannier90data.from_bandstructure(
+    wandata = wberri.WannierData.from_bandstructure(
         bandstructure,
         seedname="./Fe",
         files=['amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
@@ -43,11 +45,12 @@ if True:
         normalize=False
     )
 
-    w90data.select_bands(win_min=-8, win_max=50)
-
-    w90data.wannierise(init="amn",
+    wberri.wannierise(wandata=wandata,
+                    init="amn",
                     froz_min=-10,
                     froz_max=20,
+                    outer_min=-8,
+                    outer_max=50,
                     print_progress_every=10,
                     num_iter=41,
                     conv_tol=1e-10,
@@ -55,14 +58,14 @@ if True:
                     sitesym=True,
                     parallel=True
                         )
-    w90data.to_npz(seedname="./Fe_wan")
+    wandata.to_npz(seedname="./Fe_wan")
 
 else:
     # for further runs just load the data
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname="./Fe_wan",
+    wandata = wberri.WannierData.from_npz(seedname="./Fe_wan",
                                                    files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],)
 
-system = wberri.System_R.from_w90data(w90data=w90data, spin=True, berry=True)
+system = System_R.from_wannierdata(wandata=wandata, spin=True, berry=True)
 
 
 # all kpoints given in reduced coordinates
@@ -78,8 +81,7 @@ path = wberri.Path(system=system,
 
 
 bands = wberri.evaluate_k_path(system=system,
-                           path=path,
-                            parallel=parallel
+                           path=path
                            )
 
 bands.plot_path_fat(path,

@@ -10,24 +10,24 @@ Wannierisation can be performed with both `sitesym=True` and **frozen window** (
 
 see examples in `examples/wannierise+sitesym-Fe` and `examples/wannierise+sitesym-diamond`
 
-.. automethod:: wannierberri.wannierise.wannierise
+.. automethod:: wannierberri.wannierise
 
 Example
 ====================
 
 .. code-block:: python
 
-   # This tutorial shows how to generate a DMN file inside Wanier Berri code (without pw2wannier90)
-   # and then use it to generate a Wannier90 output.
+   # This tutorial shows how to generate symmetry-adapted wannier functions with WannierBerri
    # It may be used with any DFT code that is supported by IrRep (QE, VASP, AINIT, ...)
-   # the .dmn and .amn files are NOT needed before the calculation, they is generated on the fly
+   # the .dmn and .amn files are NOT needed before the calculation, they are generated on the fly
+   # from the Wavefunctions stored by the DFT code (e.g. from the WAVECAR. .save files, etc)
 
    from wannierberri.symmetry.projections import Projection, ProjectionsSet
    from irrep.bandstructure import BandStructure
    import wannierberri as wb
 
    path_data = "../../tests/data/Fe-222-pw/"
-   w90data = wb.w90files.Wannier90data.from_w90_files(seedname=path_data + "Fe", files=["mmn", "eig", "win", ])
+   wandata = wb.WannierData.from_w90_files(seedname=path_data + "Fe", files=["mmn", "eig", "win", ])
 
 
    bandstructure = BandStructure(code='espresso',
@@ -36,12 +36,13 @@ Example
                               normalize=True,
                               magmom=[[0, 0, 1.]],
                               include_TR=True,
+                              irreducible=False
                               )
    spacegroup = bandstructure.spacegroup
    spacegroup.show()
    # exit()
    # symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={False}.sawf.npz")
-   symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_irrep(bandstructure)
+   symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_irrep(bandstructure, irreducible=False)
 
    projection_s = Projection(orbital='s', position_num=[0, 0, 0], spacegroup=spacegroup)
    projection_p = Projection(orbital='p', position_num=[0, 0, 0], spacegroup=spacegroup)
@@ -52,25 +53,21 @@ Example
    # projections_set = ProjectionsSet(projections=[projection_s, projection_p, projection_d])
    projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
 
-   symmetrizer.set_D_wann_from_projections(projections_set)
-   amn = wb.w90files.AMN.from_bandstructure(bandstructure, projections=projections_set)
-   w90data.set_symmetrizer(symmetrizer)
-   w90data.set_file("amn", amn)
+   wandata.set_projections(projections_set)
 
-   w90data.select_bands(win_min=-8, win_max=50)
+   wb.wannierise(wandata=wandata,
+                 froz_min=-10,
+                 froz_max=20,
+                 outer_min=-8,
+                 outer_max=50,
+                 print_progress_every=10,
+                 num_iter=101,
+                 conv_tol=1e-10,
+                 sitesym=True,
+                 parallel=False
+                 )
 
-   w90data.wannierise(init="amn",
-                     froz_min=-10,
-                     froz_max=20,
-                     print_progress_every=10,
-                     num_iter=101,
-                     conv_tol=1e-10,
-                     mix_ratio_z=1.0,
-                     sitesym=True,
-                     parallel=False
-                     )
-
-   system = wb.system.System_w90(w90data=w90data, berry=True)
+   system = wb.system.System_w90(wandata=wandata, berry=True)
    # Now do whatever you want with the system, as if it was created with Wannier90
 
 

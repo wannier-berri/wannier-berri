@@ -72,6 +72,6 @@ Acknowledgements
 ----------------
 The code was inspired by the Wannier90 Fortran code:
 http://www.wannier.org/ , https://github.com/wannier-developers/wannier90 . 
-Some parts of the code are an adapted translation of postw90 code. 
+Some parts of the code initially were an adapted translation of postw90 code. 
 
 I acknowledge Ivo Souza for a useful discussion.

@@ -124,9 +124,9 @@ class AMN(W90_file):
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
             orbitals += orb
-            radial_nodes_list += [proj.radial_nodes] * proj.num_wann
-            spread_list += [proj.spread_factor] * proj.num_wann
-            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
+            radial_nodes_list += [proj.radial_nodes] * proj.num_wann_scalar
+            spread_list += [proj.spread_factor] * proj.num_wann_scalar
+            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site_scalar)]
             if verbose:
                 print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
         spinor = projections.spinor

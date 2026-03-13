@@ -24,15 +24,20 @@ from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shift
 
 class Projection:
     """	
-    A class to store initial projections. 
+    A class to store initial projection. One object correspondsto a set of projections related by symmetry.
+    If it is on a wyckoff position with multiplicity >1, all the points in the orbit should be included, 
+    (or by spacegroup, they will be added automatically).
 
     Parameters
     ----------
     position_num : np.array(shape=(n,3,), dtype=float) or str
-        The position of the projection if fractional coordinates. 
+        The position of the projection if fractional coordinates.
+        provided less positions than in the orbit, then the rest will be generated 
+        by spacegroup symmetries. If provided more - only the provided ones will be used, but the spacegroup symmetries will not be applied to them. 
     position_str : str
         comma-separated positions with x,y,z being the free variables, 
         e.g.  "x,y,z", "x,x-y,1/2", etc.
+        in fractional coordinates. If provided, the position_num is ignored
     orbital : str
         The orbital of the projection.  e.g. "s", "p", "sp3 etc. or several separated by a semicolon (e.g. "s;p")	
     spacegroup : irrep.spacegroup.SpaceGroup
@@ -77,16 +82,6 @@ class Projection:
         If True, the projection is a spinor
     basis_list : list(np.array(shape=(3,3), dtype=float))
         The basis for each site (row-vectors)
-    positions : np.array(shape=(n,3), dtype=float)
-        The positions of the projections
-    num_wann_per_site : int
-        The number of Wannier functions per site
-    num_points : int
-        The number of points
-    num_wann : int
-        The total number of Wannier functions
-    orbitals_str : str
-        The orbitals of the projection as one string separated by semicolons `;`
     """
 
     def __init__(self,
@@ -155,25 +150,51 @@ class Projection:
                 self.basis_list = [basis0] * self.num_points
 
     @property
+    def wannier_centers_red(self):
+        """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
+        return np.array([pos for pos in self.wyckoff_position.positions for _ in range(self.num_wann_per_site)], dtype=float)
+
+    @property
+    def wannier_centers_cart(self):
+        return self.wannier_centers_red @ self.wyckoff_position.spacegroup.lattice
+
+
+    @property
     def positions(self):
+        """Positions of the projections in fractional coordinates. Shape (n_points, 3)"""
         return self.wyckoff_position.positions
 
     @property
-    def num_wann_per_site(self):
+    def num_wann_per_site_scalar(self):
         """number of wannier functions per site (without spin)"""
         return sum(num_orbitals(o) for o in self.orbitals)
 
     @property
-    def num_wann_per_site_spinor(self):
+    def num_wann_per_site(self):
         """number of wannier functions per site (with spin)"""
-        return self.num_wann_per_site * (2 if self.spinor else 1)
+        return self.num_wann_per_site_scalar * self.nspinor
 
     @property
     def num_points(self):
+        """number of points in the projection (i.e. number of sites in the orbit)"""
         return self.wyckoff_position.num_points
 
     @property
+    def num_wann_scalar(self):
+        """total number of wannier functions in the projection (number of sites in the orbit multiplied by number of wannier functions per site)
+        with spin NOT TAKEN into account"""
+        return self.num_points * self.num_wann_per_site_scalar
+
+
+    @property
+    def nspinor(self):
+        return 2 if self.spinor else 1
+
+
+    @property
     def num_wann(self):
+        """total number of wannier functions in the projection (number of sites in the orbit multiplied by number of wannier functions per site)
+        with spin TAKEN into account"""
         return self.num_points * self.num_wann_per_site
 
     @property
@@ -205,7 +226,7 @@ class Projection:
         return self.__add__(other)
 
     def __str__(self):
-        return (f"Projection {self.wyckoff_position.string}:{self.orbitals} with {self.num_wann} Wannier functions"
+        return (f"Projection {self.wyckoff_position.string}:{self.orbitals} with {self.num_wann} Wannier functions ({self.num_wann_scalar} per spin x{self.nspinor} spins) \n" +
                 f" on {self.num_points} points ({self.num_wann_per_site} per site)"
                # + self.wyckoff_position.__str__()
         )
@@ -260,7 +281,12 @@ class Projection:
 class ProjectionsSet:
 
     """
-    class to store the set of projections and corresponding windows
+    class to store the set of projections. Unifies several object of the :class:`Projection` class.
+
+    Parameters
+    ------------
+    projections : list(Projection) or Projection or ProjectionsSet
+        The projections to be included in the set. 
     """
 
     def __init__(self,
@@ -280,7 +306,14 @@ class ProjectionsSet:
         return ProjectionsSet(projections=[p.copy() for p in self.projections])
 
     def set_spinor(self, spinor: bool):
-        self.spinor = spinor
+        """Set if the projection is a spinor or not. 
+        If it is already set, the new value should be the same as the old one, otherwise an error is raised.
+
+        Parameters
+        ----------
+        spinor : bool
+            If True, the projection is a spinor
+        """
         if self.spinor is None:
             self.spinor = spinor
         else:
@@ -288,19 +321,30 @@ class ProjectionsSet:
 
     @property
     def num_proj(self):
+        """number of :class:`Projection` objects in the set"""
         return len(self.projections)
 
     def __len__(self):
+        """same as num_proj, to make it possible to use len() function on ProjectionsSet"""
         return self.num_proj
 
-    @cached_property
+    @property
     def num_points(self):
+        """number of points in all projections in the set (i.e. number of sites in all orbits)"""
         print(f"finding num points from {self.num_proj} projections")
         return sum([p.wyckoff_position.num_points for p in self.projections])
 
-    @cached_property
+    @property
     def num_wann(self):
+        """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
+        with spin TAKEN into account (i.e. multiplied by 2 if spinor)"""
         return sum([p.num_wann for p in self.projections])
+
+    @property
+    def num_wann_scalar(self):
+        """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
+        with spin NOT TAKEN into account"""
+        return sum([p.num_wann_scalar for p in self.projections])
 
     def add(self, projection):
         self.projections.append(projection)
@@ -315,6 +359,22 @@ class ProjectionsSet:
         return (f"ProjectionsSet with {self.num_wann} Wannier functions and {self.num_free_vars} free variables\n" +
                 "\n".join([str(p) for p in self.projections])
                 )
+
+    @property
+    def wannier_centers_red(self):
+        """Initial Wannier centers in reduced coordinates (corresponding to the sites of the projections). Shape (num_wann, 3) The final Wannier centers after wannierisation may be different"""
+        return np.concatenate([p.wannier_centers_red for p in self.projections], axis=0)
+
+    @property
+    def real_lattice(self):
+        if len(self.projections) == 0:
+            return np.eye(3)
+        return self.projections[0].wyckoff_position.spacegroup.lattice
+
+    @property
+    def wannier_centers_cart(self):
+        """Initial Wannier centers in cartesian coordinates (corresponding to the sites of the projections). Shape (num_wann, 3) The final Wannier centers after wannierisation may be different"""
+        return self.wannier_centers_red @ self.real_lattice
 
     @cached_property
     def num_free_vars_wyckoff(self):
@@ -336,9 +396,9 @@ class ProjectionsSet:
 
         Returns
         -------
-        np.ndarray(shape=(num_points, 3, num_free_vars_wyckoff), dtype=float)
+        np.ndarray(shape=(n_points, 3, num_free_vars_wyckoff), dtype=float)
             The rotation matrices of the symmetry operations
-        np.ndarray(shape=(num_points, 3), dtype=float)
+        np.ndarray(shape=(n_points, 3), dtype=float)
             The translation vectors of the symmetry operations
         """
 
@@ -364,15 +424,25 @@ class ProjectionsSet:
         return self.map_free_vars[0].shape[2]
 
 
-    @cached_property
+    @property
     def num_wann_per_site_list(self):
         """
         Returns:
         --------
-        np.array(int, shape=(num_points))
+        np.array(int, shape=(n_points,))
             for each point - a value od how many wannier functioons there are on this point
         """
         return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
+
+    @property
+    def num_wann_per_site_scalar_list(self):
+        """
+        Returns:
+        --------
+        np.array(int, shape=(n_points,))
+            for each point - a value od how many wannier functioons there are on this point, with spin NOT TAKEN into account
+        """
+        return np.array(sum(([p.num_wann_per_site_scalar] * p.num_points for p in self.projections), []))
 
 
     @property
@@ -662,13 +732,13 @@ class RepulsivePotential:
 
     Parameters
     ----------
-    rotation : np.ndarray(shape=(num_points, 3, nfree_vars), dtype=float)
+    rotation : np.ndarray(shape=(n_points, 3, nfree_vars), dtype=float)
         The rotation matrices to get the symmetry operations
-    translation : np.ndarray(shape=(num_points, 3), dtype=float)
+    translation : np.ndarray(shape=(n_points, 3), dtype=float)
         The translation vectors of the symmetry operations
-    weights : np.ndarray(shape=(num_points, dtype=float)
+    weights : np.ndarray(shape=(n_points,), dtype=float)
         The weights of the symmetry operations
-    same_site : np.ndarray(shape=(num_points, num_points), dtype=bool)
+    same_site : np.ndarray(shape=(n_points, n_points), dtype=bool)
 
     """
 

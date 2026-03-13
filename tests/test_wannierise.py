@@ -8,10 +8,7 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 
-from wannierberri.evaluate_k import evaluate_k_path
-from wannierberri.system import System_w90
-# from wannierberri.w90files.win import WIN
-# from wannierberri.w90files.chk import CheckPoint as CHK
+from wannierberri import evaluate_k_path
 
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
 from wannierberri.symmetry.sawf import IrrepsIncompatibleError, SymmetrizerSAWF
@@ -57,19 +54,19 @@ def test_wannierise(outer_window):
     symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
-    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
+    wandata.set_symmetrizer(symmetrizer=symmetrizer)
     outer_min = -np.inf
     outer_max = np.inf
     if outer_window is not None:
         if outer_window[2] == "select_bands":
-            w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
+            wandata.select_bands(win_min=outer_window[0], win_max=outer_window[1])
         elif outer_window[2] == "outer":
             outer_min = outer_window[0]
             outer_max = outer_window[1]
-    print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
+    print(f"num_bands: eig:{wandata.eig.NB}, mmn:{wandata.mmn.NB}, amn:{wandata.amn.NB}")
     # Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-8,
         froz_max=20,
         outer_min=outer_min,
@@ -83,8 +80,8 @@ def test_wannierise(outer_window):
         localise=True,
         parallel=PARALLEL,
     )
-    wannier_centers = w90data.chk.wannier_centers_cart
-    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_centers = wandata.chk.wannier_centers_cart
+    wannier_spreads = wandata.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     assert wannier_spreads == approx(0.39864755, abs=1e-5)
@@ -92,9 +89,9 @@ def test_wannierise(outer_window):
                                             [0, 0, 1],
         [0, 1, 0],
         [1, 0, 0]
-    ]).dot(w90data.chk.real_lattice) / 2,
+    ]).dot(wandata.chk.real_lattice) / 2,
         abs=1e-6)
-    sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
+    sc_origin, sc_basis, WF, rho = wandata.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
     assert WF.shape == (2, 6, 2, 18)
     assert rho.shape == (2, 6, 2, 18)
     wf_file_name = "WF_12_red.npy"
@@ -102,15 +99,15 @@ def test_wannierise(outer_window):
     ref = np.load(os.path.join(REF_DIR, wf_file_name))
     assert WF == approx(ref)
 
-    sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
-    lattice = w90data.chk.real_lattice
+    sc_origin, sc_basis, WF, rho = wandata.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
+    lattice = wandata.chk.real_lattice
     assert sc_origin == approx(-lattice.sum(axis=0))
     assert sc_basis == approx(2 * lattice)
     assert WF.shape == (2, 18, 18, 18)
     assert rho.shape == (2, 18, 18, 18)
     assert rho.sum(axis=(1, 2, 3)) == approx(1)
 
-    systems["wberri"] = wberri.system.System_w90(w90data=w90data)
+    systems["wberri"] = wberri.System_R.from_wannierdata(wandata=wandata)
 
 
     systems["wberri_symmetrized"] = copy.deepcopy(systems["wberri"])
@@ -169,20 +166,20 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window, parallel):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
+    wandata = wberri.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
     # win = WIN.from_w90_file(path_data + "/Fe")
     # chk = CHK.from_win(win)
     # chk.to_npz(path_data + f"/Fe.chk.npz")
-    # w90data.set_file("chk", chk)
+    # wandata.set_file("chk", chk)
     symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
-    w90data.set_symmetrizer(symmetrizer)
+    wandata.set_symmetrizer(symmetrizer)
     outer_min, outer_max = -np.inf, np.inf
     if use_window == "select_bands":
-        w90data.select_bands(win_min=-8, win_max=50)
+        wandata.select_bands(win_min=-8, win_max=50)
     elif use_window == "outer":
         outer_min, outer_max = -8, 50
     froz_max = 30
-    w90data.wannierise(init="amn",
+    wandata.wannierise(init="amn",
                        froz_min=-8,
                        froz_max=froz_max,
                        outer_min=outer_min,
@@ -196,8 +193,8 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
                        parallel=parallel,
                        savechk=False,
                        )
-    assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
-    spreads = w90data.chk.wannier_spreads
+    assert np.allclose(wandata.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(wandata.wannier_centers_cart))} \n{wandata.wannier_centers_cart}"
+    spreads = wandata.chk.wannier_spreads
     print(f"spreads: {repr(spreads)}")
     assert np.all(spreads < 2)
     atol = 1e-8
@@ -209,7 +206,7 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
                    "outer": spreads_Fe_spd_444_win50_outer,
                    False: spreads_Fe_spd_444_nowin}[use_window]
     assert spreads == approx(spreads_ref, abs=0.01)
-    system = wberri.system.System_w90(w90data=w90data, berry=True)
+    system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
 
     # all kpoints given in reduced coordinates
     path = wberri.Path.from_nodes(system,
@@ -295,8 +292,8 @@ def test_graphene_freeze_bands(outer_window, parallel, z0):
     else:
         path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw_z=1.5")
 
-    w90data = wberri.w90files.Wannier90data.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer"], irreducible=True)
-    print(f"files in w90data: {w90data._files}")
+    wandata = wberri.WannierData.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer"], irreducible=True)
+    print(f"files in wandata: {wandata._files}")
     kwargs = dict(init="amn",
                   print_progress_every=20,
                   outer_min=outer_window[0],
@@ -311,18 +308,18 @@ def test_graphene_freeze_bands(outer_window, parallel, z0):
                     )
 
     if outer_window[2] != "-outer-low":
-        w90data.wannierise(**kwargs)
+        wandata.wannierise(**kwargs)
 
-        spreads = w90data.chk.wannier_spreads
-        wannier_centers = w90data.chk.wannier_centers_cart
+        spreads = wandata.chk.wannier_spreads
+        wannier_centers = wandata.chk.wannier_centers_cart
         assert wannier_centers == approx(np.array([
-            [-0.710140831103, 1.230000000000, z0 * w90data.chk.real_lattice[2, 2]],
-            [0.710140831103, 1.230000000000, z0 * w90data.chk.real_lattice[2, 2]],
+            [-0.710140831103, 1.230000000000, z0 * wandata.chk.real_lattice[2, 2]],
+            [0.710140831103, 1.230000000000, z0 * wandata.chk.real_lattice[2, 2]],
         ]))
         print(f"spreads: {repr(spreads)}")
         assert np.all(spreads < 1)
         assert np.all(spreads > 0.6)
-        system = System_w90(w90data=w90data, berry=True)
+        system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
 
         kpoints = {
             'G': [0.0, 0.0, 0.0],
@@ -371,4 +368,4 @@ def test_graphene_freeze_bands(outer_window, parallel, z0):
         if z0 == 1.5:
             pytest.skip("the test with outer window and z0=1.5 does not work for some reason, to be investigated")  # TODO
         with pytest.raises(IrrepsIncompatibleError):
-            w90data.wannierise(**kwargs)
+            wandata.wannierise(**kwargs)

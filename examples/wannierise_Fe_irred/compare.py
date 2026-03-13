@@ -1,14 +1,17 @@
 import wannierberri as wberri
+import wannierberri.calculators as calculators
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 import os
 from matplotlib import pyplot as plt
 import numpy as np
 from pytest import approx
 from irrep.bandstructure import BandStructure
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 ROOT_DIR = "../../tests/"
 
 
-wberri.ray_init()
+ray_init()
 
 path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
 nkfull = 8
@@ -46,47 +49,46 @@ kwargs_w90file = dict(
     projections=projections_set,
     normalize=False)
 
-w90data_full = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_full, **kwargs_w90file)
-w90data_irr = wberri.w90files.Wannier90data.from_bandstructure(bandstructure_irr, irreducible=True, **kwargs_w90file)
-assert w90data_full.irreducible is False, "w90data_full should not be irreducible"
-assert w90data_irr.irreducible is True, "w90data_irr should be irreducible"
-nkp_full = len(w90data_full.mmn.data)
-nkp_irr = len(w90data_irr.mmn.data)
-assert nkp_full == nkfull, f"Expected {nkfull} k-points in full w90data, got {nkp_full}"
-assert nkp_irr == nkirr, f"Expected {nkirr} k-points in irreducible w90data, got {nkp_irr}"
-
-w90data_full.select_bands(win_min=-8, win_max=50)
-w90data_irr.select_bands(win_min=-8, win_max=50)
+wandata_full = wberri.WannierData.from_bandstructure(bandstructure_full, **kwargs_w90file)
+wandata_irr = wberri.WannierData.from_bandstructure(bandstructure_irr, irreducible=True, **kwargs_w90file)
+assert wandata_full.irreducible is False, "wandata_full should not be irreducible"
+assert wandata_irr.irreducible is True, "wandata_irr should be irreducible"
+nkp_full = len(wandata_full.mmn.data)
+nkp_irr = len(wandata_irr.mmn.data)
+assert nkp_full == nkfull, f"Expected {nkfull} k-points in full wandata, got {nkp_full}"
+assert nkp_irr == nkirr, f"Expected {nkirr} k-points in irreducible wandata, got {nkp_irr}"
 
 kwargs_wannierise = dict(
     init="amn",
     froz_min=-10,
     froz_max=20,
+    outer_min=-8,
+    outer_max=50,
     print_progress_every=10,
     num_iter=101,
     conv_tol=1e-10,
     mix_ratio_z=1.0,
     sitesym=True)
 
-w90data_full.wannierise(**kwargs_wannierise)
-w90data_irr.wannierise(**kwargs_wannierise)
+wandata_full.wannierise(**kwargs_wannierise)
+wandata_irr.wannierise(**kwargs_wannierise)
 
 print(
     f"Wannier spreads differ between full and irreducible bandstructure: "
-    f"{w90data_full.chk.wannier_spreads} != {w90data_irr.chk.wannier_spreads}"
-    f"differences : {w90data_full.chk.wannier_spreads - w90data_irr.chk.wannier_spreads}"
-    f"maximal difference: {np.max(abs(w90data_full.chk.wannier_spreads - w90data_irr.chk.wannier_spreads))}"
+    f"{wandata_full.chk.wannier_spreads} != {wandata_irr.chk.wannier_spreads}"
+    f"differences : {wandata_full.chk.wannier_spreads - wandata_irr.chk.wannier_spreads}"
+    f"maximal difference: {np.max(abs(wandata_full.chk.wannier_spreads - wandata_irr.chk.wannier_spreads))}"
 )
 
 print(f"Wannier centers differ between full and irreducible bandstructure: "
-    f"{w90data_full.chk.wannier_centers_cart} != {w90data_irr.chk.wannier_centers_cart}"
-    f"differences : {w90data_full.chk.wannier_centers_cart - w90data_irr.chk.wannier_centers_cart}"
-    f"maximal difference: {np.max(abs(w90data_full.chk.wannier_centers_cart - w90data_irr.chk.wannier_centers_cart))}"
+    f"{wandata_full.chk.wannier_centers_cart} != {wandata_irr.chk.wannier_centers_cart}"
+    f"differences : {wandata_full.chk.wannier_centers_cart - wandata_irr.chk.wannier_centers_cart}"
+    f"maximal difference: {np.max(abs(wandata_full.chk.wannier_centers_cart - wandata_irr.chk.wannier_centers_cart))}"
 )
 
 
-system_irr = wberri.System_R.from_w90data(w90data=w90data_irr, spin=True, berry=True, SHCqiao=True)
-system_full = wberri.System_R.from_w90data(w90data=w90data_full, spin=True, berry=True, SHCqiao=True)
+system_irr = System_R.from_wannierdata(wandata=wandata_irr, spin=True, berry=True, SHCqiao=True)
+system_full = System_R.from_wannierdata(wandata=wandata_full, spin=True, berry=True, SHCqiao=True)
 
 print(system_irr.pointgroup)
 print(system_full.pointgroup)
@@ -156,18 +158,18 @@ plt.savefig("Fe_bands_compare.pdf")
 print("K-points in full bandstructure:       ", [kp.k for kp in bandstructure_full.kpoints])
 print("K-points in irreducible bandstructure:", [kp.k for kp in bandstructure_irr.kpoints])
 
-print("K-points in full w90data:", w90data_full.mmn.data.keys())
-print("K-points in irreducible w90data:", w90data_irr.mmn.data.keys())
+print("K-points in full wandata:", wandata_full.mmn.data.keys())
+print("K-points in irreducible wandata:", wandata_irr.mmn.data.keys())
 
 Efermi = np.linspace(12, 13, 1001)
 calculators = {
-    "dos": wberri.calculators.static.DOS(Efermi=Efermi, tetra=True),
-    "spin": wberri.calculators.static.Spin(Efermi=Efermi, tetra=True),
-    "ahc_internal": wberri.calculators.static.AHC(Efermi=Efermi, tetra=True,
-                                                  kwargs_formula={"external_terms": False}),
-    "ahc_external": wberri.calculators.static.AHC(Efermi=Efermi, tetra=True,
-                                                  kwargs_formula={"internal_terms": False}),
-    # "ahc_full" : wberri.calculators.static.AHC(Efermi=Efermi, tetra=False)
+    "dos": calculators.static.DOS(Efermi=Efermi, tetra=True),
+    "spin": calculators.static.Spin(Efermi=Efermi, tetra=True),
+    "ahc_internal": calculators.static.AHC(Efermi=Efermi, tetra=True,
+                                           kwargs_formula={"external_terms": False}),
+    "ahc_external": calculators.static.AHC(Efermi=Efermi, tetra=True,
+                                           kwargs_formula={"internal_terms": False}),
+    # "ahc_full" : calculators.static.AHC(Efermi=Efermi, tetra=False)
 
 }
 

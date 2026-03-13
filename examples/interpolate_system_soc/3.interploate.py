@@ -2,26 +2,29 @@
 
 from matplotlib import pyplot
 import wannierberri as wberri
+import wannierberri.calculators as calculators
 import numpy as np
 
 from wannierberri.parallel import Parallel
+from wannierberri.system.interpolate import SystemInterpolatorSOC
+from wannierberri.system.system_soc import SystemSOC
 
 parallel = Parallel(num_cpus=16)
 
-system1 = wberri.system.system_soc.SystemSOC.from_npz("system_soc_m2.2")
+system1 = SystemSOC.from_npz("system_soc_m2.2")
 system1.set_soc_axis(theta=0.0, phi=0.0, alpha_soc=1.0)
 
-system0 = wberri.system.system_soc.SystemSOC.from_npz("system_soc_m0.0")
+system0 = SystemSOC.from_npz("system_soc_m0.0")
 system0.set_soc_axis(theta=0.0, phi=0.0, alpha_soc=1.0)
 
-interpolator = wberri.system.interpolate.SystemInterpolatorSOC(system0, system1)
+interpolator = SystemInterpolatorSOC(system0, system1)
 
-tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
-              "berry": wberri.calculators.tabulate.BerryCurvature(),
-              "spin": wberri.calculators.tabulate.Spin(),
+tabulators = {"Energy": calculators.tabulate.Energy(),
+              "berry": calculators.tabulate.BerryCurvature(),
+              "spin": calculators.tabulate.Spin(),
              }
 
-tab_all_path = wberri.calculators.TabulatorAll(
+tab_all_path = calculators.TabulatorAll(
     tabulators,
     ibands=np.arange(0, 18),
     mode="path"

@@ -393,23 +393,23 @@ class SystemSOC(System_R):
 
 
     @classmethod
-    def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
-        system_up = System_R.from_w90data(w90data=w90data.data_up, **kwargs)
-        if w90data.nspin == 2:
-            system_down = System_R.from_w90data(w90data=w90data.data_down, **kwargs)
+    def from_wannierdata(cls, wandata, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
+        system_up = System_R.from_wannierdata(wandata=wandata.data_up, **kwargs)
+        if wandata.nspin == 2:
+            system_down = System_R.from_wannierdata(wandata=wandata.data_down, **kwargs)
         else:
             system_down = None
-        system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)
-        kptirr, weights_k = w90data.data_up.kptirr_system
-        system_soc.set_soc_R(w90data.get_file("soc"),
-                             chk_up=w90data.get_file_ud("up", "chk"),
-                             chk_down=w90data.get_file_ud("down", "chk"),
+        system_soc = cls(system_up=system_up, system_down=system_down, cell=wandata.cell)
+        kptirr, weights_k = wandata.data_up.kptirr_system
+        system_soc.set_soc_R(wandata.get_file("soc"),
+                             chk_up=wandata.get_file_ud("up", "chk"),
+                             chk_down=wandata.get_file_ud("down", "chk"),
                              kptirr=kptirr, weights_k=weights_k
         )
-        if w90data.is_irreducible:
+        if wandata.is_irreducible:
             symmetrize = True
         if symmetrize:
-            system_soc.symmetrize2(symmetrizer_up=w90data.get_file_ud('up', 'symmetrizer'),
-                           symmetrizer_down=w90data.get_file_ud('down', 'symmetrizer'))
+            system_soc.symmetrize2(symmetrizer_up=wandata.get_file_ud('up', 'symmetrizer'),
+                           symmetrizer_down=wandata.get_file_ud('down', 'symmetrizer'))
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
         return system_soc

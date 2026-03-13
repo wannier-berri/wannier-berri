@@ -13,6 +13,8 @@
 
 from .system import System
 from .system_R import System_R
+from .system_kp import SystemKP
+from .system_soc import SystemSOC
 from .deprecated_constructors import (
     System_w90,
     System_fplo,
@@ -24,5 +26,4 @@ from .deprecated_constructors import (
     SystemRandom,
     System_Phonon_QE,
 )
-from .system_kp import SystemKP
 from .interpolate import SystemInterpolator

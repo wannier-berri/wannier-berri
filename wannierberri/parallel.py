@@ -44,7 +44,14 @@ def ray_init_cluster(
 
 
 def ray_init(**kwargs):
-    """tries to import and initialize ray, but does nothing if it cannot be imported, or if it is already initialized"""
+    """tries to import and initialize ray, but does nothing if it cannot be imported, 
+    or if it is already initialized
+
+    Parameters
+    ----------
+    kwargs:
+        parameters to be passed to ray.init() function. Please refer to ray `documentation <https://docs.ray.io/en/latest/>`__ for more options of ray.init() function.
+    """
     try:
         import ray
         if ray.is_initialized():

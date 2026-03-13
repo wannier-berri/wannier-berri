@@ -4,7 +4,6 @@ import numpy as np
 
 
 from ..utility import cached_einsum, clear_cached, arr_to_string
-from ..w90files.amn import AMN
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
@@ -655,7 +654,9 @@ class SymmetrizerSAWF:
         -----
         Works only when ALL k-points are included in the amn.
         """
+        from ..w90files.amn import AMN
         if isinstance(amn, AMN):
+            assert None not in amn.data.keys(), "AMN data should contain all k-points, not only the irreducible ones"
             amn = amn.data
         if isinstance(amn, dict):
             amn = np.array([amn[ik] for ik in range(self.NK)])
@@ -724,7 +725,7 @@ class SymmetrizerSAWF:
         return self.U_to_full_BZ(amn_sym_irr)
 
     def get_random_amn(self):
-        """ generate a random amn array that is comaptible with the symmetries of the Wanier functions in thesymmetrizer object
+        """ generate a random amn array that is compatible with the symmetries of the Wannier functions in the symmetrizer object
 
         Returns
         -------

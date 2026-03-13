@@ -3,7 +3,7 @@ from irrep.bandstructure import BandStructure
 import wannierberri as wb
 
 path_data = "../../tests/data/Fe-222-pw/"
-w90data = wb.w90files.Wannier90data.from_w90_files(
+wandata = wb.wberri.WannierData.from_w90_files(
     seedname=path_data + "Fe",
     files=["mmn", "eig", "win", ])
 
@@ -31,18 +31,19 @@ projections_set = ProjectionsSet(projections=[projection_sp3d2, projection_t2g])
 
 symmetrizer.set_D_wann_from_projections(projections_set)
 amn = wb.w90files.AMN.from_bandstructure(bandstructure, projections=projections_set)
-w90data.set_symmetrizer(symmetrizer)
-w90data.set_file("amn", amn)
+wandata.set_symmetrizer(symmetrizer)
+wandata.set_file("amn", amn)
 
-w90data.select_bands(win_min=-8, win_max=50)
-
-w90data.wannierise(init="amn",
-                   froz_min=-10,
-                   froz_max=20,
-                   print_progress_every=10,
-                   num_iter=101,
-                   conv_tol=1e-10,
-                   mix_ratio_z=1.0,
-                   sitesym=True,
-                   parallel=False
-                    )
+wb.wannierise(wandata=wandata,
+        init="amn",
+        froz_min=-10,
+        froz_max=20,
+        outer_min=-8,
+        outer_max=50,
+        print_progress_every=10,
+        num_iter=101,
+        conv_tol=1e-10,
+        mix_ratio_z=1.0,
+        sitesym=True,
+        parallel=False
+        )

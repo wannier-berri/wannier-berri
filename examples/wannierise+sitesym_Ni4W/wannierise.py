@@ -10,7 +10,9 @@ from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 from time import time
 import wannierberri as wberri
+import wannierberri.calculators as calculators
 from pathlib import Path
+from wannierberri.system import System_R
 
 parallel = False
 
@@ -18,7 +20,7 @@ t0 = time()
 path_data = Path("./pwscf/")  # adjust path if needed to point to the data in the tests fo wannier-berri repository
 
 includeTR = False
-w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=str(path_data / "Ni4W"), files=["amn", "mmn", "eig", "win"])
+wandata = wberri.WannierData.from_w90_files(seedname=str(path_data / "Ni4W"), files=["amn", "mmn", "eig", "win"])
 t1 = time()
 sitesym = True
 
@@ -63,7 +65,7 @@ if sitesym:
         projections = ProjectionsSet([projection1, projection2, projection3, projection4])
         symmetrizer.set_D_wann_from_projections(projections)
         symmetrizer.to_npz("Ni4W.sawf.npz")
-    w90data.set_symmetrizer(symmetrizer)
+    wandata.set_symmetrizer(symmetrizer)
 
 proj_str = """0.200749460000, 0.199526250000, 0.400275700000: d
               0.799250540000, 0.800473750000, 0.599724300000: d
@@ -109,9 +111,9 @@ symmetrizer.spacegroup.show()
 t2 = time()
 
 print(f"symmetrizer.num_wann = {symmetrizer.num_wann}, symmetrizer.NB = {symmetrizer.NB}")
-w90data.set_symmetrizer(symmetrizer)
+wandata.set_symmetrizer(symmetrizer)
 
-# print(f"check amn: {symmetrizer.check_amn(w90data.amn)}")
+# print(f"check amn: {symmetrizer.check_amn(wandata.amn)}")
 # exit()
 
 t2a = time()
@@ -123,18 +125,19 @@ if parallel:
 froz_max = 24
 t3 = time()
 
-w90data.select_bands(win_min=8, )
 t4 = time()
-w90data.wannierise(init="amn",
-                   num_wann=34,
-                   froz_min=8,
-                   froz_max=froz_max,
-                   print_progress_every=10,
-                   num_iter=30,
-                   conv_tol=1e-6,
-                   mix_ratio_z=1.0,
-                   sitesym=sitesym,
-                   parallel=parallel
+wberri.wannierise(wandata=wandata,
+                  init="amn",
+                  num_wann=34,
+                  froz_min=8,
+                  froz_max=froz_max,
+                  outer_min=8,
+                  print_progress_every=10,
+                  num_iter=30,
+                  conv_tol=1e-6,
+                  mix_ratio_z=1.0,
+                  sitesym=sitesym,
+                  parallel=parallel
                     )
 t5 = time()
 print("Time elapsed: ", time() - t0)
@@ -146,10 +149,10 @@ print("Time elapsed (Window): ", t4 - t3)
 print("Time elapsed (read data): ", t1 - t0)
 
 exit()
-system = wberri.System_R.from_w90data(w90data=w90data, silent=True)
+system = System_R.from_wannierdata(wandata=wandata, silent=True)
 
 path = wberri.Path(system=system, nodes=[[0, 0, 0], [1 / 2, 0, 0], [1, 0, 0]], labels=['G', 'L', 'G'], length=100)
-tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
+tabulator = calculators.TabulatorAll(tabulators={}, mode='path')
 calculators = {'tabulate': tabulator}
 
 result = wberri.run(system, grid=path, calculators=calculators)

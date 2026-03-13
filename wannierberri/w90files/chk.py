@@ -327,15 +327,15 @@ class CheckPoint(SavableNPZ):
             translational invariant formula
         eig : `~wannierberri.w90files.EIG`
             the eigenvalues of the Hamiltonian, needed to calculate BB (if None, the matrix elements are AA)
-        phase : np.ndarray(shape=(num_wann, num_wann, nnb), dtype=complex)
+        phase : np.ndarray(shape=(n_wann, n_wann, nnb), dtype=complex)
             the phase factors to be applied to the matrix elements (if None, no phase factors are applied)
         sum_b : bool
             if True, the matrix elements are summed over the neighbouring k-points. Otherwise, the matrix elements are stored in a 5D array of shape (num_kpts, num_wann, num_wann, nnb, 3)
 
         Returns
         -------
-        np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=False)
-        or np.ndarray(shape=(num_kpts, num_wann, num_wann, nnb, 3), dtype=complex) (if sum_b=True)
+        np.ndarray(shape=(num_kpts, n_wann, n_wann, nnb, 3), dtype=complex) (if sum_b=False)
+        or np.ndarray(shape=(num_kpts, n_wann, n_wann, nnb, 3), dtype=complex) (if sum_b=True)
             the q-resolved matrix elements AA or BB in the Wannier gauge
         """
         assert (not transl_inv) or eig is None, "transl_inv cannot be used for BB matrix elements"
@@ -384,9 +384,9 @@ class CheckPoint(SavableNPZ):
 
         Returns
         -------
-        np.ndarray(shape=(num_wann, 3), dtype=float)
+        np.ndarray(shape=(n_wann, 3), dtype=float)
             the wannier centers
-        np.ndarray(shape=(num_wann,), dtype=float)
+        np.ndarray(shape=(n_wann,), dtype=float)
             the wannier spreads (in Angstrom^2) (if spreads=True)
         """
         wcc = np.zeros((self.num_wann, 3), dtype=float)
@@ -420,7 +420,7 @@ class CheckPoint(SavableNPZ):
             the matrix elements uhu or uiu produced by pw2wannier90
         antisym : bool
             if True, the antisymmetric piece of the matrix elements is calculated. Otherwise, the full matrix is calculated
-        phase : np.ndarray(shape=(num_wann, num_wann, nnb), dtype=complex)
+        phase : np.ndarray(shape=(n_wann, n_wann, nnb), dtype=complex)
             the phase factors to be applied to the matrix elements (if None, no phase factors are applied)
         sum_b : bool
             if True, the matrix elements are summed over the neighbouring k-points. Otherwise, the matrix elements are stored in a 6D array of shape (num_kpts, num_wann, num_wann, nnb, nnb, 3)

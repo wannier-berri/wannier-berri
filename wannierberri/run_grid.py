@@ -162,15 +162,15 @@ def run(
     grid : :class:`~wannierberri.Grid` or :class:`~wannierberri.Path`
         initial grid for integration. or path for tabulation
     calculators : dict
-        a dictionary where keys aare any string identifiers, and the values are of :class:`~wannierberri.calculators.Calculator`
+        a dictionary where keys are any string identifiers, and the values are of :class:`~wannierberri.calculators.Calculator`
     adpt_num_iter : int
         number of recursive adaptive refinement iterations. See :ref:`sec-refine`
     adpt_mesh : int
-        the size of the refinement grid (usuallay no need to change)
+        the size of the refinement grid (usually no need to change)
     adpt_fac : int
         number of K-points to be refined per quantity and criteria.
     parallel : bool
-        wether to use parallelization with ray or not. if True - ray should be initialized before.
+        whether to use parallelization with ray or not. if True - ray should be initialized before.
     use_irred_kpt : bool
         evaluate only symmetry-irreducible K-points
     symmetrize : bool
@@ -193,9 +193,9 @@ def run(
         parameters to be passed to :class:`~wannierberri.data_K.Data_K` class
     dump_results : bool
         if `True` : dumps the results of each K-point in separate files. This may be slower due 
-        to read/write operations, but may save memory if the results are large (many K-points, many fermi levels/frequencies, multidimensinal tensors etc..)
+        to read/write operations, but may save memory if the results are large (many K-points, many fermi levels/frequencies, multidimensional tensors etc..)
     allow_restart : bool
-        if `True` : allows to restart a calculation, buy storing the K-poin results in a tmp directory. If False - these files are not stored, unless 
+        if `True` : allows to restart a calculation, by storing the K-point results in a tmp directory. If False - these files are not stored, unless 
             `dump_results` is `True` and adpt_num_iter > 0, in which case they are stored anyway, and the restart is possible,
     print_progress_step_time : float or int
         minimal intervals (in seconds) to print progress
