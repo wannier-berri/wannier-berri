@@ -1,8 +1,11 @@
-name: Upload Python Package to PyPI when a Release is Created
+name: Upload Python Package to PyPI on Tag
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v[0-9]*'
+      - '[0-9]*'
+  workflow_dispatch:
 
 jobs:
   pypi-publish:

@@ -18,7 +18,10 @@
 wannierberri - a module for Wannier Functions and Wannier interpolation
 """
 
-__version__ = "2026.03.0"
+try:
+    from ._version import version as __version__
+except ImportError:
+    __version__ = "0+unknown"
 
 from .run_grid import run
 from .evaluate_k import evaluate_k, evaluate_k_path
