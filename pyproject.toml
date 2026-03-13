@@ -11,7 +11,7 @@ authors = [
     { name = "Stepan S. Tsirkin", email = "stepan.tsirkin@epfl.ch" },
 ]
 description = "Constructuion of Wannier functions and Wannier interpolation"
-readme = { file = "README.rst", content-type = "text/x-rst" }
+readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 dependencies = [
