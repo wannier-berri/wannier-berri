@@ -17,7 +17,6 @@ from functools import cached_property
 
 from ..utility import cached_einsum, clear_cached
 from ..system.system import System
-from ..grid import TetraWeights, TetraWeightsParal, get_bands_in_range, get_bands_below_range
 from .. import formula
 from ..grid import KpointBZparallel, KpointBZtetra
 from ..symmetry.point_symmetry import transform_ident, transform_odd
@@ -159,14 +158,18 @@ class Data_K(System, abc.ABC):
     @cached_property
     def tetraWeights(self):
         if isinstance(self.Kpoint, KpointBZparallel):
+            from ..grid.tetrahedron import TetraWeightsParal
             return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel())
         elif isinstance(self.Kpoint, KpointBZtetra):
+            from ..grid.tetrahedron import TetraWeights
+
             return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra())
         else:
             raise RuntimeError()
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
                                      Emin=-np.inf, Emax=np.inf):
+        from ..grid.tetrahedron import get_bands_in_range, get_bands_below_range
         bands_in_range = get_bands_in_range(
             emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}

@@ -103,6 +103,9 @@ class System:
         else:
             return sys.stdout
 
+    def save_npz(self, *args, **kwargs):
+        """alias for :func:`~wannierberri.system.System.to_npz`"""
+        self.to_npz(*args, **kwargs)
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):

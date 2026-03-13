@@ -4,7 +4,7 @@ from .grid import Grid
 from .data_K import get_data_k
 from collections import defaultdict
 from .calculators import tabulate
-from .run import run
+from .run_grid import run
 
 available_quantities = {
     "energy": tabulate.Energy(print_comment=False),

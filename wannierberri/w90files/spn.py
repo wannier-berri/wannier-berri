@@ -1,6 +1,5 @@
 import numpy as np
 from .w90file import W90_file, auto_kptirr, check_shape
-from ..io import FortranFileR
 from ..utility import cached_einsum, pauli_xyz
 
 
@@ -26,6 +25,7 @@ class SPN(W90_file):
             SPNheader = f_spn_in.readline().strip()
             nbnd, NK = (int(x) for x in f_spn_in.readline().split())
         else:
+            from .fortio import FortranFileR
             f_spn_in = FortranFileR(seedname + ".spn")
             SPNheader = (f_spn_in.read_record(dtype='c'))
             nbnd, NK = f_spn_in.read_record(dtype=np.int32)

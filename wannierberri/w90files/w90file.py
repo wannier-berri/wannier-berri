@@ -1,7 +1,7 @@
 import abc
 
 import numpy as np
-from ..io import SavableNPZ
+from .io import SavableNPZ
 
 
 class W90_file(SavableNPZ):

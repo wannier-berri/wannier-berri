@@ -1,4 +1,4 @@
-from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom, pi  # , Boltzmann
+from scipy.constants import elementary_charge, hbar, electron_mass, physical_constants, angstrom, pi
 
 TAU_UNIT = 1E-15  # tau in nanoseconds
 TAU_UNIT_TXT = "fs"

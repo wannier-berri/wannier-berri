@@ -1,8 +1,5 @@
 from functools import cached_property, lru_cache
 import warnings
-from irrep.bandstructure import BandStructure
-from irrep.spacegroup import SpaceGroup
-from irrep.utility import get_kpt_from_kptirr_isym
 import numpy as np
 
 
@@ -90,7 +87,7 @@ class SymmetrizerSAWF:
         self.kptirr2kpt = np.zeros((0, 0), dtype=int)
 
     @classmethod
-    def from_irrep(cls, bandstructure: BandStructure,
+    def from_irrep(cls, bandstructure,
                  grid=None, degen_thresh=1e-2, store_eig=True,
                  ecut=None,  # not used, but kept for compatibility
                  irreducible=False,
@@ -421,6 +418,7 @@ class SymmetrizerSAWF:
             self.__setattr__(k, v)
 
         if not hasattr(self, "kpt_from_kptirr_isym"):
+            from irrep.utility import get_kpt_from_kptirr_isym
             self.kpt_from_kptirr_isym = get_kpt_from_kptirr_isym(kptirr2kpt=self.kptirr2kpt,
                                                         kpt2kptirr=self.kpt2kptirr)
 
@@ -450,6 +448,7 @@ class SymmetrizerSAWF:
         l = len(prefix)
         dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
         if len(dic_spacegroup) > 0:
+            from irrep.spacegroup import SpaceGroup
             self.spacegroup = SpaceGroup(**dic_spacegroup)
         for prefix in ["T", "atommap", "rot_orb"]:
             keys = sorted([k for k in dic.keys() if k.startswith(prefix)])

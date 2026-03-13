@@ -684,7 +684,7 @@ class System_R(System):
         else:
             return key + ".npz"
 
-    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
         Parameters
@@ -737,6 +737,7 @@ class System_R(System):
             logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             logfile.write(" - Ok!\n")
+
 
     @classmethod
     def from_npz(cls, path, exclude_properties=(), legacy=False, matrices=None):

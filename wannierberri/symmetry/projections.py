@@ -3,8 +3,6 @@ from functools import cached_property
 import itertools
 import numpy as np
 
-from wannierberri.utility import cached_einsum
-from ..symmetry.orbitals import orbitals_sets_dic
 
 try:
     from jax import config
@@ -18,12 +16,10 @@ except ImportError:
     from scipy.optimize import minimize as jminimize
     from functools import partial as jjit
 
-
-from ..symmetry.orbitals import Orbitals, num_orbitals
+from ..utility import cached_einsum
+from ..symmetry.orbitals import num_orbitals, orbitals_sets_dic
 from .unique_list import UniqueListMod1
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
-
-ORBITALS = Orbitals()
 
 
 class Projection:
