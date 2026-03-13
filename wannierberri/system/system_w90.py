@@ -39,25 +39,27 @@ def get_system_w90(
 
     Parameters
     ----------
-    w90data : `~wannierberri.w90files.Wannier90data`
-        object that contains all Wannier90 input files and chk all together. If provided, overrides the `seedname`
+    w90data : :class:`~wannierberri.w90files.Wannier90data`
+        Object that contains all Wannier90 input files and the checkpoint data.
     transl_inv_JM : bool
         translational-invariant scheme for diagonal and off-diagonal matrix elements for all matrices. Follows method of Jae-Mo Lihm
     transl_inv_MV : bool
-    Use Eq.(31) of `Marzari&Vanderbilt PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_ for band-diagonal position matrix elements
-    Note : it applies only to the `AA` matrix for R+!=[0,0,0] and only if `transl_inv_JM` is False
-    Kept for legacy reasons, as it is not used recommended to use. 
+        Use Eq. (31) of `Marzari & Vanderbilt, PRB 56, 12847 (1997) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.56.12847>`_
+        for band-diagonal position matrix elements.
+        It applies only to the `AA` matrix for `R != [0, 0, 0]` and only if `transl_inv_JM` is False.
+        Kept for legacy reasons and not recommended for new calculations.
 
     wannier_centers_from_chk : bool
         If True, the centers of the Wannier functions are read from the ``.chk`` file. If False, the centers are recalculated from the ``.mmn`` file.
-    fft : str
+    fftlib : str
         library used to perform the fast Fourier transform from **q** to **R**. ``fftw`` or ``numpy``. (practically does not affect performance,
         anyway mostly time of the constructor is consumed by reading the input files)
     symmetrize : bool
         if True, the R-matrices and wannier centers are symmetrized (highly recommended, False is for debugging only)
         works only if initialized from the w90data object, and that object has the symmetrizer
     **parameters
-        see `~wannierberri.system.System_R` and `~wannierberri.system.system.System` for the rest of the parameters
+        See :class:`~wannierberri.system.System_R` and :class:`~wannierberri.system.system.System`
+        for the rest of the parameters.
 
     Notes
     -----
@@ -71,7 +73,7 @@ def get_system_w90(
 
     See Also
     --------
-    `~wannierberri.system.system.System_R`
+    :class:`~wannierberri.system.system.System_R`
     """
     if transl_inv_MV:
         warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "

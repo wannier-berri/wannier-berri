@@ -56,31 +56,32 @@ FILES_CLASSES = {'win': WIN,
 class Wannier90data:
     """A class to describe all input files of wannier90, and to construct the Wannier functions
 
-    Parameters:
+    Parameters
+    ----------
         seedname : str
-            the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)	
-        formatted : tuple(str)
+            the prefix of the file (including relative/absolute path, but not including the extensions, like ``.chk``, ``.mmn``, etc)
+        formatted : tuple[str]
             list of files which should be read as formatted files (uHu, uIu, etc)
         read_chk : bool
-            if True, read the :class:`~wannierberri.w90files.CheckPoint` file, 
-            otherwise create a "bare" :class:`~wannierberri.w90files.chk.CheckPoint` object and prepare for wannierisation
+            if True, read the :class:`~wannierberri.w90files.CheckPoint` file,
+            otherwise create a bare :class:`~wannierberri.w90files.chk.CheckPoint` object and prepare for wannierisation
         kmesh_tol : float
             see :class:`~wannierberri.w90files.chk.CheckPoint`
         bk_complete_tol : float
-            see :class:`~wannierberri.w90files.chk.CheckPoint`mp_grid
+            see :class:`~wannierberri.w90files.chk.CheckPoint`
 
     Attributes
     ----------
-    chk : `~wannierberri.w90files.CheckPoint` or `~wannierberri.w90files.CheckPoint_bare`
+    chk : :class:`~wannierberri.w90files.CheckPoint` or :class:`~wannierberri.w90files.CheckPoint_bare`
         the checkpoint file
     seedname : str
-        the prefix of the file (including relative/absolute path, but not including the extensions, like `.chk`, `.mmn`, etc)
+        the prefix of the file (including relative/absolute path, but not including the extensions, like ``.chk``, ``.mmn``, etc)
     wannierised : bool
-        if True, the data is already wannierised (so, it can be used to create a System_w90 object)
+        if True, the data is already wannierised (so, it can be used to create a system object)
     formatted_list : list(str)
         list of files which should be read as formatted files (uHu, uIu, etc)
-    _files : dict(str, `~wannierberri.w90files.W90_file`)
-        the dictionary containing the files, with the keys being the file names (e.g. 'mmn', 'eig', etc) and the values being the corresponding file objects (e.g. :class:`~wannierberri.w90files.mmn.MMN`, :class:`~wannierberri.w90files.eig.EIG`, etc)
+    _files : dict(str, :class:`~wannierberri.w90files.W90_file`)
+        the dictionary containing the files, with the keys being the file names (e.g. ``mmn``, ``eig``, etc) and the values being the corresponding file objects (e.g. :class:`~wannierberri.w90files.mmn.MMN`, :class:`~wannierberri.w90files.eig.EIG`, etc)
     """
     # todo :  rotate uHu and spn
     # todo : symmetry
@@ -1010,7 +1011,7 @@ class Wannier90data:
                            reduce_r_points=1,
                            make_close_to_real_real=True):
         """
-        calculate Wanier functions on a real-space grid
+        calculate Wannier functions on a real-space grid
 
         Parameters
         ----------

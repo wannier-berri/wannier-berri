@@ -36,7 +36,7 @@ def system_tb(tb_file="wannier90_tb.dat",
     convention_II_to_I : bool
         By default, the tb file in wannier90 format is in the convention II, which is different from the convention I used in wannierberri.
         If the file is already in the convention I, set this parameter to False.
-    wannier_centers_cart : np.ndarray(num_wann, 3)
+    wannier_centers_cart : np.ndarray, shape=(n_wann, 3)
         If provided, will override the wannier centers read from the file. (and hence they will be subtracted from the AA_R matrix if convention_II_to_I is True)
 
     Notes

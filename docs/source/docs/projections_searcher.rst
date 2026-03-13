@@ -12,10 +12,17 @@ Note: work on this functionality is in progress
 Projections and Wyckoff positions
 +++++++++++++++++++++++++++++++++
 
-.. automodule:: wannierberri.symmetry.projections
-   :members: 
+.. autoclass:: wannierberri.symmetry.projections.Projection
+   :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: positions, num_wann_per_site, num_points, num_wann, orbitals_str
+
+.. autoclass:: wannierberri.symmetry.projections.ProjectionsSet
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: num_points, num_wann
 
 .. automodule:: wannierberri.symmetry.wyckoff_position
    :members:

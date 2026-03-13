@@ -6,7 +6,7 @@ import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 
-## these linesline if you want to use the git version of the code, instead of the one installed by pip
+## Uncomment these lines if you want to use the git version of the code, instead of the one installed by pip
 local_code = False
 num_proc = 4
 
@@ -20,7 +20,7 @@ SYM = wberri.point_symmetry
 
 # Efermi = np.linspace(12.,13.,101)
 omega = np.linspace(-0.01, 0.1, 1101)
-system = wberri.System_Phonon_QE('../tests/data/Si_phonons/si', asr=True)
+system = wberri.System_R.from_phonons_qe('../tests/data/Si_phonons/si', asr=True)
 
 generators = ["C4z", "C4x", "TimeReversal"]
 system.set_pointgroup(generators)

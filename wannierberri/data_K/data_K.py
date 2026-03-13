@@ -213,7 +213,7 @@ class Data_K(System, abc.ABC):
     # evaluate the energies in the corners of the parallelepiped, in order to use tetrahedron method
 
     def phonon_freq_from_square(self, E):
-        """takes  sqrt(|E|)*sign(E) for phonons, returns input for electrons"""
+        r"""For phonons return :math:`\sqrt{|E|}\operatorname{sign}(E)`; for electrons return ``E`` unchanged."""
         if self.is_phonon:
             e = np.sqrt(np.abs(E))
             e[E < 0] = -e[E < 0]

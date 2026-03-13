@@ -53,14 +53,14 @@ def evaluate_k(system=None,
         Which pre-defined quantities to calculate. Use `evaluate()` to get the list of available quantities
     calculators : dict
         Dictionary str : :class:`~wannierberri.calculators.Calculator`
-        alows to evaluate quantities that are not available here, or using specific parameters
+        allows to evaluate quantities that are not available here, or using specific parameters
     formula : dict
         Dictionary str : :class:`~wannierberri.formula.Formula_ln`
         allows to evaluate block-diagonal part of a covariant formula (considering iband as "inner" states)
     param_formula : dict
         Dictionary str : dict -parameters to be passed to the corresponding formula
     return_single_as_dict : bool
-        wether to pack a result into dict if only one calculator/quantity is requested
+        whether to pack a result into dict if only one calculator/quantity is requested
     parameters_K: dict
         parameters to be passed to :class:`~wannierberri.data_K.Data_K` class
     iband : int or list(int)

@@ -17,10 +17,10 @@ Example
 
 .. code-block:: python
 
-   # This tutorial shows how to generate a DMN file inside Wanier Berri code (without pw2wannier90)
-   # and then use it to generate a Wannier90 output.
+   # This tutorial shows how to generate symmetry-adapted wannier functions with WannierBerri
    # It may be used with any DFT code that is supported by IrRep (QE, VASP, AINIT, ...)
-   # the .dmn and .amn files are NOT needed before the calculation, they is generated on the fly
+   # the .dmn and .amn files are NOT needed before the calculation, they are generated on the fly
+   # from the Wavefunctions stored by the DFT code (e.g. from the WAVECAR. .save files, etc)
 
    from wannierberri.symmetry.projections import Projection, ProjectionsSet
    from irrep.bandstructure import BandStructure

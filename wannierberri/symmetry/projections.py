@@ -81,16 +81,6 @@ class Projection:
         If True, the projection is a spinor
     basis_list : list(np.array(shape=(3,3), dtype=float))
         The basis for each site (row-vectors)
-    positions : np.array(shape=(n,3), dtype=float)
-        The positions of the projections
-    num_wann_per_site : int
-        The number of Wannier functions per site
-    num_points : int
-        The number of points
-    num_wann : int
-        The total number of Wannier functions
-    orbitals_str : str
-        The orbitals of the projection as one string separated by semicolons `;`
     """
 
     def __init__(self,
@@ -340,9 +330,9 @@ class ProjectionsSet:
 
         Returns
         -------
-        np.ndarray(shape=(num_points, 3, num_free_vars_wyckoff), dtype=float)
+        np.ndarray(shape=(n_points, 3, num_free_vars_wyckoff), dtype=float)
             The rotation matrices of the symmetry operations
-        np.ndarray(shape=(num_points, 3), dtype=float)
+        np.ndarray(shape=(n_points, 3), dtype=float)
             The translation vectors of the symmetry operations
         """
 
@@ -373,7 +363,7 @@ class ProjectionsSet:
         """
         Returns:
         --------
-        np.array(int, shape=(num_points))
+        np.array(int, shape=(n_points,))
             for each point - a value od how many wannier functioons there are on this point
         """
         return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
@@ -666,13 +656,13 @@ class RepulsivePotential:
 
     Parameters
     ----------
-    rotation : np.ndarray(shape=(num_points, 3, nfree_vars), dtype=float)
+    rotation : np.ndarray(shape=(n_points, 3, nfree_vars), dtype=float)
         The rotation matrices to get the symmetry operations
-    translation : np.ndarray(shape=(num_points, 3), dtype=float)
+    translation : np.ndarray(shape=(n_points, 3), dtype=float)
         The translation vectors of the symmetry operations
-    weights : np.ndarray(shape=(num_points, dtype=float)
+    weights : np.ndarray(shape=(n_points,), dtype=float)
         The weights of the symmetry operations
-    same_site : np.ndarray(shape=(num_points, num_points), dtype=bool)
+    same_site : np.ndarray(shape=(n_points, n_points), dtype=bool)
 
     """
 

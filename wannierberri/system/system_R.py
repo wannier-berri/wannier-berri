@@ -281,33 +281,26 @@ class System_R(System):
         atom_name: list
             Name of each atom.
         proj: list
-            Should be the same with projections card in relative Wannier90.win.
+            Projections from the corresponding ``wannier90.win`` file.
 
-            eg: ``['Te: s','Te:p']``
+            Examples:
 
-            If there is hybrid orbital, grouping the other orbitals.
+            - ``['Te:s', 'Te:p']``
+            - ``['Fe:sp3d2;t2g']`` instead of ``['Fe:sp3d2;dxz,dyz,dxy]``
+            - ``['X:sp;p2']`` instead of ``['X:sp;pz,py]``
 
-            eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
-
-                ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
-
-            Note: If in `wannier90.win` file one sets several projections in one line like ``['Fe':d;sp3]``
-            the actual order (as written to the `wannier90.nnkp` file) may be different. It is ordered by the orbital number l,
-            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see
-            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__
-            chapter 3). So, the actual order will be ``['Fe':sp3;d]``. To  avoid confusion, it is recommended to put the different groups of projectons
-            as separate lines of the `wannier90.win` file. See also `here <https://github.com/wannier-developers/wannier90/issues/463>`__
+            If ``wannier90.win`` contains several projections in one line, for example
+            ``['Fe:d;sp3]``, the actual order written to ``wannier90.nnkp`` may differ.
+            It is ordered by the orbital quantum number `l`, and hybrids are assigned
+            negative values (for example, for `sp3`, `l=-3`; see the
+            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__, chapter 3).
+            In that case the actual order becomes ``['Fe:sp3;d]``. To avoid confusion,
+            it is recommended to put different projection groups on separate lines of
+            ``wannier90.win``. See also `Wannier90 issue #463 <https://github.com/wannier-developers/wannier90/issues/463>`__.
         soc: bool
             Spin orbital coupling.
         magmom: 2D array
             Magnetic momens of each atoms.
-        store_symm_wann: bool
-            Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
-            Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
-        rotations: array-like (shape=(N,3,3))
-            Rotations of the symmetry operations. (optional)
-        translations: array-like (shape=(N,3))
-            Translations of the symmetry operations. (optional)
         silent: bool
             If True, do not print the symmetrization process.
         reorder_back: bool
@@ -315,17 +308,21 @@ class System_R(System):
 
         Returns
         -------
-        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
+        symmetrizer : :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF`
             the symmetrizer object that was used for symmetrization. Can be used for further analysis of the symmetry properties of the system.
 
         Notes
         -----
-        * after symmetrization, the wannier functions may be reordered, to group the atoms 
-        by same wyckoff positions. In this case, the symmetrizer is not returned, because it would be 
-        inconsistent with the order of the projections.
+                * After symmetrization, the Wannier functions may be reordered to group atoms
+                    by the same Wyckoff positions. In this case, the symmetrizer is not returned,
+                    because it would be inconsistent with the order of the projections.
 
-        * Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
-        Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
+                * Works only with phase convention I (`use_wcc_phase=True`), which is now the
+                    only supported option.
+
+                * Spin ordering is assumed to be interlaced (like in the amn file of QE and
+                    new versions of VASP). If it is not, use
+                    :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
         """
         from irrep import __version__ as irrep_version
         from irrep.spacegroup import SpaceGroup

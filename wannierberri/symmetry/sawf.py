@@ -725,7 +725,7 @@ class SymmetrizerSAWF:
         return self.U_to_full_BZ(amn_sym_irr)
 
     def get_random_amn(self):
-        """ generate a random amn array that is comaptible with the symmetries of the Wanier functions in thesymmetrizer object
+        """ generate a random amn array that is compatible with the symmetries of the Wannier functions in the symmetrizer object
 
         Returns
         -------

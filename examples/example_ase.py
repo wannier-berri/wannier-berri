@@ -85,7 +85,7 @@ if do_wberri:
             "color": "green",
             "linestyle": "-"
         },
-        label="WanniewrBerri",
+        label="WannierBerri",
         fatfactor=5,
         fatmax=200,
         cut_k=True,
