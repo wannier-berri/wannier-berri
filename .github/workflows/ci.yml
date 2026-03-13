@@ -10,6 +10,7 @@ on:
 
 jobs:
   build:
+    name: "wannier-berri CI / build (${{ matrix.python-version }}, ${{ matrix.install-type }})"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
