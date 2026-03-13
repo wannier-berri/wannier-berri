@@ -1,4 +1,4 @@
-name: wannier-berri CI
+name: "WannierBerri CI Matrix"
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: "wannier-berri CI / build (${{ matrix.python-version }}, ${{ matrix.install-type }})"
+    name: "Build (${{ matrix.python-version }}, ${{ matrix.install-type }})"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
