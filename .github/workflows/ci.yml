@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.12', '3.13']
-        install-type: [dev]
+        install-type: [tests]
 
     steps:
     # Checkout full history including tags for setuptools-scm
