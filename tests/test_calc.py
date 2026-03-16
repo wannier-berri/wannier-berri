@@ -128,7 +128,7 @@ def check_save_result():
     return _inner
 
 
-@pytest.mark.parametrize("implementation", [1, 2])
+@pytest.mark.parametrize("implementation", [1])
 def test_SDCT(system_random_load_bare, check_calculator, implementation):
 
     param = {'Efermi': np.linspace(-2, 2, 5),
@@ -145,10 +145,7 @@ def test_SDCT(system_random_load_bare, check_calculator, implementation):
             name = f"random-{key}-{term}_terms"
             print(name)
             calc = calculator(**param_terms, **param)
-            if implementation == 2:
-                transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
-            else:                
-                transform_TR = None
+            transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
             check_calculator(system_random_load_bare, calc, 
                              name, do_not_compare=False,
                              transformTR=transform_TR)

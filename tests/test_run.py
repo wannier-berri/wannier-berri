@@ -205,8 +205,6 @@ calculators_Chiral = {
 def get_calculators_sdct(implementation=1):
     if implementation == 1:
         import wannierberri.calculators.sdct as sdct
-    elif implementation == 2:
-        import wannierberri.calculators.sdct2 as sdct
     else:
         raise ValueError("Invalid implementation number")
     return {
@@ -633,7 +631,7 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-@pytest.mark.parametrize("implementation", [1, 2])
+@pytest.mark.parametrize("implementation", [1])
 def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementation):
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
@@ -649,11 +647,11 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementatio
         fout_name="GaAs_W90",
         precision=5e-3,
         compare_zero=True,
-        transformTR=transform_odd_trans_102 if implementation == 2 else None
+        transformTR=transform_odd_trans_102
     )
 
 
-@pytest.mark.parametrize("implementation", [1, 2])
+@pytest.mark.parametrize("implementation", [1])
 def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implementation):
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 4, 5),
@@ -665,7 +663,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implement
         system_Chiral_OSD,
         calculators,
         fout_name="Chiral_OSD_SDCT",
-        transformTR=transform_odd_trans_102 if implementation == 2 else None,
+        transformTR=transform_odd_trans_102
         # precision=,
     )
 
