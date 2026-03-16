@@ -9,23 +9,41 @@ electron_g_factor = physical_constants['electron g factor'][0]
 m_spin_prefactor = electron_g_factor * hbar / electron_mass
 
 
-############################ Sea I terms ############################
 
 class Formula_SDCT(Formula):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+    """
+    Parameters
+    ----------
+    sym : bool
+        if True - calculates the symmetric part of the SDCT, if False - calculates the antisymmetric part of the SDCT  """
+
+    def __init__(self, data_K, sym, nbandind=2, **kwargs):
+        super().__init__(data_K, **kwargs)
         self.ndim = 3
         self.transformInv = transform_odd
+        self.transformTR = transform_odd if sym else transform_ident
+        self.summ = np.zeros((data_K.nk,) + (data_K.num_wann,) * nbandind + (3, 3, 3), dtype=complex)
+        self.sym = sym
+
+    def symsum(self):
+        if self.sym:
+            self.summ = np.real(self.summ + self.summ.swapaxes(3, 4))
+        else:
+            self.summ = -np.imag(self.summ - self.summ.swapaxes(3, 4))
 
     def trace_ln(self, ik, inn1, inn2):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
+############################ Sea I terms ############################
+
 
 class Formula_SDCT_sea_I(Formula_SDCT):
 
-    def __init__(self, data_K, sign_V_term=1,
+    def __init__(self, data_K, sym,
                  M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
+        super().__init__(sym=sym, data_K=data_K, **parameters)
+        sign_V_term = -1 if sym else 1
         # Intrinsic multipole moments
         if self.external_terms:
             A = -1. * data_K.SDCT.E1
@@ -44,43 +62,23 @@ class Formula_SDCT_sea_I(Formula_SDCT):
         Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # --- Formula --- #
-        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-
         if M1_terms:
-            summ += A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :]
+            self.summ += A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if E2_terms:
-            summ += A[:, :, :, :, None, None] * B_E2.swapaxes(1, 2)[:, :, :, None, :, :]
+            self.summ += A[:, :, :, :, None, None] * B_E2.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if V_terms:
             # This is weird, why we have to put a minus sign here to get the correct term for the symmetric part of the SDCT?
-            summ += sign_V_term * (-Vnm_plus[:, :, :, :, None, None] * A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
-
-        self.summ = summ
-
-
-class Formula_SDCT_asym_sea_I(Formula_SDCT_sea_I):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.summ = -np.imag(self.summ - self.summ.swapaxes(3, 4))
-        self.transformTR = transform_ident
+            self.summ += sign_V_term * (-Vnm_plus[:, :, :, :, None, None] * A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
+        self.symsum()
 
 
-class Formula_SDCT_sym_sea_I(Formula_SDCT_sea_I):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, sign_V_term=-1, **kwargs)
-        self.summ = np.real(self.summ + self.summ.swapaxes(3, 4))
-        self.transformTR = transform_odd
-
-
-############################# Sea II terms ############################
 
 class Formula_SDCT_sea_II(Formula_SDCT):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
+    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
         if self.external_terms:
             A = -1. * data_K.SDCT.E1
@@ -92,117 +90,57 @@ class Formula_SDCT_sea_II(Formula_SDCT):
         Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # --- Formula --- #
-        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-
         if V_terms:
-            summ -= A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None] * Vnm_plus[:, :, :, None, None, :]
-
-        self.summ = summ
-
-
-class Formula_SDCT_asym_sea_II(Formula_SDCT_sea_II):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.summ = -np.imag(self.summ)
-        self.transformTR = transform_ident
+            self.summ -= A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None] * Vnm_plus[:, :, :, None, None, :]
+        self.symsum()
 
 
-class Formula_SDCT_sym_sea_II(Formula_SDCT_sea_II):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.summ = 2 * np.real(self.summ)
-        self.transformTR = transform_odd
-
-############################## Surface I terms ############################
+############################## Surface  terms ############################
 
 
 class Formula_SDCT_surf_I(Formula_SDCT):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
+    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, sym=sym, **parameters)
         # Intrinsic multipole moments
-        if self.external_terms:
-            A = -1. * data_K.SDCT.E1
-        else:
-            A = -1. * data_K.SDCT.E1_internal
-
+        A = -1 * data_K.SDCT.get_E1(external_terms=self.external_terms)
         # Other quantities
         Vn = data_K.SDCT.Vn
-
         # --- Formula --- #
-        self.summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-
         if V_terms:
             self.summ += (A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
+        if sym:
+            self.summ = np.real(self.summ)
+        else:
+            self.summ = -np.imag(self.summ)
 
 
     def trace_ln(self, ik, inn1, inn2):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class Formula_SDCT_asym_surf_I(Formula_SDCT_surf_I):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.summ = -np.imag(self.summ)
-        self.transformTR = transform_ident
-
-
-class Formula_SDCT_sym_surf_I(Formula_SDCT_surf_I):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.summ = np.real(self.summ)
-        self.transformTR = transform_odd
-
-
-###################################### Surface II terms ############################
-
 class Formula_SDCT_surf_II(Formula_SDCT):
 
-    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
-        return self.summ[ik, inn1].sum(axis=0)
-
-
-class Formula_SDCT_asym_surf_II(Formula_SDCT_surf_II):
-
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
-        # Intrinsic multipole moments
-        if self.external_terms:
-            B_M1, B_E2, B = data_K.SDCT.Bln
-            if spin:
+    def __init__(self, data_K, sym,
+                 M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+        super().__init__(data_K, sym=sym, nbandind=1, **parameters)
+        Vn = data_K.SDCT.Vn
+        if sym:
+            if V_terms:
+                self.summ += Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
+        else:
+            if not M1_terms:
+                return
+            # Intrinsic multipole moments
+            B_M1, B_E2, B = data_K.SDCT.get_Bln(external_terms=self.external_terms)
+            if self.external_terms and spin:
                 S = data_K.Xbar('SS')
                 B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
                 B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
-        else:
-            B_M1, B_E2, B = data_K.SDCT.Bln_internal
-        Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
-
-        # Other quantities
-        Vn = data_K.SDCT.Vn
-
-        # --- Formula --- #
-        self.summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
-
-        if M1_terms:
+            Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
+            # --- Formula --- #
             self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
+            self.summ = self.summ - self.summ.swapaxes(3, 4)
 
-        self.summ = self.summ - self.summ.swapaxes(3, 4)
-        self.transformTR = transform_ident
-
-
-class Formula_SDCT_sym_surf_II(Formula_SDCT_surf_II):
-
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
-        Vn = data_K.SDCT.Vn
-
-        # Formula
-        self.summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
-
-        if V_terms:
-            self.summ += Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
-        self.transformTR = transform_odd
+    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
+        return self.summ[ik, inn1].sum(axis=0)

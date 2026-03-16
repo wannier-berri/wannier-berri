@@ -218,6 +218,30 @@ class SDCT_K:
         B = B_m + B_q
         return B_m, B_q, B
 
+    def get_Bln(self, external_terms=True):
+        if external_terms:
+            return self.Bln
+        else:
+            return self.Bln_internal
+
+    def get_E1(self, external_terms=True):
+        if external_terms:
+            return self.E1
+        else:
+            return self.E1_internal
+
+    def get_M1(self, external_terms=True):
+        if external_terms:
+            return self.M1
+        else:
+            return self.M1_internal
+
+    def get_E2(self, external_terms=True):
+        if external_terms:
+            return self.E2
+        else:
+            return self.E2_internal
+
     @cached_property
     def Vn(self):
         ''' Band velocity '''

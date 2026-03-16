@@ -70,7 +70,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             return True
 
     def __call__(self, data_K):
-        formula = self.Formula(data_K, **self.kwargs_formula)
+        formula = self.Formula(data_K=data_K, **self.kwargs_formula)
         restot_shape = (len(self.omega), len(self.Efermi)) + (3,) * formula.ndim
         restot_shape_tmp = (
             len(self.omega), len(self.Efermi) * 3 ** formula.ndim)  # we will first get it in this shape, then transpose
