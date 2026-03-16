@@ -1,4 +1,5 @@
 """Test `wberri.run function"""
+from functools import lru_cache
 import os
 
 import numpy as np
@@ -9,6 +10,7 @@ import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
+from wannierberri.symmetry.point_symmetry import transform_odd_trans_102
 
 from .common import OUTPUT_DIR_RUN, OUTPUT_DIR, REF_DIR_INTEGRATE
 from .common_comparers import compare_quant
@@ -52,6 +54,8 @@ def check_run(compare_any_result):
             precision=-1e-8,
             do_not_compare=False,
             skip_compare=[],
+            transformTR=None,
+            transformInv=None,
             **kwargs_run
     ):
 
@@ -101,6 +105,8 @@ def check_run(compare_any_result):
                     compare_zero=compare_zero,
                     precision=prec,
                     result_type=resultType(quant),
+                    transformTR=transformTR,
+                    transformInv=transformInv
                 )
 
         return result
@@ -194,18 +200,27 @@ calculators_Chiral = {
     'jdos': wberri.calculators.dynamic.JDOS(**parameters_Chiral_optical),
 }
 
-calculators_SDCT = {
-    'SDCT_sym_sea_I': wberri.calculators.sdct.SDCT_sym_sea_I,
-    'SDCT_sym_sea_II': wberri.calculators.sdct.SDCT_sym_sea_II,
-    'SDCT_asym_sea_I': wberri.calculators.sdct.SDCT_asym_sea_I,
-    'SDCT_asym_sea_II': wberri.calculators.sdct.SDCT_asym_sea_II,
-    'SDCT_asym_surf_I': wberri.calculators.sdct.SDCT_asym_surf_I,
-    'SDCT_asym_surf_II': wberri.calculators.sdct.SDCT_asym_surf_II,
-    'SDCT_sym_surf_I': wberri.calculators.sdct.SDCT_sym_surf_I,
-    'SDCT_sym_surf_II': wberri.calculators.sdct.SDCT_sym_surf_II,
-    'SDCT_sym': wberri.calculators.sdct.SDCT_sym,
-    'SDCT_asym': wberri.calculators.sdct.SDCT_asym,
-}
+
+@lru_cache(maxsize=None)
+def get_calculators_sdct(implementation=1):
+    if implementation == 1:
+        import wannierberri.calculators.sdct as sdct
+    else:
+        raise ValueError("Invalid implementation number")
+    return {
+        'SDCT_sym_sea_I': sdct.SDCT_sym_sea_I,
+        'SDCT_sym_sea_II': sdct.SDCT_sym_sea_II,
+        'SDCT_asym_sea_I': sdct.SDCT_asym_sea_I,
+        'SDCT_asym_sea_II': sdct.SDCT_asym_sea_II,
+        'SDCT_asym_surf_I': sdct.SDCT_asym_surf_I,
+        'SDCT_asym_surf_II': sdct.SDCT_asym_surf_II,
+        'SDCT_sym_surf_I': sdct.SDCT_sym_surf_I,
+        'SDCT_sym_surf_II': sdct.SDCT_sym_surf_II,
+        'SDCT_sym': sdct.SDCT_sym,
+        'SDCT_asym': sdct.SDCT_asym,
+    }
+
+
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
@@ -616,13 +631,14 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result):
+@pytest.mark.parametrize("implementation", [1])
+def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementation):
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1
              }
     calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
-                   for k, v in calculators_SDCT.items()}
+                   for k, v in get_calculators_sdct(implementation).items()}
 #    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
@@ -630,21 +646,24 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result):
         calculators,
         fout_name="GaAs_W90",
         precision=5e-3,
-        compare_zero=True
+        compare_zero=True,
+        transformTR=transform_odd_trans_102
     )
 
 
-def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
+@pytest.mark.parametrize("implementation", [1])
+def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implementation):
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              }
-    calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
+    calculators = {k: v(**param) for k, v in get_calculators_sdct(implementation).items()}
 
     check_run(
         system_Chiral_OSD,
         calculators,
         fout_name="Chiral_OSD_SDCT",
+        transformTR=transform_odd_trans_102
         # precision=,
     )
 
@@ -661,17 +680,29 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
 
+    check_run(
+        system_random_load_bare,
+        calculators,
+        fout_name="random",
+    )
+
+
+def test_random_SDCT(check_run, system_random_load_bare, compare_any_result):
+    Efermi = np.linspace(-2, 2, 5)
+    param = {'Efermi': Efermi}
+
     param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              'kwargs_formula': dict(external_terms=False)
              }
-    calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
+    calculators = {k: v(**param) for k, v in get_calculators_sdct(implementation=1).items()}
 
     check_run(
         system_random_load_bare,
         calculators,
         fout_name="random",
+        transformTR=transform_odd_trans_102,
     )
 
 

@@ -4,6 +4,7 @@ from wannierberri.formula import covariant as frml
 from wannierberri.result import EnergyResult, KBandResult
 from .common import OUTPUT_DIR, REF_DIR
 from .common_comparers import error_message
+from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
@@ -14,20 +15,23 @@ from .common_systems import Efermi_Fe
 
 @pytest.fixture
 def check_calculator(compare_any_result):
-    """
-
-    """
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
                precision=-1e-8,
                compare_zero=False,
                do_not_compare=False,
                result_type=EnergyResult,
-               factor=1
+               factor=1,
+               transformTR=None,
+               transformInv=None,
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
-        result = calc(data_K) * factor
+        result = calc(data_K)
+        print(f"result = {result}")
+        result = result * factor
+        print(f"result * {factor} = {result}")
+
 
         filename = "calculator-" + name
         path_filename = os.path.join(OUTPUT_DIR, filename)
@@ -42,6 +46,11 @@ def check_calculator(compare_any_result):
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             result_ref = result_type(file_npz=path_filename_ref)
+        if transformTR is not None:
+            result_ref.transformTR = transformTR
+        if transformInv is not None:
+            result_ref.transformInv = transformInv
+
         maxval = result_ref._maxval_raw
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)
@@ -123,25 +132,32 @@ def check_save_result():
     return _inner
 
 
-def test_SDCT(system_random_load_bare, check_calculator):
+@pytest.mark.parametrize("implementation", [1])
+def test_SDCT(system_random_load_bare, check_calculator, implementation):
 
-    from .test_run import calculators_SDCT
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
 
+    calculators_SDCT = get_calculators_sdct(implementation=implementation)
     for key, calculator in calculators_SDCT.items():
-        for term in ["M1", "E2", "V", "all"]:
-            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}
-            if term != "all":
-                param_terms[f"{term}_terms"] = True
+        for term in ["M1", "E2", "V", "S", "all", "none"]:
+            if term == "all":
+                param_terms = {f"{t}_terms": True for t in ["M1", "E2", "V", "S"]}
+            elif term == "none":
+                param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
+            else:
+                param_terms = {f"{t}_terms": (term == t) for t in ["M1", "E2", "V", "S"]}
             name = f"random-{key}-{term}_terms"
             print(name)
             calc = calculator(**param_terms, **param)
-            check_calculator(system_random_load_bare, calc, name, do_not_compare=False)
-
-
+            transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
+            check_calculator(system_random_load_bare, calc,
+                             name, do_not_compare=False,
+                             compare_zero=(term == "none"),
+                             precision=1e-8 if term == "none" else None,
+                             transformTR=transform_TR)
 
 
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
