@@ -127,8 +127,7 @@ def check_save_result():
 @pytest.mark.parametrize("implementation", [1, 2])
 def test_SDCT(system_random_load_bare, check_calculator, implementation):
 
-    from .test_run import Efermi_GaAs
-    param = {'Efermi': Efermi_GaAs,
+    param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }

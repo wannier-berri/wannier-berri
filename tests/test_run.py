@@ -1,4 +1,5 @@
 """Test `wberri.run function"""
+from functools import lru_cache
 import os
 
 import numpy as np
@@ -195,7 +196,7 @@ calculators_Chiral = {
 }
 
 
-
+@lru_cache(maxsize=None)
 def get_calculators_sdct(implementation=1):
     if implementation == 1:
         import wannierberri.calculators.sdct as sdct
@@ -215,10 +216,6 @@ def get_calculators_sdct(implementation=1):
         'SDCT_sym': sdct.SDCT_sym,
         'SDCT_asym': sdct.SDCT_asym,
     }
-
-
-calculators_SDCT = get_calculators_sdct(implementation=1)
-calculators_SDCT2 = get_calculators_sdct(implementation=2)
 
 
 
@@ -631,13 +628,14 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result):
+@pytest.mark.parametrize("implementation", [1, 2])
+def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementation):
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1
              }
     calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
-                   for k, v in calculators_SDCT.items()}
+                   for k, v in get_calculators_sdct(implementation).items()}
 #    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
@@ -649,12 +647,13 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
+@pytest.mark.parametrize("implementation", [1, 2])
+def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implementation):
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              }
-    calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
+    calculators = {k: v(**param) for k, v in get_calculators_sdct(implementation).items()}
 
     check_run(
         system_Chiral_OSD,
@@ -681,7 +680,7 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              'kwargs_formula': dict(external_terms=False)
              }
-    calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
+    calculators.update({k: v(**param) for k, v in get_calculators_sdct(implementation=1).items()})
 
     check_run(
         system_random_load_bare,
