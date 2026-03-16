@@ -11,7 +11,17 @@ m_spin_prefactor = electron_g_factor * hbar / electron_mass
 
 ############################ Sea I terms ############################
 
-class Formula_SDCT_sea_I(Formula):
+class Formula_SDCT(Formula):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ndim = 3
+        self.transformInv = transform_odd
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class Formula_SDCT_sea_I(Formula_SDCT):
 
     def __init__(self, data_K, sign_V_term=1,
                  M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
@@ -47,12 +57,6 @@ class Formula_SDCT_sea_I(Formula):
             summ += sign_V_term * (-Vnm_plus[:, :, :, :, None, None] * A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
 
         self.summ = summ
-        self.ndim = 3
-        self.transformInv = transform_odd
-
-
-    def trace_ln(self, ik, inn1, inn2):
-        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
 class Formula_SDCT_asym_sea_I(Formula_SDCT_sea_I):
@@ -73,8 +77,7 @@ class Formula_SDCT_sym_sea_I(Formula_SDCT_sea_I):
 
 ############################# Sea II terms ############################
 
-
-class Formula_SDCT_asym_sea_II(Formula):
+class Formula_SDCT_sea_II(Formula_SDCT):
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(data_K, **parameters)
@@ -92,46 +95,25 @@ class Formula_SDCT_asym_sea_II(Formula):
         summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ += np.imag(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vnm_plus[:, :, :, None, None, :]
+            summ -= A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None] * Vnm_plus[:, :, :, None, None, :]
 
         self.summ = summ
-        self.ndim = 3
+
+
+class Formula_SDCT_asym_sea_II(Formula_SDCT_sea_II):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.summ = -np.imag(self.summ)
         self.transformTR = transform_ident
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):
-        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class Formula_SDCT_sym_sea_II(Formula):
+class Formula_SDCT_sym_sea_II(Formula_SDCT_sea_II):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
-        # Intrinsic multipole moments
-        if self.external_terms:
-            A = -1. * data_K.SDCT.E1
-        else:
-            A = -1. * data_K.SDCT.E1_internal
-
-        # Other quantities
-        Vn = data_K.SDCT.Vn
-        Vnm_plus = Vn[:, :, None, :] + Vn[:, None, :, :]
-
-        # Formula
-        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-
-        if V_terms:
-            summ -= np.real(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vnm_plus[:, :, :, None, None, :]
-
-        self.summ = summ
-        self.ndim = 3
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.summ = 2 * np.real(self.summ)
         self.transformTR = transform_odd
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):
-        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
-
-
 
 ############################## Surface I terms ############################
 
