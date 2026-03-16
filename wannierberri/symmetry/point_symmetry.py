@@ -453,11 +453,12 @@ class Transform:
         + `transform_trans = Transform(transpose_axes=(1,0))`
         """
 
-    def __init__(self, factor=1, conj=False, transpose_axes=None):
+    def __init__(self, factor=1, conj=False, transpose_axes=None, swap_axes=None):
         self.conj = conj
         self.factor = factor
         assert factor in (1, -1), f"factor is {factor}"
         self.transpose_axes = transpose_axes
+        self.swap_axes = swap_axes
 
     def as_dict(self):
         return {k: self.__getattribute__(k) for k in ["conj", "factor", "transpose_axes"]}
