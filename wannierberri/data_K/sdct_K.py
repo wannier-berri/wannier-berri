@@ -11,6 +11,10 @@ from functools import cached_property, lru_cache
 import numpy as np
 from ..utility import alpha_A, beta_A, cached_einsum
 
+from scipy.constants import hbar, electron_mass, physical_constants
+electron_g_factor = physical_constants['electron g factor'][0]
+m_spin_prefactor = electron_g_factor * hbar / electron_mass
+
 
 class SDCT_K:
 
@@ -94,10 +98,6 @@ class SDCT_K:
     @lru_cache(maxsize=2)
     def get_E2(self, external_terms=True):
         ''' Electric quadrupole moment '''
-        # Basic covariant matrices in the Hamiltonian gauge
-        A = self.data_K.Xbar('AA')
-        G = self.data_K.Xbar('GG')
-
         # _____ 1. Internal terms _____ #
         A_int = self.get_E1(external_terms=False)
         Gbc_int = cached_einsum('klpa,kpnb->klnab', A_int, A_int)
@@ -106,6 +106,9 @@ class SDCT_K:
         G_H = G_int
 
         if external_terms:
+            A = self.data_K.Xbar('AA')
+            G = self.data_K.Xbar('GG')
+
 
             # _____ 2. External terms _____ #
 
@@ -124,22 +127,28 @@ class SDCT_K:
             G_cross = 0.5 * (Gbc_cross + Gbc_cross.swapaxes(3, 4))
 
             # Final formula
-            G_H += G_int + G_ext + G_cross
+            G_H += G_ext + G_cross
         return -1. * G_H
 
 
     @lru_cache
-    def get_Bln(self, external_terms=True):
+    def get_Bln_q(self, external_terms=True):
         q = self.get_E2(external_terms=external_terms)
-        m = self.get_M1(external_terms=external_terms)
         En = self.data_K.E_K
         Enm = En[:, :, None] - En[:, None, :]
-        B_q = -0.5j * Enm[:, :, :, None, None] * q
+        return -0.5j * Enm[:, :, :, None, None] * q
+        
+
+    @lru_cache
+    def get_Bln_m(self, external_terms=True, spin=False):
+        m = self.get_M1(external_terms=external_terms)
+        if spin:
+            S = self.data_K.Xbar('SS')
+            m += -0.5 * m_spin_prefactor * S
         B_m = np.zeros((self.data_K.nk, self.data_K.num_wann, self.data_K.num_wann, 3, 3), dtype=complex)
         B_m[:, :, :, alpha_A, beta_A] += m
         B_m[:, :, :, beta_A, alpha_A] -= m
-        B = B_m + B_q
-        return B_m, B_q, B
+        return B_m
 
 
     @cached_property

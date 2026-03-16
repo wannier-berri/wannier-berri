@@ -1,11 +1,6 @@
 import numpy as np
-from ..utility import alpha_A, beta_A
 from ..formula import Formula
 from ..symmetry.point_symmetry import transform_odd, transform_odd_trans_102
-
-from scipy.constants import hbar, electron_mass, physical_constants
-electron_g_factor = physical_constants['electron g factor'][0]
-m_spin_prefactor = electron_g_factor * hbar / electron_mass
 
 
 class Formula_SDCT(Formula):
@@ -20,12 +15,11 @@ class Formula_SDCT(Formula):
         super().__init__(data_K, **kwargs)
         self.ndim = 3
         self.transformInv = transform_odd
-        # self.transformTR = transform_odd if sym else transform_ident
         self.transformTR = transform_odd_trans_102
         self.summ = np.zeros((data_K.nk,) + (data_K.num_wann,) * nbandind + (3, 3, 3), dtype=complex)
         self.sym = sym
 
-    def symsum(self):
+    def symsumm(self):
         if self.sym:
             self.summ = np.real(self.summ + self.summ.swapaxes(3, 4))
         else:
@@ -44,13 +38,6 @@ class Formula_SDCT_sea_I(Formula_SDCT):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
         A = data_K.SDCT.get_E1(external_terms=self.external_terms)
-        B_M1, B_E2, B = data_K.SDCT.get_Bln(external_terms=self.external_terms)
-
-        # TODO - why not spin without external terms? 
-        if self.external_terms and spin and M1_terms:
-            S = data_K.Xbar('SS')
-            B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
-            B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
 
         # Other quantities
         Vn = data_K.SDCT.Vn
@@ -59,16 +46,18 @@ class Formula_SDCT_sea_I(Formula_SDCT):
 
         # --- Formula --- #
         if M1_terms:
+            B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, spin=spin)
             self.summ += A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if E2_terms:
+            B_E2 = data_K.SDCT.get_Bln_q(external_terms=self.external_terms)
             self.summ += A[:, :, :, :, None, None] * B_E2.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if V_terms:
             # This is weird, why we have to put a minus sign here to get the correct term for the symmetric part of the SDCT?
             sign_V_term = -1 if sym else 1
             self.summ += sign_V_term * (-Vnm_plus[:, :, :, :, None, None] * A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
-        self.symsum()
+        self.symsumm()
 
 
 class Formula_SDCT_sea_II(Formula_SDCT):
@@ -85,7 +74,7 @@ class Formula_SDCT_sea_II(Formula_SDCT):
         # --- Formula --- #
         if V_terms:
             self.summ -= A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None] * Vnm_plus[:, :, :, None, None, :]
-        self.symsum()
+        self.symsumm()
 
 
 ############################## Surface  terms ############################
@@ -122,18 +111,13 @@ class Formula_SDCT_surf_II(Formula_SDCT):
             if V_terms:
                 self.summ += Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
         else:
-            if not M1_terms:
-                return
-            # Intrinsic multipole moments
-            B_M1, B_E2, B = data_K.SDCT.get_Bln(external_terms=self.external_terms)
-            if self.external_terms and spin:
-                S = data_K.Xbar('SS')
-                B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
-                B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
-            Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
-            # --- Formula --- #
-            self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
-            self.summ = self.summ - self.summ.swapaxes(3, 4)
+            if M1_terms:
+                # Intrinsic multipole moments
+                B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, spin=spin)
+                B_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
+                # --- Formula --- #
+                self.summ += Vn[:, :, :, None, None] * B_M1[:, :, None, :, :]
+                self.summ = self.summ - self.summ.swapaxes(3, 4)
 
     def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
         return self.summ[ik, inn1].sum(axis=0)
