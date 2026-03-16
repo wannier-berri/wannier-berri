@@ -4,6 +4,7 @@ from wannierberri.formula import covariant as frml
 from wannierberri.result import EnergyResult, KBandResult
 from .common import OUTPUT_DIR, REF_DIR
 from .common_comparers import error_message
+from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
@@ -123,14 +124,16 @@ def check_save_result():
     return _inner
 
 
-def test_SDCT(system_random_load_bare, check_calculator):
+@pytest.mark.parametrize("implementation", [1, 2])
+def test_SDCT(system_random_load_bare, check_calculator, implementation):
 
-    from .test_run import Efermi_GaAs, calculators_SDCT
+    from .test_run import Efermi_GaAs
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
 
+    calculators_SDCT = get_calculators_sdct(implementation=implementation)
     for key, calculator in calculators_SDCT.items():
         for term in ["M1", "E2", "V", "all"]:
             param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}

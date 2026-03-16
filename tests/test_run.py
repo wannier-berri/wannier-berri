@@ -194,18 +194,33 @@ calculators_Chiral = {
     'jdos': wberri.calculators.dynamic.JDOS(**parameters_Chiral_optical),
 }
 
-calculators_SDCT = {
-    'SDCT_sym_sea_I': wberri.calculators.sdct.SDCT_sym_sea_I,
-    'SDCT_sym_sea_II': wberri.calculators.sdct.SDCT_sym_sea_II,
-    'SDCT_asym_sea_I': wberri.calculators.sdct.SDCT_asym_sea_I,
-    'SDCT_asym_sea_II': wberri.calculators.sdct.SDCT_asym_sea_II,
-    'SDCT_asym_surf_I': wberri.calculators.sdct.SDCT_asym_surf_I,
-    'SDCT_asym_surf_II': wberri.calculators.sdct.SDCT_asym_surf_II,
-    'SDCT_sym_surf_I': wberri.calculators.sdct.SDCT_sym_surf_I,
-    'SDCT_sym_surf_II': wberri.calculators.sdct.SDCT_sym_surf_II,
-    'SDCT_sym': wberri.calculators.sdct.SDCT_sym,
-    'SDCT_asym': wberri.calculators.sdct.SDCT_asym,
-}
+
+
+def get_calculators_sdct(implementation=1):
+    if implementation == 1:
+        import wannierberri.calculators.sdct as sdct
+    elif implementation == 2:
+        import wannierberri.calculators.sdct2 as sdct
+    else:
+        raise ValueError("Invalid implementation number")
+    return {
+        'SDCT_sym_sea_I': sdct.SDCT_sym_sea_I,
+        'SDCT_sym_sea_II': sdct.SDCT_sym_sea_II,
+        'SDCT_asym_sea_I': sdct.SDCT_asym_sea_I,
+        'SDCT_asym_sea_II': sdct.SDCT_asym_sea_II,
+        'SDCT_asym_surf_I': sdct.SDCT_asym_surf_I,
+        'SDCT_asym_surf_II': sdct.SDCT_asym_surf_II,
+        'SDCT_sym_surf_I': sdct.SDCT_sym_surf_I,
+        'SDCT_sym_surf_II': sdct.SDCT_sym_surf_II,
+        'SDCT_sym': sdct.SDCT_sym,
+        'SDCT_asym': sdct.SDCT_asym,
+    }
+
+
+calculators_SDCT = get_calculators_sdct(implementation=1)
+calculators_SDCT2 = get_calculators_sdct(implementation=2)
+
+
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
