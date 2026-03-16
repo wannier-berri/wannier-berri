@@ -70,17 +70,16 @@ class Formula_SDCT_sea_II(Formula_SDCT):
 
     def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
-        # Intrinsic multipole moments
-        A = data_K.SDCT.get_E1(external_terms=self.external_terms)
-
-        # Other quantities
-        Vn = data_K.SDCT.Vn
-        Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
-
         # --- Formula --- #
         if V_terms:
+            # Intrinsic multipole moments
+            A = data_K.SDCT.get_E1(external_terms=self.external_terms)
+
+            # Other quantities
+            Vn = data_K.SDCT.Vn
+            Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
             self.summ -= A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None] * Vnm_plus[:, :, :, None, None, :]
-        self.symsumm()
+            self.symsumm()
 
 
 ############################## Surface  terms ############################
@@ -92,18 +91,16 @@ class Formula_SDCT_surf_I(Formula_SDCT):
 
     def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(data_K, sym=sym, **parameters)
-        # Intrinsic multipole moments
-        A = data_K.SDCT.get_E1(external_terms=self.external_terms)
-        # Other quantities
-        Vn = data_K.SDCT.Vn
         # --- Formula --- #
         if V_terms:
+            # Intrinsic multipole moments
+            A = data_K.SDCT.get_E1(external_terms=self.external_terms)
+            Vn = data_K.SDCT.Vn
             self.summ += (A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
         if sym:
             self.summ = np.real(self.summ)
         else:
             self.summ = -np.imag(self.summ)
-
 
     def trace_ln(self, ik, inn1, inn2):
         return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
