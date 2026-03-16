@@ -4,6 +4,7 @@ from .. import factors as factors
 from .calculator import MultitermCalculator
 from .dynamic import DynamicCalculator
 from ..formula.sdct import Formula_SDCT_sea_I, Formula_SDCT_sea_II, Formula_SDCT_surf_I, Formula_SDCT_surf_II
+from ..result.result import VoidResult
 
 ####################################################
 #    Spatially-dispersive conductivity tensor      #
@@ -48,6 +49,9 @@ class SDCT_sym(SDCT):
 class _SDCT_term(DynamicCalculator):
 
     def __init__(self, formula, sym=None, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **kwargs):
+        self.check_zero(formula, M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, S_terms=S_terms)
+        if self.is_zero:
+            return
         assert sym in [True, False], "sym must be specified as True or False"
         super().__init__(**kwargs)
         self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, S_terms=S_terms, sym=sym))
@@ -59,6 +63,15 @@ class _SDCT_term(DynamicCalculator):
         Z_arg_12 = (E2 - E1)**2 - omega**2  # argument of Z_ln function [iw, n, m]
         Zfac = 1. / Z_arg_12
         return omega, Z_arg_12, Zfac
+
+    def check_zero(self, formula, **kwargs):
+        self.is_zero = not np.any([kwargs[f"{t}_terms"]  for t in formula.has_terms])
+
+    def __call__(self, data_K):
+        if self.is_zero:
+            return VoidResult()
+        else:
+            return super().__call__(data_K)
 
 
 class SDCT_sym_sea_I(_SDCT_term):

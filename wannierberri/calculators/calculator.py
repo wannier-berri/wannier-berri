@@ -1,5 +1,7 @@
 from termcolor import cprint
 
+from wannierberri.result.result import VoidResult
+
 
 class Calculator:
     """
@@ -53,4 +55,4 @@ class MultitermCalculator(Calculator):
 
 
     def __call__(self, data_K):
-        return sum(cal(data_K) for cal in self.terms)
+        return sum([cal(data_K) for cal in self.terms], VoidResult())

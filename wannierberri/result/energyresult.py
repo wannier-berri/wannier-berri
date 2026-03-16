@@ -2,7 +2,7 @@ import numpy as np
 from functools import cached_property
 from ..symmetry.point_symmetry import transform_from_dict
 from ..smoother import VoidSmoother
-from .result import Result
+from .result import Result, VoidResult
 from ..utility import get_head
 
 
@@ -158,7 +158,7 @@ class EnergyResult(Result):
         return self * (1. / number)
 
     def __add__(self, other):
-        if other == 0 or other is None:
+        if other == 0 or other is None or (isinstance(other, VoidResult)):
             return self
         if (self.transformTR is not None) and (other.transformTR is not None):
             assert self.transformTR == other.transformTR, f"TR transformations do not match: {self.transformTR} and {other.transformTR}"

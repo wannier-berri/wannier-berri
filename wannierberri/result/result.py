@@ -68,3 +68,35 @@ class Result(abc.ABC):
 
     def __radd__(self, other):
         return self + other
+
+
+class VoidResult(Result):
+
+    def __init__(self):
+        super().__init__(save_mode="none")
+
+    def __mul__(self, other):
+        return self
+
+    def __add__(self, other):
+        return other
+
+    def __sub__(self, other):
+        return (-1) * other
+
+    def __truediv__(self, number):
+        return self
+
+    @property
+    def _maxval_raw(self):
+        return 0
+
+    def as_dict(self):
+        return {"data": "is identically zero, no data to save"}
+
+    def savetxt(self, name):
+        with open(name + ".txt", "w") as f:
+            f.write("This result is identically zero, no data to save.")
+
+    def transform(self, sym):
+        return self

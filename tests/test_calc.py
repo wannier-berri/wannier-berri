@@ -27,7 +27,11 @@ def check_calculator(compare_any_result):
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
-        result = calc(data_K) * factor
+        result = calc(data_K)
+        print(f"result = {result}")
+        result = result * factor
+        print(f"result * {factor} = {result}")
+
 
         filename = "calculator-" + name
         path_filename = os.path.join(OUTPUT_DIR, filename)
@@ -138,18 +142,21 @@ def test_SDCT(system_random_load_bare, check_calculator, implementation):
 
     calculators_SDCT = get_calculators_sdct(implementation=implementation)
     for key, calculator in calculators_SDCT.items():
-        for term in ["M1", "E2", "V", "S", "all"]:
-            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V", "S"]}
-            if term != "all":
-                param_terms[f"{term}_terms"] = True
+        for term in ["M1", "E2", "V", "S", "all", "none"]:
+            if term == "all":
+                param_terms = {f"{t}_terms": True for t in ["M1", "E2", "V", "S"]}
+            elif term == "none":
+                param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
             else:
-                param_terms["S_terms"] = False  # exclude, to avoid updating reference files now
+                param_terms = {f"{t}_terms": (term == t) for t in ["M1", "E2", "V", "S"]}
             name = f"random-{key}-{term}_terms"
             print(name)
             calc = calculator(**param_terms, **param)
             transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
             check_calculator(system_random_load_bare, calc,
                              name, do_not_compare=False,
+                             compare_zero=(term == "none"),
+                             precision=1e-8 if term == "none" else None,
                              transformTR=transform_TR)
 
 

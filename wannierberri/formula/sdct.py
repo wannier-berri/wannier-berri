@@ -11,6 +11,8 @@ class Formula_SDCT(Formula):
     sym : bool
         if True - calculates the symmetric part of the SDCT, if False - calculates the antisymmetric part of the SDCT  """
 
+    has_terms = ["M1", "E2", "V", "S"]
+
     def __init__(self, data_K, sym, nbandind=2, **kwargs):
         super().__init__(data_K, **kwargs)
         self.ndim = 3
@@ -32,6 +34,8 @@ class Formula_SDCT(Formula):
 
 
 class Formula_SDCT_sea_I(Formula_SDCT):
+
+    has_terms = ["M1", "E2", "V", "S"]
 
     def __init__(self, data_K, sym,
                  M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
@@ -62,6 +66,8 @@ class Formula_SDCT_sea_I(Formula_SDCT):
 
 class Formula_SDCT_sea_II(Formula_SDCT):
 
+    has_terms = ["V"]
+
     def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
@@ -81,6 +87,8 @@ class Formula_SDCT_sea_II(Formula_SDCT):
 
 
 class Formula_SDCT_surf_I(Formula_SDCT):
+
+    has_terms = ["V"]
 
     def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(data_K, sym=sym, **parameters)
@@ -102,6 +110,8 @@ class Formula_SDCT_surf_I(Formula_SDCT):
 
 
 class Formula_SDCT_surf_II(Formula_SDCT):
+
+    has_terms = ["M1", "S", "V"]
 
     def __init__(self, data_K, sym,
                  M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):

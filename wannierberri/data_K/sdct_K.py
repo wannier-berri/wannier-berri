@@ -137,7 +137,7 @@ class SDCT_K:
         En = self.data_K.E_K
         Enm = En[:, :, None] - En[:, None, :]
         return -0.5j * Enm[:, :, :, None, None] * q
-        
+
 
     @lru_cache
     def get_Bln_m(self, external_terms=True, spin=False, orb=True):
