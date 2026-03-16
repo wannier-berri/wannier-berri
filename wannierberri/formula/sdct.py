@@ -1,13 +1,11 @@
 import numpy as np
 from ..utility import alpha_A, beta_A
 from ..formula import Formula
-from ..symmetry.point_symmetry import transform_ident, transform_odd
+from ..symmetry.point_symmetry import transform_odd, transform_odd_trans_102
 
 from scipy.constants import hbar, electron_mass, physical_constants
-
 electron_g_factor = physical_constants['electron g factor'][0]
 m_spin_prefactor = electron_g_factor * hbar / electron_mass
-
 
 
 class Formula_SDCT(Formula):
@@ -22,7 +20,8 @@ class Formula_SDCT(Formula):
         super().__init__(data_K, **kwargs)
         self.ndim = 3
         self.transformInv = transform_odd
-        self.transformTR = transform_odd if sym else transform_ident
+        # self.transformTR = transform_odd if sym else transform_ident
+        self.transformTR = transform_odd_trans_102
         self.summ = np.zeros((data_K.nk,) + (data_K.num_wann,) * nbandind + (3, 3, 3), dtype=complex)
         self.sym = sym
 
@@ -43,7 +42,6 @@ class Formula_SDCT_sea_I(Formula_SDCT):
     def __init__(self, data_K, sym,
                  M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
-        sign_V_term = -1 if sym else 1
         # Intrinsic multipole moments
         if self.external_terms:
             A = -1. * data_K.SDCT.E1
@@ -70,9 +68,9 @@ class Formula_SDCT_sea_I(Formula_SDCT):
 
         if V_terms:
             # This is weird, why we have to put a minus sign here to get the correct term for the symmetric part of the SDCT?
+            sign_V_term = -1 if sym else 1
             self.summ += sign_V_term * (-Vnm_plus[:, :, :, :, None, None] * A[:, :, :, None, :, None] * A.swapaxes(1, 2)[:, :, :, None, None, :])
         self.symsum()
-
 
 
 class Formula_SDCT_sea_II(Formula_SDCT):

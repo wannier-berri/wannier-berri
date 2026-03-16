@@ -10,6 +10,7 @@ import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
+from wannierberri.symmetry.point_symmetry import transform_odd_trans_102
 
 from .common import OUTPUT_DIR_RUN, OUTPUT_DIR, REF_DIR_INTEGRATE
 from .common_comparers import compare_quant
@@ -53,6 +54,8 @@ def check_run(compare_any_result):
             precision=-1e-8,
             do_not_compare=False,
             skip_compare=[],
+            transformTR=None,
+            transformInv=None,
             **kwargs_run
     ):
 
@@ -102,6 +105,8 @@ def check_run(compare_any_result):
                     compare_zero=compare_zero,
                     precision=prec,
                     result_type=resultType(quant),
+                    transformTR=transformTR,
+                    transformInv=transformInv
                 )
 
         return result
@@ -643,7 +648,8 @@ def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementatio
         calculators,
         fout_name="GaAs_W90",
         precision=5e-3,
-        compare_zero=True
+        compare_zero=True,
+        transformTR=transform_odd_trans_102 if implementation == 2 else None
     )
 
 
@@ -659,6 +665,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implement
         system_Chiral_OSD,
         calculators,
         fout_name="Chiral_OSD_SDCT",
+        transformTR=transform_odd_trans_102 if implementation == 2 else None,
         # precision=,
     )
 

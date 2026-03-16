@@ -157,7 +157,9 @@ def compare_any_result():
             ref_dir=None,
             compare_zero=False,
             precision=None,
-            result_type=None):
+            result_type=None,
+            transformTR=None,
+            transformInv=None,):
         if suffix_ref is None:
             suffix_ref = suffix
         if fout_name_ref is None:
@@ -180,6 +182,10 @@ def compare_any_result():
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
                 path_filename_ref = os.path.join(path_ref, filename_ref)
                 result_ref = result_type(file_npz=path_filename_ref)
+                if transformTR is not None:
+                    result_ref.transformTR = transformTR
+                if transformInv is not None:
+                    result_ref.transformInv = transformInv
                 maxval = result_ref._maxval_raw
                 if precision is None:
                     precision = max(maxval / 1E12, 1E-11)

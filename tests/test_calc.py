@@ -15,16 +15,15 @@ from .common_systems import Efermi_Fe
 
 @pytest.fixture
 def check_calculator(compare_any_result):
-    """
-
-    """
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
                precision=-1e-8,
                compare_zero=False,
                do_not_compare=False,
                result_type=EnergyResult,
-               factor=1
+               factor=1,
+               transformTR=None,
+               transformInv=None,
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
@@ -43,6 +42,11 @@ def check_calculator(compare_any_result):
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             result_ref = result_type(file_npz=path_filename_ref)
+        if transformTR is not None:
+            result_ref.transformTR = transformTR
+        if transformInv is not None:
+            result_ref.transformInv = transformInv
+
         maxval = result_ref._maxval_raw
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)
@@ -141,7 +145,13 @@ def test_SDCT(system_random_load_bare, check_calculator, implementation):
             name = f"random-{key}-{term}_terms"
             print(name)
             calc = calculator(**param_terms, **param)
-            check_calculator(system_random_load_bare, calc, name, do_not_compare=False)
+            if implementation == 2:
+                transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
+            else:                
+                transform_TR = None
+            check_calculator(system_random_load_bare, calc, 
+                             name, do_not_compare=False,
+                             transformTR=transform_TR)
 
 
 
