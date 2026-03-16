@@ -43,16 +43,14 @@ class Formula_SDCT_sea_I(Formula_SDCT):
                  M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
-        if self.external_terms:
-            A = -1. * data_K.SDCT.E1
-            B_M1, B_E2, B = data_K.SDCT.Bln
-            if spin:
-                S = data_K.Xbar('SS')
-                B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
-                B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
-        else:
-            A = -1. * data_K.SDCT.E1_internal
-            B_M1, B_E2, B = data_K.SDCT.Bln_internal
+        A = data_K.SDCT.get_E1(external_terms=self.external_terms)
+        B_M1, B_E2, B = data_K.SDCT.get_Bln(external_terms=self.external_terms)
+
+        # TODO - why not spin without external terms? 
+        if self.external_terms and spin and M1_terms:
+            S = data_K.Xbar('SS')
+            B_M1[:, :, :, alpha_A, beta_A] += -0.5 * m_spin_prefactor * S
+            B_M1[:, :, :, beta_A, alpha_A] -= -0.5 * m_spin_prefactor * S
 
         # Other quantities
         Vn = data_K.SDCT.Vn
@@ -78,10 +76,7 @@ class Formula_SDCT_sea_II(Formula_SDCT):
     def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
-        if self.external_terms:
-            A = -1. * data_K.SDCT.E1
-        else:
-            A = -1. * data_K.SDCT.E1_internal
+        A = data_K.SDCT.get_E1(external_terms=self.external_terms)
 
         # Other quantities
         Vn = data_K.SDCT.Vn
@@ -101,7 +96,7 @@ class Formula_SDCT_surf_I(Formula_SDCT):
     def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(data_K, sym=sym, **parameters)
         # Intrinsic multipole moments
-        A = -1 * data_K.SDCT.get_E1(external_terms=self.external_terms)
+        A = data_K.SDCT.get_E1(external_terms=self.external_terms)
         # Other quantities
         Vn = data_K.SDCT.Vn
         # --- Formula --- #
