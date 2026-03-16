@@ -118,7 +118,7 @@ class Formula_SDCT_sym_sea_II(Formula_SDCT_sea_II):
 ############################## Surface I terms ############################
 
 
-class Formula_SDCT_asym_surf_I(Formula):
+class Formula_SDCT_surf_I(Formula_SDCT):
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(data_K, **parameters)
@@ -132,52 +132,41 @@ class Formula_SDCT_asym_surf_I(Formula):
         Vn = data_K.SDCT.Vn
 
         # --- Formula --- #
-        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
+        self.summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ += -np.imag(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
+            self.summ += (A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
 
-        self.summ = summ
-        self.ndim = 3
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+
+class Formula_SDCT_asym_surf_I(Formula_SDCT_surf_I):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.summ = -np.imag(self.summ)
         self.transformTR = transform_ident
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):
-        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class Formula_SDCT_sym_surf_I(Formula):
+class Formula_SDCT_sym_surf_I(Formula_SDCT_surf_I):
 
-    def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
-        super().__init__(data_K, **parameters)
-        # Intrinsic multipole moments
-        if self.external_terms:
-            A = -1. * data_K.SDCT.E1
-        else:
-            A = -1. * data_K.SDCT.E1_internal
-
-        # Other quantities
-        Vn = data_K.SDCT.Vn
-
-        # Formula
-        summ = np.zeros((data_K.nk, data_K.num_wann, data_K.num_wann, 3, 3, 3), dtype=complex)
-
-        if V_terms:
-            summ += np.real(A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
-
-        self.summ = summ
-        self.ndim = 3
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.summ = np.real(self.summ)
         self.transformTR = transform_odd
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):
-        return self.summ[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
 ###################################### Surface II terms ############################
 
+class Formula_SDCT_surf_II(Formula_SDCT):
 
-class Formula_SDCT_asym_surf_II(Formula):
+    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
+        return self.summ[ik, inn1].sum(axis=0)
+
+
+class Formula_SDCT_asym_surf_II(Formula_SDCT_surf_II):
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(data_K, **parameters)
@@ -196,43 +185,24 @@ class Formula_SDCT_asym_surf_II(Formula):
         Vn = data_K.SDCT.Vn
 
         # --- Formula --- #
-        summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
+        self.summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if M1_terms:
-            summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
+            self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
 
-        summ = summ - summ.swapaxes(3, 4)
-
-        self.summ = summ
-        self.ndim = 3
+        self.summ = self.summ - self.summ.swapaxes(3, 4)
         self.transformTR = transform_ident
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
-        return self.summ[ik, inn1].sum(axis=0)
 
 
-
-
-class Formula_SDCT_sym_surf_II(Formula):
+class Formula_SDCT_sym_surf_II(Formula_SDCT_surf_II):
 
     def __init__(self, data_K, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
         super().__init__(data_K, **parameters)
         Vn = data_K.SDCT.Vn
 
         # Formula
-        summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
+        self.summ = np.zeros((data_K.nk, data_K.num_wann, 3, 3, 3), dtype=complex)
 
         if V_terms:
-            summ = Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
-
-        self.summ = summ
-        self.ndim = 3
+            self.summ += Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
         self.transformTR = transform_odd
-        self.transformInv = transform_odd
-
-    def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
-        return self.summ[ik, inn1].sum(axis=0)
-
-
-###############################################################################
