@@ -125,8 +125,8 @@ def check_save_result():
 
 def test_SDCT(system_random_load_bare, check_calculator):
 
-    from .test_run import Efermi_GaAs, calculators_SDCT
-    param = {'Efermi': Efermi_GaAs,
+    from .test_run import calculators_SDCT
+    param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
