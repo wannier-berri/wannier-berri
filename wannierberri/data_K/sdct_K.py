@@ -222,6 +222,6 @@ class SDCT_K:
     def Vn(self):
         ''' Band velocity '''
         V_H = self.data_K.Xbar('Ham', 1)  # (k, m, n, a)
-        return np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1)  # (k, m, a)
+        return np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1).real  # (k, m, a)
 
     ###########################################################################
