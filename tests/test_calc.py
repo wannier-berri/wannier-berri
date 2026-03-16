@@ -138,15 +138,17 @@ def test_SDCT(system_random_load_bare, check_calculator, implementation):
 
     calculators_SDCT = get_calculators_sdct(implementation=implementation)
     for key, calculator in calculators_SDCT.items():
-        for term in ["M1", "E2", "V", "all"]:
-            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}
+        for term in ["M1", "E2", "V", "S", "all"]:
+            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V", "S"]}
             if term != "all":
                 param_terms[f"{term}_terms"] = True
+            else:
+                param_terms["S_terms"] = False  # exclude, to avoid updating reference files now
             name = f"random-{key}-{term}_terms"
             print(name)
             calc = calculator(**param_terms, **param)
             transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
-            check_calculator(system_random_load_bare, calc, 
+            check_calculator(system_random_load_bare, calc,
                              name, do_not_compare=False,
                              transformTR=transform_TR)
 

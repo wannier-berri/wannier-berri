@@ -140,11 +140,12 @@ class SDCT_K:
         
 
     @lru_cache
-    def get_Bln_m(self, external_terms=True, spin=False):
-        m = self.get_M1(external_terms=external_terms)
+    def get_Bln_m(self, external_terms=True, spin=False, orb=True):
+        m = np.zeros((self.data_K.nk, self.data_K.num_wann, self.data_K.num_wann, 3), dtype=complex)
+        if orb:
+            m = self.get_M1(external_terms=external_terms)
         if spin:
-            S = self.data_K.Xbar('SS')
-            m += -0.5 * m_spin_prefactor * S
+            m += -0.5 * m_spin_prefactor * self.data_K.Xbar('SS')
         B_m = np.zeros((self.data_K.nk, self.data_K.num_wann, self.data_K.num_wann, 3, 3), dtype=complex)
         B_m[:, :, :, alpha_A, beta_A] += m
         B_m[:, :, :, beta_A, alpha_A] -= m

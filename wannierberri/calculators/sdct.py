@@ -14,10 +14,10 @@ class SDCT(MultitermCalculator):
 
     def __init__(self, sym=True, asym=True,
                  fermi_sea=True, fermi_surf=True,
-                 M1_terms=True, E2_terms=True, V_terms=True, spin=False,
+                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False,
                  **kwargs):
         super().__init__(**kwargs)
-        params_terms = dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin)
+        params_terms = dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, S_terms=S_terms)
         # Fermi sea terms
         if fermi_sea:
             if sym:
@@ -47,10 +47,10 @@ class SDCT_sym(SDCT):
 
 class _SDCT_term(DynamicCalculator):
 
-    def __init__(self, formula, sym=None, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **kwargs):
+    def __init__(self, formula, sym=None, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **kwargs):
         assert sym in [True, False], "sym must be specified as True or False"
         super().__init__(**kwargs)
-        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, spin=spin, sym=sym))
+        self.kwargs_formula.update(dict(M1_terms=M1_terms, E2_terms=E2_terms, V_terms=V_terms, S_terms=S_terms, sym=sym))
         self.Formula = formula
         self.constant_factor = factors.factor_SDCT
 

@@ -34,7 +34,7 @@ class Formula_SDCT(Formula):
 class Formula_SDCT_sea_I(Formula_SDCT):
 
     def __init__(self, data_K, sym,
-                 M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
         A = data_K.SDCT.get_E1(external_terms=self.external_terms)
@@ -45,8 +45,8 @@ class Formula_SDCT_sea_I(Formula_SDCT):
         Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # --- Formula --- #
-        if M1_terms:
-            B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, spin=spin)
+        if M1_terms or S_terms:
+            B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms)
             self.summ += A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if E2_terms:
@@ -62,7 +62,7 @@ class Formula_SDCT_sea_I(Formula_SDCT):
 
 class Formula_SDCT_sea_II(Formula_SDCT):
 
-    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
         A = data_K.SDCT.get_E1(external_terms=self.external_terms)
@@ -82,7 +82,7 @@ class Formula_SDCT_sea_II(Formula_SDCT):
 
 class Formula_SDCT_surf_I(Formula_SDCT):
 
-    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(data_K, sym=sym, **parameters)
         # Intrinsic multipole moments
         A = data_K.SDCT.get_E1(external_terms=self.external_terms)
@@ -104,19 +104,19 @@ class Formula_SDCT_surf_I(Formula_SDCT):
 class Formula_SDCT_surf_II(Formula_SDCT):
 
     def __init__(self, data_K, sym,
-                 M1_terms=True, E2_terms=True, V_terms=True, spin=False, **parameters):
+                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
         super().__init__(data_K, sym=sym, nbandind=1, **parameters)
         Vn = data_K.SDCT.Vn
         if sym:
             if V_terms:
                 self.summ += Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
         else:
-            if M1_terms:
+            if M1_terms or S_terms:
                 # Intrinsic multipole moments
-                B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, spin=spin)
-                B_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
+                B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms)
+                Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
                 # --- Formula --- #
-                self.summ += Vn[:, :, :, None, None] * B_M1[:, :, None, :, :]
+                self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
                 self.summ = self.summ - self.summ.swapaxes(3, 4)
 
     def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
