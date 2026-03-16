@@ -161,7 +161,7 @@ class EnergyResult(Result):
         if other == 0 or other is None:
             return self
         if (self.transformTR is not None) and (other.transformTR is not None):
-            assert self.transformTR == other.transformTR
+            assert self.transformTR == other.transformTR, f"TR transformations do not match: {self.transformTR} and {other.transformTR}"
         if (self.transformInv is not None) and (other.transformInv is not None):
             assert self.transformInv == other.transformInv
         if len(self.comment) > len(other.comment):

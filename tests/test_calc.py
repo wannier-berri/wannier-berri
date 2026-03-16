@@ -151,8 +151,6 @@ def test_SDCT(system_random_load_bare, check_calculator, implementation):
                              transformTR=transform_TR)
 
 
-
-
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
     calc = wberri.calculators.tabulate.Energy()
     check_save_result(system_Haldane_PythTB, calc, result_type=KBandResult)

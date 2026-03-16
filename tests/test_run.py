@@ -680,17 +680,29 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
 
+    check_run(
+        system_random_load_bare,
+        calculators,
+        fout_name="random",
+    )
+
+
+def test_random_SDCT(check_run, system_random_load_bare, compare_any_result):
+    Efermi = np.linspace(-2, 2, 5)
+    param = {'Efermi': Efermi}
+
     param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              'kwargs_formula': dict(external_terms=False)
              }
-    calculators.update({k: v(**param) for k, v in get_calculators_sdct(implementation=1).items()})
+    calculators = {k: v(**param) for k, v in get_calculators_sdct(implementation=1).items()}
 
     check_run(
         system_random_load_bare,
         calculators,
         fout_name="random",
+        transformTR=transform_odd_trans_102,
     )
 
 
