@@ -13,7 +13,7 @@ from ..utility import alpha_A, beta_A, cached_einsum
 
 from scipy.constants import hbar, electron_mass, physical_constants
 electron_g_factor = physical_constants['electron g factor'][0]
-m_spin_prefactor = electron_g_factor * hbar / electron_mass
+m_spin_prefactor = -0.5 * electron_g_factor * hbar / electron_mass
 
 
 class SDCT_K:
@@ -38,7 +38,6 @@ class SDCT_K:
     @lru_cache
     def get_M1(self, external_terms=True):
         ''' Magnetic dipole moment '''
-        ''' Magnetic dipole moment (only internal terms) '''
         # Basic covariant matrices in the Hamiltonian gauge
         H = self.data_K.Xbar('Ham')
 
@@ -66,7 +65,7 @@ class SDCT_K:
 
             # _____ 2. External terms _____ #
             Aa_ext = self.kron * A  # Energy diagonal piece
-            A_ext = A - Aa_ext           # Energy non-diagonal piece
+            A_ext = A - Aa_ext      # Energy non-diagonal piece
 
             Cbc_ext = -1.j * Eln_plus[:, :, :, None, None] * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
             Cbc_ext += -1.j * cached_einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
@@ -145,7 +144,7 @@ class SDCT_K:
         if orb:
             m = self.get_M1(external_terms=external_terms)
         if spin:
-            m += -0.5 * m_spin_prefactor * self.data_K.Xbar('SS')
+            m += m_spin_prefactor * self.data_K.Xbar('SS')
         B_m = np.zeros((self.data_K.nk, self.data_K.num_wann, self.data_K.num_wann, 3, 3), dtype=complex)
         B_m[:, :, :, alpha_A, beta_A] += m
         B_m[:, :, :, beta_A, alpha_A] -= m
