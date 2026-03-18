@@ -151,12 +151,15 @@ class Der2B(Formula_ln):
 
 
 class Der2O(Formula_ln):
-    def __init__(self, data_K):
+
+    def __init__(self, data_K, key_OO='rotAA'):
         self.dD = DerDcov(data_K)
         self.D = Dcov(data_K)
-        self.O = data_K.covariant('OO')
-        self.dO = data_K.covariant('OO', gender=1)
-        self.Obar_de = Matrix_GenDer_ln(data_K.covariant('OO', commader=1), data_K.covariant('OO', commader=2),
+
+        self.O = data_K.covariant(key_OO)
+        self.dO = data_K.covariant(key_OO, gender=1)
+
+        self.Obar_de = Matrix_GenDer_ln(data_K.covariant(key_OO, commader=1), data_K.covariant(key_OO, commader=2),
                     Dcov(data_K))
 
     def nn(self, ik, inn, out):
@@ -259,7 +262,7 @@ class Omega(Formula_ln):
 
         if self.external_terms:
             self.A = data_K.covariant('AA')
-            self.O = data_K.covariant('OO')
+            self.O = data_K.covariant(self.key_OO)
 
         self.ndim = 1
         self.transformTR = transform_odd
@@ -312,7 +315,7 @@ class DerOmega(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
-            self.dO = data_K.covariant('OO', gender=1)
+            self.dO = data_K.covariant(self.key_OO, gender=1)
         self.ndim = 2
         self.transformTR = transform_ident
         self.transformInv = transform_odd

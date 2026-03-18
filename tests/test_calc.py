@@ -45,7 +45,8 @@ def check_calculator(compare_any_result):
             assert precision > 0, "comparing with zero is possible only with absolute precision"
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
-            result_ref = result_type(file_npz=path_filename_ref)
+            print(f"Comparing with reference file {path_filename_ref}")
+            result_ref = result_type.from_npz(path_filename_ref)
         if transformTR is not None:
             result_ref.transformTR = transformTR
         if transformInv is not None:
@@ -125,35 +126,43 @@ def check_save_result():
         result = calc(data_K)
         path_filename = os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
-        result_read = result_type(file_npz=path_filename + ".npz")
+        result_read = result_type.from_npz(path_filename + ".npz")
         assert result.data.shape == result_read.data.shape
         assert str(result.transformTR) == str(result_read.transformTR)
         assert str(result.transformInv) == str(result_read.transformInv)
     return _inner
 
 
-@pytest.mark.parametrize("implementation", [1])
-def test_SDCT(system_random_load_bare, check_calculator, implementation):
+def test_SDCT(system_random_load_bare, check_calculator):
 
-    param = {'Efermi': np.linspace(-2, 2, 5),
+    system = system_random_load_bare
+    Efermi = np.linspace(-2, 2, 5),
+
+    param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
 
-    calculators_SDCT = get_calculators_sdct(implementation=implementation)
+    calculators_SDCT = get_calculators_sdct(implementation=1)
     for key, calculator in calculators_SDCT.items():
-        for term in ["M1", "E2", "V", "S", "all", "none"]:
+        for term in ["M1", "E2", "V", "S", "all", "none", "M1_uIu"]:
+            kwargs_formula = {"OO_uIu": False}
             if term == "all":
                 param_terms = {f"{t}_terms": True for t in ["M1", "E2", "V", "S"]}
-            elif term == "none":
-                param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
             else:
-                param_terms = {f"{t}_terms": (term == t) for t in ["M1", "E2", "V", "S"]}
+                param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
+                if term == "M1_uIu":
+                    param_terms["M1_terms"] = True
+                    kwargs_formula["OO_uIu"] = True
+                elif term != "none":
+                    param_terms[f"{term}_terms"] = True
+
             name = f"random-{key}-{term}_terms"
             print(name)
-            calc = calculator(**param_terms, **param)
+            calc = calculator(kwargs_formula=kwargs_formula,
+                              **param_terms, **param)
             transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
-            check_calculator(system_random_load_bare, calc,
+            check_calculator(system, calc,
                              name, do_not_compare=False,
                              compare_zero=(term == "none"),
                              precision=1e-8 if term == "none" else None,

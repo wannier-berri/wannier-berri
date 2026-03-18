@@ -31,7 +31,7 @@ def compare_quant(quantity):
 def read_energyresult_dat(filename, mode="txt"):
     """Read .dat of .npz file output of EnergyResult."""
     if mode == "bin":
-        res = EnergyResult(file_npz=filename)
+        res = EnergyResult.from_npz(filename)
         #        energ = [res[f'Energies_{i}'] for i,_ in enumerate(res['E_titles'])]  # in binary mode energies are just two arrays
         # while in txt mode it is a direct product
         #        return res['E_titles']), energ , res['data'], None # we do not check smoothing in the binary mode
@@ -172,7 +172,7 @@ def compare_any_result():
         for i_iter in range(adpt_num_iter + 1):
             filename = fout_name + f"-{suffix}_iter-{i_iter:04d}" + ext
             path_filename = os.path.join(OUTPUT_DIR_RUN, filename)
-            result = result_type(file_npz=path_filename)
+            result = result_type.from_npz(path_filename)
 
             if compare_zero:
                 result_ref = result * 0.
@@ -181,7 +181,7 @@ def compare_any_result():
             else:
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
                 path_filename_ref = os.path.join(path_ref, filename_ref)
-                result_ref = result_type(file_npz=path_filename_ref)
+                result_ref = result_type.from_npz(path_filename_ref)
                 if transformTR is not None:
                     result_ref.transformTR = transformTR
                 if transformInv is not None:
