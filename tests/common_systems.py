@@ -226,7 +226,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
+    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True, FF=True)
     wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
@@ -422,7 +422,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
+    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True, FF=True)
     wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
@@ -442,7 +442,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     data_dir = create_files_GaAs_W90
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
-    matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
+    matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True, FF=True)
     wandata = WannierData.from_w90_files(
         seedname=seedname,
         files=NeededData(**matrices).files,
@@ -493,7 +493,7 @@ def system_GaAs_tb_noAA():
 
 
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
-                         matrices=dict(OSD=True),
+                         matrices=dict(OSD=True, FF=True),
                          symmetrize=False,
                          double=False,
                          ):
@@ -884,7 +884,7 @@ def system_kp_mass_aniso_2():
 def system_random():
     system = wberri.system.System_R.from_random(num_wann=6, nRvec=20, max_R=4,
                                         berry=True, morb=True, spin=True,
-                                        SHCryoo=True, SHCqiao=True, OSD=True,)
+                                        SHCryoo=True, SHCqiao=True, OSD=True)
     # system.save_npz("randomsys")
     return system
 

@@ -93,7 +93,7 @@ class SymWann:
         self.points_index_start_right = points_index_right[:-1]
         self.points_index_end_right = points_index_right[1:]
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
-                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
+                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1', 'FF']
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
                               'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
 
@@ -111,6 +111,7 @@ class SymWann:
             'SS': 1,
             'OO': 1,
             'GG': 1,
+            'FF': 1,
             'SH': 1,
             'SA': -1,
             'SHA': -1,
@@ -129,6 +130,7 @@ class SymWann:
             'SS': -1,
             'OO': -1,
             'GG': 1,
+            'FF': 1,
             'SH': -1,
             'SA': -1,
             'SHA': -1,

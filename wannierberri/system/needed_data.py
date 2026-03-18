@@ -27,6 +27,7 @@ class NeededData:
                        "SHCryoo", "SHCqiao",
                        "OSD", "_getFF",
                        "force_internal_terms_only",
+                       "FF",
                        "chk"]:
                 return_dict[key] = val
                 if key not in ["force_internal_terms_only"]:
@@ -41,6 +42,7 @@ class NeededData:
                  spin=False,
                  SHCryoo=False, SHCqiao=False,
                  OSD=False,
+                 FF=False,
                  _getFF=False,
                  force_internal_terms_only=False,
                  chk=True,
@@ -61,6 +63,8 @@ class NeededData:
             self.matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
         if OSD:
             self.matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
+        if FF:
+            self.matrices.add('FF')
         if force_internal_terms_only:
             self.matrices = self.matrices.intersection(['Ham', 'SS'])
         for mat in self.matrices:
