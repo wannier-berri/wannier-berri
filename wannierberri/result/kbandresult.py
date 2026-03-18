@@ -7,31 +7,32 @@ from ..symmetry.point_symmetry import transform_from_dict
 
 class K__Result(Result, abc.ABC):
 
-    def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None,
+    def __init__(self, data, transformTR=None, transformInv=None, rank=None,
                  other_properties=None):
         if other_properties is None:
             other_properties = {}
-        assert (data is not None) or (file_npz is not None)
-        if file_npz is not None:
-            res = np.load(open(file_npz, "rb"), allow_pickle=True)
-            self.__init__(
-                data=res['data'],
-                transformTR=transform_from_dict(res, 'transformTR'),
-                transformInv=transform_from_dict(res, 'transformInv'),
-            )
-        else:
-            if data is not None:
-                if isinstance(data, list):
-                    self.data_list = data
-                else:
-                    self.data_list = [data]
-            self.transformTR = transformTR
-            self.transformInv = transformInv
+        if data is not None:
+            if isinstance(data, list):
+                self.data_list = data
+            else:
+                self.data_list = [data]
+        self.transformTR = transformTR
+        self.transformInv = transformInv
         if rank is None:
             self.rank = self.get_rank()
         else:
             self.rank = rank
         self.other_properties = other_properties
+
+    @classmethod
+    def from_npz(cls, file_npz):
+        res = np.load(open(file_npz, "rb"), allow_pickle=True)
+        return cls(
+            data=res['data'],
+            transformTR=transform_from_dict(res, 'transformTR'),
+            transformInv=transform_from_dict(res, 'transformInv'),
+        )
+
 
     def get_rank(self):
         raise NotImplementedError()

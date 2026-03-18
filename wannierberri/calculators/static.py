@@ -28,7 +28,7 @@ class StaticCalculator(Calculator):
         super().__init__(**kwargs)
         if kwargs_formula is None:
             kwargs_formula = {}
-        self.Efermi = Efermi
+        self.Efermi = np.array(Efermi)
         self.Emin = Emin
         self.Emax = Emax
         self.tetra = tetra

@@ -32,12 +32,12 @@ class Data_K_R(Data_K, System_R):
         return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 
     def get_R_mat(self, key):
-        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc']
-        try:
+        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc', 'rotAA']
+        if self.has_R_mat(key):
             return self._XX_R[key]
-        except KeyError:
-            if key == 'OO':
-                res = self._OO_R()
+        else:
+            if key == 'rotAA':
+                res = self.rotAA()
             elif key == 'CCab':
                 res = self._CCab_R()
             elif key == 'FF':
@@ -50,10 +50,10 @@ class Data_K_R(Data_K, System_R):
         return res
 
 
-    def _OO_R(self):
+    def rotAA(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
-        OO = self.rvec.derivative(self.get_R_mat('AA'))
-        return OO[:, :, :, beta_A, alpha_A] - OO[:, :, :, alpha_A, beta_A]
+        rotAA = self.rvec.derivative(self.get_R_mat('AA'))
+        return rotAA[:, :, :, beta_A, alpha_A] - rotAA[:, :, :, alpha_A, beta_A]
 
     def _CCab_R(self):
         if self._CCab_antisym:
@@ -75,7 +75,7 @@ class Data_K_R(Data_K, System_R):
         key = (name, der)
         if key not in self._bar_quantities:
             self._bar_quantities[key] = self._R_to_k_H(
-                self.get_R_mat(name).copy(), der=der, hermitian=(name in ['AA', 'SS', 'OO']))
+                self.get_R_mat(name).copy(), der=der, hermitian=(name in ['AA', 'SS', 'OO', 'rotAA']))
         return self._bar_quantities[key]
 
     def _R_to_k_H(self, XX_R, der=0, hermitian=True):

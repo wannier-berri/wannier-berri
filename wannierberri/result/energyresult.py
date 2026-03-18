@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from functools import cached_property
 from ..symmetry.point_symmetry import transform_from_dict
@@ -48,62 +50,66 @@ class EnergyResult(Result):
             transformInv=None,
             rank=None,
             E_titles=("Efermi", "Omega"),
-            file_npz=None,
             comment="undocumented",
             **kwargs
     ):
         super().__init__(**kwargs)
-        if file_npz is not None:
-            res = np.load(open(file_npz, "rb"), allow_pickle=True)
-            energ = [
-                res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
-            ]  # in binary mode energies are just two arrays
-            try:
-                comment = str(res['comment'])
-            except KeyError:
-                comment = "undocumented"
-            try:
-                save_mode = res['save_mode']
-            except KeyError:
-                save_mode = "bin+txt"
+        if not isinstance(Energies, (list, tuple)):
+            Energies = [Energies]
+        if not isinstance(E_titles, (list, tuple)):
+            E_titles = [E_titles]
+        E_titles = list(E_titles)
 
-            self.__init__(
-                Energies=energ,
-                data=res['data'],
-                smoothers=smoothers,
-                # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
-                transformTR=transform_from_dict(res, 'transformTR'),
-                transformInv=transform_from_dict(res, 'transformInv'),
-                rank=res['rank'],
-                E_titles=list(res['E_titles']),
-                save_mode=save_mode,
-                comment=comment)
+        self.N_energies = len(Energies)
+        if self.N_energies <= len(E_titles):
+            self.E_titles = E_titles[:self.N_energies]
         else:
-            if not isinstance(Energies, (list, tuple)):
-                Energies = [Energies]
-            if not isinstance(E_titles, (list, tuple)):
-                E_titles = [E_titles]
-            E_titles = list(E_titles)
+            self.E_titles = E_titles + ["???"] * (self.N_energies - len(E_titles))
+        self.rank = data.ndim - self.N_energies if rank is None else rank
+        if self.rank > 0:
+            shape = data.shape[-self.rank:]
+            assert np.all(np.array(shape) == 3), f"data.shape={data.shape}"
+        for i in range(self.N_energies):
+            assert (
+                Energies[i].shape[0] == data.shape[i]
+            ), f"dimension of Energy[{i}] = {Energies[i].shape[0]} does not match do dimension of data {data.shape[i]}"
+        self.Energies = Energies
+        self.data = data
+        self.set_smoother(smoothers)
+        self.transformTR = transformTR
+        self.transformInv = transformInv
+        self.comment = comment
 
-            self.N_energies = len(Energies)
-            if self.N_energies <= len(E_titles):
-                self.E_titles = E_titles[:self.N_energies]
-            else:
-                self.E_titles = E_titles + ["???"] * (self.N_energies - len(E_titles))
-            self.rank = data.ndim - self.N_energies if rank is None else rank
-            if self.rank > 0:
-                shape = data.shape[-self.rank:]
-                assert np.all(np.array(shape) == 3), f"data.shape={data.shape}"
-            for i in range(self.N_energies):
-                assert (
-                    Energies[i].shape[0] == data.shape[i]
-                ), f"dimension of Energy[{i}] = {Energies[i].shape[0]} does not match do dimension of data {data.shape[i]}"
-            self.Energies = Energies
-            self.data = data
-            self.set_smoother(smoothers)
-            self.transformTR = transformTR
-            self.transformInv = transformInv
-            self.comment = comment
+    @classmethod
+    def from_npz(cls, file_npz, void_if_missing=True):
+        if void_if_missing and not os.path.isfile(file_npz):
+            print(f"File {file_npz} does not exist, returning VoidResult.")
+            return VoidResult()
+        res = np.load(open(file_npz, "rb"), allow_pickle=True)
+        energ = [
+            res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
+        ]  # in binary mode energies are just two arrays
+        try:
+            comment = str(res['comment'])
+        except KeyError:
+            comment = "undocumented"
+        try:
+            save_mode = res['save_mode']
+        except KeyError:
+            save_mode = "bin+txt"
+
+        return cls(
+            Energies=energ,
+            data=res['data'],
+            # TODO : transform the old Iodd.TRodd,TRtrans into new transformators (if needeed))
+            transformTR=transform_from_dict(res, 'transformTR'),
+            transformInv=transform_from_dict(res, 'transformInv'),
+            rank=res['rank'],
+            E_titles=list(res['E_titles']),
+            save_mode=save_mode,
+            comment=comment)
+
+
 
     def set_smoother(self, smoothers):
         if smoothers is None:

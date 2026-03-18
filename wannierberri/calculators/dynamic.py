@@ -32,7 +32,7 @@ class DynamicCalculator(Calculator, abc.ABC):
         if kwargs_formula is None:
             kwargs_formula = {}
         super().__init__(**kwargs)
-        self.Efermi = Efermi
+        self.Efermi = np.array(Efermi).reshape(-1)
         self.omega = omega
         self.kBT = kBT
         self.smr_fixed_width = smr_fixed_width
@@ -94,6 +94,7 @@ class DynamicCalculator(Calculator, abc.ABC):
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
             factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
+            # raise ValueError(f"{factor_omega.shape=}, {factor_Efermi.shape=}, {matrix_elements.shape=}")
             restot += factor_omega @ (factor_Efermi[:, :, None] *
                                       matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...

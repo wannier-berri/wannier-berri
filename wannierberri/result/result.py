@@ -92,7 +92,8 @@ class VoidResult(Result):
         return 0
 
     def as_dict(self):
-        return {"data": "is identically zero, no data to save"}
+        return {"comment": "is identically zero, no data to save",
+                "type": "VoidResult"}
 
     def savetxt(self, name):
         with open(name + ".txt", "w") as f:
