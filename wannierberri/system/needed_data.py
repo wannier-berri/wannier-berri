@@ -41,6 +41,7 @@ class NeededData:
                  spin=False,
                  SHCryoo=False, SHCqiao=False,
                  OSD=False,
+                 qmetric=False,
                  _getFF=False,
                  force_internal_terms_only=False,
                  chk=True,
@@ -51,6 +52,8 @@ class NeededData:
             self.matrices.update(['AA', 'BB', 'CC'])
         if berry:
             self.matrices.add('AA')
+        if qmetric:
+            self.matrices.update(['AA', 'GG'])
         if spin:
             self.matrices.add('SS')
         if _getFF:

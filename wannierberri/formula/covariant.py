@@ -1,4 +1,7 @@
 import numpy as np
+
+from .basic import Symmetric, tildeFab, tildeFab_d
+from .elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, Eavln, DEinv_ln
 from ..utility import alpha_A, beta_A, cached_einsum, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry.point_symmetry import transform_ident, transform_odd
@@ -17,85 +20,6 @@ class Identity(Formula_ln):
 
     def ln(self, ik, inn, out):
         return np.zeros((len(out), len(inn)))
-
-
-class Eavln(Matrix_ln):
-    """ be careful : this is not a covariant matrix"""
-
-    def __init__(self, data_K):
-        super().__init__(0.5 * (data_K.E_K[:, :, None] + data_K.E_K[:, None, :]))
-        self.ndim = 0
-        self.transformTR = transform_ident
-        self.transformInv = transform_ident
-
-
-class DEinv_ln(Matrix_ln):
-    """DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"""
-
-    def __init__(self, data_K):
-        super().__init__(data_K.dEig_inv)
-
-    def nn(self, ik, inn, out):
-        raise NotImplementedError("dEinv_ln should not be called within inner states")
-
-
-class Dcov(Matrix_ln):
-
-    def __init__(self, data_K):
-        super().__init__(data_K.D_H)
-
-    def nn(self, ik, inn, out):
-        raise ValueError("Dln should not be called within inner states")
-
-
-class DerDcov(Dcov):
-
-    def __init__(self, data_K):
-        self.W = data_K.covariant('Ham', commader=2)
-        self.V = data_K.covariant('Ham', gender=1)
-        self.D = data_K.Dcov
-        self.dEinv = DEinv_ln(data_K)
-
-    def ln(self, ik, inn, out):
-        summ = self.W.ln(ik, inn, out)
-        tmp = cached_einsum("lpb,pnd->lnbd", self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += tmp + tmp.swapaxes(2, 3)
-        tmp = -cached_einsum("lmb,mnd->lnbd", self.D.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += tmp + tmp.swapaxes(2, 3)
-        summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None]
-        return summ
-
-
-class Der2Dcov(Formula_ln):
-
-    def __init__(self, data_K):
-        self.dD = DerDcov(data_K)
-        self.WV = DerWln(data_K)
-        self.dV = InvMass(data_K)
-        self.V = data_K.covariant('Ham', commader=1)
-        self.D = Dcov(data_K)
-        self.dEinv = DEinv_ln(data_K)
-
-    def ln(self, ik, inn, out):
-        summ = self.WV.ln(ik, inn, out)
-        summ += cached_einsum("lpbe,pnd->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += cached_einsum("lpde,pnb->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += cached_einsum("lpe,pnbd->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += cached_einsum("lpd,pnbe->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += cached_einsum("lpb,pnde->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += -cached_einsum("lmde,mnb->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmbd,mne->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmbe,mnd->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmb,mnde->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-        summ += -cached_einsum("lmd,mnbe->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-
-        summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None, None]
-        return summ
-
-    def nn(self, ik, inn, out):
-        raise ValueError("Dln should not be called within inner states")
-
-# TODO Der2A,B,O,H,S can be merged to one class.
 
 
 class Der2A(Formula_ln):
@@ -192,29 +116,9 @@ class Der2H(Formula_ln):
         raise NotImplementedError()
 
 
-
-class InvMass(Matrix_GenDer_ln):
-    r""" :math:`\overline{V}^{b:d}`"""
-
-    def __init__(self, data_K):
-        super().__init__(data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=2), data_K.Dcov)
-        self.transformTR = transform_ident
-        self.transformInv = transform_ident
-
-
-class DerWln(Matrix_GenDer_ln):
-    r""" :math:`\overline{W}^{bc:d}`"""
-
-    def __init__(self, data_K):
-        super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), data_K.Dcov)
-        self.transformTR = transform_odd
-        self.transformInv = transform_odd
-
-
 #############################
 #   Third derivative of  E  #
 #############################
-
 
 class Der3E(Formula_ln):
 
@@ -995,3 +899,26 @@ class NLDrude_Z_orb_Omega(FormulaSum):
         term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
         term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
         super().__init__([term1, term2], [-1, 1], ['apsu', 'uaps'])
+
+
+class QuantumMetric_ab(Symmetric):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(tildeFab, data_K, axes=[0, 1], **parameters)
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
+
+
+class DerQuantumMetric_ab_d(Symmetric):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(tildeFab_d, data_K, axes=[0, 1], **parameters)
+        self.transformTR = transform_odd
+        self.transformInv = transform_odd
+
+
+class VelDQM(FormulaProduct):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__([data_K.covariant('Ham', commader=1), DerQuantumMetric_ab_d(data_K, **parameters)],
+                         name='VelDQM')

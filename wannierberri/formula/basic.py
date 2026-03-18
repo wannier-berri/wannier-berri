@@ -1,8 +1,8 @@
 import numpy as np
 from ..utility import alpha_A, beta_A, cached_einsum
 from .formula import Formula_ln
-from .covariant import DerDcov, Eavln
 from ..symmetry.point_symmetry import transform_ident, transform_odd
+from .elementary import Eavln, DerDcov
 
 """ The following  Formulue are fundamental. They can be used to construct all
 quantities relatred to Berry curvature and orbital magnetic moment. They are written
@@ -26,7 +26,7 @@ class tildeFab(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.V = data_K.covariant('Ham', gender=1)
-            self.F = data_K.covariant('FF')
+            self.F = data_K.covariant('GG')
 
         self.ndim = 2
 #        self.Iodd=False
@@ -70,7 +70,7 @@ class tildeFab_d(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
-            self.dF = data_K.covariant('FF', gender=1)
+            self.dF = data_K.covariant('GG', gender=1)
         self.ndim = 3
 #        self.Iodd=True
 #        self.TRodd=False

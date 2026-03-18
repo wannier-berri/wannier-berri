@@ -618,6 +618,8 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
         shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
         injection_current=calc.dynamic.InjectionCurrent(**param)
     )
+    calculators["quantum_metric"] = calc.static.QuantumMetric_FermiSea(Efermi=Efermi_GaAs)
+    calculators["quantum_metric_dqm"] = calc.static.QuantumMetric_Vel_DQ(Efermi=Efermi_GaAs)
 
     check_run(
         system_GaAs_W90,
