@@ -86,6 +86,8 @@ class EnergyResult(Result):
             print(f"File {file_npz} does not exist, returning VoidResult.")
             return VoidResult()
         res = np.load(open(file_npz, "rb"), allow_pickle=True)
+        if "type" in res and res["type"] == "VoidResult":
+            return VoidResult()
         energ = [
             res[f'Energies_{i}'] for i, _ in enumerate(res['E_titles'])
         ]  # in binary mode energies are just two arrays

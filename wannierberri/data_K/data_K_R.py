@@ -34,17 +34,7 @@ class Data_K_R(Data_K, System_R):
     def get_R_mat(self, key):
         # print(f"data_k : get_R_mat({key})")
         memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc', 'rotAA', 'FF']
-        if key == 'GG' and not self.system.has_R_mat('GG'):
-            # print("data_k : using FF to get GG")
-            res = self.get_R_mat('FF')
-            res = 0.5 * (res + res.swapaxes(3, 4))
-            res = 0.5 * (res + res.swapaxes(1, 2).conj())
-        elif key == 'OO' and not self.system.has_R_mat('OO'):
-            # print("data_k : using FF to get OO")
-            res = self.get_R_mat('FF')
-            res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
-            res = 0.5 * (res + res.swapaxes(1, 2).conj())
-        elif self.has_R_mat(key):
+        if self.has_R_mat(key):
             return self._XX_R[key]
         else:
             if key == 'rotAA':
@@ -85,8 +75,23 @@ class Data_K_R(Data_K, System_R):
     def Xbar(self, name, der=0):
         key = (name, der)
         if key not in self._bar_quantities:
-            self._bar_quantities[key] = self._R_to_k_H(
-                self.get_R_mat(name).copy(), der=der, hermitian=(name in ['AA', 'SS', 'OO', 'rotAA']))
+            # print(f"data_k : Xbar({name}, der={der}) has OO : {self.system.has_R_mat('OO')} has_GG : {self.system.has_R_mat('GG')}")
+            if name == 'GG' and not self.system.has_R_mat('GG'):
+                print("data_k : using FF to get GG")
+                res = self.Xbar('FF', der=der)
+                res = 0.5 * (res + res.swapaxes(3, 4))
+                res = 0.5 * (res + res.swapaxes(1, 2).conj())
+            elif name == 'OO' and not self.system.has_R_mat('OO'):
+                # print("data_k : using FF to get OO")
+                res = self.Xbar('FF', der=der)
+                res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
+                res = 0.5 * (res + res.swapaxes(1, 2).conj())
+            else:
+                res = self._R_to_k_H(
+                    self.get_R_mat(name).copy(),
+                    der=der,
+                    hermitian=(name in ['AA', 'SS', 'OO', 'rotAA', ]))
+            self._bar_quantities[key] = res
         return self._bar_quantities[key]
 
     def _R_to_k_H(self, XX_R, der=0, hermitian=True):

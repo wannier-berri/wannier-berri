@@ -610,6 +610,35 @@ def system_Si_W90_JM_sym_FF(create_files_Si_W90):
     return system
 
 
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_OOGG(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOO,
+                                  symmetrize=False)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_OOGGFF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=False)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_FF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_FF,
+                                  symmetrize=False)
+    return system
+
 
 @pytest.fixture(scope="session")
 def system_Si_W90(create_files_Si_W90):
