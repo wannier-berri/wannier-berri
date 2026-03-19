@@ -28,7 +28,7 @@ class NeededData:
                        "SHCryoo", "SHCqiao",
                        "OSD", 
                        "force_internal_terms_only",
-                       "keepOOGG", "FF",
+                       "keepOOGG", "FF", "OOGG_to_FF",
                        "chk"]:
                 return_dict[key] = val
                 if key not in ["force_internal_terms_only"]:
@@ -46,6 +46,7 @@ class NeededData:
                  FF=False,
                  force_internal_terms_only=False,
                  keepOOGG=False,
+                 OOGG_to_FF=True,
                  chk=True,
                  **kwargs):
         self.matrices = {'Ham'}
@@ -63,7 +64,7 @@ class NeededData:
         if OSD:
             self.matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
         have_OO_GG = all(mat in self.matrices for mat in ['OO', 'GG'])
-        if have_OO_GG and not keepOOGG:
+        if have_OO_GG and OOGG_to_FF:
             FF = True
         if FF:
             self.matrices.add('FF')
