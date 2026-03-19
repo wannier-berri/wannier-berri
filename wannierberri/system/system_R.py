@@ -39,8 +39,8 @@ class System_R(System):
             set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
         SHCqiao : bool
             set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
-        _getFF : bool
-            generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
+        FF : bool
+            generate the FF_R matrix based on the uIu file. 
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
         ws_dist_tol : float
