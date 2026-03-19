@@ -176,7 +176,9 @@ def wannierise(wandata,
                                            mp_grid=wandata.bkvec.mp_grid,
                                            kpt_red=wandata.bkvec.kpt_red,
                                            real_lattice=wandata.bkvec.real_lattice,
-                                           num_wann=0))  # num_wann will be set later from amn
+                                           num_wann=0),
+                         allow_selected_bands=True
+                                           )  # num_wann will be set later from amn
 
 
     if init == "amn":
