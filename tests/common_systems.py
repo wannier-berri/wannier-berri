@@ -427,44 +427,47 @@ def system_Fe_gpaw_soc_111_irred():
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data"""
+def get_system_GaAs_W90(create_files_GaAs_W90):
+    def _inner(transl_inv_JM, keepOOGG):
+        """Create system for GaAs using Wannier90 data"""
 
-    data_dir = create_files_GaAs_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True, FF=True, keepOOGG=True)
-    wandata = load_wandata(
-        seedname=seedname,
-        files=NeededData(**matrices).files,
-    )
-    system = System_R.from_wannierdata(wandata=wandata,
-                                   **matrices,
-                                   transl_inv_MV=True,  # legacy
-                                   ws_dist_tol=-1e-5)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
+        data_dir = create_files_GaAs_W90
+        # Load system
+        seedname = os.path.join(data_dir, "GaAs")
+        matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True,
+                        FF=not keepOOGG, keepOOGG=keepOOGG)
+        wandata = load_wandata(
+            seedname=seedname,
+            files=NeededData(**matrices).files,
+        )
+        system = System_R.from_wannierdata(wandata=wandata,
+                                    **matrices,
+                                    transl_inv_MV=not transl_inv_JM,  # legacy
+                                    transl_inv_JM=transl_inv_JM,
+                                    ws_dist_tol=-1e-5)
+        system.set_pointgroup(symmetries_GaAs)
+        return system
+    return _inner
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90_JM(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data with wcc phases"""
+def system_GaAs_W90(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=False, keepOOGG=False)
 
-    data_dir = create_files_GaAs_W90
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True, FF=True, keepOOGG=True)
-    wandata = load_wandata(
-        seedname=seedname,
-        files=NeededData(**matrices).files,
-    )
-    system = System_R.from_wannierdata(wandata=wandata,
-                                   **matrices,
-                                   transl_inv_JM=True,
-                                   ws_dist_tol=-1e-5)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_OOGG(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=False, keepOOGG=True)
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=True, keepOOGG=False)
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM_OOGG(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=True, keepOOGG=True)
 
 
 def get_system_GaAs_tb(symmetrize=True, berry=True):

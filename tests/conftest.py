@@ -7,6 +7,7 @@ from .common import ROOT_DIR, OUTPUT_DIR, REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEG
 from .common_systems import (
     create_files_Fe_W90,
     get_system_Fe_gpaw_soc,
+    get_system_GaAs_W90,
     create_files_Fe_W90_npz,
     create_files_GaAs_W90,
     create_files_Si_W90,
@@ -36,7 +37,9 @@ from .common_systems import (
     system_Te_QE,
     system_Te_sparse,
     system_GaAs_W90,
+    system_GaAs_W90_OOGG,
     system_GaAs_W90_JM,
+    system_GaAs_W90_JM_OOGG,
     system_GaAs_tb,
     system_GaAs_sym_tb,
     system_GaAs_tb_noAA,

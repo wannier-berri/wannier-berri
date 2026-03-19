@@ -631,18 +631,23 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-@pytest.mark.parametrize("implementation", [1])
-def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementation):
+@pytest.mark.parametrize("OOGG", [True, False])
+def test_GaAs_SDCT(check_run, system_GaAs_W90, system_GaAs_W90_OOGG, compare_any_result, OOGG):
+    if OOGG:
+        system = system_GaAs_W90_OOGG
+    else:
+        system = system_GaAs_W90
+
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1
              }
     calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
-                   for k, v in get_calculators_sdct(implementation).items()}
+                   for k, v in get_calculators_sdct().items()}
 #    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
-        system_GaAs_W90,
+        system,
         calculators,
         fout_name="GaAs_W90",
         precision=5e-3,

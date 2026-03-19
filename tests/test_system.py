@@ -278,6 +278,14 @@ def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     )
 
 
+def test_system_GaAs_W90_JM_OOGG(check_system, system_GaAs_W90_JM_OOGG):
+    check_system(
+        system_GaAs_W90_JM_OOGG, "GaAs_W90_JM",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
+        legacy=True,
+    )
+
+
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
         system_GaAs_tb, "GaAs_tb",
@@ -320,41 +328,25 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     )
 
 
-def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
-    check_system(
-        system_Si_W90_JM, "Si_W90_JM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+kwargs_sym_Si = dict(matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
         sort_iR=True,
-        legacy=True,
-    )
+        legacy=True)
+
+
+def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
+    check_system(system_Si_W90_JM, "Si_W90_JM", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
-    check_system(
-        system_Si_W90_JM_sym, "Si_W90_JM_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_JM_sym, "Si_W90_JM_sym", **kwargs_sym_Si)
 
 
 def test_system_Si_W90(check_system, system_Si_W90):
-    check_system(
-        system_Si_W90, "Si_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90, "Si_W90", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
-    check_system(
-        system_Si_W90_sym, "Si_W90_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
-
+    check_system(system_Si_W90_sym, "Si_W90_sym", **kwargs_sym_Si)
 
 
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):
