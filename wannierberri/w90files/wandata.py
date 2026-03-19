@@ -238,7 +238,7 @@ class WannierData:
 
     def set_projections(self,
                         projections,
-                        bandstructure=None,
+                        bandstructure,
                         normalize=True,
                         all_kpoints=False,):
         """
@@ -258,10 +258,12 @@ class WannierData:
                 kwargs["kptirr"] = self.symmetrizer.kptirr
                 kwargs["NK"] = self.symmetrizer.NK
             kwargs["selected_kpoints"] = self.symmetrizer.selected_kpoints
+        print(f"Setting AMN with kwargs={kwargs}")
         amn = AMN.from_bandstructure(bandstructure=bandstructure,
                             projections=projectionsSet,
                             normalize=normalize,
                             **kwargs)
+        print(f"AMN file created with NK={amn.NK}")
         if self.bands_were_selected:
             amn.select_bands(selected_bands=self.selected_bands)
         self.set_file('amn', amn, overwrite=True, allow_selected_bands=True)
@@ -339,11 +341,16 @@ class WannierData:
     @classmethod
     def from_npz(cls,
                 seedname="wannier90",
-                files=("mmn", "eig", "amn"),
+                files=None,
                 ignore_missing_files=True,
                 irreducible=False):
         self = cls()
         self.seedname = copy(seedname)
+        if files is None:
+            if ignore_missing_files:
+                files = ("mmn", "eig", "amn", "uiu", "uhu", "siu", "shu", "spn", "unk", "symmetrizer", "bkvec", "chk")
+            else:
+                raise ValueError("files should be specified if ignore_missing_files is False")
         files = [f.lower() for f in files]
         if set(["mmn", "uhu", "uiu", "shu", "siu"]).intersection(set(files)):
             if "bkvec" not in files:
@@ -402,6 +409,8 @@ class WannierData:
                seedname="wannier90",
                files=None
                ):
+        directory = os.path.dirname(seedname)
+        os.makedirs(directory, exist_ok=True)
         if files is None:
             files = self._files.keys()
         for f in files:

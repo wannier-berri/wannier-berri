@@ -5,7 +5,9 @@ from .wandata import WannierData
 class WannierDataSOC(WannierData):
     """Class to handle Wannier90 data with spin-orbit coupling (SOC)."""
 
-    def __init__(self, data_up, data_down, cell=None):
+    files_proper = ["soc"]
+
+    def __init__(self, data_up, data_down, soc=None, cell=None):
         self.data_up = data_up
         self.data_down = data_down
         self.bands_were_selected = False
@@ -14,25 +16,41 @@ class WannierDataSOC(WannierData):
             self.nspin = 1
         else:
             self.nspin = 2
+        if soc is not None:
+            self.set_file("soc", soc)
         self.cell = cell
 
     @property
-    def is_irreducible(self):
+    def irreducible(self):
         return self.data_up.irreducible
 
     @classmethod
-    def from_npz(cls, seedname, files=None, irreducible=False):
-        """Create Wannier90DataSOC from NPZ files."""
+    def get_files_ud(cls, files):
+        if files is None:
+            return None
+        else:
+            return [f for f in files if f not in cls.files_proper]
 
-        files_ud = [f for f in files if f != "soc"] if files is not None else None
+    @classmethod
+    def get_files_proper(cls, files):
+        if files is None:
+            return None
+        else:
+            return [f for f in files if f in cls.files_proper]
+
+    @classmethod
+    def from_npz(cls, seedname, nspin, files=None, irreducible=False):
+        """Create Wannier90DataSOC from NPZ files."""
+        assert nspin in [1, 2], "nspin must be 1 or 2."
+        files_ud = cls.get_files_ud(files)
         data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                        files=files_ud,
                                        irreducible=irreducible)
-        try:
+        if nspin == 2:
             data_down = WannierData.from_npz(seedname=seedname + "-spin-1",
                                              files=files_ud,
                                              irreducible=irreducible)
-        except FileNotFoundError:
+        else:
             data_down = None
         try:
             from .soc import SOC
@@ -40,6 +58,15 @@ class WannierDataSOC(WannierData):
         except FileNotFoundError:
             soc = None
         return cls(data_up=data_up, data_down=data_down, soc=soc)
+
+    def to_npz(self, seedname, files=None):
+        """Save Wannier90DataSOC to NPZ files."""
+        super().to_npz(seedname=seedname, files=self.get_files_proper(files))
+        files_ud = [f for f in files if f != "soc"] if files is not None else None
+        self.data_up.to_npz(seedname=seedname + "-spin-0", files=files_ud)
+        if self.data_down is not None:
+            self.data_down.to_npz(seedname=seedname + "-spin-1", files=files_ud)
+
 
     @classmethod
     def from_gpaw(cls, calculator,
@@ -52,6 +79,7 @@ class WannierDataSOC(WannierData):
                   include_paw=True,
                   include_pseudo=True,
                   files=["mmn", "eig", "amn", "symmetrizer", "soc"],
+                  return_bandstructure=False,
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC."""
         if isinstance(calculator, str):
@@ -75,23 +103,23 @@ class WannierDataSOC(WannierData):
                               include_paw=include_paw,
                               include_pseudo=include_pseudo,
                               files=[f for f in files if f not in ["soc", "mmn_ud"]],
+                              return_bandstructure=return_bandstructure
                               )
         kwargs_wandata.update(kwargs)
-        assert projections is not None or (projections_up is not None), \
-            "Either projections or projections_up/projections_down must be provided."
-        if projections_up is None:
-            print("Using 'projections' for both spin up channel.")
-            projections_up = projections
         nspin = calculator.get_number_of_spins()
-        if nspin == 2 and projections_down is None:
-            print("No projections_down provided; using projections_up for both spin channels.")
-            projections_down = projections_up
-        return_bandstructure = "mmn_ud" in files and nspin == 2
+        if "amn" in files:
+            assert projections is not None or (projections_up is not None), \
+                "Either projections or projections_up/projections_down must be provided."
+            if projections_up is None:
+                print("Using 'projections' for both spin up channel.")
+                projections_up = projections
+            if nspin == 2 and projections_down is None:
+                print("No projections_down provided; using projections_up for both spin channels.")
+                projections_down = projections_up
 
         data_up = WannierData.from_gpaw(spin_channel=0,
                                         seedname=seedname + "-spin-0",
                                         projections=projections_up,
-                                        return_bandstructure=return_bandstructure,
                                         **kwargs_wandata)
         if return_bandstructure:
             data_up, bandstructure_up = data_up
@@ -101,13 +129,13 @@ class WannierDataSOC(WannierData):
             data_down = WannierData.from_gpaw(spin_channel=1,
                                               seedname=seedname + "-spin-1",
                                               projections=projections_down,
-                                              return_bandstructure=return_bandstructure,
                                               bkvec=bkvec,
                                               **kwargs_wandata)
             if return_bandstructure:
                 data_down, bandstructure_down = data_down
         else:
             data_down = None
+            bandstructure_down = None
 
         data = cls(data_up=data_up, data_down=data_down, cell=cell)
 
@@ -134,7 +162,11 @@ class WannierDataSOC(WannierData):
                                             symmetrizer=data_up.get_file("symmetrizer"),
                                             bkvec=bkvec,)
             data.set_file("mmn_du", mmn_du)
-        return data
+
+        if return_bandstructure:
+            return data, (bandstructure_up, bandstructure_down) if nspin == 2 else bandstructure_up
+        else:
+            return data
 
 
     def select_bands(self, **kwargs):
@@ -170,3 +202,35 @@ class WannierDataSOC(WannierData):
             return self.data_up.get_file(key)
         else:
             return self.data_down.get_file(key)
+
+    def set_projections(self,
+                        projections=None,
+                        projections_up=None,
+                        projections_down=None,
+                        bandstructure=None,
+                        bandstructure_up=None,
+                        bandstructure_down=None,
+                        **kwargs
+                        ):
+        if projections is not None:
+            print("Using 'projections' for both spin channels.")
+            if projections_up is not None:
+                print("Warning: 'projections' will override 'projections_up'.")
+            projections_up = projections
+            if projections_down is not None:
+                print("Warning: 'projections' will override 'projections_down'.")
+            projections_down = projections
+        if self.nspin == 2:
+            assert bandstructure_up is not None and bandstructure_down is not None, "two bandstructures (up and down) must be provided for nspin=2."
+        elif self.nspin == 1:
+            if bandstructure is not None:
+                if bandstructure_up is not None:
+                    Warning("bandstructure_up will be ignored since nspin=1., using `bandstructure` instead.")
+                bandstructure_up = bandstructure
+        self.data_up.set_projections(projections=projections_up,
+                                     bandstructure=bandstructure_up,
+                                     **kwargs)
+        if self.nspin == 2:
+            self.data_down.set_projections(projections=projections_down,
+                                           bandstructure=bandstructure_down,
+                                           **kwargs)
