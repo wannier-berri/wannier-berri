@@ -94,6 +94,16 @@ def create_files_Fe_W90():
     return data_dir
 
 
+def load_wandata(seedname, files, **kwargs):
+    try:
+        wandata = WannierData.from_npz(seedname=seedname, files=files, ignore_missing_files=False)
+    except FileNotFoundError as e:
+        print(f"NPZ files not found for seedname {seedname} and files {files}. \n{e}\nTrying to load from w90 files.")
+        wandata = WannierData.from_w90_files(seedname=seedname, files=files, **kwargs)
+        wandata.to_npz(seedname + ".npz")
+    return wandata
+
+
 @pytest.fixture(scope="session")
 def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     """Create symbolic links to the npz files"""
@@ -103,11 +113,10 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     data_dir_new = data_dir.joinpath("NPZ")
     data_dir_new.mkdir(exist_ok=True)
 
-    wandata = WannierData.from_w90_files(seedname=str(data_dir / seedname),
-                                         files=["amn", "mmn", "eig", "chk", "spn", "win",
-                                                "uHu", "uIu", "sHu", "sIu"],
-                                         readnnkp=False)
-    wandata.to_npz(data_dir_new / seedname)
+    load_wandata(seedname=str(data_dir / seedname),
+                 files=["amn", "mmn", "eig", "chk", "spn", "win",
+                        "uHu", "uIu", "sHu", "sIu"],
+                 readnnkp=False)
 
     return data_dir_new
 
@@ -157,11 +166,13 @@ def system_Fe_W90(create_files_Fe_W90):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    wandata = WannierData.from_w90_files(
+
+    wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
         readnnkp=False,  # to reproduce the old behavior of not reading bkvec from nnkp file
     )
+
     system = System_R.from_wannierdata(
         wandata=wandata,
         **matrices,
@@ -179,13 +190,10 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    wandata = WannierData.from_npz(
+    wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
-    # chk = CHK.from_w90_file(seedname=seedname)
-    # chk.to_npz(seedname+".chk.npz")
-    # wandata.set_file("chk", chk)
     system = System_R.from_wannierdata(
         wandata=wandata,
         **matrices,
@@ -227,7 +235,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    wandata = WannierData.from_w90_files(
+    wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -423,7 +431,7 @@ def system_GaAs_W90(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    wandata = WannierData.from_w90_files(
+    wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -443,7 +451,7 @@ def system_GaAs_W90_JM(create_files_GaAs_W90):
     # Load system
     seedname = os.path.join(data_dir, "GaAs")
     matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
-    wandata = WannierData.from_w90_files(
+    wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
@@ -506,7 +514,7 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    wandata = WannierData.from_w90_files(
+    wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
