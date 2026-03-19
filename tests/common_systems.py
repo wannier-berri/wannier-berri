@@ -37,6 +37,7 @@ Efermi_Te_sparse = Efermi_Te_qe
 Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
 Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
+Efermi_Si = np.linspace(-5, 7, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
 omega_chiral = np.linspace(0, 1., 11)
@@ -557,6 +558,11 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     return system
 
 
+matrices_Si_GGOO = dict(OSD=True, keepOOGG=True, OOGG_to_FF=False)
+matrices_Si_GGOOFF = dict(OSD=True, keepOOGG=True, OOGG_to_FF=True)
+matrices_Si_FF = dict(OSD=True, keepOOGG=False, OOGG_to_FF=True)
+
+
 @pytest.fixture(scope="session")
 def system_Si_W90_JM(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
@@ -565,15 +571,34 @@ def system_Si_W90_JM(create_files_Si_W90):
                                 transl_inv_JM=True)
 
 
-
 @pytest.fixture(scope="session")
 def system_Si_W90_JM_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOO,
                                   symmetrize=True)
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_OOGGFF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=True)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_FF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_FF,
+                                  symmetrize=True)
+    return system
 
 
 

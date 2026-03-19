@@ -256,8 +256,10 @@ def get_system_w90(
         if needed_data.need_any('OO'):
             print("setting OO..")
             if system.has_R_mat('FF'):
+                print("setting OO from FF ..")
                 OO = 1j * (system.get_R_mat('FF')[:, :, :, alpha_A, beta_A] - system.get_R_mat('FF')[:, :, :, beta_A, alpha_A])
             else:
+                print("setting OO from chk ..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                     uhu=wandata.uiu,
                                                     bkvec=wandata.bkvec,
@@ -271,10 +273,11 @@ def get_system_w90(
 
         # G_bc(R,b1,b2) matrix
         if needed_data.need_any('GG'):
-            print("setting GG..")
             if system.has_R_mat('FF'):
+                print("setting GG from FF ..")
                 GG = 0.5 * (system.get_R_mat('FF') + system.get_R_mat('FF').swapaxes(3, 4))
             else:
+                print("setting GG from chk ..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                     bkvec=wandata.bkvec,
                                                     uhu=wandata.uiu,

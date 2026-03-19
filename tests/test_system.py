@@ -341,12 +341,18 @@ def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
     check_system(system_Si_W90_JM_sym, "Si_W90_JM_sym", **kwargs_sym_Si)
 
 
+def test_system_Si_W90_JM_sym_OOGGFF(check_system, system_Si_W90_JM_sym_OOGGFF):
+    check_system(system_Si_W90_JM_sym_OOGGFF, "Si_W90_JM_sym", **kwargs_sym_Si)
+
+
 def test_system_Si_W90(check_system, system_Si_W90):
     check_system(system_Si_W90, "Si_W90", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
     check_system(system_Si_W90_sym, "Si_W90_sym", **kwargs_sym_Si)
+
+
 
 
 def test_system_Haldane_TBmodels(check_system, system_Haldane_TBmodels):

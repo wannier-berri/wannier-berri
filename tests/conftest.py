@@ -46,6 +46,8 @@ from .common_systems import (
     system_Si_W90_JM,
     system_Si_W90,
     system_Si_W90_JM_sym,
+    system_Si_W90_JM_sym_OOGGFF,
+    system_Si_W90_JM_sym_FF,
     system_Si_W90_sym,
     system_Si_W90_double,
     system_Si_W90_sym_double,

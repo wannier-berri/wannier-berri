@@ -26,7 +26,7 @@ class NeededData:
         for key, val in parameters.items():
             if key in ["berry", "morb", "spin",
                        "SHCryoo", "SHCqiao",
-                       "OSD", 
+                       "OSD",
                        "force_internal_terms_only",
                        "keepOOGG", "FF", "OOGG_to_FF",
                        "chk"]:
@@ -63,8 +63,7 @@ class NeededData:
             self.matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
         if OSD:
             self.matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
-        have_OO_GG = all(mat in self.matrices for mat in ['OO', 'GG'])
-        if have_OO_GG and OOGG_to_FF:
+        if OOGG_to_FF and all(mat in self.matrices for mat in ['OO', 'GG']):
             FF = True
         if FF:
             self.matrices.add('FF')
