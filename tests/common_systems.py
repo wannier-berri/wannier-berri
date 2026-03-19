@@ -37,6 +37,7 @@ Efermi_Te_sparse = Efermi_Te_qe
 Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
 Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
+Efermi_Si = np.linspace(-5, 7, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
 omega_chiral = np.linspace(0, 1., 11)
@@ -238,7 +239,7 @@ def get_system_Fe_sym_W90(symmetrize=False,
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
+    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True, FF=True, keepOOGG=True)
     wandata = load_wandata(
         seedname=seedname,
         files=NeededData(**matrices).files,
@@ -427,44 +428,48 @@ def system_Fe_gpaw_soc_111_irred():
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data"""
+def get_system_GaAs_W90(create_files_GaAs_W90):
+    def _inner(transl_inv_JM, FF):
+        """Create system for GaAs using Wannier90 data"""
 
-    data_dir = create_files_GaAs_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True)
-    wandata = load_wandata(
-        seedname=seedname,
-        files=NeededData(**matrices).files,
-    )
-    system = System_R.from_wannierdata(wandata=wandata,
-                                   **matrices,
-                                   transl_inv_MV=True,  # legacy
-                                   ws_dist_tol=-1e-5)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
+        data_dir = create_files_GaAs_W90
+        # Load system
+        seedname = os.path.join(data_dir, "GaAs")
+        matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True,
+                        FF=FF, keepOOGG=True,
+                        OOGG_to_FF=False)
+        wandata = load_wandata(
+            seedname=seedname,
+            files=NeededData(**matrices).files,
+        )
+        system = System_R.from_wannierdata(wandata=wandata,
+                                    **matrices,
+                                    transl_inv_MV=not transl_inv_JM,  # legacy
+                                    transl_inv_JM=transl_inv_JM,
+                                    ws_dist_tol=-1e-5)
+        system.set_pointgroup(symmetries_GaAs)
+        return system
+    return _inner
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90_JM(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data with wcc phases"""
+def system_GaAs_W90(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=False, FF=True)
 
-    data_dir = create_files_GaAs_W90
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    matrices = dict(berry=True, morb=True, spin=True, OSD=True, SHCryoo=True)
-    wandata = load_wandata(
-        seedname=seedname,
-        files=NeededData(**matrices).files,
-    )
-    system = System_R.from_wannierdata(wandata=wandata,
-                                   **matrices,
-                                   transl_inv_JM=True,
-                                   ws_dist_tol=-1e-5)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_OOGG(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=False, FF=False)
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=True, FF=True)
+
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM_OOGG(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=True, FF=False)
 
 
 def get_system_GaAs_tb(symmetrize=True, berry=True):
@@ -505,7 +510,7 @@ def system_GaAs_tb_noAA():
 
 
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
-                         matrices=dict(OSD=True),
+                         matrices=dict(OSD=True, FF=True, keepOOGG=True),
                          symmetrize=False,
                          double=False,
                          ):
@@ -553,6 +558,11 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     return system
 
 
+matrices_Si_GGOO = dict(OSD=True, keepOOGG=True, OOGG_to_FF=False)
+matrices_Si_GGOOFF = dict(OSD=True, keepOOGG=True, OOGG_to_FF=True)
+matrices_Si_FF = dict(OSD=True, keepOOGG=False, OOGG_to_FF=True)
+
+
 @pytest.fixture(scope="session")
 def system_Si_W90_JM(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
@@ -561,15 +571,34 @@ def system_Si_W90_JM(create_files_Si_W90):
                                 transl_inv_JM=True)
 
 
-
 @pytest.fixture(scope="session")
 def system_Si_W90_JM_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOO,
                                   symmetrize=True)
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_OOGGFF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=True)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_FF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_FF,
+                                  symmetrize=True)
+    return system
 
 
 
@@ -896,7 +925,7 @@ def system_kp_mass_aniso_2():
 def system_random():
     system = wberri.system.System_R.from_random(num_wann=6, nRvec=20, max_R=4,
                                         berry=True, morb=True, spin=True,
-                                        SHCryoo=True, SHCqiao=True, OSD=True,)
+                                        SHCryoo=True, SHCqiao=True, OSD=True)
     # system.save_npz("randomsys")
     return system
 

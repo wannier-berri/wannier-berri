@@ -23,6 +23,7 @@ from .common_systems import (
     Efermi_Chiral,
     Efermi_Te_gpaw,
     Efermi_Te_qe,
+    Efermi_Si,
     omega_chiral,
     omega_phonon,
     mass_kp_iso
@@ -633,18 +634,20 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-@pytest.mark.parametrize("implementation", [1])
-def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result, implementation):
+def test_GaAs_SDCT(check_run, system_GaAs_W90, system_GaAs_W90_OOGG, compare_any_result):
+    system = system_GaAs_W90
+
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1
              }
+    calculators_SDCT = get_calculators_sdct(implementation=1)
     calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
-                   for k, v in get_calculators_sdct(implementation).items()}
-#    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
+                   for k, v in calculators_SDCT.items()}
+    # calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
-        system_GaAs_W90,
+        system,
         calculators,
         fout_name="GaAs_W90",
         precision=5e-3,
@@ -762,7 +765,7 @@ def test_Silicon_double(check_run, symmetrize,
                         system_Si_W90_sym_double, system_Si_W90_sym,
                         system_Si_W90_double, system_Si_W90,
                         ):
-    param = {'Efermi': np.linspace(-5, 7, 11), 'tetra': True}
+    param = {'Efermi': Efermi_Si, 'tetra': True}
     if symmetrize:
         system_scalar = system_Si_W90_sym
         system_double = system_Si_W90_sym_double
