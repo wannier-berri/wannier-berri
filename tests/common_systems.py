@@ -95,12 +95,16 @@ def create_files_Fe_W90():
 
 
 def load_wandata(seedname, files, **kwargs):
+    dir = os.path.dirname(seedname)
+    seed = os.path.basename(seedname)
+    path_npz = os.path.join(dir, 'NPZ', seed)
+    os.makedirs(os.path.dirname(path_npz), exist_ok=True)
     try:
-        wandata = WannierData.from_npz(seedname=seedname, files=files, ignore_missing_files=False)
+        wandata = WannierData.from_npz(seedname=path_npz, files=files, ignore_missing_files=False)
     except FileNotFoundError as e:
         print(f"NPZ files not found for seedname {seedname} and files {files}. \n{e}\nTrying to load from w90 files.")
         wandata = WannierData.from_w90_files(seedname=seedname, files=files, **kwargs)
-        wandata.to_npz(seedname + ".npz")
+        wandata.to_npz(path_npz)
     return wandata
 
 
@@ -190,7 +194,7 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
     # Load system
     seedname = os.path.join(data_dir, "Fe")
     matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
-    wandata = load_wandata(
+    wandata = WannierData.from_npz(
         seedname=seedname,
         files=NeededData(**matrices).files,
     )
