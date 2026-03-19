@@ -72,7 +72,7 @@ def get_system_w90(
 
     if transl_inv_JM:
         unknown = needed_data.not_in_list(
-            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR'])
+            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'FF', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR'])
         if len(unknown) > 0:
             raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         # Deactivate transl_inv_MV if Jae-Mo's scheme is used
@@ -82,7 +82,7 @@ def get_system_w90(
             transl_inv_MV = False
     else:
         unknown = needed_data.not_in_list(
-            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR'])
+            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR', 'FF'])
         if len(unknown) > 0:
             raise NotImplementedError(f"unknown matrices requested: {list(unknown)} is not implemented")
 
@@ -238,32 +238,53 @@ def get_system_w90(
                             Hermitian=True)
             print("setting CC - OK")
 
-
-        # O_a(R,b1,b2) matrix
-        if needed_data.need_any('OO'):
-            print("setting OO..")
-            getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
-                                                uhu=wandata.uiu,
-                                                bkvec=wandata.bkvec,
-                                                antisym=True,
-                                                **kwargs_kpt)
-            system.set_R_mat('OO',
-                            sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2),
-                            Hermitian=True)
-            print("setting OO - ok")
-
-
         # G_bc(R,b1,b2) matrix
-        if needed_data.need_any('GG'):
-            print("setting GG..")
+        if needed_data.need_any('FF'):
+            print("setting FF..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                 bkvec=wandata.bkvec,
                                                 uhu=wandata.uiu,
                                                 antisym=False,
                                                 **kwargs_kpt)
-            system.set_R_mat('GG',
+            system.set_R_mat('FF',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=2),
-                            Hermitian=True)
+                            Hermitian=False)
+            print("setting FF - OK")
+
+
+        # O_a(R,b1,b2) matrix
+        if needed_data.need_any('OO'):
+            print("setting OO..")
+            if system.has_R_mat('FF'):
+                print("setting OO from FF ..")
+                OO = 1j * (system.get_R_mat('FF')[:, :, :, alpha_A, beta_A] - system.get_R_mat('FF')[:, :, :, beta_A, alpha_A])
+            else:
+                print("setting OO from chk ..")
+                getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
+                                                    uhu=wandata.uiu,
+                                                    bkvec=wandata.bkvec,
+                                                    antisym=True,
+                                                    **kwargs_kpt)
+                OO = sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2)
+            system.set_R_mat('OO', OO, Hermitian=True)
+            del OO
+            print("setting OO - ok")
+
+
+        # G_bc(R,b1,b2) matrix
+        if needed_data.need_any('GG'):
+            if system.has_R_mat('FF'):
+                print("setting GG from FF ..")
+                GG = 0.5 * (system.get_R_mat('FF') + system.get_R_mat('FF').swapaxes(3, 4))
+            else:
+                print("setting GG from chk ..")
+                getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
+                                                    bkvec=wandata.bkvec,
+                                                    uhu=wandata.uiu,
+                                                    antisym=False,
+                                                    **kwargs_kpt)
+                GG = sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=2)
+            system.set_R_mat('GG', GG, Hermitian=True)
             print("setting GG - OK")
 
         #######################################################################
@@ -383,11 +404,18 @@ def recenter_JM(system, centers):
               centers[None, None, :, :, None]) * SH_R[:, :, :, None, :]
         system.set_R_mat('SHA', rc, add=True)
     # --- O_a(R) matrix --- #
-    if system.has_R_mat('OO'):
+    if system.has_R_mat('OO') or system.has_R_mat('FF'):
         assert AA_R0 is not None, 'Recentered A matrix is needed in Jae-Mo`s implementation of O'
         rc = 1.j * (r0[:, :, :, :, None] - centers[None, :, None, :, None]) * AA_R0[:, :, :, None, :]
         OO_R_add = rc[:, :, :, alpha_A, beta_A] - rc[:, :, :, beta_A, alpha_A]
-        system.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
+        if system.has_R_mat('OO'):
+            system.set_R_mat('OO', OO_R_add, add=True, Hermitian=True)
+        if system.has_R_mat('FF'):
+            FF_R_add = np.zeros(system.get_R_mat('FF').shape, dtype=complex)
+            FF_R_add[:, :, :, alpha_A, beta_A] = -0.5j * OO_R_add
+            FF_R_add[:, :, :, beta_A, alpha_A] = 0.5j * OO_R_add
+            system.set_R_mat('FF', FF_R_add, add=True, Hermitian=False)
+
     # --- G_bc(R) matrix --- #
     if system.has_R_mat('GG'):
         pass

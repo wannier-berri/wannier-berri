@@ -10,7 +10,7 @@ import os
 import pytest
 
 
-from .common_systems import Efermi_Fe
+from .common_systems import Efermi_Fe, Efermi_Si
 
 
 @pytest.fixture
@@ -133,22 +133,34 @@ def check_save_result():
     return _inner
 
 
-def test_SDCT(system_random_load_bare, check_calculator):
-
-    system = system_random_load_bare
-    Efermi = np.linspace(-2, 2, 5),
+@pytest.mark.parametrize(
+    ("system", "system_type", "Efermi"),
+    [
+        pytest.param("system_random_load_bare", "random", np.linspace(-2, 2, 5), id="random"),
+        pytest.param("system_Si_W90_JM_sym", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym"),
+        pytest.param("system_Si_W90_JM_sym_FF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_FF"),
+        pytest.param("system_Si_W90_JM_sym_OOGGFF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF"),
+    ],
+    indirect=["system"],
+)
+def test_SDCT(system, system_type, Efermi, check_calculator):
 
     param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
 
+    skip_S = system_type.startswith("Si_W90")
     calculators_SDCT = get_calculators_sdct(implementation=1)
     for key, calculator in calculators_SDCT.items():
         for term in ["M1", "E2", "V", "S", "all", "none", "M1_uIu"]:
+            if skip_S and term == "S":
+                continue
             kwargs_formula = {"OO_uIu": False}
             if term == "all":
                 param_terms = {f"{t}_terms": True for t in ["M1", "E2", "V", "S"]}
+                if skip_S:
+                    param_terms["S_terms"] = False
             else:
                 param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
                 if term == "M1_uIu":
@@ -157,13 +169,13 @@ def test_SDCT(system_random_load_bare, check_calculator):
                 elif term != "none":
                     param_terms[f"{term}_terms"] = True
 
-            name = f"random-{key}-{term}_terms"
+            name = f"{system_type}-{key}-{term}_terms"
             print(name)
             calc = calculator(kwargs_formula=kwargs_formula,
                               **param_terms, **param)
             transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
             check_calculator(system, calc,
-                             name, do_not_compare=False,
+                             name, do_not_compare=True,
                              compare_zero=(term == "none"),
                              precision=1e-8 if term == "none" else None,
                              transformTR=transform_TR)

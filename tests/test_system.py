@@ -7,7 +7,7 @@ from packaging import version
 from .common import OUTPUT_DIR, REF_DIR
 
 import wannierberri as wberri
-
+from wannierberri.utility import alpha_A, beta_A
 from wannierberri.system.system_R import System_R
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
@@ -173,6 +173,23 @@ def check_system():
                 prec_loc = precision_matrix_elements
             check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
             print(f"check matrix {key} - Ok!")
+        if system.has_R_mat_all(['FF', 'OO']):
+            FF = system.get_R_mat('FF')
+            OO = system.get_R_mat('OO')
+            FF = 1j * (FF[:, :, :, alpha_A, beta_A] - FF[:, :, :, beta_A, alpha_A])
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - OO).max()
+            assert diff < 1e-10, f"antisymmetric part of FF fiffers from  OO  by {diff}"
+            print("check antisymmetric part of FF - Ok!")
+        if system.has_R_mat_all(['FF', 'GG']):
+            FF = system.get_R_mat('FF')
+            GG = system.get_R_mat('GG')
+            FF = (FF + FF.swapaxes(3, 4)) / 2
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - GG).max()
+            assert diff < 1e-10, f"symmetric part of FF fiffers from  GG  by {diff}"
+            print("check symmetric part of FF - Ok!")
+
 
     return _inner
 
@@ -261,6 +278,14 @@ def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     )
 
 
+def test_system_GaAs_W90_JM_OOGG(check_system, system_GaAs_W90_JM_OOGG):
+    check_system(
+        system_GaAs_W90_JM_OOGG, "GaAs_W90_JM",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
+        legacy=True,
+    )
+
+
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
         system_GaAs_tb, "GaAs_tb",
@@ -303,40 +328,30 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     )
 
 
-def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
-    check_system(
-        system_Si_W90_JM, "Si_W90_JM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+kwargs_sym_Si = dict(matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
         sort_iR=True,
-        legacy=True,
-    )
+        legacy=True)
+
+
+def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
+    check_system(system_Si_W90_JM, "Si_W90_JM", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
-    check_system(
-        system_Si_W90_JM_sym, "Si_W90_JM_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_JM_sym, "Si_W90_JM_sym", **kwargs_sym_Si)
+
+
+def test_system_Si_W90_JM_sym_OOGGFF(check_system, system_Si_W90_JM_sym_OOGGFF):
+    check_system(system_Si_W90_JM_sym_OOGGFF, "Si_W90_JM_sym", **kwargs_sym_Si)
 
 
 def test_system_Si_W90(check_system, system_Si_W90):
-    check_system(
-        system_Si_W90, "Si_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90, "Si_W90", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
-    check_system(
-        system_Si_W90_sym, "Si_W90_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_sym, "Si_W90_sym", **kwargs_sym_Si)
+
 
 
 

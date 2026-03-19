@@ -9,6 +9,7 @@ class NeededData:
     needed_files['CC'] = ['uhu', 'mmn']
     needed_files['OO'] = ['uiu', 'mmn']  # mmn is needed here because it stores information on
     needed_files['GG'] = ['uiu', 'mmn']  # neighboring k-points
+    needed_files['FF'] = ['uiu', 'mmn']  # neighboring k-points
     needed_files['SS'] = ['spn']
     needed_files['SH'] = ['spn', 'eig']
     needed_files['SR'] = ['spn', 'mmn']
@@ -25,8 +26,9 @@ class NeededData:
         for key, val in parameters.items():
             if key in ["berry", "morb", "spin",
                        "SHCryoo", "SHCqiao",
-                       "OSD", "_getFF",
+                       "OSD",
                        "force_internal_terms_only",
+                       "keepOOGG", "FF", "OOGG_to_FF",
                        "chk"]:
                 return_dict[key] = val
                 if key not in ["force_internal_terms_only"]:
@@ -41,8 +43,10 @@ class NeededData:
                  spin=False,
                  SHCryoo=False, SHCqiao=False,
                  OSD=False,
-                 _getFF=False,
+                 FF=False,
                  force_internal_terms_only=False,
+                 keepOOGG=False,
+                 OOGG_to_FF=True,
                  chk=True,
                  **kwargs):
         self.matrices = {'Ham'}
@@ -53,14 +57,21 @@ class NeededData:
             self.matrices.add('AA')
         if spin:
             self.matrices.add('SS')
-        if _getFF:
-            self.matrices.add('FF')
         if SHCryoo:
             self.matrices.update(['AA', 'SS', 'SA', 'SHA', 'SH'])
         if SHCqiao:
             self.matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
         if OSD:
             self.matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
+        if OOGG_to_FF and all(mat in self.matrices for mat in ['OO', 'GG']):
+            FF = True
+        if FF:
+            self.matrices.add('FF')
+            if not keepOOGG:
+                if 'GG' in self.matrices:
+                    self.matrices.remove('GG')
+                if 'OO' in self.matrices:
+                    self.matrices.remove('OO')
         if force_internal_terms_only:
             self.matrices = self.matrices.intersection(['Ham', 'SS'])
         for mat in self.matrices:
