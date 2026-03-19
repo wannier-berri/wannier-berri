@@ -344,8 +344,8 @@ class WannierData:
                 irreducible=False):
         self = cls()
         self.seedname = copy(seedname)
-        files = list(copy(files))
-        if set(["mmn", "uHu", "uIu", "sHu", "sIu"]).intersection(set(files)):
+        files = [f.lower() for f in files]
+        if set(["mmn", "uhu", "uiu", "shu", "siu"]).intersection(set(files)):
             if "bkvec" not in files:
                 files.append("bkvec")
         print(f"files = {files}")
@@ -354,19 +354,21 @@ class WannierData:
             try:
                 if f == "symmetrizer":
                     from ..symmetry.sawf import SymmetrizerSAWF
-                    val = SymmetrizerSAWF.from_npz(seedname + ".sawf.npz")
+                    filepath = seedname + ".sawf.npz"
+                    val = SymmetrizerSAWF.from_npz(filepath)
                 elif f in FILES_CLASSES:
                     cls = FILES_CLASSES[f]
-                    val = cls.from_npz(seedname + "." + cls.extension + ".npz")
+                    filepath = seedname + "." + cls.extension + ".npz"
+                    val = cls.from_npz(filepath)
                 else:
                     raise ValueError(f"file {f} is not a valid w90 file")
-                print(f"setting file {f} from npz {seedname}.{f}.npz as {val}")
+                print(f"setting file {f} from npz {filepath} as {val}")
                 self.set_file(f, val=val)
             except FileNotFoundError as e:
                 if ignore_missing_files:
-                    warnings.warn(f"file {seedname}.{f}.npz not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                    warnings.warn(f"file {filepath} not found, cannot read {f} file ({e}).\n Set it manually, if needed")
                 else:
-                    raise FileNotFoundError(f"Missing required npz file: {seedname}.{f}.npz ({e}). aborting")
+                    raise FileNotFoundError(f"Missing required npz file: {filepath} ({e}). aborting")
         for f in self._files:
             ff = self.get_file(f)
             if f == "symmetrizer":
@@ -382,6 +384,9 @@ class WannierData:
                 nkeys = len(ff.G.keys())
                 assert nkeys1 == nkeys, "number of keys in G and neighbours is different"
                 NK = ff.NK
+            elif f == "win":
+                nkeys = 0
+                NK = 0
             else:
                 nkeys = len(ff.data.keys())
                 NK = ff.NK

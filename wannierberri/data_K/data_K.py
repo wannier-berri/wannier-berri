@@ -18,7 +18,7 @@ def get_transform_Inv(name, der=0):
     ###########
     # Oscar ###
     ###########################################################################
-    if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS']:  # even before derivative
+    if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS', 'rotAA']:  # even before derivative
         p = 0
     ###########################################################################
     elif name in ['D', 'AA', 'BB', 'CCab']:
@@ -40,7 +40,7 @@ def get_transform_TR(name, der=0):
     #########
     # Oscar #
     ###########################################################################
-    elif name in ['CC', 'FF', 'OO', 'GG', 'SS']:  # odd before derivative
+    elif name in ['CC', 'FF', 'OO', 'GG', 'SS', 'rotAA']:  # odd before derivative
         p = 1
     ###########################################################################
     elif name in ['D', 'AA', 'BB', 'CCab']:

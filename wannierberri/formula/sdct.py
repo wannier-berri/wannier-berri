@@ -50,7 +50,7 @@ class Formula_SDCT_sea_I(Formula_SDCT):
 
         # --- Formula --- #
         if M1_terms or S_terms:
-            B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms)
+            B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms, key_OO=self.key_OO)
             self.summ += A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if E2_terms:
@@ -120,7 +120,7 @@ class Formula_SDCT_surf_II(Formula_SDCT):
         else:
             if M1_terms or S_terms:
                 # Intrinsic multipole moments
-                B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms)
+                B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms, key_OO=self.key_OO)
                 Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
                 # --- Formula --- #
                 self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]

@@ -36,7 +36,7 @@ class SDCT_K:
 
 
     @lru_cache
-    def get_M1(self, external_terms=True):
+    def get_M1(self, external_terms=True, key_OO='rotAA'):
         ''' Magnetic dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
         H = self.data_K.Xbar('Ham')
@@ -61,7 +61,7 @@ class SDCT_K:
             A = self.data_K.Xbar('AA')
             B = self.data_K.Xbar('BB')
             C = self.data_K.Xbar('CC')
-            O = self.data_K.Xbar('OO')
+            O = self.data_K.Xbar(key_OO)
 
             # _____ 2. External terms _____ #
             Aa_ext = self.kron * A  # Energy diagonal piece
@@ -139,10 +139,10 @@ class SDCT_K:
 
 
     @lru_cache
-    def get_Bln_m(self, external_terms=True, spin=False, orb=True):
+    def get_Bln_m(self, external_terms=True, spin=False, orb=True, key_OO='rotAA'):
         m = np.zeros((self.data_K.nk, self.data_K.num_wann, self.data_K.num_wann, 3), dtype=complex)
         if orb:
-            m = self.get_M1(external_terms=external_terms)
+            m = self.get_M1(external_terms=external_terms, key_OO=key_OO)
         if spin:
             m += m_spin_prefactor * self.data_K.Xbar('SS')
         B_m = np.zeros((self.data_K.nk, self.data_K.num_wann, self.data_K.num_wann, 3, 3), dtype=complex)

@@ -49,7 +49,7 @@ class Data_K_soc(Data_K_R):
                 raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
                                           "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
             else:  # other not spin-related operators
-                hermitian = (name in ['AA', 'OO'])
+                hermitian = (name in ['AA', 'OO', 'rotAA'])
                 shape = (self.nk, ) + (self.num_wann, ) * 2 + (3,) * (der + num_cart_dim(name))
                 Xbar = np.zeros(shape, dtype=complex)
                 for i, datak in enumerate([self.data_K_up, self.data_K_down]):
