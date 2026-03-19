@@ -406,7 +406,7 @@ class SystemSOC(System_R):
                              chk_down=wandata.get_file_ud("down", "chk"),
                              kptirr=kptirr, weights_k=weights_k
         )
-        if wandata.is_irreducible:
+        if wandata.irreducible:
             symmetrize = True
         if symmetrize:
             system_soc.symmetrize2(symmetrizer_up=wandata.get_file_ud('up', 'symmetrizer'),

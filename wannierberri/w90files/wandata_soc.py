@@ -1,3 +1,7 @@
+import os
+
+import numpy as np
+
 from ..utility import group_numbers
 from .wandata import WannierData
 
@@ -42,6 +46,7 @@ class WannierDataSOC(WannierData):
     def from_npz(cls, seedname, nspin, files=None, irreducible=False):
         """Create Wannier90DataSOC from NPZ files."""
         assert nspin in [1, 2], "nspin must be 1 or 2."
+
         files_ud = cls.get_files_ud(files)
         data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                        files=files_ud,
@@ -57,11 +62,18 @@ class WannierDataSOC(WannierData):
             soc = SOC.from_npz(seedname + ".soc.npz")
         except FileNotFoundError:
             soc = None
-        return cls(data_up=data_up, data_down=data_down, soc=soc)
+
+        data_soc = cls(data_up=data_up, data_down=data_down, soc=soc)
+        if os.path.isfile(seedname + ".cell.npz"):
+            cell = np.load(seedname + ".cell.npz", allow_pickle=True)
+            data_soc.cell = {key: val for key, val in cell.items()}
+        return data_soc
 
     def to_npz(self, seedname, files=None):
         """Save Wannier90DataSOC to NPZ files."""
         super().to_npz(seedname=seedname, files=self.get_files_proper(files))
+        if self.cell is not None:
+            np.savez(seedname + ".cell.npz", **self.cell)
         files_ud = [f for f in files if f != "soc"] if files is not None else None
         self.data_up.to_npz(seedname=seedname + "-spin-0", files=files_ud)
         if self.data_down is not None:
@@ -103,10 +115,10 @@ class WannierDataSOC(WannierData):
                               include_paw=include_paw,
                               include_pseudo=include_pseudo,
                               files=[f for f in files if f not in ["soc", "mmn_ud"]],
-                              return_bandstructure=return_bandstructure
                               )
-        kwargs_wandata.update(kwargs)
         nspin = calculator.get_number_of_spins()
+        return_bandstructure_loc = return_bandstructure or ("mmn_ud" in files and nspin == 2)
+        kwargs_wandata.update(kwargs)
         if "amn" in files:
             assert projections is not None or (projections_up is not None), \
                 "Either projections or projections_up/projections_down must be provided."
@@ -120,8 +132,9 @@ class WannierDataSOC(WannierData):
         data_up = WannierData.from_gpaw(spin_channel=0,
                                         seedname=seedname + "-spin-0",
                                         projections=projections_up,
+                                        return_bandstructure=return_bandstructure_loc,
                                         **kwargs_wandata)
-        if return_bandstructure:
+        if return_bandstructure_loc:
             data_up, bandstructure_up = data_up
 
         if nspin == 2:
@@ -130,8 +143,9 @@ class WannierDataSOC(WannierData):
                                               seedname=seedname + "-spin-1",
                                               projections=projections_down,
                                               bkvec=bkvec,
+                                              return_bandstructure=return_bandstructure_loc,
                                               **kwargs_wandata)
-            if return_bandstructure:
+            if return_bandstructure_loc:
                 data_down, bandstructure_down = data_down
         else:
             data_down = None
@@ -149,7 +163,7 @@ class WannierDataSOC(WannierData):
             bkvec = data_up.get_file('bkvec')
             mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
                                             bandstructure=bandstructure_down,
-                                            irreducible=data.is_irreducible,
+                                            irreducible=data.irreducible,
                                             symmetrizer_left=data_up.get_file("symmetrizer"),
                                             symmetrizer=data_down.get_file("symmetrizer"),
                                             bkvec=bkvec)
@@ -157,7 +171,7 @@ class WannierDataSOC(WannierData):
 
             mmn_du = MMN.from_bandstructure(bandstructure_left=bandstructure_down,
                                             bandstructure=bandstructure_up,
-                                            irreducible=data.is_irreducible,
+                                            irreducible=data.irreducible,
                                             symmetrizer_left=data_down.get_file("symmetrizer"),
                                             symmetrizer=data_up.get_file("symmetrizer"),
                                             bkvec=bkvec,)

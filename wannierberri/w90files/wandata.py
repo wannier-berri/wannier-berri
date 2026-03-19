@@ -363,6 +363,10 @@ class WannierData:
                     from ..symmetry.sawf import SymmetrizerSAWF
                     filepath = seedname + ".sawf.npz"
                     val = SymmetrizerSAWF.from_npz(filepath)
+                elif f in ["mmn_ud", "mmn_du"]:
+                    from .mmn import MMN
+                    filepath = seedname + "." + f + ".npz"
+                    val = MMN.from_npz(filepath)
                 elif f in FILES_CLASSES:
                     cls = FILES_CLASSES[f]
                     filepath = seedname + "." + cls.extension + ".npz"
