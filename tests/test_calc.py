@@ -175,7 +175,7 @@ def test_SDCT(system, system_type, Efermi, check_calculator):
                               **param_terms, **param)
             transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
             check_calculator(system, calc,
-                             name, do_not_compare=True,
+                             name, do_not_compare=False,
                              compare_zero=(term == "none"),
                              precision=1e-8 if term == "none" else None,
                              transformTR=transform_TR)
