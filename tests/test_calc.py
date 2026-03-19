@@ -140,6 +140,9 @@ def check_save_result():
         pytest.param("system_Si_W90_JM_sym", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym"),
         pytest.param("system_Si_W90_JM_sym_FF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_FF"),
         pytest.param("system_Si_W90_JM_sym_OOGGFF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF"),
+        pytest.param("system_Si_W90_JM_OOGG", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGG"),
+        pytest.param("system_Si_W90_JM_FF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_FF"),
+        pytest.param("system_Si_W90_JM_OOGGFF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGGFF"),
     ],
     indirect=["system"],
 )
