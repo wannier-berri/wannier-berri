@@ -7,7 +7,7 @@ from packaging import version
 from .common import OUTPUT_DIR, REF_DIR
 
 import wannierberri as wberri
-
+from wannierberri.utility import alpha_A, beta_A
 from wannierberri.system.system_R import System_R
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
@@ -173,6 +173,23 @@ def check_system():
                 prec_loc = precision_matrix_elements
             check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
             print(f"check matrix {key} - Ok!")
+        if system.has_R_mat_all(['FF', 'OO']):
+            FF = system.get_R_mat('FF')
+            OO = system.get_R_mat('OO')
+            FF = 1j * (FF[:, :, :, alpha_A, beta_A] - FF[:, :, :, beta_A, alpha_A])
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - OO).max()
+            assert diff < 1e-10, f"antisymmetric part of FF fiffers from  OO  by {diff}"
+            print("check antisymmetric part of FF - Ok!")
+        if system.has_R_mat_all(['FF', 'GG']):
+            FF = system.get_R_mat('FF')
+            GG = system.get_R_mat('GG')
+            FF = (FF + FF.swapaxes(3, 4)) / 2
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - GG).max()
+            assert diff < 1e-10, f"symmetric part of FF fiffers from  GG  by {diff}"
+            print("check symmetric part of FF - Ok!")
+
 
     return _inner
 
