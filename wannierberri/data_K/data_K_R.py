@@ -32,15 +32,15 @@ class Data_K_R(Data_K, System_R):
         return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 
     def get_R_mat(self, key):
-        print(f"data_k : get_R_mat({key})")
+        # print(f"data_k : get_R_mat({key})")
         memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc', 'rotAA', 'FF']
         if key == 'GG' and not self.system.has_R_mat('GG'):
-            print("data_k : using FF to get GG")
+            # print("data_k : using FF to get GG")
             res = self.get_R_mat('FF')
             res = 0.5 * (res + res.swapaxes(3, 4))
             res = 0.5 * (res + res.swapaxes(1, 2).conj())
         elif key == 'OO' and not self.system.has_R_mat('OO'):
-            print("data_k : using FF to get OO")
+            # print("data_k : using FF to get OO")
             res = self.get_R_mat('FF')
             res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
             res = 0.5 * (res + res.swapaxes(1, 2).conj())
