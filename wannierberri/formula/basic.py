@@ -105,7 +105,7 @@ class tildeHab(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.B = data_K.covariant('BB')
-            self.H = data_K.covariant('CCab')
+            self.H = data_K.covariant(self.key_CCab)
         self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim = 2
@@ -175,7 +175,7 @@ class tildeHab_d(Formula_ln):
             self.dA = data_K.covariant('AA', gender=1)
             self.B = data_K.covariant('BB')
             self.dB = data_K.covariant('BB', gender=1)
-            self.dH = data_K.covariant('CCab', gender=1)
+            self.dH = data_K.covariant(self.key_CCab, gender=1)
         self.ndim = 2
         self.transformTR = transform_ident
         self.transformInv = transform_odd

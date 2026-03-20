@@ -298,10 +298,6 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         calculators,
         grid_param=grid_param_Fe,
         fout_name="Fe_W90",
-        parameters_K={
-            # '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         extra_precision={"Morb": -1e-6},
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
@@ -371,10 +367,6 @@ def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
         grid_param=grid_param_Fe,
 
         suffix="sparse",
-        parameters_K={
-            # '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         extra_precision={"Morb": -1e-6},
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
@@ -432,10 +424,6 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
         fout_name="Fe_W90",
         suffix="load",
         use_symmetry=False,
-        parameters_K={
-            # '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         extra_precision={"Morb": -1}
     )
 
@@ -457,10 +445,6 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
         fout_name="Fe_W90_sym",
         grid_param=grid_param_Fe,
         use_symmetry=True,
-        parameters_K={
-            # '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo']
     )
 
@@ -521,11 +505,6 @@ def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
         system_Fe_FPLO,
         calculators,
         fout_name="Fe_FPLO",
-        parameters_K={
-            # '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-        # skip_compare=['tabulate']
     )
 
 
@@ -545,10 +524,6 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
         fout_name="Fe_FPLO",
         suffix="sym",
         use_symmetry=True,
-        parameters_K={
-            # '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
@@ -563,10 +538,6 @@ def test_Fe_parallel(check_run, system_Fe_W90, compare_any_result, parallel):
         grid_param=grid_param_Fe,
         suffix="serial",
         parallel=parallel,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
@@ -576,6 +547,7 @@ def get_param_FFrotAA(param, key):
     if key.endswith("_test"):
         kwargs_formula = param_loc.get("kwargs_formula", {})
         kwargs_formula["FF_rotAA"] = True
+        kwargs_formula["CCab_antisym"] = True
         param_loc["kwargs_formula"] = kwargs_formula
     return param_loc
 
@@ -601,10 +573,6 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
             use_symmetry=True,
             allow_restart=True,
             file_Klist_path=fKl,
-            parameters_K={
-                # '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
         )
         restart = True
 
@@ -832,10 +800,6 @@ def test_Chiral_left(check_run, compare_any_result, compare_energyresult, system
         fout_name="Chiral",
         suffix="left",
         grid_param=grid_param,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         skip_compare=["opt_shiftcurrent"],
         use_symmetry=False,  # !!! temporary
         extra_precision={"Morb": -1e-6},
@@ -871,10 +835,6 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         fout_name="Chiral_tetra",
         suffix="left",
         grid_param=grid_param,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
@@ -885,10 +845,6 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         fout_name="Chiral_tetra",
         suffix="left",
         grid_param=grid_param,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
         do_not_compare=True,
@@ -933,10 +889,6 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         fout_name="Chiral_static_tab",
         suffix="",
         grid_param=grid_param,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=use_sym,
         do_not_compare=True
     )
@@ -977,10 +929,6 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         fout_name="Haldane_static_tab",
         suffix="",
         grid_param=grid_param,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=use_sym,
         do_not_compare=True
     )
@@ -1010,10 +958,6 @@ def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_
         fout_name="Chiral_tetragrid",
         suffix="",
         grid=grid,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
@@ -1034,10 +978,6 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
         fout_name="Chiral_tetra_trigonal",
         suffix="left-2",
         grid_param=grid_param,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         skip_compare='dos_trig_2'
     )
@@ -1058,10 +998,6 @@ def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, com
             fout_name="Chiral",
             suffix="right",
             grid_param=grid_param,
-            parameters_K={
-                #    '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
             use_symmetry=True,
             do_not_compare=True) for system in [system_Chiral_left, system_Chiral_left_TR]
     ]
@@ -1084,10 +1020,6 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
             fout_name="Chiral",
             suffix="right",
             grid_param=grid_param,
-            parameters_K={
-                #    '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
             use_symmetry=True,
             do_not_compare=True) for system in [system_Chiral_left, system_Chiral_right]
     ]
@@ -1159,10 +1091,6 @@ def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
         calculators,
         fout_name="Te_ASE",
         use_symmetry=True,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
@@ -1183,10 +1111,6 @@ def test_Te_QE(check_run, system_Te_QE, compare_any_result, parallel):
         },
         use_symmetry=True,
         parallel=parallel,
-        parameters_K={
-            #    '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
@@ -1392,10 +1316,6 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
             suffix=("" if use_symmetry else "nosym"),
             use_symmetry=use_symmetry,
             extra_precision=extra_precision,
-            parameters_K={
-                #    '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
         )
         if suffix.endswith("_symmetrized") and not tetra:
             suffix_ref = suffix[:-12]

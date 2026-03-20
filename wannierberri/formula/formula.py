@@ -9,12 +9,16 @@ from ..symmetry.point_symmetry import TransformProduct
 class Formula(abc.ABC):
     @abc.abstractmethod
     def __init__(self, data_K=None, internal_terms=True, cross_terms=True, external_terms=True,
-                 transformTR=None, transformInv=None, ndim=0, OO_uIu=False, FF_rotAA=False):
+                 transformTR=None, transformInv=None, ndim=0, OO_uIu=False, 
+                 FF_rotAA=False,
+                 CCab_antisym=False
+                 ):
         self.internal_terms = internal_terms
         self.external_terms = external_terms
         self.cross_terms = cross_terms
         self.key_OO = 'OO' if OO_uIu else 'rotAA'
         self.key_FF = 'rotAAab' if FF_rotAA else 'FF'
+        self.key_CCab = 'CCab_antisym' if CCab_antisym else 'CCab'
         if data_K is not None:
             if data_K.force_internal_terms_only:
                 self.external_terms = False
