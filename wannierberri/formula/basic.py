@@ -1,8 +1,8 @@
 import numpy as np
 from ..utility import alpha_A, beta_A, cached_einsum
 from .formula import Formula_ln
-from .covariant import DerDcov, Eavln
 from ..symmetry.point_symmetry import transform_ident, transform_odd
+from .elementary import Eavln, DerDcov
 
 """ The following  Formulue are fundamental. They can be used to construct all
 quantities relatred to Berry curvature and orbital magnetic moment. They are written
@@ -26,11 +26,9 @@ class tildeFab(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.V = data_K.covariant('Ham', gender=1)
-            self.F = data_K.covariant('FF')
+            self.F = data_K.covariant(self.key_FF)
 
         self.ndim = 2
-#        self.Iodd=False
-#        self.TRodd=True
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
@@ -70,10 +68,8 @@ class tildeFab_d(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
-            self.dF = data_K.covariant('FF', gender=1)
+            self.dF = data_K.covariant(self.key_FF, gender=1)
         self.ndim = 3
-#        self.Iodd=True
-#        self.TRodd=False
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
@@ -109,7 +105,7 @@ class tildeHab(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.B = data_K.covariant('BB')
-            self.H = data_K.covariant('CCab')
+            self.H = data_K.covariant(self.key_CCab)
         self.D = data_K.Dcov
         self.E = data_K.E_K
         self.ndim = 2
@@ -179,7 +175,7 @@ class tildeHab_d(Formula_ln):
             self.dA = data_K.covariant('AA', gender=1)
             self.B = data_K.covariant('BB')
             self.dB = data_K.covariant('BB', gender=1)
-            self.dH = data_K.covariant('CCab', gender=1)
+            self.dH = data_K.covariant(self.key_CCab, gender=1)
         self.ndim = 2
         self.transformTR = transform_ident
         self.transformInv = transform_odd
@@ -247,7 +243,7 @@ class tildeHGab_d(Formula_ln):
 ###################################################
 
 
-class AntiSymmetric(Formula_ln):
+class FormulaAntiSymmetric(Formula_ln):
 
     def __init__(self, full, data_K, **parameters):
         self.full = full(data_K, **parameters)
@@ -262,7 +258,7 @@ class AntiSymmetric(Formula_ln):
         return 1j * (fab[:, :, alpha_A, beta_A] - fab[:, :, beta_A, alpha_A])
 
 
-class Symmetric(Formula_ln):
+class FormulaSymmetric(Formula_ln):
 
     def __init__(self, full, data_K, axes=[0, 1], **parameters):
         self.full = full(data_K, **parameters)
@@ -278,7 +274,7 @@ class Symmetric(Formula_ln):
         return fab + fab.swapaxes(self.axes[0] + 2, self.axes[1] + 2)
 
 
-class tildeFc(AntiSymmetric):
+class tildeFc(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab, data_K, **parameters)
@@ -286,7 +282,7 @@ class tildeFc(AntiSymmetric):
         self.transformInv = transform_ident
 
 
-class tildeHGc(AntiSymmetric):
+class tildeHGc(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab, data_K, **parameters)
@@ -298,7 +294,7 @@ class tildeHGc(AntiSymmetric):
         return False
 
 
-class tildeFc_d(AntiSymmetric):
+class tildeFc_d(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab_d, data_K, **parameters)
@@ -306,7 +302,7 @@ class tildeFc_d(AntiSymmetric):
         self.transformInv = transform_odd
 
 
-class tildeHGc_d(AntiSymmetric):
+class tildeHGc_d(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab_d, data_K, **parameters)

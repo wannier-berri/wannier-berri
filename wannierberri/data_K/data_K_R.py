@@ -9,12 +9,8 @@ class Data_K_R(Data_K, System_R):
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
     def __init__(self, system, dK, grid,
-                 _FF_antisym=False,
-                 _CCab_antisym=False,
                  **parameters):
         super().__init__(system, dK, grid, **parameters)
-        self._FF_antisym = _FF_antisym
-        self._CCab_antisym = _CCab_antisym
 
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
@@ -39,10 +35,10 @@ class Data_K_R(Data_K, System_R):
         else:
             if key == 'rotAA':
                 res = self.rotAA()
-            elif key == 'CCab':
-                res = self._CCab_R()
-            elif key == 'FF':
-                res = self._FF_R()
+            elif key == 'rotAAab':
+                res = self.rotAAab()
+            elif key == 'CCab_antisym':
+                res = self.CCab_antisym_R()
             else:
                 X_R = self.system.get_R_mat(key)
                 res = self.rvec.apply_expdK(X_R)
@@ -56,21 +52,21 @@ class Data_K_R(Data_K, System_R):
         rotAA = self.rvec.derivative(self.get_R_mat('AA'))
         return rotAA[:, :, :, beta_A, alpha_A] - rotAA[:, :, :, alpha_A, beta_A]
 
-    def _CCab_R(self):
-        if self._CCab_antisym:
-            CCab = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-            CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
-            CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
-            return CCab
-        else:
-            return self.rvec.apply_expdK(self.system.get_R_mat('CCab'))
+    def rotAAab(self):
+        # We do not multiply by expdK, because it is already accounted in AA_R
+        rotAA = self.rotAA()
+        rotAAab = np.zeros(rotAA.shape + (3,), dtype=complex)
+        rotAAab[:, :, :, alpha_A, beta_A] = -0.5j * rotAA
+        rotAAab[:, :, :, beta_A, alpha_A] = 0.5j * rotAA
+        return rotAAab
 
-    def _FF_R(self):
-        if self._FF_antisym:
-            return -1j * self.rvec.derivative(self.get_R_mat('AA')).swapaxes(3, 4)
-        # self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
-        else:
-            return self.rvec.apply_expdK(self.system.get_R_mat('FF'))
+
+    def CCab_antisym_R(self):
+        CCab = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
+        CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
+        return CCab
+
 
     def Xbar(self, name, der=0):
         key = (name, der)

@@ -51,7 +51,6 @@ class SDCT_K:
     @lru_cache
     def get_M1(self, external_terms=True, key_OO='rotAA'):
         ''' Magnetic dipole moment '''
-        ''' Magnetic dipole moment (only internal terms) '''
         # Basic covariant matrices in the Hamiltonian gauge
         H = self.data_K.Xbar('Ham')
 
@@ -79,7 +78,7 @@ class SDCT_K:
 
             # _____ 2. External terms _____ #
             Aa_ext = self.kron * A  # Energy diagonal piece
-            A_ext = A - Aa_ext           # Energy non-diagonal piece
+            A_ext = A - Aa_ext      # Energy non-diagonal piece
 
             Cbc_ext = -1.j * Eln_plus[:, :, :, None, None] * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
             Cbc_ext += -1.j * cached_einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
