@@ -396,14 +396,23 @@ def system_Fe_gpaw_soc_111_irred():
     proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
 
     seedname_soc = os.path.join(OUTPUT_DIR, "wannier_soc")
-    wandata = WannierDataSOC.from_gpaw(
+    wandata, (bandstructure_up, bandstructure_down) = WannierDataSOC.from_gpaw(
         calculator=gpaw_calc,
         seedname=seedname_soc,
-        projections=proj_set,
         mp_grid=(2, 2, 2),
-        files=["mmn", "eig", "amn", "symmetrizer", "soc", "mmn_ud"],
+        files=["mmn", "eig", "symmetrizer", "soc", "mmn_ud"],
         spacegroup=sg,
+        return_bandstructure=True,
     )
+    path_npz = os.path.join(OUTPUT_DIR, "Fe_gpaw_soc_irred_NPZ", "Fe")
+    wandata.to_npz(path_npz)
+    del wandata  # to test loading from npz
+
+    wandata = WannierDataSOC.from_npz(path_npz, nspin=2, files=["mmn", "eig", "symmetrizer", "soc", "mmn_ud"])
+
+    wandata.set_projections(projections=proj_set,
+                            bandstructure_up=bandstructure_up,
+                            bandstructure_down=bandstructure_down)
 
     wandata.select_bands(win_min=-100,
                          win_max=50)
@@ -600,6 +609,35 @@ def system_Si_W90_JM_sym_FF(create_files_Si_W90):
                                   symmetrize=True)
     return system
 
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_OOGG(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOO,
+                                  symmetrize=False)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_OOGGFF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=False)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_FF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_FF,
+                                  symmetrize=False)
+    return system
 
 
 @pytest.fixture(scope="session")
