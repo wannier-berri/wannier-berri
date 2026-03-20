@@ -26,7 +26,7 @@ class NeededData:
         for key, val in parameters.items():
             if key in ["berry", "morb", "spin",
                        "SHCryoo", "SHCqiao",
-                       "OSD",
+                       "OSD", "qmetric",
                        "force_internal_terms_only",
                        "keepOOGG", "FF", "OOGG_to_FF",
                        "chk"]:
@@ -57,7 +57,7 @@ class NeededData:
         if berry:
             self.matrices.add('AA')
         if qmetric:
-            self.matrices.update(['AA', 'GG'])
+            self.matrices.update(['AA', 'FF'])
         if spin:
             self.matrices.add('SS')
         if SHCryoo:

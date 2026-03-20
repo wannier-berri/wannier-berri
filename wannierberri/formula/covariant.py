@@ -1,6 +1,6 @@
 import numpy as np
 
-from .basic import Symmetric, tildeFab, tildeFab_d
+from .basic import FormulaSymmetric, tildeFab, tildeFab_d
 from .elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, Eavln, DEinv_ln
 from ..utility import alpha_A, beta_A, cached_einsum, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
@@ -904,7 +904,7 @@ class NLDrude_Z_orb_Omega(FormulaSum):
         super().__init__([term1, term2], [-1, 1], ['apsu', 'uaps'])
 
 
-class QuantumMetric_ab(Symmetric):
+class QuantumMetric_ab(FormulaSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab, data_K, axes=[0, 1], **parameters)
@@ -912,7 +912,7 @@ class QuantumMetric_ab(Symmetric):
         self.transformInv = transform_ident
 
 
-class DerQuantumMetric_ab_d(Symmetric):
+class DerQuantumMetric_ab_d(FormulaSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab_d, data_K, axes=[0, 1], **parameters)

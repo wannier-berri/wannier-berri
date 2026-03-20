@@ -581,7 +581,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
 
 
 
-def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
+def test_GaAs_dynamic(check_run, system_GaAs_W90):
     "Test shift current and injection current"
 
     param = dict(

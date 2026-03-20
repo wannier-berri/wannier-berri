@@ -243,7 +243,7 @@ class tildeHGab_d(Formula_ln):
 ###################################################
 
 
-class AntiSymmetric(Formula_ln):
+class FormulaAntiSymmetric(Formula_ln):
 
     def __init__(self, full, data_K, **parameters):
         self.full = full(data_K, **parameters)
@@ -258,7 +258,7 @@ class AntiSymmetric(Formula_ln):
         return 1j * (fab[:, :, alpha_A, beta_A] - fab[:, :, beta_A, alpha_A])
 
 
-class Symmetric(Formula_ln):
+class FormulaSymmetric(Formula_ln):
 
     def __init__(self, full, data_K, axes=[0, 1], **parameters):
         self.full = full(data_K, **parameters)
@@ -274,7 +274,7 @@ class Symmetric(Formula_ln):
         return fab + fab.swapaxes(self.axes[0] + 2, self.axes[1] + 2)
 
 
-class tildeFc(AntiSymmetric):
+class tildeFc(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab, data_K, **parameters)
@@ -282,7 +282,7 @@ class tildeFc(AntiSymmetric):
         self.transformInv = transform_ident
 
 
-class tildeHGc(AntiSymmetric):
+class tildeHGc(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab, data_K, **parameters)
@@ -294,7 +294,7 @@ class tildeHGc(AntiSymmetric):
         return False
 
 
-class tildeFc_d(AntiSymmetric):
+class tildeFc_d(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeFab_d, data_K, **parameters)
@@ -302,7 +302,7 @@ class tildeFc_d(AntiSymmetric):
         self.transformInv = transform_odd
 
 
-class tildeHGc_d(AntiSymmetric):
+class tildeHGc_d(FormulaAntiSymmetric):
 
     def __init__(self, data_K, **parameters):
         super().__init__(tildeHGab_d, data_K, **parameters)

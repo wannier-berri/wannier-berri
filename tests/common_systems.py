@@ -438,7 +438,7 @@ def system_Fe_gpaw_soc_111_irred():
 
 @pytest.fixture(scope="session")
 def get_system_GaAs_W90(create_files_GaAs_W90):
-    def _inner(transl_inv_JM, FF):
+    def _inner(transl_inv_JM, FF, qmetric=False):
         """Create system for GaAs using Wannier90 data"""
 
         data_dir = create_files_GaAs_W90
@@ -446,7 +446,7 @@ def get_system_GaAs_W90(create_files_GaAs_W90):
         seedname = os.path.join(data_dir, "GaAs")
         matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True,
                         FF=FF, keepOOGG=True,
-                        OOGG_to_FF=False)
+                        OOGG_to_FF=False, qmetric=qmetric)
         wandata = load_wandata(
             seedname=seedname,
             files=NeededData(**matrices).files,
@@ -463,7 +463,7 @@ def get_system_GaAs_W90(create_files_GaAs_W90):
 
 @pytest.fixture(scope="session")
 def system_GaAs_W90(get_system_GaAs_W90):
-    return get_system_GaAs_W90(transl_inv_JM=False, FF=True)
+    return get_system_GaAs_W90(transl_inv_JM=False, FF=True, qmetric=True)
 
 
 @pytest.fixture(scope="session")
