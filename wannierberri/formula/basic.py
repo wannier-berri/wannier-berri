@@ -26,11 +26,9 @@ class tildeFab(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.V = data_K.covariant('Ham', gender=1)
-            self.F = data_K.covariant('FF')
+            self.F = data_K.covariant(self.key_FF)
 
         self.ndim = 2
-#        self.Iodd=False
-#        self.TRodd=True
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
@@ -70,10 +68,8 @@ class tildeFab_d(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
-            self.dF = data_K.covariant('FF', gender=1)
+            self.dF = data_K.covariant(self.key_FF, gender=1)
         self.ndim = 3
-#        self.Iodd=True
-#        self.TRodd=False
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)

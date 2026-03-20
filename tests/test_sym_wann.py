@@ -294,7 +294,12 @@ def test_Te_sparse(check_symmetry, system_Te_sparse):
 
 
 def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
-    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax': 6.15, 'hole_like': True}
+    param = {'Efermi': Efermi_Te_sparse,
+             "tetra": True,
+             'use_factor': False,
+             'Emax': 6.15,
+             'hole_like': True,
+             }
     calculators = {}
     for k, v in calculators_Te.items():
         par = {}
@@ -314,7 +319,7 @@ def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
         # temporarily weakened precision here. Will restrict it later with new data
         extra_precision={"berry_dipole": 3e-7},
         parameters_K={
-            '_FF_antisym': True,
+            ###    '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
@@ -341,7 +346,7 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
         # temporarily weakened precision here. Will restrict it later with new data
         extra_precision={"berry_dipole": 3e-7, "dos": 2e-8},
         parameters_K={
-            '_FF_antisym': True,
+            ###    '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )

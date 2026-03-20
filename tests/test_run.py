@@ -270,7 +270,7 @@ def test_TabulatorAll_fail():
 def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
     param = {'Efermi': Efermi_Fe}
     param_tab = {'degen_thresh': 5e-2}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
     calculators["tabulate"] = calc.TabulatorAll(
         {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
@@ -299,7 +299,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         grid_param=grid_param_Fe,
         fout_name="Fe_W90",
         parameters_K={
-            '_FF_antisym': True,
+            # '_FF_antisym': True,
             '_CCab_antisym': True
         },
         extra_precision={"Morb": -1e-6},
@@ -355,7 +355,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 
 def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -372,7 +372,7 @@ def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
 
         suffix="sparse",
         parameters_K={
-            '_FF_antisym': True,
+            # '_FF_antisym': True,
             '_CCab_antisym': True
         },
         extra_precision={"Morb": -1e-6},
@@ -415,9 +415,9 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
     calculators = {}
     for k, v in calculators_Fe.items():
         if k in ['dos', 'cumdos', 'conductivity_ohmic', 'conductivity_ohmic_fsurf', 'spin']:
-            calculators[k] = v(**param)
+            calculators[k] = v(**get_param_FFrotAA(param, k))
         else:
-            calculators[k] = v(**param_kwargs)
+            calculators[k] = v(**get_param_FFrotAA(param_kwargs, k))
 
     name = "Fe_save"
     path = os.path.join(OUTPUT_DIR, name)
@@ -433,7 +433,7 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
         suffix="load",
         use_symmetry=False,
         parameters_K={
-            '_FF_antisym': True,
+            # '_FF_antisym': True,
             '_CCab_antisym': True
         },
         extra_precision={"Morb": -1}
@@ -442,7 +442,7 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
 
 def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -458,7 +458,7 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
         grid_param=grid_param_Fe,
         use_symmetry=True,
         parameters_K={
-            '_FF_antisym': True,
+            # '_FF_antisym': True,
             '_CCab_antisym': True
         },
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo']
@@ -522,7 +522,7 @@ def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
         calculators,
         fout_name="Fe_FPLO",
         parameters_K={
-            '_FF_antisym': True,
+            # '_FF_antisym': True,
             '_CCab_antisym': True
         },
         # skip_compare=['tabulate']
@@ -546,7 +546,7 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
         suffix="sym",
         use_symmetry=True,
         parameters_K={
-            '_FF_antisym': True,
+            # '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
@@ -555,7 +555,7 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
 @pytest.mark.parametrize("parallel", [True, False])
 def test_Fe_parallel(check_run, system_Fe_W90, compare_any_result, parallel):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
     check_run(
         system_Fe_W90,
         calculators,
@@ -564,20 +564,28 @@ def test_Fe_parallel(check_run, system_Fe_W90, compare_any_result, parallel):
         suffix="serial",
         parallel=parallel,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
 
 
+def get_param_FFrotAA(param, key):
+    param_loc = {}
+    param_loc.update(param)
+    if key.endswith("_test"):
+        kwargs_formula = param_loc.get("kwargs_formula", {})
+        kwargs_formula["FF_rotAA"] = True
+        param_loc["kwargs_formula"] = kwargs_formula
+    return param_loc
+
+
 @pytest.mark.parametrize("adpt_num_iter_list", [(3,), (1, 2), (0, 2, 1)])
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_iter_list):
-    param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     suffix = "refine-" + '-'.join([str(i) for i in adpt_num_iter_list])
     fKl = os.path.join(OUTPUT_DIR, f"_tmp_K_{suffix}")
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
 
     restart = False
     for adpt_num_iter in adpt_num_iter_list:
@@ -594,7 +602,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
             allow_restart=True,
             file_Klist_path=fKl,
             parameters_K={
-                '_FF_antisym': True,
+                # '_FF_antisym': True,
                 '_CCab_antisym': True
             },
         )
@@ -676,7 +684,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implement
 def test_random(check_run, system_random_load_bare, compare_any_result):
     Efermi = np.linspace(-2, 2, 5)
     param = {'Efermi': Efermi}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()
                    if not k.endswith("_test")}
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -825,7 +833,7 @@ def test_Chiral_left(check_run, compare_any_result, compare_energyresult, system
         suffix="left",
         grid_param=grid_param,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         skip_compare=["opt_shiftcurrent"],
@@ -864,7 +872,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         suffix="left",
         grid_param=grid_param,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         use_symmetry=True,
@@ -878,7 +886,7 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         suffix="left",
         grid_param=grid_param,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         use_symmetry=True,
@@ -926,7 +934,7 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         suffix="",
         grid_param=grid_param,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         use_symmetry=use_sym,
@@ -970,7 +978,7 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         suffix="",
         grid_param=grid_param,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         use_symmetry=use_sym,
@@ -1003,7 +1011,7 @@ def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_
         suffix="",
         grid=grid,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         use_symmetry=True,
@@ -1027,7 +1035,7 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
         suffix="left-2",
         grid_param=grid_param,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
         use_symmetry=True,
@@ -1051,7 +1059,7 @@ def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, com
             suffix="right",
             grid_param=grid_param,
             parameters_K={
-                '_FF_antisym': True,
+                #    '_FF_antisym': True,
                 '_CCab_antisym': True
             },
             use_symmetry=True,
@@ -1077,7 +1085,7 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
             suffix="right",
             grid_param=grid_param,
             parameters_K={
-                '_FF_antisym': True,
+                #    '_FF_antisym': True,
                 '_CCab_antisym': True
             },
             use_symmetry=True,
@@ -1152,7 +1160,7 @@ def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
         fout_name="Te_ASE",
         use_symmetry=True,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
@@ -1163,9 +1171,7 @@ def test_Te_QE(check_run, system_Te_QE, compare_any_result, parallel):
     param = {'Efermi': Efermi_Te_qe, "tetra": True}
     calculators = {}
     for k, v in calculators_Te_all.items():
-        par = {}
-        par.update(param)
-        calculators[k] = v(**par)
+        calculators[k] = v(**get_param_FFrotAA(param, k))
 
     check_run(
         system_Te_QE,
@@ -1178,7 +1184,7 @@ def test_Te_QE(check_run, system_Te_QE, compare_any_result, parallel):
         use_symmetry=True,
         parallel=parallel,
         parameters_K={
-            '_FF_antisym': True,
+            #    '_FF_antisym': True,
             '_CCab_antisym': True
         },
     )
@@ -1364,17 +1370,19 @@ def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
 def check_Fe_gpaw_soc(check_run, compare_any_result):
     def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}, tetra=False):
         Efermi_Fe_gpaw = np.linspace(8.5, 10, 16)
-        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': tetra}
+        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': tetra,
+                 }
         calculators = {}
         for k, v in calculators_Fe.items():
             if (suffix in ['up', 'dw']) and (k in ["spin"]):
-                pass
+                continue
             elif k.startswith("Morb"):
                 param_kwargs = {'Efermi': Efermi_Fe, 'use_factor': False,
                                 'kwargs_formula': {'external_terms': False}}
-                calculators[k] = v(**param_kwargs)
             else:
-                calculators[k] = v(**param)
+                param_kwargs = param
+            param_kwargs = get_param_FFrotAA(param_kwargs, k)
+            calculators[k] = v(**param_kwargs)
 
         result = check_run(
             system,
@@ -1385,7 +1393,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
             use_symmetry=use_symmetry,
             extra_precision=extra_precision,
             parameters_K={
-                '_FF_antisym': True,
+                #    '_FF_antisym': True,
                 '_CCab_antisym': True
             },
         )
