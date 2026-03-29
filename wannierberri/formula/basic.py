@@ -267,11 +267,11 @@ class FormulaSymmetric(Formula_ln):
 
     def nn(self, ik, inn, out):
         fab = self.full.nn(ik, inn, out)
-        return fab + fab.swapaxes(self.axes[0] + 2, self.axes[1] + 2)
+        return 0.5 * (fab + fab.swapaxes(self.axes[0] + 2, self.axes[1] + 2))
 
     def ln(self, ik, inn, out):
-        fab = self.full.nn(ik, inn, out)
-        return fab + fab.swapaxes(self.axes[0] + 2, self.axes[1] + 2)
+        fab = self.full.ln(ik, inn, out)
+        return 0.5 * (fab + fab.swapaxes(self.axes[0] + 2, self.axes[1] + 2))
 
 
 class tildeFc(FormulaAntiSymmetric):
