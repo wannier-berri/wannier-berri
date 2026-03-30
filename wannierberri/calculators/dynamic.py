@@ -14,7 +14,6 @@ from .. import factors as factors
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
-Ang_SI = angstrom
 
 
 #######################################

@@ -9,7 +9,7 @@ from ..symmetry.point_symmetry import TransformProduct
 class Formula(abc.ABC):
     @abc.abstractmethod
     def __init__(self, data_K=None, internal_terms=True, cross_terms=True, external_terms=True,
-                 transformTR=None, transformInv=None, ndim=0, OO_uIu=False, 
+                 transformTR=None, transformInv=None, ndim=0, OO_uIu=False,
                  FF_rotAA=False,
                  CCab_antisym=False
                  ):

@@ -2,6 +2,7 @@ import numpy as np
 from .calculator import Calculator
 from ..formula import covariant as frml
 from ..result import KBandResult, TABresult
+from wannierberri.factors import factor_morb_evA2_to_muB
 
 
 # The base classes for Tabulating
@@ -10,10 +11,11 @@ from ..result import KBandResult, TABresult
 
 class Tabulator(Calculator):
 
-    def __init__(self, Formula, ibands=None, kwargs_formula=None, **kwargs):
+    def __init__(self, Formula, ibands=None, kwargs_formula=None, constant_factor=1, **kwargs):
         self.Formula = Formula
         self.ibands = np.array(ibands) if (ibands is not None) else None
         self.kwargs_formula = kwargs_formula if kwargs_formula is not None else {}
+        self.constant_factor = constant_factor
         super().__init__(**kwargs)
 
     def __call__(self, data_K):
@@ -47,6 +49,7 @@ class Tabulator(Calculator):
                 values[n] = formula.trace(ik, inn, out) / (n[1] - n[0])
             for ib, b in enumerate(ibands):
                 rslt[ik, ib] = values[group[ik][ib]]
+        rslt *= self.constant_factor
         return KBandResult(rslt, transformTR=formula.transformTR, transformInv=formula.transformInv)
 
 
@@ -129,32 +132,35 @@ class Velocity(Tabulator):
 
 
 class InvMass(Tabulator):
+    r""" second derivative of energy :math:`\partial_a\partial_b E` in units of eV*angstrom^2"""
 
     def __init__(self, **kwargs):
         super().__init__(frml.InvMass, **kwargs)
 
 
 class Der3E(Tabulator):
+    r""" third derivative of energy :math:`\partial_a\partial_b\partial_c E` in units of eV*angstrom^3"""
 
     def __init__(self, **kwargs):
         super().__init__(frml.Der3E, **kwargs)
 
 
 class BerryCurvature(Tabulator):
+    r""" Berry curvature :math:`\Omega_a` in units of angstrom^2"""
 
     def __init__(self, **kwargs):
         super().__init__(frml.Omega, **kwargs)
 
 
 class DerBerryCurvature(Tabulator):
-    r"Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a`"
+    r"Derivative of Berry curvature :math:`X_{ab}\partial_b\Omega_a` in units of angstrom^3"
 
     def __init__(self, **kwargs):
         super().__init__(frml.DerOmega, **kwargs)
 
 
 class Der2BerryCurvature(Tabulator):
-    r"Second Derivative of Berry curvature :math:`X_{ab}\partial_bc\Omega_a`"
+    r"Second Derivative of Berry curvature :math:`X_{ab}\partial_bc\Omega_a` in units of angstrom^4"
 
     def __init__(self, **kwargs):
         super().__init__(frml.Der2Omega, **kwargs)
@@ -168,6 +174,7 @@ class Spin(Tabulator):
 
 
 class DerSpin(Tabulator):
+    r"Derivative of Spin :math:`\partial_a \langle u | \mathbf{\sigma} | u \rangle` in units of angstrom"
 
     def __init__(self, **kwargs):
         super().__init__(frml.DerSpin, **kwargs)
@@ -180,27 +187,32 @@ class Der2Spin(Tabulator):
 
 
 class OrbitalMoment(Tabulator):
+    r"Orbital moment :math:`m_{orb}` in units of Bohr magneton"
 
     def __init__(self, **kwargs):
-        super().__init__(frml.morb, **kwargs)
+        super().__init__(frml.morb, constant_factor=factor_morb_evA2_to_muB, **kwargs)
 
 
 class DerOrbitalMoment(Tabulator):
+    r"Derivative of orbital moment :math:`\partial_a m_{orb}` in units of Bohr magneton*angstrom"
 
     def __init__(self, **kwargs):
-        super().__init__(frml.Dermorb, **kwargs)
+        super().__init__(frml.Dermorb, constant_factor=factor_morb_evA2_to_muB, **kwargs)
 
 
 class DerOrbitalMoment_test(Tabulator):
+    r""" Derivative of orbital moment :math:`\partial_a m_{orb}` in units of Bohr magneton*angstrom"""
 
     def __init__(self, **kwargs):
-        super().__init__(frml.DerMorb_test, **kwargs)
+        super().__init__(frml.DerMorb_test, constant_factor=factor_morb_evA2_to_muB, **kwargs)
 
 
 class Der2OrbitalMoment(Tabulator):
 
+    r""" Second derivative of orbital moment :math:`\partial_a\partial_b m_{orb}` in units of Bohr magneton*angstrom^2"""
+
     def __init__(self, **kwargs):
-        super().__init__(frml.Der2morb, **kwargs)
+        super().__init__(frml.Der2morb, constant_factor=factor_morb_evA2_to_muB, **kwargs)
 
 
 class SpinBerry(Tabulator):
