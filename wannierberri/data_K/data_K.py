@@ -8,25 +8,7 @@ from ..system.system import System
 from .. import formula
 from ..grid import KpointBZparallel, KpointBZtetra
 from ..symmetry.point_symmetry import transform_ident, transform_odd
-
-
-from scipy.constants import hbar, electron_mass, physical_constants, elementary_charge
-electron_g_factor = physical_constants['electron g factor'][0]
-m_spin_prefactor_SI = -0.5 * electron_g_factor * hbar / electron_mass
-#  "spin_prefactor_SI" converts to SI units, which are units of
-# hbar/m, i.e. m^2/s
-
-# While the B_M1 is computed with internal units (and without the hbar factor),
-# which would be eV*Ang^2
-# So, to bring that quantity to SI units we would need to multiply by
-# elementary_charge*1e-20 (convert to J*m^2) and divide by hbar (in J*s). So, to
-# bring the spin contributions to the same units as the orbital part, we need to
-# adjust it to a factor
-
-# hbar*1e20/elementary_charge ~= 65821.19569
-#
-m_spin_prefactor = m_spin_prefactor_SI * (hbar * 1e20 / elementary_charge)
-
+from ..factors import m_spin_prefactor
 
 
 def get_transform_Inv(name, der=0):
@@ -293,7 +275,6 @@ class Data_K(System, abc.ABC):
         return dEig
 
     #    defining sets of degenerate states - needed only for testing with random_gauge
-
     @cached_property
     def degen(self):
         A = [np.where(E[1:] - E[:-1] > self.degen_thresh_random_gauge)[0] + 1 for E in self.E_K]
