@@ -384,7 +384,7 @@ class System_R(System):
 
         print(f"new_wann_indices: {new_wann_indices}")
         self.reorder(new_wann_indices)
-        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
+        symmetrizer = SymmetrizerSAWF.from_spacegroup_and_projections(spacegroup=spacegroup, projections=proj_list)
         self.symmetrize2(symmetrizer, silent=silent)
         if reorder_back:
             self.reorder(np.argsort(new_wann_indices))
