@@ -263,7 +263,7 @@ class GME_orb_FermiSurf(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha m^{orb}_\mu f'`
         | Where :math:`m^{orb} = H + G - 2E_f \cdot \Omega`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml.VelHplus
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -281,7 +281,7 @@ class GME_orb_FermiSea(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math:`m = H + G - 2E_f \cdot \Omega`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml.DerMorb
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -300,7 +300,7 @@ class GME_orb_FermiSea_test(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math: `m = H + G - 2E_f \cdot \Omega` """
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml_basic.tildeHGc_d
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -319,7 +319,7 @@ class GME_spin_FermiSea(StaticCalculator):
         | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = -\int [dk] \partial_\alpha s_\mu f`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_spin, **kwargs):
         self.Formula = frml.DerSpin
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -337,7 +337,7 @@ class GME_spin_FermiSurf(StaticCalculator):
         | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = \tau \int [dk] v_\alpha s_\mu f'`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_spin, **kwargs):
         self.Formula = frml.VelSpin
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)

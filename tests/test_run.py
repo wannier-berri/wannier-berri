@@ -912,12 +912,12 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     system = system_Haldane_PythTB
 
     calculators = {"AHC": calc.static.AHC(**param),
-                   "Morb": calc.static.AHC(**param)
+                   "Morb": calc.static.Morb(**param)
                    }
     calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
-            "Morb": calc.static.AHC(**param, k_resolved=True),
+            "Morb": calc.static.Morb(**param, k_resolved=True),
             "berry": calc.tabulate.BerryCurvature()
         },
         mode="grid",
