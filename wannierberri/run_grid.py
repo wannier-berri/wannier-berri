@@ -264,16 +264,18 @@ def run(
             # import sys
             # print("Worker sys.path:", sys.path)
             # from wannierberri.system.rvectors import Rvectors
-            with get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
-                resultdic = {k: v(data) for k, v in _calculators.items()}
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            resultdic = {k: v(data) for k, v in _calculators.items()}
+            del data
             result = ResultDict(resultdic)
             if symmetrize:
                 result = _system.pointgroup.symmetrize(result)
             return result
     else:
         def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
-            with get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K) as data:
-                resultdic = {k: v(data) for k, v in _calculators.items()}
+            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+            resultdic = {k: v(data) for k, v in _calculators.items()}
+            del data
             result = ResultDict(resultdic)
             if symmetrize:
                 result = _system.pointgroup.symmetrize(result)

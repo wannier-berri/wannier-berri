@@ -38,23 +38,24 @@ class Formula_SDCT_sea_I(Formula_SDCT):
     has_terms = ["M1", "E2", "V", "S"]
 
     def __init__(self, data_K, sym,
-                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
+                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False,
+                 degen_thresh=1e-3, **parameters):
         super().__init__(sym=sym, data_K=data_K, **parameters)
         # Intrinsic multipole moments
-        A = data_K.SDCT.get_E1(external_terms=self.external_terms)
+        A = data_K.get_E1(external_terms=self.external_terms, degen_thresh=degen_thresh)
 
         # Other quantities
-        Vn = data_K.SDCT.Vn
+        Vn = data_K.delE_K
         assert np.max(np.abs(Vn.imag)) < 1e-8, f"Vn should be real but has imaginary part of {np.max(np.abs(Vn.imag))}"
         Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
 
         # --- Formula --- #
         if M1_terms or S_terms:
-            B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms, key_OO=self.key_OO)
+            B_M1 = data_K.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms, key_OO=self.key_OO, degen_thresh=degen_thresh)
             self.summ += A[:, :, :, :, None, None] * B_M1.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if E2_terms:
-            B_E2 = data_K.SDCT.get_Bln_q(external_terms=self.external_terms)
+            B_E2 = data_K.get_Bln_q(external_terms=self.external_terms, degen_thresh=degen_thresh)
             self.summ += A[:, :, :, :, None, None] * B_E2.swapaxes(1, 2)[:, :, :, None, :, :]
 
         if V_terms:
@@ -73,10 +74,10 @@ class Formula_SDCT_sea_II(Formula_SDCT):
         # --- Formula --- #
         if V_terms:
             # Intrinsic multipole moments
-            A = data_K.SDCT.get_E1(external_terms=self.external_terms)
+            A = data_K.get_E1(external_terms=self.external_terms, degen_thresh=1e-3)
 
             # Other quantities
-            Vn = data_K.SDCT.Vn
+            Vn = data_K.delE_K
             Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
             self.summ -= A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None] * Vnm_plus[:, :, :, None, None, :]
             self.symsumm()
@@ -89,13 +90,13 @@ class Formula_SDCT_surf_I(Formula_SDCT):
 
     has_terms = ["V"]
 
-    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
+    def __init__(self, data_K, sym, M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, degen_thresh=1e-3, **parameters):
         super().__init__(data_K, sym=sym, **parameters)
         # --- Formula --- #
         if V_terms:
             # Intrinsic multipole moments
-            A = data_K.SDCT.get_E1(external_terms=self.external_terms)
-            Vn = data_K.SDCT.Vn
+            A = data_K.get_E1(external_terms=self.external_terms, degen_thresh=degen_thresh)
+            Vn = data_K.delE_K
             self.summ += (A[:, :, :, :, None, None] * A.swapaxes(1, 2)[:, :, :, None, :, None]) * Vn[:, :, None, None, None, :]
         if sym:
             self.summ = np.real(self.summ)
@@ -111,16 +112,16 @@ class Formula_SDCT_surf_II(Formula_SDCT):
     has_terms = ["M1", "S", "V"]
 
     def __init__(self, data_K, sym,
-                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, **parameters):
+                 M1_terms=True, E2_terms=True, V_terms=True, S_terms=False, degen_thresh=1e-3, **parameters):
         super().__init__(data_K, sym=sym, nbandind=1, **parameters)
-        Vn = data_K.SDCT.Vn
+        Vn = data_K.delE_K
         if sym:
             if V_terms:
                 self.summ += Vn[:, :, :, None, None] * Vn[:, :, None, :, None] * Vn[:, :, None, None, :]
         else:
             if M1_terms or S_terms:
                 # Intrinsic multipole moments
-                B_M1 = data_K.SDCT.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms, key_OO=self.key_OO)
+                B_M1 = data_K.get_Bln_m(external_terms=self.external_terms, orb=M1_terms, spin=S_terms, key_OO=self.key_OO, degen_thresh=degen_thresh)
                 Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
                 # --- Formula --- #
                 self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]

@@ -1,26 +1,21 @@
 
 import numpy as np
 import abc
-from functools import cached_property
+from functools import cached_property, lru_cache
 
-from ..utility import cached_einsum, clear_cached
+from ..utility import alpha_A, beta_A, cached_einsum
 from ..system.system import System
 from .. import formula
 from ..grid import KpointBZparallel, KpointBZtetra
 from ..symmetry.point_symmetry import transform_ident, transform_odd
-from .sdct_K import SDCT_K
-
+from ..factors import m_spin_prefactor
 
 
 def get_transform_Inv(name, der=0):
     """returns the transformation of the quantity  under inversion
     raises for unknown quantities"""
-    ###########
-    # Oscar ###
-    ###########################################################################
     if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS', 'rotAA', 'rotAAab', 'CCab_antisym']:  # even before derivative
         p = 0
-    ###########################################################################
     elif name in ['D', 'AA', 'BB', 'CCab']:
         return None
     else:
@@ -37,12 +32,8 @@ def get_transform_TR(name, der=0):
     raises ValueError for unknown quantities"""
     if name in ['Ham']:  # even before derivative
         p = 0
-    #########
-    # Oscar #
-    ###########################################################################
     elif name in ['CC', 'FF', 'OO', 'GG', 'SS', 'rotAA', 'rotAAab', 'CCab_antisym']:  # odd before derivative
         p = 1
-    ###########################################################################
     elif name in ['D', 'AA', 'BB', 'CCab']:
         return None
     else:
@@ -106,12 +97,14 @@ class Data_K(System, abc.ABC):
         self._bar_quantities = {}
         self._covariant_quantities = {}
 
+
     ###########################################
     #   Now the **_R objects are evaluated only on demand
     # - as cached_property (if used more than once)
     #   as property   - iif used only once
     #   let's write them explicitly, for better code readability
     ###########################
+
 
     @property
     def is_phonon(self):
@@ -282,7 +275,6 @@ class Data_K(System, abc.ABC):
         return dEig
 
     #    defining sets of degenerate states - needed only for testing with random_gauge
-
     @cached_property
     def degen(self):
         A = [np.where(E[1:] - E[:-1] > self.degen_thresh_random_gauge)[0] + 1 for E in self.E_K]
@@ -310,30 +302,13 @@ class Data_K(System, abc.ABC):
     def D_H(self):
         return -self.Xbar('Ham', 1) * self.dEig_inv[:, :, :, None]
 
-    @cached_property
-    def A_H(self):
+    @lru_cache(maxsize=2)
+    def get_A_H(self, external_terms=True):
         '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118.'''
-        return self.Xbar('AA') + 1j * self.D_H
-
-    @property
-    def A_H_internal(self):
-        '''Generalized Berry connection matrix, A^(H) as defined in eqn. (25) of 10.1103/PhysRevB.74.195118. only internal term'''
-        return 1j * self.D_H
-
-    @cached_property
-    def SDCT(self):
-        """returns the SDC term"""
-        return SDCT_K(self)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        # print (f'exition data_k {exc_type=}, {exc_value=}, {traceback=} ')
-        clear_cached(self, ["SDCT"])
-
-    def __del__(self):
-        clear_cached(self, ["SDCT"])
-
-    def __enter__(self):
-        return self
+        A_H = 1j * self.D_H
+        if external_terms:
+            A_H += self.Xbar('AA')
+        return A_H
 
     def E_K_corners_parallel_test(self):
         """returns the energies in the corners of the parallelepiped around each k-point of the FFT grid"""
@@ -362,3 +337,137 @@ class Data_K(System, abc.ABC):
         return E_corners[self.select_K, :, :][:, :, self.select_B]
 
 #########################################################################################################################################
+### SDCT
+
+
+    @lru_cache
+    def sdct_is_degen(self, degen_thresh=1e-3):
+        En = self.E_K
+        return np.abs(En[:, :, None] - En[:, None, :]) < degen_thresh
+
+    @lru_cache
+    def sdct_kron(self, degen_thresh=1e-3):
+        return np.array(self.sdct_is_degen(degen_thresh), dtype=int)[:, :, :, None]
+
+    @lru_cache
+    def get_E1(self, external_terms=True, degen_thresh=1e-3):
+        ''' Electric dipole moment '''
+        A_H = self.get_A_H(external_terms=external_terms)
+        A_H[self.sdct_is_degen(degen_thresh)] = 0.  # set degenerate terms to zero, they will be treated separately below
+        return A_H
+
+
+    @lru_cache
+    def get_M1(self, external_terms=True, key_OO='rotAA', degen_thresh=1e-3):
+        ''' Magnetic dipole moment '''
+        # Basic covariant matrices in the Hamiltonian gauge
+        H = self.Xbar('Ham')
+
+        # Other matrices
+        En = self.E_K
+        Eln_plus = 0.5 * (En[:, :, None] + En[:, None, :])
+
+        # _____ 1. Internal terms _____ #
+        A_int = self.get_E1(external_terms=False, degen_thresh=degen_thresh)
+
+        Cbc_int = 1.j * cached_einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
+        C_H = Cbc_int[:, :, :, alpha_A, beta_A] - Cbc_int[:, :, :, beta_A, alpha_A]
+
+        Obc_int = 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_int)
+        O_H = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
+
+
+        if external_terms:
+
+            # Basic covariant matrices in the Hamiltonian gauge
+            A = self.Xbar('AA')
+            B = self.Xbar('BB')
+            C = self.Xbar('CC')
+            O = self.Xbar(key_OO)
+
+            # _____ 2. External terms _____ #
+            Aa_ext = self.sdct_kron(degen_thresh) * A  # Energy diagonal piece
+            A_ext = A - Aa_ext      # Energy non-diagonal piece
+
+            Cbc_ext = -1.j * Eln_plus[:, :, :, None, None] * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+            Cbc_ext += -1.j * cached_einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_ext)
+            Cbc_ext += -1.j * cached_einsum('kn,klpa,kpnb->klnab', En, A_ext, Aa_ext)
+            C_ext = C + Cbc_ext[:, :, :, alpha_A, beta_A] - Cbc_ext[:, :, :, beta_A, alpha_A]
+
+            Obc_ext = -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+            Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+            Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+            O_ext = O + Obc_ext[:, :, :, alpha_A, beta_A] - Obc_ext[:, :, :, beta_A, alpha_A]
+
+            # _____ 3. Cross terms _____ #
+            Cbc_cross = cached_einsum('klpa,kpnb->klnab', A_int, B)
+            Cbc_cross = 1.j * (Cbc_cross - Cbc_cross.swapaxes(1, 2).conj())
+            Cbc_cross += -1.j * cached_einsum('kl,klpa,kpnb->klnab', En, Aa_ext, A_int)
+            Cbc_cross += -1.j * cached_einsum('kn,klpa,kpnb->klnab', En, A_int, Aa_ext)
+            C_cross = Cbc_cross[:, :, :, alpha_A, beta_A] - Cbc_cross[:, :, :, beta_A, alpha_A]
+
+            Obc_cross = 1.j * cached_einsum('klpa,kpnb->klnab', A_ext, A_int)
+            Obc_cross += 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_ext)
+            O_cross = Obc_cross[:, :, :, alpha_A, beta_A] - Obc_cross[:, :, :, beta_A, alpha_A]
+
+            # Final formula
+            C_H += C_ext + C_cross
+            O_H += O_ext + O_cross
+        return -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
+
+
+    @lru_cache
+    def get_E2(self, external_terms=True, degen_thresh=1e-3):
+        ''' Electric quadrupole moment '''
+        # _____ 1. Internal terms _____ #
+        A_int = self.get_E1(external_terms=False, degen_thresh=degen_thresh)
+        Gbc_int = cached_einsum('klpa,kpnb->klnab', A_int, A_int)
+        G_int = 0.5 * (Gbc_int + Gbc_int.swapaxes(3, 4))
+
+        G_H = G_int
+
+        if external_terms:
+            A = self.Xbar('AA')
+            G = self.Xbar('GG')
+
+
+            # _____ 2. External terms _____ #
+
+            Aa_ext = self.sdct_kron(degen_thresh) * A  # Energy diagonal piece
+            A_ext = A - Aa_ext           # Energy non-diagonal piece
+
+            Gbc_ext = -cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+            Gbc_ext += -cached_einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+            Gbc_ext += -cached_einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+            G_ext = G + 0.5 * (Gbc_ext + Gbc_ext.swapaxes(3, 4))
+
+            # _____ 3. Cross terms _____ #
+
+            Gbc_cross = cached_einsum('klpa,kpnb->klnab', A_ext, A_int)
+            Gbc_cross += cached_einsum('klpa,kpnb->klnab', A_int, A_ext)
+            G_cross = 0.5 * (Gbc_cross + Gbc_cross.swapaxes(3, 4))
+
+            # Final formula
+            G_H += G_ext + G_cross
+        return -1. * G_H
+
+
+    @lru_cache
+    def get_Bln_q(self, external_terms=True, degen_thresh=1e-3):
+        q = self.get_E2(external_terms=external_terms, degen_thresh=degen_thresh)
+        En = self.E_K
+        Enm = En[:, :, None] - En[:, None, :]
+        return -0.5j * Enm[:, :, :, None, None] * q
+
+
+    @lru_cache
+    def get_Bln_m(self, external_terms=True, spin=False, orb=True, key_OO='rotAA', degen_thresh=1e-3):
+        m = np.zeros((self.nk, self.num_wann, self.num_wann, 3), dtype=complex)
+        if orb:
+            m += self.get_M1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh)
+        if spin:
+            m += m_spin_prefactor * self.Xbar('SS')
+        B_m = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        B_m[:, :, :, alpha_A, beta_A] += m
+        B_m[:, :, :, beta_A, alpha_A] -= m
+        return B_m

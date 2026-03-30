@@ -30,9 +30,18 @@ def test_fourier(system_Fe_W90):
     test_fields = ["E_K", "D_H", "A_H", "dEig_inv"]
 
     for field in test_fields:
-        assert getattr(data_fftw, field) == approx(getattr(data_slow, field)), f"fftw  does not match slow for {field}"
-        assert getattr(data_numpy, field) == approx(getattr(data_slow, field)), f"numpy does not match slow for {field}"
-        assert getattr(data_numpy, field) == approx(getattr(data_fftw, field)), f"numpy does not match fftw for {field}"
+        if field == "A_H":
+            val_slow = data_slow.get_A_H()
+            val_fftw = data_fftw.get_A_H()
+            val_numpy = data_numpy.get_A_H()
+        else:
+            val_slow = getattr(data_slow, field)
+            val_fftw = getattr(data_fftw, field)
+            val_numpy = getattr(data_numpy, field)
+        assert val_fftw == approx(val_slow), f"fftw  does not match slow for {field}"
+        assert val_numpy == approx(val_slow), f"numpy does not match slow for {field}"
+        assert val_numpy == approx(val_fftw), f"numpy does not match fftw for {field}"
+        
 
     test_fields = ['Ham']
     for field in test_fields:
