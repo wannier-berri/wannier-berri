@@ -3,8 +3,8 @@ name: Publish WannierBerri to PyPI
 on:
   push:
     tags:
-      - 'v[0-9]*'   # matches v1.2.0, v0.15.1, etc.
-  workflow_dispatch:  # allows manual trigger
+      - 'v[0-9]*'   # only runs on version tags
+  workflow_dispatch:  # allows manual runs
 
 jobs:
   pypi-publish:
@@ -17,26 +17,48 @@ jobs:
       id-token: write
 
     steps:
-    # Checkout full history including tags for setuptools-scm
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      # 1️⃣ Checkout code
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.13"
+      # 2️⃣ Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
 
-    - name: Upgrade pip and install build tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel build setuptools-scm[toml]
+      # 3️⃣ Upgrade pip and install build tools
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel build setuptools-scm[toml] twine virtualenv
 
-    - name: Build source and wheel distributions
-      run: python -m build
+      # 4️⃣ Clean old builds
+      - name: Clean previous builds
+        run: rm -rf dist build *.egg-info
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__  # use PyPI API token
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      # 5️⃣ Build distributions
+      - name: Build distributions
+        run: python -m build
+
+      # 6️⃣ Upload to PyPI with verbose logging
+      - name: Upload to PyPI (verbose)
+        run: |
+          twine upload --verbose --skip-existing dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+      # 7️⃣ List dist folder
+      - name: List dist folder
+        run: ls -l dist/
+
+      # 8️⃣ Verify package installation from PyPI
+      - name: Verify uploaded package
+        run: |
+          python -m virtualenv venv-test
+          source venv-test/bin/activate
+          pip install --upgrade pip
+          pip install wannierberri==${GITHUB_REF#refs/tags/v}
+          python -c "import wannierberri; print('WannierBerri version:', wannierberri.__version__); wannierberri.welcome()"        
