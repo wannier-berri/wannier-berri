@@ -1,6 +1,6 @@
 from termcolor import cprint
 
-from wannierberri.result.result import VoidResult
+from ..result.result import VoidResult
 
 
 class Calculator:

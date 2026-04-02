@@ -6,11 +6,10 @@ from time import time
 import pickle
 import glob
 from termcolor import cprint
-import warnings
 from .utility import remove_dir
 from .data_K import get_data_k
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
-from .parallel import get_ray_cpus_count
+from .parallel import get_ray_cpus_count, check_ray_initialized
 from .result.tabresult import TABresult
 from .result import ResultDict
 
@@ -201,14 +200,7 @@ def run(
     """
     assert isinstance(parallel, bool), "parallel should be True or False"
     if parallel:
-        try:
-            import ray
-            if not ray.is_initialized():
-                warnings.warn("ray package found, but ray is not initialized, running in serial mode")
-                parallel = False
-        except ImportError:
-            warnings.warn("ray package not found, running in serial mode")
-            parallel = False
+        parallel = check_ray_initialized()
 
 
 
@@ -257,13 +249,11 @@ def run(
 
     remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators, 'symmetrize': symmetrize}
     if parallel:
+        import ray
         remote_parameters = {k: ray.put(v) for k, v in remote_parameters.items()}
 
         @ray.remote
         def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
-            # import sys
-            # print("Worker sys.path:", sys.path)
-            # from wannierberri.system.rvectors import Rvectors
             data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
             resultdic = {k: v(data) for k, v in _calculators.items()}
             del data

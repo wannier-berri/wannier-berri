@@ -106,6 +106,8 @@ def wannierise(wandata,
     """
     if wandata.irreducible:
         irreducible = True
+    if not (mix_ratio_u == 1):
+        warnings.warn(f"mix_ratio_u = {mix_ratio_u} != 1 is not tested, use with caution")
 
     t0 = time()
     if froz_min > froz_max:
@@ -170,7 +172,7 @@ def wannierise(wandata,
 
 
     if not wandata.has_file("chk"):
-        from wannierberri.w90files.chk import CheckPoint
+        from ..w90files.chk import CheckPoint
         wandata.set_file("chk", CheckPoint(num_kpts=NK,
                                            num_bands=wandata.mmn.NB,
                                            mp_grid=wandata.bkvec.mp_grid,
