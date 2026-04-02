@@ -54,11 +54,32 @@ jobs:
       - name: List dist folder
         run: ls -l dist/
 
-      # 8️⃣ Verify package installation from PyPI
+      # 8️⃣ Verify package installation from PyPI with retries
       - name: Verify uploaded package
         run: |
+          set -e
           python -m virtualenv venv-test
           source venv-test/bin/activate
           pip install --upgrade pip
-          pip install wannierberri==${GITHUB_REF#refs/tags/v}
-          python -c "import wannierberri; print('WannierBerri version:', wannierberri.__version__); wannierberri.welcome()"        
+
+          # retry intervals in seconds: 30s, 2min, 5min
+          RETRIES=(30 60 120 300)
+          SUCCESS=0
+          for WAIT in "${RETRIES[@]}"; do
+              echo "Trying to install wannierberri==${GITHUB_REF#refs/tags/v} ..."
+              if pip install wannierberri==${GITHUB_REF#refs/tags/v}; then
+                  SUCCESS=1
+                  break
+              else
+                  echo "Install failed. Waiting $WAIT seconds before retry..."
+                  sleep $WAIT
+              fi
+          done
+
+          if [ $SUCCESS -ne 1 ]; then
+              echo "Failed to install wannierberri after multiple retries."
+              exit 1
+          fi
+
+          # Run simple verification
+          python -c "import wannierberri; print('WannierBerri version:', wannierberri.__version__); wannierberri.welcome()"
