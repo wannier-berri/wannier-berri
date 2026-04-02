@@ -780,6 +780,104 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+def _covariant_generalized_derivative(full, d_full, D):
+    """Generalized covariant derivative for matrix-valued observables."""
+    out = np.array(d_full, copy=True)
+    out -= cached_einsum("kmld,kln...->kmn...d", D, full)
+    out += cached_einsum("kml...,klnd->kmn...d", full, D)
+    return out
+
+
+def _hermitize_band_matrix(full):
+    return 0.5 * (full + full.swapaxes(1, 2).conj())
+
+
+class DerSpinOmegaSimple(Formula_ln):
+    r"""Derivative of the spin Berry curvature for simple spin current.
+
+    This implementation follows the ``simple`` spin-current definition and is
+    currently limited to ``external_terms=False``.
+    """
+
+    def __init__(self, data_K, spin_current_type="simple", external_terms=False, **parameters):
+        parameters.pop("spin_current_type", None)
+        parameters.pop("external_terms", None)
+        super().__init__(data_K, external_terms=external_terms, **parameters)
+
+        if spin_current_type != "simple" or external_terms:
+            raise NotImplementedError(
+                "DerSpinOmegaSimple currently supports only "
+                "spin_current_type='simple' with external_terms=False"
+            )
+
+        self.ndim = 4
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+        S = data_K.Xbar("SS")
+        dS = data_K.Xbar("SS", 1)
+        V = Velocity(data_K, external_terms=False).matrix
+        dV = data_K.Xbar("Ham", 2)
+        D = np.array(data_K.D_H, copy=False)
+
+        dEinv = np.array(data_K.dEig_inv, copy=True)
+        nw = dEinv.shape[1]
+        diag = np.arange(nw)
+        for ik in range(dEinv.shape[0]):
+            dEinv[ik, diag, diag] = 0.0
+
+        delta_v = data_K.delE_K[:, :, None, :] - data_K.delE_K[:, None, :, :]
+        delta_v_over_de = delta_v * dEinv[:, :, :, None]
+        for ik in range(delta_v_over_de.shape[0]):
+            delta_v_over_de[ik, diag, diag, :] = 0.0
+
+        S_beta = _covariant_generalized_derivative(S, dS, D)
+        V_beta = _covariant_generalized_derivative(V, dV, D)
+
+        J = _hermitize_band_matrix(cached_einsum("klms,kmna->klnas", S, V))
+        J_s = _hermitize_band_matrix(cached_einsum("klmsd,kmna->klnasd", S_beta, V))
+        J_va = _hermitize_band_matrix(cached_einsum("klms,kmnad->klnasd", S, V_beta))
+
+        Jbar = J * dEinv[:, :, :, None, None]
+        Jbar_s = J_s * dEinv[:, :, :, None, None, None]
+        Jbar_va = J_va * dEinv[:, :, :, None, None, None]
+        Dbar_vb = V_beta * dEinv[:, :, :, None, None]
+
+        self.Jbar = Matrix_ln(Jbar, transformTR=transform_ident, transformInv=transform_odd)
+        self.Jbar_s = Matrix_ln(Jbar_s, transformTR=transform_ident, transformInv=transform_ident)
+        self.Jbar_va = Matrix_ln(Jbar_va, transformTR=transform_ident, transformInv=transform_ident)
+        self.Dbar = data_K.Dcov
+        self.Dbar_vb = Matrix_ln(Dbar_vb, transformTR=transform_ident, transformInv=transform_ident)
+        self.delta_helper = Matrix_ln(delta_v_over_de, transformTR=transform_ident, transformInv=transform_ident)
+
+    def nn(self, ik, inn, out):
+        term_s = -2.0 * cached_einsum(
+            "mlasd,lnb->mnabsd",
+            self.Jbar_s.nl(ik, inn, out),
+            self.Dbar.ln(ik, inn, out),
+        ).imag
+        term_va = -2.0 * cached_einsum(
+            "mlasd,lnb->mnabsd",
+            self.Jbar_va.nl(ik, inn, out),
+            self.Dbar.ln(ik, inn, out),
+        ).imag
+        term_vb = +2.0 * cached_einsum(
+            "mlas,lnbd->mnabsd",
+            self.Jbar.nl(ik, inn, out),
+            self.Dbar_vb.ln(ik, inn, out),
+        ).imag
+        term_delta = +4.0 * cached_einsum(
+            "mlas,lnb,mld->mnabsd",
+            self.Jbar.nl(ik, inn, out),
+            self.Dbar.ln(ik, inn, out),
+            self.delta_helper.nl(ik, inn, out),
+        ).imag
+        return term_s + term_va + term_vb + term_delta
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
 ####################################
 #                                  #
 #    Some Prooducts                #
@@ -803,6 +901,13 @@ class VelSpin(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Spin(data_K)], name='VelSpin')
+
+
+class VelSpinOmega(FormulaProduct):
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([data_K.covariant('Ham', commader=1), SpinOmega(data_K, **kwargs_formula)],
+                         name='VelSpinOmega')
 
 
 class VelVel(FormulaProduct):
