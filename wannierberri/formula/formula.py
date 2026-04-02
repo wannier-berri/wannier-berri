@@ -1,8 +1,8 @@
+"""some basic classes to construct formulae for evaluation"""
+
 import numpy as np
 import abc
-
-from wannierberri.utility import cached_einsum
-"""some basic classes to construct formulae for evaluation"""
+from ..utility import cached_einsum
 from ..symmetry.point_symmetry import TransformProduct
 
 

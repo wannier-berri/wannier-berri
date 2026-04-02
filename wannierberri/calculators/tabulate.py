@@ -2,7 +2,7 @@ import numpy as np
 from .calculator import Calculator
 from ..formula import covariant as frml
 from ..result import KBandResult, TABresult
-from wannierberri.factors import factor_morb_evA2_to_muB
+from ..factors import factor_morb_evA2_to_muB
 
 
 # The base classes for Tabulating
