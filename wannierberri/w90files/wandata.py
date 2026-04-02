@@ -413,8 +413,9 @@ class WannierData:
                seedname="wannier90",
                files=None
                ):
-        directory = os.path.dirname(seedname)
-        os.makedirs(directory, exist_ok=True)
+        directory = os.path.dirname(seedname).strip()
+        if len(directory) > 0:
+            os.makedirs(directory, exist_ok=True)
         if files is None:
             files = self._files.keys()
         for f in files:
