@@ -248,28 +248,20 @@ def run(
     print(f"The set of k points is a {grid.str_short}")
 
     remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators, 'symmetrize': symmetrize}
+
+    def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
+        data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+        resultdic = {k: v(data) for k, v in _calculators.items()}
+        del data
+        result = ResultDict(resultdic)
+        if symmetrize:
+            result = _system.pointgroup.symmetrize(result)
+        return result
+
     if parallel:
         import ray
         remote_parameters = {k: ray.put(v) for k, v in remote_parameters.items()}
-
-        @ray.remote
-        def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
-            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
-            resultdic = {k: v(data) for k, v in _calculators.items()}
-            del data
-            result = ResultDict(resultdic)
-            if symmetrize:
-                result = _system.pointgroup.symmetrize(result)
-            return result
-    else:
-        def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
-            data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
-            resultdic = {k: v(data) for k, v in _calculators.items()}
-            del data
-            result = ResultDict(resultdic)
-            if symmetrize:
-                result = _system.pointgroup.symmetrize(result)
-            return result
+        paralfunc = ray.remote(paralfunc)
 
     if restart:
         fr = open(file_Klist, "rb")
