@@ -424,7 +424,7 @@ class Morb_H(Formula_ln):
 class Morb_Hpm(Formula_ln):
 
     def __init__(self, data_K, sign=+1, **parameters):
-        r""" Morb_H  +- (En+Em)/2 * Omega """
+        r""" Morb_H  +- (En+Em)/2 * Omega  in units of eV*angstrom^2 """
         super().__init__(data_K, **parameters)
         self.H = Morb_H(data_K, **parameters)
         self.sign = sign

@@ -14,7 +14,6 @@ from .. import factors as factors
 bohr_magneton = elementary_charge * hbar / (2 * electron_mass)
 bohr = physical_constants['Bohr radius'][0] / angstrom
 eV_au = physical_constants['electron volt-hartree relationship'][0]
-Ang_SI = angstrom
 
 
 #######################################
@@ -172,10 +171,7 @@ class Formula_OptCond(Formula):
 
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
-        if self.external_terms:
-            A = data_K.A_H
-        else:
-            A = data_K.A_H_internal
+        A = data_K.get_A_H(external_terms=self.external_terms)
         self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
         self.ndim = 2
         self.transformTR = transform_trans
@@ -210,11 +206,7 @@ class Formula_SHC(Formula):
     def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, **parameters):
         super().__init__(data_K, **parameters)
         A = SpinVelocity(data_K, SHC_type, external_terms=self.external_terms).matrix
-        if self.external_terms:
-            B = -1j * data_K.A_H
-        else:
-            B = -1j * data_K.A_H_internal
-
+        B = -1j * data_K.get_A_H(external_terms=self.external_terms)
         self.imAB = np.imag(A[:, :, :, :, None, :] * B.swapaxes(1, 2)[:, :, :, None, :, None])
         self.ndim = 3
         if shc_abc is not None:
@@ -299,11 +291,7 @@ class ShiftCurrentFormula(Formula):
             A_gen_der += A_Hbar_der + AD_bit - 1j * AA_bit + sum_AD
 
         # generalized derivative is fourth index of A, we put it into third index of Imn
-        if self.external_terms:
-            A_H = data_K.A_H
-        else:
-            A_H = data_K.A_H_internal
-
+        A_H = data_K.get_A_H(external_terms=self.external_terms)
         # here we take the -real part to eliminate the 1j factor in the final factor
         Imn = - cached_einsum('knmca,kmnb->knmabc', A_gen_der, A_H).imag
         Imn += Imn.swapaxes(4, 5)  # symmetrize b and c
@@ -344,15 +332,10 @@ class InjectionCurrentFormula(Formula):
 
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
-        if self.external_terms:
-            A_H = data_K.A_H
-        else:
-            A_H = data_K.A_H_internal
-        V_H = data_K.Xbar('Ham', 1)  # (k, m, n, a)
-        V_H_diag = np.diagonal(V_H, axis1=1, axis2=2).transpose(0, 2, 1)  # (k, m, a)
-
+        A_H = data_K.get_A_H(external_terms=self.external_terms)
+        Vn = data_K.delE_K
         # compute delta_V[k, m, n, a] = V_H[k, m, m, a] - V_H[k, n, n, a]
-        delta_V = V_H_diag[:, :, None, :] - V_H_diag[:, None, :, :]  # (k, m, n, a)
+        delta_V = Vn[:, :, None, :] - Vn[:, None, :, :]  # (k, m, n, a)
 
         Imn = cached_einsum('kmna,kmnb,knmc->kmnabc', delta_V, A_H, A_H)
 

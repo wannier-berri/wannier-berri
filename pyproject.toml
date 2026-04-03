@@ -80,7 +80,7 @@ license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["tests*", "_trash*"]
+exclude = ["tests*", "_trash*", "examples*"]
 
 [tool.coverage.run]
 omit = [

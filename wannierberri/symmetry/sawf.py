@@ -217,6 +217,9 @@ class SymmetrizerSAWF:
         return OrbitalRotator()
         # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
+    @classmethod
+    def from_spacegroup_and_projections(cls, spacegroup, projections):
+        return cls().set_spacegroup(spacegroup).set_D_wann_from_projections(projections)
 
     def set_D_wann_from_projections(self,
                                     projections,

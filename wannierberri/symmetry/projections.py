@@ -213,12 +213,16 @@ class Projection:
         new.orbitals = self.orbitals
         new.spinor = self.spinor
         new.wyckoff_position = self.wyckoff_position
+        new.basis_list = self.basis_list
+        new.radial_nodes = 0
+        new.spread_factor = 1.0
         return new
 
     def __add__(self, other):
         new = self.copy()
         if other is not None:
             assert self.wyckoff_position == other.wyckoff_position, f"Cannot add projections from different wyckoff positions {self.wyckoff_position} and {other.wyckoff_position}"
+            assert np.allclose(self.basis_list, other.basis_list), f"Cannot add projections with different basis_list {self.basis_list} and {other.basis_list}"
             new.orbitals += other.orbitals
         return new
 
@@ -545,8 +549,9 @@ class ProjectionsSet:
             The list of attributes to clear. If None, all cached properties are cleared
         """
         if attributes is None:
-            attributes = ["map_free_vars_cached", "_free_vars", "num_wann_per_site",
-                     "num_points", "num_wann", "num_free_vars_wyckoff",]
+            attributes = [  # ] "map_free_vars_cached", "_free_vars", "num_wann_per_site",
+                # "num_points", "num_wann",
+                "num_free_vars_wyckoff",]
         for attr in attributes:
             if hasattr(self, attr):
                 delattr(self, attr)

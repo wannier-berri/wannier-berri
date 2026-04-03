@@ -359,9 +359,15 @@ class TABresult(Result):
         x_ticks_labels = []
         x_ticks_positions = []
         for k, v in path.labels.items():
-            x_ticks_labels.append(v)
+            x_ticks_labels.append(label_to_latex(v))
             x_ticks_positions.append(kline[k])
-            axes.axvline(x=kline[k])
+
+        x_ticks_positions = np.array(x_ticks_positions)
+        borders = [0] + [i + 1 for i in np.where(x_ticks_positions[1:] - x_ticks_positions[:-1] > 1e-4)[0].tolist()] + [len(x_ticks_positions)]
+        x_ticks_positions = [x_ticks_positions[b1:b2].mean() for b1, b2 in zip(borders, borders[1:])]
+        x_ticks_labels = ["|".join(x_ticks_labels[b1:b2]) for b1, b2 in zip(borders, borders[1:])]
+        for x in x_ticks_positions:
+            axes.axvline(x=x)
         axes.set_xticks(x_ticks_positions, x_ticks_labels)
         axes.set_ylim([Emin, Emax])
         axes.set_xlim([kmin, kmax])
@@ -383,6 +389,13 @@ class TABresult(Result):
     @property
     def max(self):
         return np.array([-1.])  # tabulating does not contribute to adaptive refinement
+
+
+def label_to_latex(label):
+    if label == "GAMMA":
+        return r"$\Gamma$"
+    else:
+        return label
 
 
 def write_frmsf(frmsf_name,

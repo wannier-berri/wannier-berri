@@ -456,7 +456,6 @@ def model_1d_pythtb(Delta=1, spinor_manual=False,
         list of 8 hopping parameters. If None, random hoppings will be generated. The first 4 hoppings will be used for the spin-independent
     """
     import pythtb
-    from wannierberri.models import NEW_PYTHTB_VERSION
     from packaging import version
     lat = [[1.0]]
     double = 2 if spinor_manual else 1
