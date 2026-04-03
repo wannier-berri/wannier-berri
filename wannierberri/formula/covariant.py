@@ -780,14 +780,6 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
-def _covariant_generalized_derivative(full, d_full, D):
-    """Generalized covariant derivative for matrix-valued observables."""
-    out = np.array(d_full, copy=True)
-    out -= cached_einsum("kmld,kln...->kmn...d", D, full)
-    out += cached_einsum("kml...,klnd->kmn...d", full, D)
-    return out
-
-
 def _hermitize_band_matrix(full):
     return 0.5 * (full + full.swapaxes(1, 2).conj())
 
@@ -800,8 +792,6 @@ class DerSpinOmegaSimple(Formula_ln):
     """
 
     def __init__(self, data_K, spin_current_type="simple", external_terms=False, **parameters):
-        parameters.pop("spin_current_type", None)
-        parameters.pop("external_terms", None)
         super().__init__(data_K, external_terms=external_terms, **parameters)
 
         if spin_current_type != "simple" or external_terms:
@@ -811,28 +801,42 @@ class DerSpinOmegaSimple(Formula_ln):
             )
 
         self.ndim = 4
-        self.transformTR = transform_ident
+        self.transformTR = transform_odd
         self.transformInv = transform_odd
 
         S = data_K.Xbar("SS")
         dS = data_K.Xbar("SS", 1)
         V = Velocity(data_K, external_terms=False).matrix
         dV = data_K.Xbar("Ham", 2)
-        D = np.array(data_K.D_H, copy=False)
 
-        dEinv = np.array(data_K.dEig_inv, copy=True)
-        nw = dEinv.shape[1]
-        diag = np.arange(nw)
-        for ik in range(dEinv.shape[0]):
-            dEinv[ik, diag, diag] = 0.0
+        nw = dS.shape[1]
+        all_bands = np.arange(nw)
+        d_cov = Dcov(data_K)
 
+        s_beta_formula = Matrix_GenDer_ln(
+            Matrix_ln(S),
+            Matrix_ln(dS),
+            d_cov,
+            transformTR=transform_ident,
+            transformInv=transform_odd,
+        )
+        v_beta_formula = Matrix_GenDer_ln(
+            Matrix_ln(V),
+            Matrix_ln(dV),
+            d_cov,
+            transformTR=transform_ident,
+            transformInv=transform_ident,
+        )
+
+        dEinv = np.array(data_K.dEig_inv, copy=False)
         delta_v = data_K.delE_K[:, :, None, :] - data_K.delE_K[:, None, :, :]
         delta_v_over_de = delta_v * dEinv[:, :, :, None]
-        for ik in range(delta_v_over_de.shape[0]):
-            delta_v_over_de[ik, diag, diag, :] = 0.0
 
-        S_beta = _covariant_generalized_derivative(S, dS, D)
-        V_beta = _covariant_generalized_derivative(V, dV, D)
+        S_beta = np.empty_like(dS)
+        V_beta = np.empty_like(dV)
+        for ik in range(S.shape[0]):
+            S_beta[ik] = s_beta_formula.nn(ik, all_bands, all_bands)
+            V_beta[ik] = v_beta_formula.nn(ik, all_bands, all_bands)
 
         J = _hermitize_band_matrix(cached_einsum("klms,kmna->klnas", S, V))
         J_s = _hermitize_band_matrix(cached_einsum("klmsd,kmna->klnasd", S_beta, V))
@@ -851,26 +855,33 @@ class DerSpinOmegaSimple(Formula_ln):
         self.delta_helper = Matrix_ln(delta_v_over_de, transformTR=transform_ident, transformInv=transform_ident)
 
     def nn(self, ik, inn, out):
+        jbar_nl = self.Jbar.nl(ik, inn, out)
+        dbar_ln = self.Dbar.ln(ik, inn, out)
+        jbar_s_nl = self.Jbar_s.nl(ik, inn, out)
+        jbar_va_nl = self.Jbar_va.nl(ik, inn, out)
+        dbar_vb_ln = self.Dbar_vb.ln(ik, inn, out)
+        delta_helper_nl = self.delta_helper.nl(ik, inn, out)
+
         term_s = -2.0 * cached_einsum(
             "mlasd,lnb->mnabsd",
-            self.Jbar_s.nl(ik, inn, out),
-            self.Dbar.ln(ik, inn, out),
+            jbar_s_nl,
+            dbar_ln,
         ).imag
         term_va = -2.0 * cached_einsum(
             "mlasd,lnb->mnabsd",
-            self.Jbar_va.nl(ik, inn, out),
-            self.Dbar.ln(ik, inn, out),
+            jbar_va_nl,
+            dbar_ln,
         ).imag
         term_vb = +2.0 * cached_einsum(
             "mlas,lnbd->mnabsd",
-            self.Jbar.nl(ik, inn, out),
-            self.Dbar_vb.ln(ik, inn, out),
+            jbar_nl,
+            dbar_vb_ln,
         ).imag
         term_delta = +4.0 * cached_einsum(
             "mlas,lnb,mld->mnabsd",
-            self.Jbar.nl(ik, inn, out),
-            self.Dbar.ln(ik, inn, out),
-            self.delta_helper.nl(ik, inn, out),
+            jbar_nl,
+            dbar_ln,
+            delta_helper_nl,
         ).imag
         return term_s + term_va + term_vb + term_delta
 

@@ -4,7 +4,9 @@ from pythtb import tb_model
 
 import wannierberri as wberri
 from wannierberri import calculators as calc
+from wannierberri import models
 from wannierberri.system import System_R
+from wannierberri.utility import alpha_A, beta_A
 
 
 def _build_user_tb_model(t=0.0, t1=-1.0, t2=-0.1, t3=-1.0, exchange=1.0):
@@ -38,17 +40,10 @@ def _build_user_tb_model(t=0.0, t1=-1.0, t2=-0.1, t3=-1.0, exchange=1.0):
 
 
 def _reduce_spin_bcd_raw(spin_bcd_raw):
-    spin_bcd_raw = 0.5 * (spin_bcd_raw - np.swapaxes(spin_bcd_raw, 2, 3))
-    eps = np.zeros((3, 3, 3), dtype=int)
-    eps[0, 1, 2] = eps[1, 2, 0] = eps[2, 0, 1] = 1
-    eps[0, 2, 1] = eps[2, 1, 0] = eps[1, 0, 2] = -1
-
-    reduced = np.zeros((spin_bcd_raw.shape[0], spin_bcd_raw.shape[1], 3, spin_bcd_raw.shape[4]))
-    for d in range(3):
-        for a in range(3):
-            for b in range(3):
-                reduced[:, :, d, :] += 0.5 * eps[d, a, b] * spin_bcd_raw[:, :, a, b, :]
-    return reduced
+    return 0.5 * (
+        spin_bcd_raw[:, :, alpha_A, beta_A, :]
+        - spin_bcd_raw[:, :, beta_A, alpha_A, :]
+    )
 
 
 def _run_spin_bcd_pair(system, efermi, grid):
@@ -125,3 +120,22 @@ def test_spin_bcd_fermi_sea_requires_simple_current():
             symmetrize=False,
             dump_results=False,
         )
+
+
+def test_spin_bcd_vanishes_in_tr_symmetric_kane_mele():
+    model = models.KaneMele_ptb("odd")
+    system = System_R.from_pythtb(model, spin=True)
+    grid = wberri.Grid(system, NKFFT=[4, 4, 1], NKdiv=[6, 6, 1])
+    efermi = np.linspace(-3.0, 3.0, 121)
+
+    result = _run_spin_bcd_pair(system, efermi, grid)
+
+    fs_reduced = _reduce_spin_bcd_raw(result.results["spin_bcd_fsurf"].data)
+    fsea_reduced = _reduce_spin_bcd_raw(result.results["spin_bcd_fsea"].data)
+
+    spin_idx = 2
+    fs_slice = fs_reduced[:, :, 2, spin_idx]
+    fsea_slice = fsea_reduced[:, :, 2, spin_idx]
+
+    assert np.max(np.abs(fs_slice)) < 1e-8
+    assert np.max(np.abs(fsea_slice)) < 1e-8
