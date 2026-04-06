@@ -915,12 +915,29 @@ class System_R(System):
         return get_system_sparse(*args, **kwargs)
 
     @classmethod
-    def from_supercell(cls, system_prim, M, **kwargs):
+    def to_supercell(cls, system_prim, M, **kwargs):
         """
         Fold a primitive System_R into a supercell System_R.
+
+        Parameters
+        ----------
+        system_prim : System_R
+            Primitive-cell system to be folded into a supercell representation.
+        M : array-like
+            Supercell transformation matrix.
 
         All R-space matrices (Ham, AA, SS, BB, CC, ...) are folded.
         see :func:`~wannierberri.system.system_supercell.fold_system` for details.
         """
         from .system_supercell import fold_system
         return fold_system(system_prim, M, **kwargs)
+
+    @classmethod
+    def from_supercell(cls, system_prim, M, **kwargs):
+        """
+        Backward-compatible alias for :meth:`to_supercell`.
+
+        This method takes a primitive System_R and returns the corresponding
+        supercell System_R obtained by folding with the transformation matrix ``M``.
+        """
+        return cls.to_supercell(system_prim, M, **kwargs)
