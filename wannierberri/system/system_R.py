@@ -908,8 +908,19 @@ class System_R(System):
     @classmethod
     def from_sparse(cls, *args, **kwargs):
         """
-        Create a System_R object from a sparse representation. 
+        Create a System_R object from a sparse representation.
         see :func:`~wannierberri.system.system_sparse.get_system_sparse` for input data and details
         """
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
+
+    @classmethod
+    def from_supercell(cls, system_prim, M, **kwargs):
+        """
+        Fold a primitive System_R into a supercell System_R.
+
+        All R-space matrices (Ham, AA, SS, BB, CC, ...) are folded.
+        see :func:`~wannierberri.system.system_supercell.fold_system` for details.
+        """
+        from .system_supercell import fold_system
+        return fold_system(system_prim, M, **kwargs)

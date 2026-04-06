@@ -15,3 +15,4 @@ from .deprecated_constructors import (
     System_Phonon_QE,
 )
 from .interpolate import SystemInterpolator
+from .system_supercell import fold_system, add_scattering
