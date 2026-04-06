@@ -352,7 +352,7 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
             f"but folded scattering has shape {dH.shape}"
         )
 
-    system_sc._XX_R["Ham"] += dH
+    system_sc.set_R_mat("Ham", dH, add=True)
 
     logger.info(
         "add_scattering: added T_R to Ham, grid=%s, norb=%d", grid_shape, norb
