@@ -208,7 +208,7 @@ def _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb):
 # ------------------------------------------------------------------
 
 
-def fold_system(system_prim, M, periodic=(True, True, False)):
+def fold_system(system_prim, M, periodic=None):
     """Fold a primitive WannierBerri System_R into a supercell System_R.
 
     Every R-space matrix present in ``system_prim`` (Ham, AA, SS, BB, ...)
@@ -220,8 +220,9 @@ def fold_system(system_prim, M, periodic=(True, True, False)):
         Primitive-cell system, e.g. from ``System_w90()``.
     M : ndarray, shape [3, 3]
         Integer supercell matrix.
-    periodic : tuple of bool
-        Periodic directions for the supercell system.
+    periodic : tuple of bool, optional
+        Periodic directions for the supercell system.  If not provided,
+        inherits ``system_prim.periodic``.
 
     Returns
     -------
@@ -229,6 +230,8 @@ def fold_system(system_prim, M, periodic=(True, True, False)):
         Supercell system with all matrix elements folded.
     """
     M = _validate_M(M)
+    if periodic is None:
+        periodic = system_prim.periodic
 
     nwann = system_prim.num_wann
     iRvec_prim = system_prim.rvec.iRvec
