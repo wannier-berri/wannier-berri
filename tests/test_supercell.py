@@ -66,6 +66,16 @@ class TestEnumerateSubcells:
         with pytest.raises(ValueError, match="non-singular"):
             enumerate_subcells(np.array([[1, 0, 0], [0, 0, 0], [0, 0, 1]]))
 
+    def test_negative_entries(self):
+        """M with negative entries should still enumerate correctly."""
+        subcells = enumerate_subcells(np.diag([-2, 1, 1]))
+        assert len(subcells) == 2
+
+    def test_off_diagonal_negative(self):
+        M = np.array([[2, -1, 0], [0, 2, 0], [0, 0, 1]])
+        subcells = enumerate_subcells(M)
+        assert len(subcells) == 4
+
     def test_rejects_non_3x3(self):
         with pytest.raises(ValueError, match="3x3"):
             enumerate_subcells(np.diag([2, 2]))

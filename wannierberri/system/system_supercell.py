@@ -54,8 +54,8 @@ def enumerate_subcells(M):
 
     bound = int(np.sum(np.abs(M))) + 1
     subcells = []
-    for idx in np.ndindex(bound, bound, bound):
-        t = np.array(idx)
+    for idx in np.ndindex(2 * bound + 1, 2 * bound + 1, 2 * bound + 1):
+        t = np.array(idx) - bound
         frac = Minv @ t
         if np.all(frac > -1e-10) and np.all(frac < 1.0 - 1e-10):
             subcells.append(t)
