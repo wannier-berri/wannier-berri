@@ -310,6 +310,10 @@ def spin_double_system(system, periodic=None):
     if periodic is None:
         periodic = system.periodic
 
+    if getattr(system, "spinor", False):
+        raise ValueError("spin_double_system expects a spinless system, got system.spinor=True")
+    if "SS" in system._XX_R:
+        raise ValueError("spin_double_system expects a system without SS; existing spin information would be overwritten")
     nw = system.num_wann
     nw2 = 2 * nw
     iRvec = system.rvec.iRvec
