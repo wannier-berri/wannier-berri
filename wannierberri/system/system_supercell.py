@@ -22,12 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_M(M):
-    """Validate that *M* is a 3x3 integer matrix with non-zero determinant."""
-    M = np.asarray(M, dtype=int)
+    """Validate that *M* is a 3x3 integer-valued matrix with non-zero determinant."""
+    M = np.asarray(M)
     if M.shape != (3, 3):
         raise ValueError(f"M must be a 3x3 integer matrix, got shape {M.shape}")
-    det = int(round(np.linalg.det(M.astype(float))))
-    if det == 0:
+    M_round = np.round(M)
+    if not np.allclose(M, M_round):
+        raise ValueError(f"M must contain only integer-valued entries, got:\n{M}")
+    M = M_round.astype(int)
+    if int(round(np.linalg.det(M))) == 0:
         raise ValueError(f"M must be non-singular, got det(M) = 0:\n{M}")
     return M
 
@@ -49,7 +52,7 @@ def enumerate_subcells(M):
         nsc = |det(M)|.
     """
     M = _validate_M(M)
-    detM = int(round(np.linalg.det(M.astype(float))))
+    detM = int(round(np.linalg.det(M)))
     nsc = abs(detM)
     Minv = np.linalg.inv(M.astype(float))
 
@@ -60,6 +63,8 @@ def enumerate_subcells(M):
         frac = Minv @ t
         if np.all(frac > -1e-10) and np.all(frac < 1.0 - 1e-10):
             subcells.append(t)
+            if len(subcells) == nsc:
+                break
 
     if len(subcells) != nsc:
         raise RuntimeError(
@@ -380,7 +385,12 @@ def spin_double_system(system, periodic=None):
     wc_new = np.tile(wc, (2, 1))
     wc_red = wc_new @ np.linalg.inv(real_lattice)
 
-    system_spin = System_R(periodic=periodic, silent=True, spinor=True)
+    system_spin = System_R(
+        periodic=periodic,
+        spinor=True,
+        silent=getattr(system, "silent", True),
+        name=getattr(system, "name", None),
+    )
     system_spin.real_lattice = real_lattice
     system_spin.num_wann = nw2
     system_spin.wannier_centers_cart = wc_new

@@ -914,7 +914,7 @@ class System_R(System):
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
 
-    def to_supercell(self, M, **kwargs):
+    def build_supercell(self, M, **kwargs):
         """Fold this primitive System_R into a supercell System_R.
 
         See :func:`~wannierberri.system.system_supercell.fold_system`.
