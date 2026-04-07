@@ -60,10 +60,11 @@ def enumerate_subcells(M):
         if np.all(frac > -1e-10) and np.all(frac < 1.0 - 1e-10):
             subcells.append(t)
 
+    detM = int(round(np.linalg.det(M.astype(float))))
     if len(subcells) != nsc:
         raise RuntimeError(
-            f"Expected {nsc} subcells for det(M)={nsc}, found {len(subcells)}. "
-            f"M =\n{M}"
+            f"Expected {nsc} subcells for det(M)={detM} (|det|={nsc}), "
+            f"found {len(subcells)}. M =\n{M}"
         )
 
     arr = np.array(subcells)
