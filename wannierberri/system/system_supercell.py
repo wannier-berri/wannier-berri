@@ -261,7 +261,12 @@ def fold_system(system_prim, M, periodic=None):
     wc_sc_red = wc_sc @ np.linalg.inv(cell_sc)
 
     # Build supercell System_R
-    system_sc = System_R(periodic=periodic, silent=True)
+    system_sc = System_R(
+        periodic=periodic,
+        spinor=system_prim.spinor,
+        silent=system_prim.silent,
+        name=system_prim.name,
+    )
     system_sc.real_lattice = cell_sc
     system_sc.num_wann = norb_sc
     system_sc.wannier_centers_cart = wc_sc
