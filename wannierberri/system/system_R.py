@@ -921,4 +921,3 @@ class System_R(System):
         """
         from .system_supercell import fold_system
         return fold_system(self, M, **kwargs)
-
