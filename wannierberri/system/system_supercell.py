@@ -356,7 +356,7 @@ def spin_double_system(system, periodic=None):
     wc_new = np.tile(wc, (2, 1))
     wc_red = wc_new @ np.linalg.inv(real_lattice)
 
-    system_spin = System_R(periodic=periodic, silent=True)
+    system_spin = System_R(periodic=periodic, silent=True, spinor=True)
     system_spin.real_lattice = real_lattice
     system_spin.num_wann = nw2
     system_spin.wannier_centers_cart = wc_new
