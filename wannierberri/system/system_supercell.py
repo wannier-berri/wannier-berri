@@ -49,7 +49,8 @@ def enumerate_subcells(M):
         nsc = |det(M)|.
     """
     M = _validate_M(M)
-    nsc = abs(int(round(np.linalg.det(M.astype(float)))))
+    detM = int(round(np.linalg.det(M.astype(float))))
+    nsc = abs(detM)
     Minv = np.linalg.inv(M.astype(float))
 
     bound = int(np.sum(np.abs(M))) + 1
@@ -60,7 +61,6 @@ def enumerate_subcells(M):
         if np.all(frac > -1e-10) and np.all(frac < 1.0 - 1e-10):
             subcells.append(t)
 
-    detM = int(round(np.linalg.det(M.astype(float))))
     if len(subcells) != nsc:
         raise RuntimeError(
             f"Expected {nsc} subcells for det(M)={detM} (|det|={nsc}), "
@@ -88,7 +88,9 @@ def _build_wannier_centres_sc(subcells, lattice, wc_prim):
     nsc = len(subcells)
     nwann = len(wc_prim)
     shifts = subcells @ lattice  # [nsc, 3]
-    return (shifts[:, np.newaxis, :] + wc_prim[np.newaxis, :, :]).reshape(nsc * nwann, 3)
+    return (shifts[:, np.newaxis, :] + wc_prim[np.newaxis, :, :]).reshape(
+        nsc * nwann, 3
+    )
 
 
 # ------------------------------------------------------------------
@@ -119,17 +121,15 @@ def _supercell_rvectors(iRvec_prim, M, subcells):
     return arr[np.lexsort(arr[:, ::-1].T)]
 
 
-def _fold_matrix(X_R, iRvec_prim, prim_lookup, R_sc, M, subcells, nwann):
+def _fold_matrix(X_R, prim_lookup, R_sc, M, subcells, nwann):
     """Fold a single R-space matrix from primitive to supercell.
 
     Parameters
     ----------
     X_R : ndarray, shape [nR_prim, nwann, nwann, ...]
         Primitive matrix elements.
-    iRvec_prim : ndarray, shape [nR_prim, 3]
-        Primitive R-vectors.
     prim_lookup : dict
-        Mapping tuple(R_prim) -> index in iRvec_prim.
+        Mapping ``tuple(R_prim) -> index`` into the first axis of ``X_R``.
     R_sc : ndarray, shape [n_R_sc, 3]
         Supercell R-vectors.
     M : ndarray, shape [3, 3]
@@ -163,8 +163,15 @@ def _fold_matrix(X_R, iRvec_prim, prim_lookup, R_sc, M, subcells, nwann):
     return X_sc
 
 
-def _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb):
+def _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb, prim_lattice):
     """Fold the real-space scattering potential into supercell blocks.
+
+    ``T_R`` is periodic in ``R_sc`` with period ``grid/M``, so several
+    supercell R-vectors map to the same scattering block.  To avoid
+    overcounting we write each (si, sj) block only at the *minimum-image*
+    R_sc in its equivalence class -- the one whose implied primitive
+    vector ``R_prim = M·R_sc + tau_j - tau_i`` has the smallest Cartesian
+    norm.  This mirrors W90's ``use_ws_distance`` convention.
 
     Parameters
     ----------
@@ -180,26 +187,40 @@ def _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb):
         Primitive k-grid dimensions.
     norb : int
         Number of orbitals per primitive cell.
+    prim_lattice : ndarray, shape [3, 3]
+        Primitive lattice vectors (rows), used for the minimum-image norm.
 
     Returns
     -------
-    dH : ndarray, shape [n_R_sc, norb_sc, norb_sc]
+    dH : ndarray, shape [n_R_sc, nsc * norb, nsc * norb]
     """
     nsc = len(subcells)
     norb_sc = nsc * norb
     n_R_sc = len(R_sc)
-
     dH = np.zeros((n_R_sc, norb_sc, norb_sc), dtype=complex)
 
-    for ir, dRsc in enumerate(R_sc):
-        for s1, t1 in enumerate(subcells):
-            col = slice(s1 * norb, (s1 + 1) * norb)
-            for s2, t2 in enumerate(subcells):
-                row = slice(s2 * norb, (s2 + 1) * norb)
-                R2 = M @ dRsc + t2
-                idx1 = tuple((t1 % grid_arr).astype(int))
+    for si, tau_i in enumerate(subcells):
+        row = slice(si * norb, (si + 1) * norb)
+        idx1 = tuple((tau_i % grid_arr).astype(int))
+        for sj, tau_j in enumerate(subcells):
+            col = slice(sj * norb, (sj + 1) * norb)
+            # group R_sc by equivalence class: key = (M·R_sc + tau_j - tau_i) mod grid
+            equiv_classes: dict[tuple[int, ...], list[tuple[int, float]]] = {}
+            for ir, dRsc in enumerate(R_sc):
+                R_prim = M @ dRsc + tau_j - tau_i
+                key = tuple((R_prim % grid_arr).astype(int))
+                # Cartesian norm of the *signed* R_prim (not the modded one),
+                # i.e. of the actual lattice vector this R_sc represents.
+                cart = R_prim @ prim_lattice
+                norm = float(np.dot(cart, cart))
+                equiv_classes.setdefault(key, []).append((ir, norm))
+
+            # For each equivalence class pick the minimum-norm R_sc and write
+            for members in equiv_classes.values():
+                ir_best, _ = min(members, key=lambda x: (x[1], x[0]))
+                R2 = M @ R_sc[ir_best] + tau_j
                 idx2 = tuple((R2 % grid_arr).astype(int))
-                dH[ir, row, col] = T_R[idx1 + idx2]
+                dH[ir_best, row, col] = T_R[idx1 + idx2]
 
     return dH
 
@@ -251,7 +272,7 @@ def fold_system(system_prim, M, periodic=None):
     folded = {}
     for key, X_R in system_prim._XX_R.items():
         folded[key] = _fold_matrix(
-            X_R, iRvec_prim, prim_lookup, R_sc, M, subcells, nwann
+            X_R, prim_lookup, R_sc, M, subcells, nwann
         )
         logger.info("Folded %s: %s -> %s", key, X_R.shape, folded[key].shape)
 
@@ -271,9 +292,7 @@ def fold_system(system_prim, M, periodic=None):
     system_sc.real_lattice = cell_sc
     system_sc.num_wann = norb_sc
     system_sc.wannier_centers_cart = wc_sc
-    system_sc.rvec = Rvectors(
-        lattice=cell_sc, shifts_left_red=wc_sc_red, iRvec=R_sc
-    )
+    system_sc.rvec = Rvectors(lattice=cell_sc, shifts_left_red=wc_sc_red, iRvec=R_sc)
 
     for key, X_sc in folded.items():
         system_sc.set_R_mat(key, X_sc)
@@ -282,7 +301,10 @@ def fold_system(system_prim, M, periodic=None):
 
     logger.info(
         "fold_system: nwann=%d->%d, nR=%d->%d, matrices=%s",
-        nwann, norb_sc, len(iRvec_prim), len(R_sc),
+        nwann,
+        norb_sc,
+        len(iRvec_prim),
+        len(R_sc),
         list(folded.keys()),
     )
     return system_sc
@@ -312,9 +334,13 @@ def spin_double_system(system, periodic=None):
         periodic = system.periodic
 
     if getattr(system, "spinor", False):
-        raise ValueError("spin_double_system expects a spinless system, got system.spinor=True")
+        raise ValueError(
+            "spin_double_system expects a spinless system, got system.spinor=True"
+        )
     if "SS" in system._XX_R:
-        raise ValueError("spin_double_system expects a system without SS; existing spin information would be overwritten")
+        raise ValueError(
+            "spin_double_system expects a system without SS; existing spin information would be overwritten"
+        )
     nw = system.num_wann
     nw2 = 2 * nw
     iRvec = system.rvec.iRvec
@@ -332,13 +358,10 @@ def spin_double_system(system, periodic=None):
         doubled[key] = X_new
 
     # Pauli SS at R = 0: σ_c ⊗ I_nw, shape [nR, nw2, nw2, 3]
-    R0_idx = None
-    for i, R in enumerate(iRvec):
-        if np.all(R == 0):
-            R0_idx = i
-            break
-    if R0_idx is None:
+    R0_matches = np.where(np.all(iRvec == 0, axis=1))[0]
+    if len(R0_matches) == 0:
         raise ValueError("System Rvectors do not contain R = 0")
+    R0_idx = int(R0_matches[0])
 
     SS = np.zeros((nR, nw2, nw2, 3), dtype=complex)
     I_nw = np.eye(nw, dtype=complex)
@@ -372,37 +395,37 @@ def spin_double_system(system, periodic=None):
 
     logger.info(
         "spin_double_system: nwann=%d->%d, matrices=%s",
-        nw, nw2, list(doubled.keys()),
+        nw,
+        nw2,
+        list(doubled.keys()),
     )
     return system_spin
 
 
 def add_scattering(system_sc, V_kk, grid_shape, M):
-    """Add scattering potential to the supercell Hamiltonian in-place.
+    """Add a scattering potential to the supercell Hamiltonian in place.
 
-    Transforms ``V_kk`` to real space via double FFT, folds it into the
-    supercell block structure, and adds it to the existing Ham matrix.
+    Transforms ``V_kk`` to real space via a double FFT, folds it into the
+    supercell block structure (with minimum-image tie breaking), and adds
+    the result to ``system_sc``'s ``Ham`` matrix.
 
     Parameters
     ----------
     system_sc : :class:`~wannierberri.system.System_R`
-        Supercell system from :func:`fold_system`.
+        Supercell system from :func:`fold_system`.  Modified in place.
     V_kk : ndarray, shape [nk, nk, norb, norb]
-        Total scattering matrix in k-space.
+        Total scattering matrix in k-space, with ``nk = prod(grid_shape)``
+        and ``norb`` the number of orbitals per primitive cell.
     grid_shape : tuple of int, length 3
         Primitive k-grid dimensions, e.g. ``(24, 24, 1)``.
     M : ndarray, shape [3, 3]
-        Integer supercell matrix.
+        Integer supercell matrix relating primitive to supercell.
     """
     V_kk = np.asarray(V_kk, dtype=complex)
     if V_kk.ndim != 4:
-        raise ValueError(
-            f"V_kk must have shape [nk, nk, norb, norb], got {V_kk.shape}"
-        )
+        raise ValueError(f"V_kk must have shape [nk, nk, norb, norb], got {V_kk.shape}")
     if V_kk.shape[0] != V_kk.shape[1]:
-        raise ValueError(
-            f"V_kk must be square in k-space, got shape {V_kk.shape}"
-        )
+        raise ValueError(f"V_kk must be square in k-space, got shape {V_kk.shape}")
     if V_kk.shape[2] != V_kk.shape[3]:
         raise ValueError(
             f"V_kk must be square in orbital space, got shape {V_kk.shape}"
@@ -410,9 +433,7 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
 
     grid_shape = tuple(int(n) for n in grid_shape)
     if len(grid_shape) != 3:
-        raise ValueError(
-            f"grid_shape must have length 3, got {len(grid_shape)}"
-        )
+        raise ValueError(f"grid_shape must have length 3, got {len(grid_shape)}")
     M = _validate_M(M)
     grid_arr = np.array(grid_shape, dtype=int)
     nk = V_kk.shape[0]
@@ -442,7 +463,10 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
     V_grid = V_kk.reshape(*grid_shape, *grid_shape, norb, norb)
     T_R = np.fft.ifftn(np.fft.fftn(V_grid, axes=ax_k1), axes=ax_k2)
 
-    dH = _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb)
+    # Recover the primitive lattice from system_sc.real_lattice = M @ prim.
+    # Needed by _fold_scattering for minimum-image tie breaking.
+    prim_lattice = np.linalg.solve(M.astype(float), system_sc.real_lattice)
+    dH = _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb, prim_lattice)
 
     if system_sc.get_R_mat("Ham").shape != dH.shape:
         raise ValueError(
@@ -452,6 +476,4 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
 
     system_sc.set_R_mat("Ham", dH, add=True)
 
-    logger.info(
-        "add_scattering: added T_R to Ham, grid=%s, norb=%d", grid_shape, norb
-    )
+    logger.info("add_scattering: added T_R to Ham, grid=%s, norb=%d", grid_shape, norb)

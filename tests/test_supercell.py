@@ -119,7 +119,7 @@ class TestFoldMatrix:
         nwann = 2
         rng = np.random.default_rng(42)
         X_R = rng.standard_normal((3, nwann, nwann)) + 0j
-        X_sc = _fold_matrix(X_R, iRvec, prim_lookup, R_sc, M, subcells, nwann)
+        X_sc = _fold_matrix(X_R, prim_lookup, R_sc, M, subcells, nwann)
 
         sc_lookup = {tuple(r): i for i, r in enumerate(R_sc)}
         for R, ip in prim_lookup.items():
@@ -140,7 +140,7 @@ class TestFoldMatrix:
         X_R[1] = np.array([[0.5, 0.1], [0.1, 0.3]])
         X_R[2] = X_R[1].conj().T
 
-        X_sc = _fold_matrix(X_R, iRvec, prim_lookup, R_sc, M, subcells, nwann)
+        X_sc = _fold_matrix(X_R, prim_lookup, R_sc, M, subcells, nwann)
         iR0 = next(i for i, r in enumerate(R_sc) if np.all(r == 0))
         for s in range(len(subcells)):
             sl = slice(s * nwann, (s + 1) * nwann)
@@ -155,7 +155,7 @@ class TestFoldMatrix:
         R_sc = _supercell_rvectors(iRvec, M, subcells)
 
         X_R = np.array([[[[1.0, 2.0, 3.0]]]], dtype=complex)
-        X_sc = _fold_matrix(X_R, iRvec, prim_lookup, R_sc, M, subcells, 1)
+        X_sc = _fold_matrix(X_R, prim_lookup, R_sc, M, subcells, 1)
         assert X_sc.shape == (len(R_sc), 2, 2, 3)
 
     def test_gamma_eigenvalues_1d_chain(self):
@@ -173,7 +173,7 @@ class TestFoldMatrix:
         X_R[1, 0, 0] = t
         X_R[2, 0, 0] = t
 
-        X_sc = _fold_matrix(X_R, iRvec, prim_lookup, R_sc, M, subcells, 1)
+        X_sc = _fold_matrix(X_R, prim_lookup, R_sc, M, subcells, 1)
         H_gamma = X_sc.sum(axis=0)
         E_sc = np.sort(np.linalg.eigvalsh(H_gamma))
         E_expected = np.sort([eps + 2 * t, eps - 2 * t])  # cos(0)=1, cos(pi)=-1
@@ -218,7 +218,10 @@ class TestFoldScattering:
         subcells = enumerate_subcells(M)
         R_sc = np.array([[0, 0, 0]])
 
-        dH = _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb)
+        prim_lattice = np.eye(3)
+        dH = _fold_scattering(
+            T_R, R_sc, subcells, M, grid_arr, norb, prim_lattice
+        )
         expected = V0 * np.eye(2).reshape(1, 2, 2)
         np.testing.assert_allclose(dH, expected, atol=1e-12)
 
