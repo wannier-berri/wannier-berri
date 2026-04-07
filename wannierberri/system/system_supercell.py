@@ -282,6 +282,91 @@ def fold_system(system_prim, M, periodic=None):
     return system_sc
 
 
+def spin_double_system(system, periodic=None):
+    """Double a spinless System_R into a spin-1/2 system with Pauli SS.
+
+    Every R-space matrix ``X`` is expanded as ``I_2 ⊗ X`` (block-diagonal in
+    spin), Wannier centres are duplicated, and the on-site Pauli spin operator
+    ``SS`` is added at R=0.  Orbital ordering is (spin, wannier): the spin-up
+    block comes first, the spin-down block second.
+
+    Parameters
+    ----------
+    system : :class:`~wannierberri.system.System_R`
+        Spinless input system (e.g. from :func:`fold_system`).
+    periodic : tuple of bool, optional
+        Periodic directions for the new system.  Defaults to ``system.periodic``.
+
+    Returns
+    -------
+    system_spin : :class:`~wannierberri.system.System_R`
+        Spin-doubled system with ``2 * num_wann`` orbitals and an SS matrix.
+    """
+    if periodic is None:
+        periodic = system.periodic
+
+    nw = system.num_wann
+    nw2 = 2 * nw
+    iRvec = system.rvec.iRvec
+    nR = len(iRvec)
+    real_lattice = system.real_lattice
+    wc = system.wannier_centers_cart
+
+    # Expand all R-matrices via I_2 ⊗ X (block-diagonal in spin)
+    doubled = {}
+    for key, X_R in system._XX_R.items():
+        extra = X_R.shape[3:]
+        X_new = np.zeros((nR, nw2, nw2) + extra, dtype=X_R.dtype)
+        X_new[:, :nw, :nw] = X_R
+        X_new[:, nw:, nw:] = X_R
+        doubled[key] = X_new
+
+    # Pauli SS at R = 0: σ_c ⊗ I_nw, shape [nR, nw2, nw2, 3]
+    R0_idx = None
+    for i, R in enumerate(iRvec):
+        if np.all(R == 0):
+            R0_idx = i
+            break
+    if R0_idx is None:
+        raise ValueError("System Rvectors do not contain R = 0")
+
+    SS = np.zeros((nR, nw2, nw2, 3), dtype=complex)
+    I_nw = np.eye(nw, dtype=complex)
+    # σ_x
+    SS[R0_idx, :nw, nw:, 0] = I_nw
+    SS[R0_idx, nw:, :nw, 0] = I_nw
+    # σ_y
+    SS[R0_idx, :nw, nw:, 1] = -1j * I_nw
+    SS[R0_idx, nw:, :nw, 1] = 1j * I_nw
+    # σ_z
+    SS[R0_idx, :nw, :nw, 2] = I_nw
+    SS[R0_idx, nw:, nw:, 2] = -I_nw
+    doubled["SS"] = SS
+
+    # Duplicate Wannier centres
+    wc_new = np.tile(wc, (2, 1))
+    wc_red = wc_new @ np.linalg.inv(real_lattice)
+
+    system_spin = System_R(periodic=periodic, silent=True)
+    system_spin.real_lattice = real_lattice
+    system_spin.num_wann = nw2
+    system_spin.wannier_centers_cart = wc_new
+    system_spin.rvec = Rvectors(
+        lattice=real_lattice, shifts_left_red=wc_red, iRvec=iRvec
+    )
+
+    for key, X in doubled.items():
+        system_spin.set_R_mat(key, X)
+
+    system_spin.do_at_end_of_init()
+
+    logger.info(
+        "spin_double_system: nwann=%d->%d, matrices=%s",
+        nw, nw2, list(doubled.keys()),
+    )
+    return system_spin
+
+
 def add_scattering(system_sc, V_kk, grid_shape, M):
     """Add scattering potential to the supercell Hamiltonian in-place.
 

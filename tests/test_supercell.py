@@ -13,6 +13,7 @@ from wannierberri.system.system_supercell import (
     add_scattering,
     enumerate_subcells,
     fold_system,
+    spin_double_system,
 )
 
 
@@ -382,3 +383,68 @@ class TestAddScattering:
 
         with pytest.raises(ValueError, match="length 3"):
             add_scattering(sc, np.zeros((1, 1, 1, 1)), (1, 1), np.eye(3, dtype=int))
+
+
+# ------------------------------------------------------------------
+# spin_double_system
+# ------------------------------------------------------------------
+
+
+class TestSpinDoubleSystem:
+    def _build(self, nw=2):
+        iRvec = np.array([[0, 0, 0], [1, 0, 0], [-1, 0, 0]])
+        ham = np.zeros((3, nw, nw), dtype=complex)
+        ham[0] = np.diag(np.arange(1, nw + 1).astype(float))
+        ham[1] = 0.3 * np.eye(nw)
+        ham[2] = 0.3 * np.eye(nw)
+        wc = np.zeros((nw, 3))
+        return _make_system(iRvec, ham, wc, np.eye(3))
+
+    def test_num_wann_doubled(self):
+        sys = self._build(nw=2)
+        out = spin_double_system(sys)
+        assert out.num_wann == 4
+
+    def test_block_diagonal_ham(self):
+        sys = self._build(nw=2)
+        out = spin_double_system(sys)
+        H = out.get_R_mat("Ham")
+        H_old = sys.get_R_mat("Ham")
+        np.testing.assert_allclose(H[:, :2, :2], H_old)
+        np.testing.assert_allclose(H[:, 2:, 2:], H_old)
+        np.testing.assert_allclose(H[:, :2, 2:], 0)
+        np.testing.assert_allclose(H[:, 2:, :2], 0)
+
+    def test_pauli_ss(self):
+        sys = self._build(nw=2)
+        out = spin_double_system(sys)
+        SS = out.get_R_mat("SS")
+        iR0 = next(i for i, r in enumerate(out.rvec.iRvec) if np.all(r == 0))
+        I2 = np.eye(2)
+        # σ_z
+        np.testing.assert_allclose(SS[iR0, :2, :2, 2], I2)
+        np.testing.assert_allclose(SS[iR0, 2:, 2:, 2], -I2)
+        # σ_x
+        np.testing.assert_allclose(SS[iR0, :2, 2:, 0], I2)
+        np.testing.assert_allclose(SS[iR0, 2:, :2, 0], I2)
+        # σ_y
+        np.testing.assert_allclose(SS[iR0, :2, 2:, 1], -1j * I2)
+        np.testing.assert_allclose(SS[iR0, 2:, :2, 1], 1j * I2)
+
+    def test_wannier_centres_duplicated(self):
+        nw = 2
+        iRvec = np.array([[0, 0, 0]])
+        ham = np.eye(nw, dtype=complex)[None]
+        wc = np.array([[0.1, 0.2, 0.0], [0.3, 0.4, 0.0]])
+        sys = _make_system(iRvec, ham, wc, np.eye(3))
+        out = spin_double_system(sys)
+        np.testing.assert_allclose(out.wannier_centers_cart, np.tile(wc, (2, 1)))
+
+    def test_then_add_scattering(self):
+        sys = self._build(nw=2)
+        sc = fold_system(sys, np.eye(3, dtype=int))
+        sc = spin_double_system(sc)
+        norb_spin = 4
+        V_kk = np.zeros((1, 1, norb_spin, norb_spin), dtype=complex)
+        V_kk[0, 0] = np.diag([0.1, 0.2, 0.3, 0.4])
+        add_scattering(sc, V_kk, (1, 1, 1), np.eye(3, dtype=int))
