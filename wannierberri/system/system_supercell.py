@@ -22,16 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_M(M):
-    """Validate that *M* is a 3x3 integer-valued matrix with non-zero determinant."""
+    """Validate that *M* is a 3x3 integer-valued non-singular matrix."""
     M = np.asarray(M)
     if M.shape != (3, 3):
-        raise ValueError(f"M must be a 3x3 integer matrix, got shape {M.shape}")
+        raise ValueError(
+            f"M must be a 3x3 integer matrix, got shape {M.shape}"
+        )
     M_round = np.round(M)
     if not np.allclose(M, M_round):
-        raise ValueError(f"M must contain only integer-valued entries, got:\n{M}")
+        raise ValueError(
+            f"M must contain only integer-valued entries, got:\n{M}"
+        )
     M = M_round.astype(int)
     if int(round(np.linalg.det(M))) == 0:
-        raise ValueError(f"M must be non-singular, got det(M) = 0:\n{M}")
+        raise ValueError(
+            f"M must be non-singular, got det(M) = 0:\n{M}"
+        )
     return M
 
 
@@ -209,7 +215,8 @@ def _fold_scattering(T_R, R_sc, subcells, M, grid_arr, norb, prim_lattice):
         idx1 = tuple((tau_i % grid_arr).astype(int))
         for sj, tau_j in enumerate(subcells):
             col = slice(sj * norb, (sj + 1) * norb)
-            # group R_sc by equivalence class: key = (M·R_sc + tau_j - tau_i) mod grid
+            # group R_sc by equivalence class:
+            # key = (M·R_sc + tau_j - tau_i) mod grid
             equiv_classes: dict[tuple[int, ...], list[tuple[int, float]]] = {}
             for ir, dRsc in enumerate(R_sc):
                 R_prim = M @ dRsc + tau_j - tau_i
@@ -297,7 +304,9 @@ def fold_system(system_prim, M, periodic=None):
     system_sc.real_lattice = cell_sc
     system_sc.num_wann = norb_sc
     system_sc.wannier_centers_cart = wc_sc
-    system_sc.rvec = Rvectors(lattice=cell_sc, shifts_left_red=wc_sc_red, iRvec=R_sc)
+    system_sc.rvec = Rvectors(
+        lattice=cell_sc, shifts_left_red=wc_sc_red, iRvec=R_sc
+    )
 
     for key, X_sc in folded.items():
         system_sc.set_R_mat(key, X_sc)
@@ -328,7 +337,8 @@ def spin_double_system(system, periodic=None):
     system : :class:`~wannierberri.system.System_R`
         Spinless input system (e.g. from :func:`fold_system`).
     periodic : tuple of bool, optional
-        Periodic directions for the new system.  Defaults to ``system.periodic``.
+        Periodic directions for the new system.
+        Defaults to ``system.periodic``.
 
     Returns
     -------
@@ -340,11 +350,13 @@ def spin_double_system(system, periodic=None):
 
     if getattr(system, "spinor", False):
         raise ValueError(
-            "spin_double_system expects a spinless system, got system.spinor=True"
+            "spin_double_system expects a spinless system, "
+            "got system.spinor=True"
         )
     if "SS" in system._XX_R:
         raise ValueError(
-            "spin_double_system expects a system without SS; existing spin information would be overwritten"
+            "spin_double_system expects a system without SS; "
+            "existing spin information would be overwritten"
         )
     nw = system.num_wann
     nw2 = 2 * nw
@@ -433,9 +445,13 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
     """
     V_kk = np.asarray(V_kk, dtype=complex)
     if V_kk.ndim != 4:
-        raise ValueError(f"V_kk must have shape [nk, nk, norb, norb], got {V_kk.shape}")
+        raise ValueError(
+            f"V_kk must have shape [nk, nk, norb, norb], got {V_kk.shape}"
+        )
     if V_kk.shape[0] != V_kk.shape[1]:
-        raise ValueError(f"V_kk must be square in k-space, got shape {V_kk.shape}")
+        raise ValueError(
+            f"V_kk must be square in k-space, got shape {V_kk.shape}"
+        )
     if V_kk.shape[2] != V_kk.shape[3]:
         raise ValueError(
             f"V_kk must be square in orbital space, got shape {V_kk.shape}"
@@ -443,7 +459,9 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
 
     grid_shape = tuple(int(n) for n in grid_shape)
     if len(grid_shape) != 3:
-        raise ValueError(f"grid_shape must have length 3, got {len(grid_shape)}")
+        raise ValueError(
+            f"grid_shape must have length 3, got {len(grid_shape)}"
+        )
     M = _validate_M(M)
     grid_arr = np.array(grid_shape, dtype=int)
     nk = V_kk.shape[0]
@@ -451,8 +469,8 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
 
     if int(np.prod(grid_shape)) != nk:
         raise ValueError(
-            f"grid_shape={grid_shape} implies {int(np.prod(grid_shape))} k-points, "
-            f"but V_kk has nk={nk}"
+            f"grid_shape={grid_shape} implies "
+            f"{int(np.prod(grid_shape))} k-points, but V_kk has nk={nk}"
         )
 
     subcells = enumerate_subcells(M)
@@ -486,4 +504,7 @@ def add_scattering(system_sc, V_kk, grid_shape, M):
 
     system_sc.set_R_mat("Ham", dH, add=True)
 
-    logger.info("add_scattering: added T_R to Ham, grid=%s, norb=%d", grid_shape, norb)
+    logger.info(
+        "add_scattering: added T_R to Ham, grid=%s, norb=%d",
+        grid_shape, norb,
+    )
