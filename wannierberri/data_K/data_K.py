@@ -358,7 +358,9 @@ class Data_K(System, abc.ABC):
 
 
     @lru_cache
-    def get_M1(self, external_terms=True, key_OO='rotAA', degen_thresh=1e-3):
+    def get_M1(self, external_terms=True,
+               V_term=True,
+               key_OO='rotAA', degen_thresh=1e-3):
         ''' Magnetic dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
         H = self.Xbar('Ham')
@@ -413,7 +415,14 @@ class Data_K(System, abc.ABC):
             # Final formula
             C_H += C_ext + C_cross
             O_H += O_ext + O_cross
-        return -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
+        M = -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
+        if V_term:
+            Vn = self.delE_K
+            Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
+            A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
+            M += 0.5j * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
+                    Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
+        return M
 
 
     @lru_cache
@@ -452,22 +461,29 @@ class Data_K(System, abc.ABC):
         return -1. * G_H
 
 
-    @lru_cache
-    def get_Bln_q(self, external_terms=True, degen_thresh=1e-3):
-        q = self.get_E2(external_terms=external_terms, degen_thresh=degen_thresh)
-        En = self.E_K
-        Enm = En[:, :, None] - En[:, None, :]
-        return -0.5j * Enm[:, :, :, None, None] * q
-
 
     @lru_cache
-    def get_Bln_m(self, external_terms=True, spin=False, orb=True, key_OO='rotAA', degen_thresh=1e-3):
-        m = np.zeros((self.nk, self.num_wann, self.num_wann, 3), dtype=complex)
-        if orb:
-            m += self.get_M1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh)
-        if spin:
-            m += m_spin_prefactor * self.Xbar('SS')
-        B_m = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-        B_m[:, :, :, alpha_A, beta_A] += m
-        B_m[:, :, :, beta_A, alpha_A] -= m
-        return B_m
+    def get_Bln(self, external_terms=True,
+                spin=False, orb=True, V=True, Q=True,
+                key_OO='rotAA', degen_thresh=1e-3):
+        B = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        if orb or spin:
+            m = np.zeros((self.nk, self.num_wann, self.num_wann, 3), dtype=complex)
+            if orb:
+                m += self.get_M1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh,
+                                V_term=False)
+            if spin:
+                m += m_spin_prefactor * self.Xbar('SS')
+            B[:, :, :, alpha_A, beta_A] += m
+            B[:, :, :, beta_A, alpha_A] -= m
+        if V:
+            Vn = self.delE_K
+            Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
+            A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
+            B += Vnm_plus[:, :, :, :, None] * A[:, :, :, None, :]
+        if Q:
+            q = self.get_E2(external_terms=external_terms, degen_thresh=degen_thresh)
+            En = self.E_K
+            Enm = En[:, :, None] - En[:, None, :]
+            B += -0.5j * Enm[:, :, :, None, None] * q
+        return B
