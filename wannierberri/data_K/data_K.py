@@ -420,7 +420,7 @@ class Data_K(System, abc.ABC):
             Vn = self.delE_K
             Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
             A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
-            M += 0.5j * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
+            M += 0.5 * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
                     Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
         return M
 
