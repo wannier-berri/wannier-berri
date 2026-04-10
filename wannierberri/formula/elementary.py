@@ -61,10 +61,10 @@ class DerDcov(Dcov):
         self.dEinv = DEinv_ln(data_K)
 
     def ln(self, ik, inn, out):
+        Dln = self.D.ln(ik, inn, out)
         summ = self.W.ln(ik, inn, out)
-        tmp = cached_einsum("lpb,pnd->lnbd", self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += tmp + tmp.swapaxes(2, 3)
-        tmp = -cached_einsum("lmb,mnd->lnbd", self.D.ln(ik, inn, out), self.V.nn(ik, inn, out))
+        tmp = cached_einsum("lpb,pnd->lnbd", self.V.ll(ik, inn, out), Dln)
+        tmp -= cached_einsum("lmb,mnd->lnbd", Dln, self.V.nn(ik, inn, out))
         summ += tmp + tmp.swapaxes(2, 3)
         summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None]
         return summ
@@ -82,17 +82,22 @@ class Der2Dcov(Formula_ln):
 
     def ln(self, ik, inn, out):
         summ = self.WV.ln(ik, inn, out)
-        summ += cached_einsum("lpbe,pnd->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += cached_einsum("lpde,pnb->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += cached_einsum("lpe,pnbd->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += cached_einsum("lpd,pnbe->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += cached_einsum("lpb,pnde->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += -cached_einsum("lmde,mnb->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmbd,mne->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmbe,mnd->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmb,mnde->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-        summ += -cached_einsum("lmd,mnbe->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-
+        Vll = self.V.ll(ik, inn, out)
+        Vnn = self.V.nn(ik, inn, out)
+        dVll = self.dV.ll(ik, inn, out)
+        dVnn = self.dV.nn(ik, inn, out)
+        Dln = self.D.ln(ik, inn, out)
+        dDln = self.dD.ln(ik, inn, out)
+        summ += cached_einsum("lpbe,pnd->lnbde", dVll, Dln)
+        summ += cached_einsum("lpde,pnb->lnbde", dVll, Dln)
+        summ += cached_einsum("lpe,pnbd->lnbde", Vll, dDln)
+        summ += cached_einsum("lpd,pnbe->lnbde", Vll, dDln)
+        summ += cached_einsum("lpb,pnde->lnbde", Vll, dDln)
+        summ += -cached_einsum("lmde,mnb->lnbde", dDln, Vnn)
+        summ += -cached_einsum("lmbd,mne->lnbde", dDln, Vnn)
+        summ += -cached_einsum("lmbe,mnd->lnbde", dDln, Vnn)
+        summ += -cached_einsum("lmb,mnde->lnbde", Dln, dVnn)
+        summ += -cached_einsum("lmd,mnbe->lnbde", Dln, dVnn )
         summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None, None]
         return summ
 
