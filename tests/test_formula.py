@@ -76,9 +76,10 @@ def check_formula_output():
         path_out = os.path.join(OUTPUT_DIR, "formula")
         path_ref = os.path.join(REF_DIR, "formula")
         os.makedirs(path_out, exist_ok=True)
-        np.savez(os.path.join(path_out, filename + ".npz"))
+        np.savez(os.path.join(path_out, filename + ".npz"), **value)
         value_ref = np.load(os.path.join(path_ref, filename + ".npz"))
         for k,val in value_ref.items():
+            print (f"Checking {filename} key {k}")
             val_out = value[k]
             assert np.allclose(val, val_out), f"Formula output {filename} key {k} does not match reference"
     return __inner
