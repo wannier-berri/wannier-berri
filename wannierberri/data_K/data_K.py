@@ -360,7 +360,8 @@ class Data_K(System, abc.ABC):
     @lru_cache
     def get_M1(self, external_terms=True,
                V_term=True,
-               key_OO='rotAA', degen_thresh=1e-3):
+               key_OO='rotAA', degen_thresh=1e-3,
+               AH_term=False):
         ''' Magnetic dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
         H = self.Xbar('Ham')
@@ -418,10 +419,13 @@ class Data_K(System, abc.ABC):
         M = -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
         if V_term:
             Vn = self.delE_K
-            Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
+            Vnm_plus = (Vn[:, :, None, :] + Vn[:, None, :, :])
             A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
             M += 0.5 * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
                     Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
+        if AH_term:
+            Eln_minus = (En[:, :, None] - En[:, None, :])
+            M += 0.25 * Eln_minus[:, :, :, None, None] * O_H
         return M
 
 
