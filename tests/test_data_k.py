@@ -41,7 +41,7 @@ def test_fourier(system_Fe_W90):
         assert val_fftw == approx(val_slow), f"fftw  does not match slow for {field}"
         assert val_numpy == approx(val_slow), f"numpy does not match slow for {field}"
         assert val_numpy == approx(val_fftw), f"numpy does not match fftw for {field}"
-        
+
 
     test_fields = ['Ham']
     for field in test_fields:

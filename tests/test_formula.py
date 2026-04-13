@@ -11,12 +11,12 @@ from .common import OUTPUT_DIR, REF_DIR
 
 from wannierberri.formula.elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, DEinv_ln
 
-from wannierberri.formula.covariant import (Spin, DerOmega, Omega, 
-        Der2Omega, Der2A, Der2B, Der2H, 
-        Der2O, Der3E, Hamiltonian, Velocity, Spin, Der2Spin, Morb_H, 
+from wannierberri.formula.covariant import (Spin, DerOmega, Omega,
+        Der2Omega, Der2A, Der2B, Der2H,
+        Der2O, Der3E, Hamiltonian, Velocity, Der2Spin, Morb_H,
         morb, DerMorb, Dermorb, Der2Morb, Der2morb, SpinOmega, SpinVelocity,
         VelOmega, VelSpin, VelVel, VelVelVel, VelMassVel, OmegaS, OmegaOmega,
-        emcha_surf, NLDrude_Z_spin, NLDrude_Z_orb_Omega, 
+        emcha_surf, NLDrude_Z_orb_Omega,
         NLDrude_Z_spin, QuantumMetric_ab, DerQuantumMetric_ab_d, VelDQM
 )
 
@@ -33,6 +33,7 @@ def datak_Fe(system_Fe_W90):
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
     return get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='fftw')
+
 
 def test_Hermitean(datak_Fe):
     data = datak_Fe
@@ -54,9 +55,9 @@ def test_Hermitean(datak_Fe):
                 Xnn = form.nn(ik, inn, inn)
                 assert np.allclose(Xll, Xll.conj().swapaxes(0, 1)), f"{formula.__name__} ll is not Hermitean for ik={ik}, inn={inn}"
                 assert np.allclose(Xnn, Xnn.conj().swapaxes(0, 1)), f"{formula.__name__} nn is not Hermitean for ik={ik}, inn={inn}"
-            for formula in [Spin,  Der2A]:
+            for formula in [Spin, Der2A]:
                 form = formula(data)
-                Xln= form.ln(ik, inn, inn)
+                Xln = form.ln(ik, inn, inn)
                 Xnl = form.nl(ik, inn, inn)
                 assert np.allclose(Xln, Xnl.conj().swapaxes(0, 1)), f"{formula.__name__} ln and nl are not Hermitean conjugate for ik={ik}, inn={inn}"
             for key in ('Ham', 'AA'):
@@ -78,26 +79,27 @@ def check_formula_output():
         os.makedirs(path_out, exist_ok=True)
         np.savez(os.path.join(path_out, filename + ".npz"), **value)
         value_ref = np.load(os.path.join(path_ref, filename + ".npz"))
-        for k,val in value_ref.items():
-            print (f"Checking {filename} key {k}")
+        for k, val in value_ref.items():
+            print(f"Checking {filename} key {k}")
             val_out = value[k]
             assert np.allclose(val, val_out), f"Formula output {filename} key {k} does not match reference"
     return __inner
 
 
 formula_all = ["Dcov", "DerDcov", "Der2Dcov", "InvMass", "DerWln", "DEinv_ln",
-    "Spin", "DerOmega", "Omega", 
-        "Der2Omega", "Der2A", "Der2B", "Der2H", 
-        "Der2O", "Der3E", "Hamiltonian", "Velocity", "Spin", "Der2Spin", "Morb_H", 
+    "Spin", "DerOmega", "Omega",
+        "Der2Omega", "Der2A", "Der2B", "Der2H",
+        "Der2O", "Der3E", "Hamiltonian", "Velocity", "Spin", "Der2Spin", "Morb_H",
         "morb", "DerMorb", "Dermorb", "Der2Morb", "Der2morb", "SpinOmega", "SpinVelocity",
         "VelOmega", "VelSpin", "VelVel", "VelVelVel", "VelMassVel", "OmegaS", "OmegaOmega",]
 
 formula_ln = ["Dcov", "DerDcov", "Der2Dcov", "DEinv_ln"]
-formula_nn = ["VelMassVel", "Dermorb", "VelVelVel", "Der2A", "OmegaS", "Der2Morb", 
+formula_nn = ["VelMassVel", "Dermorb", "VelVelVel", "Der2A", "OmegaS", "Der2Morb",
               "Der2H", "Der2Spin", "Der2Omega", "Der2O", "DerOmega", "SpinVelocity", "SpinOmega",
-              "OmegaOmega", "VelOmega", "Der3E", "VelSpin", "DerMorb" , "morb", "VelVel", "Morb_H",
-              "VelVel", "Omega", "Der2morb" ]
+              "OmegaOmega", "VelOmega", "Der3E", "VelSpin", "DerMorb", "morb", "VelVel", "Morb_H",
+              "VelVel", "Omega", "Der2morb"]
 formula_all = set(formula_all + formula_ln + formula_nn)
+
 
 @pytest.mark.parametrize("formula_class_name", formula_all)
 def test_formula(datak_Fe, formula_class_name, check_formula_output):
@@ -130,7 +132,7 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
                 lst4.append(np.einsum("nn...->...", Xnn))
         # we can compare only gauge-invariant combinations, so we sum over inn and out
         value[f"XnlXln_ik={ik}"] = lst1
-        value[f"XlnXnl_ik={ik}"] = lst2  
+        value[f"XlnXnl_ik={ik}"] = lst2
         value[f"XllXll_ik={ik}"] = lst3
         value[f"XnnXnn_ik={ik}"] = lst4
     check_formula_output(value=value, filename=f"{formula_class_name}")

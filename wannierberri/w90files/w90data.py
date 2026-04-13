@@ -1,7 +1,7 @@
 from .wandata import WannierData
 
 
-class Wannier90data(WannierData):
+class WannierData(WannierData):
     """Class to handle Wannier90 data. - deprecated, use WannierData instead."""
 
     def __init__(self, *args, **kwargs):

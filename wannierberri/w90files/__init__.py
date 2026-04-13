@@ -11,5 +11,5 @@ from .soc import SOC
 from .chk import CheckPoint
 from .wandata import WannierData
 from .wandata_soc import WannierDataSOC
-from .w90data import Wannier90data  # legacy, use WannierData instead
+from .w90data import WannierData  # legacy, use WannierData instead
 from .w90data_soc import Wannier90dataSOC  # legacy, use WannierDataSOC instead
