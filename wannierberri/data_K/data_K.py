@@ -425,7 +425,7 @@ class Data_K(System, abc.ABC):
                     Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
         if AH_term:
             Eln_minus = (En[:, :, None] - En[:, None, :])
-            M += 0.25 * Eln_minus[:, :, :, None, None] * O_H
+            M += 0.25 * Eln_minus[:, :, :, None] * O_H
         return M
 
 
