@@ -26,7 +26,8 @@ def check_calculator(compare_any_result):
                transformInv=None,
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
-        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
+        data_k_class = wberri.data_K.get_data_k_class_from_system(system)
+        data_K = data_k_class(system, dK=dK, grid=grid, **param_K)
         result = calc(data_K)
         print(f"result = {result}")
         result = result * factor
@@ -84,7 +85,7 @@ def test_tab_fit(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
     grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
-    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
     morb = wberri.calculators.tabulate.OrbitalMoment
     berry = wberri.calculators.tabulate.BerryCurvature
     noext = dict(kwargs_formula={"external_terms": False})
@@ -108,7 +109,7 @@ def test_BD_trace(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
     grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
-    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
     noext = dict(kwargs_formula={"external_terms": False})
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
     result = bd(data_K)
@@ -122,7 +123,7 @@ def check_save_result():
     def _inner(system, calc, result_type, filename="dummy"):
         grid = wberri.Grid(system=system, NKFFT=3, NK=5)
         dK = np.random.random(3)
-        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+        data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
         result = calc(data_K)
         path_filename = os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
