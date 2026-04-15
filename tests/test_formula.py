@@ -157,7 +157,7 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
         value[f"XlnXnl_ik={ik}"] = np.array(lst2)
         value[f"XllXll_ik={ik}"] = np.array(lst3)
         value[f"XnnXnn_ik={ik}"] = np.array(lst4)
-    if formula_class_name in ["DerMorb", "Der2Morb", "Dermorb", "Der2morb"]:
+    if formula_class_name in ["DerMorb", "Dermorb", "Der2Morb", "Der2morb"]:
         # it is weird that the result is changes so much, even on the same machine
         # TODO investigate the source of this sensitivity and try to improve it
         atol_zero = 2e-3  
