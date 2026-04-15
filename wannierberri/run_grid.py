@@ -7,7 +7,7 @@ import pickle
 import glob
 from termcolor import cprint
 from .utility import remove_dir
-from .data_K import get_data_k
+from .data_K import get_data_k_class_from_system
 from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import get_ray_cpus_count, check_ray_initialized
 from .result.tabresult import TABresult
@@ -137,6 +137,7 @@ def run(
         adpt_fac=1,
         print_progress_step_time=5,
         print_progress_step_percent=1,
+        data_k_class=None
 ):
     """
     The function to run a calculation. Substitutes the old (obsolete and removed) `integrate()` and `tabulate()`
@@ -188,6 +189,9 @@ def run(
         minimal intervals (in seconds) to print progress
     print_progress_step_percent : float or int
         minimal intervals (in percent) to print progress
+    data_k_class : class or None
+        if not `None` - this class will be used to create the `data_k` object for each K-point, instead of the default one defined by `get_data_k_class()`.
+        useful for development, when some methods need to be added to the `data_k` class, and we do not want to change the default one until the development is finished. The custom class should have the same interface as the default one, and should be able to be initialized with the same parameters.
 
 
     Returns
@@ -202,7 +206,8 @@ def run(
     if parallel:
         parallel = check_ray_initialized()
 
-
+    if data_k_class is None:
+        data_k_class = get_data_k_class_from_system(system)
 
     cprint("Starting run()", 'red', attrs=['bold'])
     if parameters_K is None:
@@ -250,7 +255,7 @@ def run(
     remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators, 'symmetrize': symmetrize}
 
     def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
-        data = get_data_k(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+        data = data_k_class(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
         resultdic = {k: v(data) for k, v in _calculators.items()}
         del data
         result = ResultDict(resultdic)
