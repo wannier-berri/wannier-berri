@@ -5,7 +5,7 @@ import pytest
 from pytest import approx
 import wannierberri as wberri
 from wannierberri.grid.Kpoint import KpointBZparallel
-from wannierberri.data_K import get_data_k
+from wannierberri.data_K import get_data_k_class_from_system
 
 from .common import OUTPUT_DIR, REF_DIR
 
@@ -32,7 +32,7 @@ def datak_Fe(system_Fe_W90):
     factor = 1. / np.prod(grid.div)
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
-    return get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='fftw')
+    return wberri.data_K.Data_K_R(system=system, dK=[0, 0, 0], grid=grid, Kpoint=kpoint, fftlib='fftw')
 
 
 def test_Hermitean(datak_Fe):
