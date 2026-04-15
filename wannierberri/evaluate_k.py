@@ -73,8 +73,6 @@ def evaluate_k(system=None,
         if only one quantity is calculated and  `return_single_as_dict=False`, then only an array is returned,
         without packing into dict
     """
-    if data_k_class is None:
-        data_k_class = get_data_k_class_from_system(system)
 
     if calculators is None:
         calculators = {}
@@ -90,6 +88,9 @@ def evaluate_k(system=None,
         print(__doc__)
         print(hlp())
         return
+
+    if data_k_class is None:
+        data_k_class = get_data_k_class_from_system(system)
 
     set1 = set(quantities)
     set2 = set(formula.keys())
