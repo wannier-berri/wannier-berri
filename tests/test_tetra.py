@@ -2,7 +2,7 @@ import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.tetrahedron import weights_tetra
 from wannierberri.grid import Grid
-from wannierberri.data_K import get_data_k
+from wannierberri.data_K import get_data_k_class_from_system
 import pytest
 from pytest import approx
 
@@ -123,7 +123,8 @@ def check_tetra_corners(system, kpoint_type):
         grid = GridTetra(system, length=20, NKFFT=(2, 2, 2))
     kpoint = grid.get_K_list(use_symmetry=False)[3]
 
-    data_k = get_data_k(system=system, grid=grid, dK=k, Kpoint=kpoint)
+    data_k_class = get_data_k_class_from_system(system)
+    data_k = data_k_class(system=system, grid=grid, dK=k, Kpoint=kpoint)
     if kpoint_type == "parallel":
         E_corners = data_k.E_K_corners_parallel()
         E_corners_test = data_k.E_K_corners_parallel_test()
