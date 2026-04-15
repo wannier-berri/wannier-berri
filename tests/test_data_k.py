@@ -26,7 +26,7 @@ def test_fourier(system_Fe_W90):
 
     data_fftw = data_k_class(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='fftw')
     data_slow = data_k_class(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='slow')
-    data_numpy= data_k_class(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='numpy')
+    data_numpy = data_k_class(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='numpy')
 
     test_fields = ["E_K", "D_H", "A_H", "dEig_inv"]
 
