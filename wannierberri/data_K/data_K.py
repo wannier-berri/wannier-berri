@@ -358,11 +358,48 @@ class Data_K(System, abc.ABC):
 
 
     @lru_cache
+    def get_O1(self, external_terms=True, key_OO='rotAA', degen_thresh=1e-3):
+        # _____ 1. Internal terms _____ #
+        A_int = self.get_E1(external_terms=False, degen_thresh=degen_thresh)
+        Obc_int = 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_int)
+        O_H = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
+        if external_terms:
+            # _____ 2. External terms _____ #
+            O = self.Xbar(key_OO)
+            A = self.Xbar('AA')
+            Aa_ext = self.sdct_kron(degen_thresh) * A  # Energy diagonal piece
+            A_ext = A - Aa_ext      # Energy non-diagonal piece
+
+
+
+            Obc_ext = -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
+            Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
+            Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
+            O_ext = O + Obc_ext[:, :, :, alpha_A, beta_A] - Obc_ext[:, :, :, beta_A, alpha_A]
+
+
+            Obc_cross = 1.j * cached_einsum('klpa,kpnb->klnab', A_ext, A_int)
+            Obc_cross += 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_ext)
+            O_cross = Obc_cross[:, :, :, alpha_A, beta_A] - Obc_cross[:, :, :, beta_A, alpha_A]
+
+            O_H += O_ext + O_cross
+        return O_H
+
+
+    @lru_cache
     def get_M1(self, external_terms=True,
-               V_term=True,
+               spin=False, orb=True,
                key_OO='rotAA', degen_thresh=1e-3):
-        ''' Magnetic dipole moment '''
+        ''' Magnetic dipole moment 1/2 * <du |x (H-Ebar) | du> in units of Ang^2* eV
+         optionally adds spin contribution, m_spin_prefactor * S
+           '''
         # Basic covariant matrices in the Hamiltonian gauge
+        if spin:
+            M = m_spin_prefactor * self.Xbar('SS')
+        else:
+            M = np.zeros((self.nk, self.num_wann, self.num_wann, 3), dtype=complex)
+        if not orb:
+            return M
         H = self.Xbar('Ham')
 
         # Other matrices
@@ -375,17 +412,11 @@ class Data_K(System, abc.ABC):
         Cbc_int = 1.j * cached_einsum('klpa,kpm,kmnb->klnab', A_int, H, A_int)
         C_H = Cbc_int[:, :, :, alpha_A, beta_A] - Cbc_int[:, :, :, beta_A, alpha_A]
 
-        Obc_int = 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_int)
-        O_H = Obc_int[:, :, :, alpha_A, beta_A] - Obc_int[:, :, :, beta_A, alpha_A]
-
-
         if external_terms:
-
             # Basic covariant matrices in the Hamiltonian gauge
             A = self.Xbar('AA')
             B = self.Xbar('BB')
             C = self.Xbar('CC')
-            O = self.Xbar(key_OO)
 
             # _____ 2. External terms _____ #
             Aa_ext = self.sdct_kron(degen_thresh) * A  # Energy diagonal piece
@@ -396,11 +427,6 @@ class Data_K(System, abc.ABC):
             Cbc_ext += -1.j * cached_einsum('kn,klpa,kpnb->klnab', En, A_ext, Aa_ext)
             C_ext = C + Cbc_ext[:, :, :, alpha_A, beta_A] - Cbc_ext[:, :, :, beta_A, alpha_A]
 
-            Obc_ext = -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, Aa_ext)
-            Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', A_ext, Aa_ext)
-            Obc_ext += -1.j * cached_einsum('klpa,kpnb->klnab', Aa_ext, A_ext)
-            O_ext = O + Obc_ext[:, :, :, alpha_A, beta_A] - Obc_ext[:, :, :, beta_A, alpha_A]
-
             # _____ 3. Cross terms _____ #
             Cbc_cross = cached_einsum('klpa,kpnb->klnab', A_int, B)
             Cbc_cross = 1.j * (Cbc_cross - Cbc_cross.swapaxes(1, 2).conj())
@@ -408,20 +434,10 @@ class Data_K(System, abc.ABC):
             Cbc_cross += -1.j * cached_einsum('kn,klpa,kpnb->klnab', En, A_int, Aa_ext)
             C_cross = Cbc_cross[:, :, :, alpha_A, beta_A] - Cbc_cross[:, :, :, beta_A, alpha_A]
 
-            Obc_cross = 1.j * cached_einsum('klpa,kpnb->klnab', A_ext, A_int)
-            Obc_cross += 1.j * cached_einsum('klpa,kpnb->klnab', A_int, A_ext)
-            O_cross = Obc_cross[:, :, :, alpha_A, beta_A] - Obc_cross[:, :, :, beta_A, alpha_A]
-
             # Final formula
             C_H += C_ext + C_cross
-            O_H += O_ext + O_cross
-        M = -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
-        if V_term:
-            Vn = self.delE_K
-            Vnm_plus = 0.5 * (Vn[:, :, None, :] + Vn[:, None, :, :])
-            A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
-            M += 0.5 * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
-                    Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
+        O_H = self.get_O1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh)
+        M += -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
         return M
 
 
@@ -468,12 +484,9 @@ class Data_K(System, abc.ABC):
                 key_OO='rotAA', degen_thresh=1e-3):
         B = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         if orb or spin:
-            m = np.zeros((self.nk, self.num_wann, self.num_wann, 3), dtype=complex)
-            if orb:
-                m += self.get_M1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh,
-                                V_term=False)
-            if spin:
-                m += m_spin_prefactor * self.Xbar('SS')
+            m = self.get_M1(external_terms=external_terms, 
+                            spin=spin, orb=orb,
+                            key_OO=key_OO, degen_thresh=degen_thresh)
             B[:, :, :, alpha_A, beta_A] += m
             B[:, :, :, beta_A, alpha_A] -= m
         if V:
