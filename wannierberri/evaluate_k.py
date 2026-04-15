@@ -1,7 +1,7 @@
 import numpy as np
 from collections.abc import Iterable
 from .grid import Grid
-from .data_K import get_data_k
+from .data_K import get_data_k_class_from_system
 from collections import defaultdict
 from .calculators import tabulate
 from .run_grid import run
@@ -39,6 +39,7 @@ def evaluate_k(system=None,
                iband=None,
                return_single_as_dict=False,
                parameters_K=None,
+               data_k_class=None
               ):
     """This function presents a shortcut to evaluate some property at a particular k-point
     The main goal is to be convenient, rather than efficient
@@ -88,6 +89,9 @@ def evaluate_k(system=None,
         print(hlp())
         return
 
+    if data_k_class is None:
+        data_k_class = get_data_k_class_from_system(system)
+
     set1 = set(quantities)
     set2 = set(formula.keys())
     set3 = set(calculators.keys())
@@ -99,7 +103,7 @@ def evaluate_k(system=None,
         raise ValueError("names of calculators, formula and quantities should be unique")
 
     grid = Grid(system=system, NK=1, NKFFT=1)
-    data_k = get_data_k(system, grid=grid, dK=k, **parameters_K)
+    data_k = data_k_class(system, grid=grid, dK=k, **parameters_K)
 
     result = {c: calc(data_k) for c, calc in calculators.items()}
 

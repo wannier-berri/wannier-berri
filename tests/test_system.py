@@ -490,7 +490,7 @@ def test_system_pythtb_spinor():
     for model, comment, e in (model2, "in a scalar way", e2), (model1, "using spinors", e1), :
         system = wberri.system.System_PythTB(model)
         grid = wberri.Grid(system=system, NKFFT=[20, 1, 1], NKdiv=1)
-        datak = wberri.data_K.get_data_k(system=system, dK=[0, 0, 0], grid=grid)
+        datak = wberri.data_K.Data_K_R(system=system, dK=[0, 0, 0], grid=grid)
         ew = datak.E_K.T
         assert e == pytest.approx(ew), ("System gave eigenvalues different from the model "
                                       f"defined in pythtb {comment}"

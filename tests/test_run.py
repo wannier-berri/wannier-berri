@@ -11,6 +11,7 @@ from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
 from wannierberri.symmetry.point_symmetry import transform_odd_trans_102
+from wannierberri.data_K.data_K_R import Data_K_R
 
 from .common import OUTPUT_DIR_RUN, OUTPUT_DIR, REF_DIR_INTEGRATE
 from .common_comparers import compare_quant
@@ -708,6 +709,10 @@ def check_Haldane(check_run, system, code, use_symmetry, tetra=False, **kwargs_r
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Haldane_PythTB):
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry)
+
+
+def test_Haldane_PythTB_custom_datak(check_run, compare_any_result, system_Haldane_PythTB):
+    check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, data_k_class=Data_K_R)
 
 
 
