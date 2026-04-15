@@ -484,7 +484,7 @@ class Data_K(System, abc.ABC):
                 key_OO='rotAA', degen_thresh=1e-3):
         B = np.zeros((self.nk, self.num_wann, self.num_wann, 3, 3), dtype=complex)
         if orb or spin:
-            m = self.get_M1(external_terms=external_terms, 
+            m = self.get_M1(external_terms=external_terms,
                             spin=spin, orb=orb,
                             key_OO=key_OO, degen_thresh=degen_thresh)
             B[:, :, :, alpha_A, beta_A] += m
