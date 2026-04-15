@@ -58,7 +58,7 @@ def test_Hermitean(datak_Fe):
                 Xln = form.ln(ik, inn, inn)
                 Xnl = form.nl(ik, inn, inn)
                 assert np.allclose(Xln, Xnl.conj().swapaxes(0, 1)), f"{formula.__name__} ln and nl are not Hermitean conjugate for ik={ik}, inn={inn}"
-            for key in ('Ham', 'AA'):
+            for key in ('Ham', 'AA', 'CC'):
                 for der in 0, 1, 2:
                     Xbar = data.covariant(key, der)
                     Xln = Xbar.ln(ik, inn, inn)
