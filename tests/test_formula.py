@@ -64,7 +64,7 @@ def test_Hermitean(datak_Fe):
 
 @pytest.fixture(scope="module")
 def check_formula_output():
-    def __inner(value, filename):
+    def __inner(value, filename, abs_tol=1e-8, rel_tol=1e-6):
         path_out = os.path.join(OUTPUT_DIR, "formula")
         path_ref = os.path.join(REF_DIR, "formula")
         os.makedirs(path_out, exist_ok=True)
@@ -73,7 +73,11 @@ def check_formula_output():
         for k, val in value_ref.items():
             print(f"Checking {filename} key {k}")
             val_out = value[k]
-            assert np.allclose(val, val_out), f"Formula output {filename} key {k} does not match reference"
+            assert np.allclose(val, val_out, atol=abs_tol, rtol=rel_tol), (
+                f"Formula output {filename} key {k} does not match reference."
+                f"value_ref = \n{val}\n  obtained = \n{val_out}\n"
+                f"max abs diff is {np.max(abs(val - val_out))}")
+            
     return __inner
 
 
