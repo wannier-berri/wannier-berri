@@ -16,4 +16,3 @@ def get_data_k_class_from_system(system):
         return Data_K_R
     else:
         raise ValueError(f"unknown system type {type(system)}")
-    

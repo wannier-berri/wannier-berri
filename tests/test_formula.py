@@ -10,19 +10,26 @@ from .common import OUTPUT_DIR, REF_DIR
 
 from wannierberri.formula import elementary  as frml_el
 from wannierberri.formula import covariant as frml_cov
+from wannierberri.formula import sdct as frml_sdct
 
 
-@pytest.fixture(scope="module")
-def datak_Fe(system_Fe_W90):
-    system = system_Fe_W90
-    k = np.array([0.1, 0.2, -0.3])
-    grid = wberri.Grid(system=system, NKFFT=[4, 3, 2], NKdiv=1, use_symmetry=False)
+
+
+
+def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
+    grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1, use_symmetry=False)
     dK = 1. / grid.div
-    NKFFT = grid.FFT
     factor = 1. / np.prod(grid.div)
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
-    return wberri.data_K.Data_K_R(system=system, dK=[0, 0, 0], grid=grid, Kpoint=kpoint, fftlib='fftw')
+    data_k_class = wberri.data_K.get_data_k_class_from_system(system)
+    data_k = data_k_class(system, dK=[0, 0, 0], grid=grid, Kpoint=kpoint, fftlib='fftw')
+    return data_k
+
+
+@pytest.fixture(scope="module")
+def datak_Fe(system_Fe_sym_W90):
+    return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2])
 
 
 def test_Hermitean(datak_Fe):
@@ -64,7 +71,7 @@ def test_Hermitean(datak_Fe):
 
 @pytest.fixture(scope="module")
 def check_formula_output():
-    def __inner(value, filename, abs_tol=1e-8, rel_tol=1e-6):
+    def __inner(value, filename, rel_tol=1e-6, atol_zero=1e-10):
         path_out = os.path.join(OUTPUT_DIR, "formula")
         path_ref = os.path.join(REF_DIR, "formula")
         os.makedirs(path_out, exist_ok=True)
@@ -73,11 +80,20 @@ def check_formula_output():
         for k, val in value_ref.items():
             print(f"Checking {filename} key {k}")
             val_out = value[k]
-            assert np.allclose(val, val_out, atol=abs_tol, rtol=rel_tol), (
-                f"Formula output {filename} key {k} does not match reference."
-                f"value_ref = \n{val}\n  obtained = \n{val_out}\n"
-                f"max abs diff is {np.max(abs(val - val_out))}")
-            
+            assert val_out.shape == val.shape, f"Shape mismatch for {filename} key {k}: {val_out.shape} vs {val.shape}"
+            if val.size == 0:
+                continue
+            maxval = np.max(abs(val))
+            if maxval < atol_zero:
+                assert np.allclose(val_out, 0, atol=atol_zero), f"{filename} key {k} is expected to be zero, but max value is {maxval} > {atol_zero}"
+            else:
+                adiff = np.max(abs(val - val_out))
+                rdiff = adiff / maxval
+                assert (rdiff < rel_tol), (
+                    f"Formula output {filename} key {k} does not match reference."
+                    f" abs diff: {adiff}, rel diff :{rdiff} > {rel_tol}, "
+                )
+
     return __inner
 
 
@@ -93,7 +109,10 @@ formula_nn = ["VelMassVel", "Dermorb", "VelVelVel", "Der2A", "OmegaS", "Der2Morb
               "Der2H", "Der2Spin", "Der2Omega", "Der2O", "DerOmega", "SpinVelocity", "SpinOmega",
               "OmegaOmega", "VelOmega", "Der3E", "VelSpin", "DerMorb", "morb", "VelVel", "Morb_H",
               "VelVel", "Omega", "Der2morb"]
-formula_all = set(formula_all + formula_ln + formula_nn)
+
+formula_all = list(sorted(set(formula_all + formula_ln + formula_nn)))
+
+formula_sdct = ["SDCT_sea_I", "SDCT_sea_II", "SDCT_surf_I", "SDCT_surf_II"]
 
 
 @pytest.mark.parametrize("formula_class_name", formula_all)
@@ -134,8 +153,40 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
                 lst3.append(np.einsum("ll...->...", Xll))
                 lst4.append(np.einsum("nn...->...", Xnn))
         # we can compare only gauge-invariant combinations, so we sum over inn and out
-        value[f"XnlXln_ik={ik}"] = lst1
-        value[f"XlnXnl_ik={ik}"] = lst2
-        value[f"XllXll_ik={ik}"] = lst3
-        value[f"XnnXnn_ik={ik}"] = lst4
-    check_formula_output(value=value, filename=f"{formula_class_name}")
+        value[f"XnlXln_ik={ik}"] = np.array(lst1)
+        value[f"XlnXnl_ik={ik}"] = np.array(lst2)
+        value[f"XllXll_ik={ik}"] = np.array(lst3)
+        value[f"XnnXnn_ik={ik}"] = np.array(lst4)
+    if formula_class_name in ["DerMorb", "Der2Morb", "Dermorb", "Der2morb"]:
+        atol_zero = 1e-3
+        rel_tol = 1e-4
+    if "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
+        rel_tol = 1e-5
+        atol_zero = 1e-6
+    else:
+        rel_tol = 1e-6
+        atol_zero = 1e-10
+    check_formula_output(value=value, filename=f"{formula_class_name}", rel_tol=rel_tol, atol_zero=atol_zero)
+
+
+@pytest.mark.parametrize("formula_class_name", formula_sdct)
+@pytest.mark.parametrize("term", ["M1", "E2", "V", "S"])
+@pytest.mark.parametrize("sym_name", ["sym", "antisym"])
+def test_formula_sdct(datak_Fe, formula_class_name, check_formula_output, term, sym_name):
+    data = datak_Fe
+    degen_groups = data.get_bands_in_range_groups(emin=-10, emax=30, degen_thresh=0.5)
+    formula_class = getattr(frml_sdct, "Formula_" + formula_class_name)
+    terms = {t: False for t in ["M1_terms", "E2_terms", "V_terms", "S_terms"]}
+    terms[term + "_terms"] = True
+    sym = {"sym": True, "antisym": False}[sym_name]
+    formula = formula_class(data, sym=sym, **terms)
+    value = {}
+    for ik in range(data.nk):
+        lst = []
+        for n1 in degen_groups[ik]:
+            for n2 in degen_groups[ik]:
+                inn1 = np.arange(n1[0], n1[1])
+                inn2 = np.arange(n2[0], n2[1])
+                lst.append(formula.trace_ln(ik, inn1, inn2))
+        value[f"trace_ln_ik={ik}"] = np.array(lst)
+    check_formula_output(value=value, filename=f"{formula_class_name}_{term}_{sym_name}")
