@@ -359,9 +359,7 @@ class Data_K(System, abc.ABC):
 
     @lru_cache
     def get_M1(self, external_terms=True,
-               V_term=True,
-               key_OO='rotAA', degen_thresh=1e-3,
-               AH_term=False):
+               key_OO='rotAA', degen_thresh=1e-3):
         ''' Magnetic dipole moment '''
         # Basic covariant matrices in the Hamiltonian gauge
         H = self.Xbar('Ham')
@@ -417,15 +415,6 @@ class Data_K(System, abc.ABC):
             C_H += C_ext + C_cross
             O_H += O_ext + O_cross
         M = -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
-        if V_term:
-            Vn = self.delE_K
-            Vnm_plus = (Vn[:, :, None, :] + Vn[:, None, :, :])
-            A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
-            M += 0.5 * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
-                    Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
-        if AH_term:
-            Eln_minus = (En[:, :, None] - En[:, None, :])
-            M += 0.25 * Eln_minus[:, :, :, None] * O_H
         return M
 
 
@@ -474,8 +463,7 @@ class Data_K(System, abc.ABC):
         if orb or spin:
             m = np.zeros((self.nk, self.num_wann, self.num_wann, 3), dtype=complex)
             if orb:
-                m += self.get_M1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh,
-                                V_term=False)
+                m += self.get_M1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh)
             if spin:
                 m += m_spin_prefactor * self.Xbar('SS')
             B[:, :, :, alpha_A, beta_A] += m
