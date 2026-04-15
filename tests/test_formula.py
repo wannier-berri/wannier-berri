@@ -5,21 +5,11 @@ import pytest
 from pytest import approx
 import wannierberri as wberri
 from wannierberri.grid.Kpoint import KpointBZparallel
-from wannierberri.data_K import get_data_k_class_from_system
 
 from .common import OUTPUT_DIR, REF_DIR
 
-from wannierberri.formula.elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, DEinv_ln
-
-from wannierberri.formula.covariant import (Spin, DerOmega, Omega,
-        Der2Omega, Der2A, Der2B, Der2H,
-        Der2O, Der3E, Hamiltonian, Velocity, Der2Spin, Morb_H,
-        morb, DerMorb, Dermorb, Der2Morb, Der2morb, SpinOmega, SpinVelocity,
-        VelOmega, VelSpin, VelVel, VelVelVel, VelMassVel, OmegaS, OmegaOmega,
-        emcha_surf, NLDrude_Z_orb_Omega,
-        NLDrude_Z_spin, QuantumMetric_ab, DerQuantumMetric_ab_d, VelDQM
-)
-
+from wannierberri.formula import elementary  as frml_el
+from wannierberri.formula import covariant as frml_cov
 
 
 @pytest.fixture(scope="module")
@@ -44,18 +34,19 @@ def test_Hermitean(datak_Fe):
         for n in degen_groups[ik]:
             inn = np.arange(n[0], n[1])
             out = np.concatenate((np.arange(0, n[0]), np.arange(n[1], NB)))
-            for formula in [Dcov, DerDcov, Der2Dcov]:
+            for formula in [frml_el.Dcov, frml_el.DerDcov, frml_el.Der2Dcov]:
                 form = formula(data)
                 Xnl = form.ln(ik, inn, out)
                 Xln = form.ln(ik, out, inn)
                 assert np.allclose(Xnl, -Xln.conj().swapaxes(0, 1)), f"{formula.__name__} nl and ln are not Hermitean conjugate for ik={ik}, inn={inn}"
-            for formula in [Spin, DerOmega, Omega, Der2Omega, Der2A, Der2H, Der2O]:
+            for formula in [frml_cov.Spin, frml_cov.DerOmega, frml_cov.Omega, frml_cov.Der2Omega,
+                            frml_cov.Der2A, frml_cov.Der2H, frml_cov.Der2O]:
                 form = formula(data)
                 Xll = form.ll(ik, inn, inn)
                 Xnn = form.nn(ik, inn, inn)
                 assert np.allclose(Xll, Xll.conj().swapaxes(0, 1)), f"{formula.__name__} ll is not Hermitean for ik={ik}, inn={inn}"
                 assert np.allclose(Xnn, Xnn.conj().swapaxes(0, 1)), f"{formula.__name__} nn is not Hermitean for ik={ik}, inn={inn}"
-            for formula in [Spin, Der2A]:
+            for formula in [frml_cov.Spin, frml_cov.Der2A]:
                 form = formula(data)
                 Xln = form.ln(ik, inn, inn)
                 Xnl = form.nl(ik, inn, inn)
@@ -109,7 +100,15 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
     kwargs = {}
     if formula_class_name == "SpinVelocity":
         kwargs["spin_current_type"] = "ryoo"
-    formula = globals()[formula_class_name]
+
+    try:
+        formula = getattr(frml_el, formula_class_name)
+    except AttributeError:
+        try:
+            formula = getattr(frml_cov, formula_class_name)
+        except AttributeError:
+            raise ValueError(f"unknown formula {formula_class_name}")
+
     value = {}
     for ik in range(data.nk):
         lst1 = []
