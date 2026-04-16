@@ -508,7 +508,7 @@ class DerMorb_H(Formula_ln):
                 summ += -2 * s * cached_einsum(
                     "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                     self.dD.ln(ik, inn, out)[:, :, b, :])
-
+        summ = (summ + summ.swapaxes(0, 1).conj()) / 2
         return summ
 
     def ln(self, ik, inn, out):
@@ -530,6 +530,7 @@ class DerMorb(Formula_ln):
             self.dO = DerOmega(data_K, **parameters)
             self.O = Omega(data_K, **parameters)
             self.E = data_K.E_K
+            self.Eav = Eavln(data_K)
         self.ndim = 2
         self.transformTR = transform_ident
         self.transformInv = transform_odd
@@ -537,8 +538,10 @@ class DerMorb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.dermorb_H.nn(ik, inn, out)
         if self.sign != 0:
-            res += self.sign * cached_einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            res += self.sign * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
+            tmp = self.Eav.nn(ik, inn, out)[:, :, None, None] * self.dO.nn(ik, inn, out)
+            tmp += 0.5 * cached_einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mld,lnc->mncd", self.V.nn(ik, inn, out), self.O.nn(ik, inn, out))
+            res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
         return res
 
     def ln(self, ik, inn, out):
@@ -623,6 +626,7 @@ class Der2Morb_H(Formula_ln):
                 summ += -2 * s * cached_einsum("mlc,lncde->mncde", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                         self.ddD.ln(ik, inn, out)[:, :, b])
 
+        summ = (summ + summ.swapaxes(0, 1).conj()) / 2
         return summ
 
     def ln(self, ik, inn, out):
@@ -646,6 +650,7 @@ class Der2Morb(Formula_ln):
             self.ddO = Der2Omega(data_K, **parameters)
             self.O = Omega(data_K, **parameters)
             self.E = data_K.E_K
+            self.Eav = Eavln(data_K)
         self.ndim = 3
         self.transformTR = transform_odd
         self.transformInv = transform_ident
@@ -657,10 +662,12 @@ class Der2Morb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.der2morb_H.nn(ik, inn, out)
         if self.sign != 0:
-            res += self.sign * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            res += self.sign * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
-            res += self.sign * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
-            res += self.sign * self.E[ik][inn][:, None, None, None, None] * self.ddO.nn(ik, inn, out)
+            tmp = self.Eav.nn(ik, inn, out)[:, :, None, None, None] * self.ddO.nn(ik, inn, out)
+            tmp += 0.5 * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mld,lnce->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlde,lnc->mncde", self.dV.nn(ik, inn, out), self.O.nn(ik, inn, out))
+            res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
         return res
 
     def ln(self, ik, inn, out):
