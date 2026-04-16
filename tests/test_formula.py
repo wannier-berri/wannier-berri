@@ -28,7 +28,8 @@ def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
 
 
 @pytest.fixture(scope="module")
-def datak_Fe(system_Fe_sym_W90):
+def datak_Fe():
+    system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
     return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[1, 2, 3])
 
 
@@ -47,7 +48,12 @@ def test_Hermitean(datak_Fe):
                 Xln = form.ln(ik, out, inn)
                 assert np.allclose(Xnl, -Xln.conj().swapaxes(0, 1)), f"{formula.__name__} nl and ln are not Hermitean conjugate for ik={ik}, inn={inn}"
             for formula in [frml_cov.Spin, frml_cov.DerOmega, frml_cov.Omega, frml_cov.Der2Omega,
-                            frml_cov.Der2A, frml_cov.Der2H, frml_cov.Der2O]:
+                            frml_cov.Der2A, frml_cov.Der2H, frml_cov.Der2O,
+                            frml_cov.Der3E, frml_cov.morb,
+                            frml_cov.Dermorb,
+                            frml_cov.DerMorb,
+                            frml_cov.Der2Morb, frml_cov.Der2morb
+                            ]:
                 form = formula(data)
                 Xll = form.ll(ik, inn, inn)
                 Xnn = form.nn(ik, inn, inn)
@@ -157,12 +163,12 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
         value[f"XlnXnl_ik={ik}"] = np.array(lst2)
         value[f"XllXll_ik={ik}"] = np.array(lst3)
         value[f"XnnXnn_ik={ik}"] = np.array(lst4)
-    if formula_class_name in ["DerMorb", "Der2Morb", "Dermorb", "Der2morb"]:
-        # it is weird that the result is changes so much, even on the same machine
-        # TODO investigate the source of this sensitivity and try to improve it
-        atol_zero = 2e-3  
-        rel_tol = 1e-4
-    elif "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
+    # if formula_class_name in ["DerMorb", "Dermorb", "Der2Morb", "Der2morb"]:
+    #     # it is weird that the result is changes so much, even on the same machine
+    #     # TODO investigate the source of this sensitivity and try to improve it
+    #     atol_zero = 2e-3
+    #     rel_tol = 1e-4
+    if "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
         rel_tol = 1e-5
         atol_zero = 1e-6
     else:
