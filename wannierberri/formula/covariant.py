@@ -559,6 +559,8 @@ class Der2Morb_H(Formula_ln):
         self.transformInv = transform_ident
     # TODO merge term if possible.
 
+
+
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
         summab = np.zeros((len(inn), len(inn), 3, 3, 3, 3), dtype=complex)
@@ -589,11 +591,10 @@ class Der2Morb_H(Formula_ln):
             dBln = self.dB.ln(ik, inn, out)
             Bln = self.B.ln(ik, inn, out)
             Bnl_ = Bln.swapaxes(1, 0).conj()
-            dBnl_ = dBln.swapaxes(1, 0).conj()
             summ += 1 * self.ddH.nn(ik, inn, out)
             summ += -2j * cached_einsum("mpc,plde,lnc->mncde", Ann[:, :, alpha_A], self.dV.nn(ik, inn, out), Ann[:, :, beta_A])
             summab += -2j * cached_einsum("mpae,pld,lnb->mnabde", dAnn, Vnn, Ann)
-            summab += -2j * cached_einsum("mla,lpe,lnbd->mnabde", Ann, Vnn, dAnn)  # FIXME this is wrong!! then unify with line above
+            summab += -2j * cached_einsum("mla,lpe,pnbd->mnabde", Ann, Vnn, dAnn)  # FIXME this is wrong!! then unify with line above
             summab += -2j * cached_einsum("mlae,l,lnbd->mnabde", dAnn, En, dAnn)
             summab += -2j * cached_einsum("mla,l,lnbde->mnabde", Ann, En, self.ddA.nn(ik, inn, out))
             summab += -2 * cached_einsum("mla,lnbde->mnabde", Dnl, self.ddB.ln(ik, inn, out))
