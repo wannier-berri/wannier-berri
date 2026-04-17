@@ -149,7 +149,6 @@ formula_nn = ["VelMassVel", "Dermorb", "VelVelVel", "OmegaS", "Der2Morb",
               "VelVel", "Omega", "Der2morb"]
 
 formula_all = list(sorted(set(formula_all + formula_ln + formula_nn)))
-test_for
 formula_sdct = ["SDCT_sea_I", "SDCT_sea_II", "SDCT_surf_I", "SDCT_surf_II"]
 
 

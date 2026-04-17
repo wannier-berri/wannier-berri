@@ -464,20 +464,24 @@ class DerMorb_H(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
+        summab = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+
         Dnl = self.D.nl(ik, inn, out)
         dDln = self.dD.ln(ik, inn, out)
         if self.internal_terms:
             Dln = -Dnl.swapaxes(0, 1).conj()
             summ += -2j * cached_einsum("mpc,pld,lnc->mncd", Dnl[:, :, alpha_A], self.V.ll(ik, inn, out), Dln[:, :, beta_A])
-            summ += -4j * cached_einsum("mlc,l,lncd->mncd", Dnl[:, :, alpha_A], self.E[ik][out], dDln[:, :, beta_A])
+            summab += -2j * cached_einsum("mla,l,lnbd->mnabd", Dnl, self.E[ik][out], dDln)
         if self.external_terms:
             summ += 1 * self.dH.nn(ik, inn, out)
             Ann = self.A.nn(ik, inn, out)
+            Bln_ = self.B.ln(ik, inn, out).transpose(1, 0, 2).conj()
             summ += -2j * cached_einsum("mpc,pld,lnc->mncd", Ann[:, :, alpha_A], self.V.nn(ik, inn, out), Ann[:, :, beta_A])
-            tmp = -2j * cached_einsum("mla,l,lnbd->mnabd", Ann, self.E[ik][inn], self.dA.nn(ik, inn, out))
-            summ += tmp[:, :, alpha_A, beta_A, :] - tmp[:, :, beta_A, alpha_A, :]
-            summ += -4 * cached_einsum("mlc,lncd->mncd", Dnl[:, :, alpha_A], self.dB.ln(ik, inn, out)[:, :, beta_A])
+            summab += -2j * cached_einsum("mla,l,lnbd->mnabd", Ann, self.E[ik][inn], self.dA.nn(ik, inn, out))
+            summab += -2 * cached_einsum("mla,lnbd->mnabd", Dnl, self.dB.ln(ik, inn, out))
+            summab += -2 * cached_einsum("mla,lnbd->mnabd", Bln_, self.dD.ln(ik, inn, out))
 
+        summ += summab[:, :, alpha_A, beta_A, :] - summab[:, :, beta_A, alpha_A, :]
         summ = (summ + summ.swapaxes(0, 1).conj()) / 2
         return summ
 
@@ -568,10 +572,13 @@ class Der2Morb_H(Formula_ln):
             El = self.E[ik][out]
             dVll = self.dV.ll(ik, inn, out)
             summ += -2j * cached_einsum("mpc,plde,lnc->mncde", Dnl[:, :, alpha_A], dVll, Dln[:, :, beta_A])
-            tmp = -2j * cached_einsum("mpae,pld,lnb->mnabde", dDnl, Vll, Dln)
-            summab += tmp + tmp.swapaxes(3, 4)
+
+            summab += -1j * cached_einsum("mpae,pld,lnb->mnabde", dDnl, Vll, Dln)
+            summab += -1j * cached_einsum("mpa,pld,lnbe->mnabde", Dnl, Vll, dDnl)
+            
             summab += -2j * cached_einsum("mlae,l,lnbd->mnabde", dDnl, El, dDln)
             summab += -2j * cached_einsum("mla,l,lnbde->mnabde", Dnl, El, self.ddD.ln(ik, inn, out))
+            summab += -2j * cached_einsum("mpa,ple,lnbd->mnabde", Dnl, Vll, dDln)
 
 
         if self.external_terms:
@@ -582,22 +589,22 @@ class Der2Morb_H(Formula_ln):
             dBln = self.dB.ln(ik, inn, out)
             Bln = self.B.ln(ik, inn, out)
             Bnl_ = Bln.swapaxes(1, 0).conj()
+            dBnl_ = dBln.swapaxes(1, 0).conj()
             summ += 1 * self.ddH.nn(ik, inn, out)
             summ += -2j * cached_einsum("mpc,plde,lnc->mncde", Ann[:, :, alpha_A], self.dV.nn(ik, inn, out), Ann[:, :, beta_A])
-            tmp = -2j * cached_einsum("mpc,pld,lnce->mncde", Ann[:, :, alpha_A], Vnn, dAnn[:, :, beta_A])
-            summ += tmp + tmp.swapaxes(3, 4)
-            summab += -2j * cached_einsum("mlae,l,lnbd->mnabde", dAnn, En, dAnn) * 2
+            summab += -2j * cached_einsum("mpae,pld,lnb->mnabde", dAnn, Vnn, Ann)
+            summab += -2j * cached_einsum("mla,lpe,lnbd->mnabde", Ann, Vnn, dAnn)  # FIXME this is wrong!! then unify with line above
+            summab += -2j * cached_einsum("mlae,l,lnbd->mnabde", dAnn, En, dAnn)
             summab += -2j * cached_einsum("mla,l,lnbde->mnabde", Ann, En, self.ddA.nn(ik, inn, out))
-            tmp = -2 * cached_einsum("mlae,lnbd->mnabde", dDnl, dBln)
-            summab += tmp + tmp.swapaxes(1, 0).conj()
             summab += -2 * cached_einsum("mla,lnbde->mnabde", Dnl, self.ddB.ln(ik, inn, out))
+            tmp =  -2 * cached_einsum("mlae,lnbd->mnabde", dDnl, dBln)
+            summab += tmp + tmp.swapaxes(-1,-2)
             summab += -2 * cached_einsum("mla,lnbde->mnabde", Bnl_, self.ddD.ln(ik, inn, out))
-
-
+            
         summ += summab[:, :, alpha_A, beta_A, :, :] - summab[:, :, beta_A, alpha_A, :, :]
 
         summ = (summ + summ.swapaxes(0, 1).conj()) / 2
-        summ = (summ + summ.swapaxes(-1, -2)) / 2  # to check that it is symmetric in the derivatives order
+        # summ = (summ + summ.swapaxes(-1, -2)) / 2  # to check that it is symmetric in the derivatives order
         return summ
 
     def ln(self, ik, inn, out):
@@ -606,6 +613,7 @@ class Der2Morb_H(Formula_ln):
     @property
     def additive(self):
         return False
+
 
 
 class Der2Morb(Formula_ln):
@@ -633,18 +641,21 @@ class Der2Morb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.der2morb_H.nn(ik, inn, out)
         if self.sign != 0:
-            tmp = self.Eav.nn(ik, inn, out)[:, :, None, None, None] * self.ddO.nn(ik, inn, out)
-            tmp += 0.5 * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            tmp += 0.5 * cached_einsum("mlcd,lne->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            tmp += 0.5 * cached_einsum("mld,lnce->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
-            tmp += 0.5 * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            tmp=0
+            tmp += 2 * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp = (tmp + tmp.swapaxes(-2,-1))/2
             tmp += 0.5 * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
             tmp += 0.5 * cached_einsum("mlde,lnc->mncde", self.dV.nn(ik, inn, out), self.O.nn(ik, inn, out))
+            tmp = (tmp + tmp.swapaxes(-2,-1))/2
+            
+            tmp += self.Eav.nn(ik, inn, out)[:, :, None, None, None] * self.ddO.nn(ik, inn, out)
             res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
+        # res = (res + res.swapaxes(-1,-2))/2
         return res
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+    
 
 
 class Der2morb(Der2Morb):
