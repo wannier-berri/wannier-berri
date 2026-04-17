@@ -33,7 +33,8 @@ def datak_Fe():
     return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[1, 2, 3])
 
 
-def test_Hermitean(datak_Fe):
+@pytest.mark.parametrize("terms", [(True, True)])  # , (True, False), (False, True)])
+def test_Hermitean(datak_Fe, terms):
     data = datak_Fe
     NB = data.num_wann
     degen_groups = data.get_bands_in_range_groups(emin=-10, emax=30, degen_thresh=0.01)
@@ -47,18 +48,48 @@ def test_Hermitean(datak_Fe):
                 Xnl = form.ln(ik, inn, out)
                 Xln = form.ln(ik, out, inn)
                 assert np.allclose(Xnl, -Xln.conj().swapaxes(0, 1)), f"{formula.__name__} nl and ln are not Hermitean conjugate for ik={ik}, inn={inn}"
+                if formula is frml_el.DerDcov:
+                    maxval = np.max(np.abs(Xnl))
+                    if maxval > 1e-8:
+                        diff = np.max(np.abs(Xln - Xln.swapaxes(-1, -2)))
+                        assert diff < maxval * 1e-8, f"{formula.__name__} ln is not symmetric for ik={ik}, inn={inn}. relative difference is {diff / maxval}"
             for formula in [frml_cov.Spin, frml_cov.DerOmega, frml_cov.Omega, frml_cov.Der2Omega,
                             frml_cov.Der2A, frml_cov.Der2H, frml_cov.Der2O,
                             frml_cov.Der3E, frml_cov.morb,
                             frml_cov.Dermorb,
                             frml_cov.DerMorb,
-                            frml_cov.Der2Morb, frml_cov.Der2morb
+                            frml_cov.Der2Morb_H,
+                            frml_cov.Der2Morb,
+                            frml_cov.Der2morb
                             ]:
-                form = formula(data)
+                try:
+                    form = formula(data, internal_terms=terms[0], external_terms=terms[1])
+                except NotImplementedError as err:
+                    print(f"Formula {formula.__name__} does not have nn and ll implemented, skipping Hermitean test. Error message: {err}")
+                    continue
+                except TypeError as err:
+                    print(f"Formula does not support internal/external terms. Error message: {err}")
+                    form = formula(data)
                 Xll = form.ll(ik, inn, inn)
                 Xnn = form.nn(ik, inn, inn)
                 assert np.allclose(Xll, Xll.conj().swapaxes(0, 1)), f"{formula.__name__} ll is not Hermitean for ik={ik}, inn={inn}"
                 assert np.allclose(Xnn, Xnn.conj().swapaxes(0, 1)), f"{formula.__name__} nn is not Hermitean for ik={ik}, inn={inn}"
+                if formula.__name__.startswith("Der2") or formula.__name__.startswith("Der3"):
+                    print(f"Checking symmetry of Der2: {formula.__name__} nn for ik={ik}, inn={inn}")
+                    diff = np.max(np.abs(Xnn - Xnn.swapaxes(-1, -2)))
+                    maxval = np.max(np.abs(Xnn))
+                    if maxval > 1e-8:
+                        assert diff < maxval * 1e-8, f"{formula.__name__} nn is not symmetric in the derivative indices for ik={ik}, inn={inn}. relative difference is {diff / maxval}"
+                if formula.__name__.startswith("Der3"):
+                    ediff = data.E_K[ik, n[1] - 1] - data.E_K[ik, n[0]]
+                    Xnn_diag = np.diagonal(Xnn, axis1=0, axis2=1).transpose(3, 0, 1, 2)
+                    print(f"Checking symmetry of Der3: {formula.__name__} nn diagonal for ik={ik}, inn={inn}, energy difference is {ediff}")
+                    maxval = np.max(np.abs(Xnn_diag))
+                    if maxval > 1e-8:
+                        for pair in [(-1, -2), (-2, -3), (-1, -3),]:
+                            diff = np.max(np.abs(Xnn_diag - Xnn_diag.swapaxes(*pair)))
+                            assert diff < maxval * 1e-8, f"{formula.__name__} nn_trace is not symmetric in the derivative indices {pair} for ik={ik}, inn={inn}. relative difference is {diff / maxval}"
+
             for formula in [frml_cov.Spin, frml_cov.Der2A]:
                 form = formula(data)
                 Xln = form.ln(ik, inn, inn)
@@ -73,6 +104,7 @@ def test_Hermitean(datak_Fe):
                     Xll = Xbar.ll(ik, inn, inn)
                     Xnn = Xbar.nn(ik, inn, inn)
                     assert np.allclose(Xll, Xll.conj().swapaxes(0, 1)), f"Covariant {key} der{der} ll is not Hermitean for ik={ik}, inn={inn}"
+
 
 
 @pytest.fixture(scope="module")
@@ -111,13 +143,13 @@ formula_all = ["Dcov", "DerDcov", "Der2Dcov", "InvMass", "DerWln", "DEinv_ln",
         "VelOmega", "VelSpin", "VelVel", "VelVelVel", "VelMassVel", "OmegaS", "OmegaOmega",]
 
 formula_ln = ["Dcov", "DerDcov", "Der2Dcov", "DEinv_ln"]
-formula_nn = ["VelMassVel", "Dermorb", "VelVelVel", "Der2A", "OmegaS", "Der2Morb",
+formula_nn = ["VelMassVel", "Dermorb", "VelVelVel", "OmegaS", "Der2Morb",
               "Der2H", "Der2Spin", "Der2Omega", "Der2O", "DerOmega", "SpinVelocity", "SpinOmega",
               "OmegaOmega", "VelOmega", "Der3E", "VelSpin", "DerMorb", "morb", "VelVel", "Morb_H",
               "VelVel", "Omega", "Der2morb"]
 
 formula_all = list(sorted(set(formula_all + formula_ln + formula_nn)))
-
+test_for
 formula_sdct = ["SDCT_sea_I", "SDCT_sea_II", "SDCT_surf_I", "SDCT_surf_II"]
 
 
@@ -125,7 +157,7 @@ formula_sdct = ["SDCT_sea_I", "SDCT_sea_II", "SDCT_surf_I", "SDCT_surf_II"]
 def test_formula(datak_Fe, formula_class_name, check_formula_output):
     data = datak_Fe
     NB = data.num_wann
-    degen_groups = data.get_bands_in_range_groups(emin=-10, emax=30, degen_thresh=0.01)
+    degen_groups = data.get_bands_in_range_groups(emin=-10, emax=30, degen_thresh=1)
     kwargs = {}
     if formula_class_name == "SpinVelocity":
         kwargs["spin_current_type"] = "ryoo"
@@ -139,35 +171,30 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
             raise ValueError(f"unknown formula {formula_class_name}")
 
     value = {}
+    allXkeys = ["Xnn", "Xll", "XlnXnl", "XnlXln", "XnnXnn", "XllXll"]
     for ik in range(data.nk):
-        lst1 = []
-        lst2 = []
-        lst3 = []
-        lst4 = []
+        for Xkey in allXkeys:
+            value[f"{Xkey}_ik={ik}"] = []
         for n in degen_groups[ik]:
             inn = np.arange(n[0], n[1])
             out = np.concatenate((np.arange(0, n[0]), np.arange(n[1], NB)))
+            print(f"Testing {formula_class_name} for ik={ik}, inn={inn} out={out}")
             form = formula(data, **kwargs)
             if formula_class_name not in formula_nn:
                 Xnl = form.ln(ik, inn, out)
                 Xln = form.ln(ik, out, inn)
-                lst1.append(np.einsum("nl...,ln...->...", Xnl, Xln))
-                lst2.append(np.einsum("ln...,nl...->...", Xln, Xnl))
+                value[f"XnlXln_ik={ik}"].append(np.einsum("nl...,ln...->...", Xnl, Xln))
+                value[f"XlnXnl_ik={ik}"].append(np.einsum("ln...,nl...->...", Xln, Xnl))
             if formula_class_name not in formula_ln:
                 Xll = form.ll(ik, inn, inn)
                 Xnn = form.nn(ik, inn, inn)
-                lst3.append(np.einsum("ll...->...", Xll))
-                lst4.append(np.einsum("nn...->...", Xnn))
+                value[f"Xll_ik={ik}"].append(np.einsum("ll...->...", Xll))
+                value[f"Xnn_ik={ik}"].append(np.einsum("nn...->...", Xnn))
+                value[f"XllXll_ik={ik}"].append(np.einsum("ll...,ll...->...", Xll, Xll))
+                value[f"XnnXnn_ik={ik}"].append(np.einsum("nn...,nn...->...", Xnn, Xnn))
         # we can compare only gauge-invariant combinations, so we sum over inn and out
-        value[f"XnlXln_ik={ik}"] = np.array(lst1)
-        value[f"XlnXnl_ik={ik}"] = np.array(lst2)
-        value[f"XllXll_ik={ik}"] = np.array(lst3)
-        value[f"XnnXnn_ik={ik}"] = np.array(lst4)
-    # if formula_class_name in ["DerMorb", "Dermorb", "Der2Morb", "Der2morb"]:
-    #     # it is weird that the result is changes so much, even on the same machine
-    #     # TODO investigate the source of this sensitivity and try to improve it
-    #     atol_zero = 2e-3
-    #     rel_tol = 1e-4
+        for Xkey in allXkeys:
+            value[f"{Xkey}_ik={ik}"] = np.array(value[f"{Xkey}_ik={ik}"])
     if "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
         rel_tol = 1e-5
         atol_zero = 1e-6

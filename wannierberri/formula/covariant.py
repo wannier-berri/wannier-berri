@@ -634,8 +634,12 @@ class Der2Morb(Formula_ln):
         res = self.der2morb_H.nn(ik, inn, out)
         if self.sign != 0:
             tmp = self.Eav.nn(ik, inn, out)[:, :, None, None, None] * self.ddO.nn(ik, inn, out)
-            tmp += cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            tmp += cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlcd,lne->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mld,lnce->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlde,lnc->mncde", self.dV.nn(ik, inn, out), self.O.nn(ik, inn, out))
             res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
         return res
 
