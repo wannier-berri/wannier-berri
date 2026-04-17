@@ -576,7 +576,7 @@ class Der2Morb_H(Formula_ln):
             summ += -2j * cached_einsum("mpc,plde,lnc->mncde", Dnl[:, :, alpha_A], dVll, Dln[:, :, beta_A])
 
             summab += -1j * cached_einsum("mpae,pld,lnb->mnabde", dDnl, Vll, Dln)
-            summab += -1j * cached_einsum("mpa,pld,lnbe->mnabde", Dnl, Vll, dDnl)
+            summab += -1j * cached_einsum("mpa,pld,lnbe->mnabde", Dnl, Vll, dDln)
             
             summab += -2j * cached_einsum("mlae,l,lnbd->mnabde", dDnl, El, dDln)
             summab += -2j * cached_einsum("mla,l,lnbde->mnabde", Dnl, El, self.ddD.ln(ik, inn, out))
@@ -593,13 +593,12 @@ class Der2Morb_H(Formula_ln):
             Bnl_ = Bln.swapaxes(1, 0).conj()
             summ += 1 * self.ddH.nn(ik, inn, out)
             summ += -2j * cached_einsum("mpc,plde,lnc->mncde", Ann[:, :, alpha_A], self.dV.nn(ik, inn, out), Ann[:, :, beta_A])
-            summab += -2j * cached_einsum("mpae,pld,lnb->mnabde", dAnn, Vnn, Ann)
-            summab += -2j * cached_einsum("mla,lpe,pnbd->mnabde", Ann, Vnn, dAnn)  # FIXME this is wrong!! then unify with line above
+            tmp = -2j * cached_einsum("mpae,pld,lnb->mnabde", dAnn, Vnn, Ann)
+            tmp +=  -2 * cached_einsum("mlae,lnbd->mnabde", dDnl, dBln)
+            summab += tmp + tmp.swapaxes(-1,-2)
             summab += -2j * cached_einsum("mlae,l,lnbd->mnabde", dAnn, En, dAnn)
             summab += -2j * cached_einsum("mla,l,lnbde->mnabde", Ann, En, self.ddA.nn(ik, inn, out))
             summab += -2 * cached_einsum("mla,lnbde->mnabde", Dnl, self.ddB.ln(ik, inn, out))
-            tmp =  -2 * cached_einsum("mlae,lnbd->mnabde", dDnl, dBln)
-            summab += tmp + tmp.swapaxes(-1,-2)
             summab += -2 * cached_einsum("mla,lnbde->mnabde", Bnl_, self.ddD.ln(ik, inn, out))
             
         summ += summab[:, :, alpha_A, beta_A, :, :] - summab[:, :, beta_A, alpha_A, :, :]
@@ -642,17 +641,13 @@ class Der2Morb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.der2morb_H.nn(ik, inn, out)
         if self.sign != 0:
-            tmp=0
-            tmp += 2 * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            tmp = (tmp + tmp.swapaxes(-2,-1))/2
-            tmp += 0.5 * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
-            tmp += 0.5 * cached_einsum("mlde,lnc->mncde", self.dV.nn(ik, inn, out), self.O.nn(ik, inn, out))
-            tmp = (tmp + tmp.swapaxes(-2,-1))/2
-            
+            tmp = cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp = (tmp + tmp.swapaxes(-2,-1))
+            tmp += cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
             tmp += self.Eav.nn(ik, inn, out)[:, :, None, None, None] * self.ddO.nn(ik, inn, out)
             res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
-        # res = (res + res.swapaxes(-1,-2))/2
         return res
+
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
