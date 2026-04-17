@@ -615,7 +615,7 @@ class Der2Morb_H(Formula_ln):
                         self.dA.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None, None], self.dA.nn(ik, inn, out)[:, :, b])
                 summ += -2j * s * cached_einsum("mlc,lncde->mncde",
                         self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None], self.ddA.nn(ik, inn, out)[:, :, b])
-                summ += -2j * s * cached_einsum("mlc,lpe,lncd->mncde", self.A.nn(ik, inn, out)[:, :, a],
+                summ += -2j * s * cached_einsum("mlc,lpe,pncd->mncde", self.A.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.dA.nn(ik, inn, out)[:, :, b])
                 summ += -2 * s * cached_einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a],
                         self.dB.ln(ik, inn, out)[:, :, b, :])
