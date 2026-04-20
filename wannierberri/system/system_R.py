@@ -908,8 +908,16 @@ class System_R(System):
     @classmethod
     def from_sparse(cls, *args, **kwargs):
         """
-        Create a System_R object from a sparse representation. 
+        Create a System_R object from a sparse representation.
         see :func:`~wannierberri.system.system_sparse.get_system_sparse` for input data and details
         """
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
+
+    def build_supercell(self, M, **kwargs):
+        """Fold this primitive System_R into a supercell System_R.
+
+        See :func:`~wannierberri.system.system_supercell.fold_system`.
+        """
+        from .system_supercell import fold_system
+        return fold_system(self, M, **kwargs)
