@@ -104,6 +104,7 @@ class SOC(W90_file):
         # ]
         # return np.array(s_vss).transpose(1, 2, 0)
 
+    @classmethod
     def rotated_pauli_commutators(theta, phi):
     """
     Computes the analytical commutator matrices M_{beta, alpha} = -i/2 [S_beta, sigma_alpha]
