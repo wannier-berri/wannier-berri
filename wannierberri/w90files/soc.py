@@ -104,6 +104,45 @@ class SOC(W90_file):
         # ]
         # return np.array(s_vss).transpose(1, 2, 0)
 
+    def rotated_pauli_commutators(theta, phi):
+    """
+    Computes the analytical commutator matrices M_{beta, alpha} = -i/2 [S_beta, sigma_alpha]
+    based on the exact algebraic expansions of the rotated Pauli matrices.
+    
+    Returns:
+    --------
+    M_x, M_y, M_z : ndarrays of shape (3, 2, 2)
+        The matrices needed to compute T_x, T_y, and T_z respectively.
+        Index 0 corresponds to L_x, Index 1 to L_y, Index 2 to L_z.
+    """
+    # Standard Pauli matrices
+    sig_x = np.array([[0, 1], [1, 0]], dtype=complex)
+    sig_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+    sig_z = np.array([[1, 0], [0, -1]], dtype=complex)
+
+    st, ct = np.sin(theta), np.cos(theta)
+    sp, cp = np.sin(phi), np.cos(phi)
+
+    # Torque X components
+    M_xx = (sp * sig_z) + (st * cp * sig_y)
+    M_yx = (-cp * sig_z) + (st * sp * sig_y)
+    M_zx = (ct * sig_y)
+    M_x = np.array([M_xx, M_yx, M_zx])
+
+    # Torque Y components
+    M_xy = (ct * cp * sig_z) - (st * cp * sig_x)
+    M_yy = (ct * sp * sig_z) - (st * sp * sig_x)
+    M_zy = (-st * sig_z) - (ct * sig_x)
+    M_y = np.array([M_xy, M_yy, M_zy])
+
+    # Torque Z components 
+    M_xz = (-ct * cp * sig_y) - (sp * sig_x)
+    M_yz = (-ct * sp * sig_y) + (cp * sig_x)
+    M_zz = (-st * sig_y)
+    M_z = np.array([M_xz, M_yz, M_zz])
+
+    return M_x, M_y, M_z
+
 
     @classmethod
     def from_gpaw(cls, calculator, calc_overlap=True):
