@@ -254,6 +254,51 @@ class SystemSOC(System_R):
 
         return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
 
+    def set_torque_operators_R(self, theta, phi, units="radians"):
+        """
+        Constructs the real-space Torque operators T_x, T_y, T_z using 
+        analytical commutators.
+        """
+        units = units.lower()
+        if units.startswith("r"):
+            pass
+        elif units.startswith("d"):
+            theta = np.deg2rad(theta)
+            phi = np.deg2rad(phi)
+        else:
+            raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
+        assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
+    
+    
+        M_x, M_y, M_z = rotated_pauli_commutators(theta, phi)
+        nRvec = self.rvec.nRvec
+    
+        dV00 = self.get_R_mat('dV_soc_wann_0_0')
+        if self.nspin == 2:
+            dV11 = self.get_R_mat('dV_soc_wann_1_1')
+            dV01 = self.get_R_mat('dV_soc_wann_0_1')
+            dV10 = self.rvec.conj_XX_R(dV01)
+    
+        # Loop over the Cartesian directions of the torque
+        for label, M_alpha in zip(['SOT_X', 'SOT_Y', 'SOT_Z'], [M_x, M_y, M_z]):
+            T_alpha_R = np.zeros((nRvec, self.num_wann, self.num_wann), dtype=complex)
+            
+            T_alpha_R[:, ::2, ::2] = cached_einsum("rmnc,c->rmn", dV00, M_alpha[0, 0, :])
+            
+            if self.nspin == 2:
+                T_alpha_R[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", dV11, M_alpha[1, 1, :])
+                T_alpha_R[:, ::2, 1::2]  = cached_einsum("rmnc,c->rmn", dV01, M_alpha[0, 1, :])
+                T_alpha_R[:, 1::2, ::2]  = cached_einsum("rmnc,c->rmn", dV10, M_alpha[1, 0, :])
+                
+            elif self.nspin == 1:
+                T_alpha_R[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", dV00, M_alpha[1, 1, :])
+                T_alpha_R[:, ::2, 1::2]  = cached_einsum("rmnc,c->rmn", dV00, M_alpha[0, 1, :])
+                T_alpha_R[:, 1::2, ::2]  = cached_einsum("rmnc,c->rmn", dV00, M_alpha[1, 0, :])
+    
+            self.set_R_mat(label, T_alpha_R, reset=True)
+    
+        return self.get_R_mat('SOT_X'), self.get_R_mat('SOT_Y'), self.get_R_mat('SOT_Z')
+
     @cached_property
     def essential_properties(self):
         return super().essential_properties + ['cell']
