@@ -254,7 +254,7 @@ class SystemSOC(System_R):
 
         return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
 
-    def set_torque_operators_R(self, theta, phi, units="radians"):
+    def set_torque_operators_R(self, theta=0, phi=0, units="radians"):
         units = units.lower()
         if units.startswith("r"):
             pass
