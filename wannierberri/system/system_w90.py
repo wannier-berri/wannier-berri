@@ -16,7 +16,7 @@ def get_system_w90(
     transl_inv_MV=False,
     fftlib='fftw',
     wannier_centers_from_chk=True,
-    symmetrize=False,  # temporary set to False, because there is a bug when the basis at different atoms is rotated # TODO FIXME
+    symmetrize=True,
     ws_dist_tol=1e-5,
     **parameters
 ):
