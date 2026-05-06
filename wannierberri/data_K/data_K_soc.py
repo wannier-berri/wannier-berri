@@ -43,9 +43,9 @@ class Data_K_soc(Data_K_R):
         key = (name, der)
         if key not in self._bar_quantities:
             need_rotate = True
-            if name == "SS":
+            if name in ["SS", "SOT"]:
                 Xbar = self.rvec.R_to_k(self.get_R_mat('SS'), der=der, hermitian=True)
-            elif name.startswith("S"):
+            elif name.startswith("S"): # deserves further cleanup. what is it even meant to catch? Sx, Sy, Sz?
                 raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
                                           "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
             else:  # other not spin-related operators
