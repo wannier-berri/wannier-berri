@@ -672,3 +672,15 @@ class QuantumMetric_Vel_DQ(StaticCalculator):
         self.Formula = frml.VelDQM
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
+
+class Torkance(StaticCalculator):
+    """Calculator for the Spin-Orbit Torque Torkance tensor."""
+    def __init__(self, Efermi, Emin=None, Emax=None, **kwargs):
+        super().__init__(
+            Efermi=Efermi,
+            Formula=frml.TorqueOmega,
+            Emin=Emin,
+            Emax=Emax,
+            fder=0,  # Fermi-sea integral
+            **kwargs
+        )

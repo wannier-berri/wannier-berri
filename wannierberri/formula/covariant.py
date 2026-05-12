@@ -789,6 +789,39 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+class TorqueOmega(Formula_ln):
+    r"""
+    Kubo-Greenwood formula for Torkance Berry curvature.
+    \Omega_{ab} = -2 Im \sum_{m \neq n} [ <n|\mathcal{T}_a|m><m|v_b|n> / (E_n - E_m)^2 ]
+    """
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, ndim=2, **parameters)
+        self.data_K = data_K  
+        self.T_cov = self.data_K.covariant('SOT')
+        self.V_cov = self.data_K.covariant('Ham', commader=1)
+
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        T_native = self.T_cov.matrix[ik]
+        V_native = self.V_cov.matrix[ik]
+        dE_inv = self.data_K.dEig_inv[ik] 
+
+        T = np.transpose(T_native, (2, 0, 1))
+        V = np.transpose(V_native, (2, 0, 1))
+
+        T_sub = T[:, inn][:, :, out]      
+        V_sub = V[:, out][:, :, inn]      
+        dE_n_m = dE_inv[inn, :][:, out]   
+
+        term = np.einsum('anm, bmp, nm, pm -> npab', T_sub, V_sub, dE_n_m, dE_n_m)
+        return -2 * np.imag(term)
+
+    def ln(self, ik, inn, out):
+        result = self.nn(ik, out, inn) 
+        return result.conj().transpose(1, 0, 2, 3)
+
 ####################################
 #                                  #
 #    Some Prooducts                #

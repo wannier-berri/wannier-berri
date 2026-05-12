@@ -40,10 +40,6 @@ def run_fe_sot_example():
         labels=list("GHPNGP"), 
         length=1000
     )
-
-    # Save the (nR, num_wann, num_wann, 3) tensor
-    SOT_R = system_soc.get_R_mat('SOT')
-    np.save("ref_SOT_R.npy", SOT_R)
     
     # setup tabulator on the fly
     bands_sot = evaluate_k_path(system_soc, path=path, tabulators={"SOT": Tabulator(SOTformula)})

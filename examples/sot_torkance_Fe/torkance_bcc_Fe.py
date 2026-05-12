@@ -42,7 +42,5 @@ def run_fe_sot_example():
         print(torkance_tensor[i])        
         print()
 
-    np.save("ref_torkance.npy", results.data)
-
 if __name__ == "__main__":
     run_fe_sot_example()
