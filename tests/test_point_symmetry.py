@@ -58,8 +58,6 @@ def test_symmetry_spglib_GaAs(system_GaAs_W90, check_pointgroup_equal):
 def test_symmetry_spglib_Fe(system_Fe_W90, check_pointgroup_equal):
     system_explicit = deepcopy(system_Fe_W90)
 
-    # Magnetic symmetries involving time-reversal is not implemented in spglib.
-    # So, we exclude symmetries involving time reversal from the generators.
     import spglib
     if pversion(spglib.__version__) < pversion("2"):
         symmetries_Fe_except_TR = [sym for sym in symmetries_Fe if not sym.TR]
