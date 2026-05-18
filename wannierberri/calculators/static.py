@@ -673,8 +673,10 @@ class QuantumMetric_Vel_DQ(StaticCalculator):
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
 
+
 class Torkance(StaticCalculator):
     """Calculator for the Spin-Orbit Torque Torkance tensor."""
+
     def __init__(self, Efermi, Emin=None, Emax=None, **kwargs):
         super().__init__(
             Efermi=Efermi,
