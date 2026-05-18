@@ -14,7 +14,7 @@ from ..factors import m_spin_prefactor
 def get_transform_Inv(name, der=0):
     """returns the transformation of the quantity  under inversion
     raises for unknown quantities"""
-    if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS', 'rotAA', 'rotAAab', 'CCab_antisym']:  # even before derivative
+    if name in ['Ham', 'CC', 'FF', 'OO', 'GG', 'SS', 'SOT', 'rotAA', 'rotAAab', 'CCab_antisym']:  # even before derivative
         p = 0
     elif name in ['D', 'AA', 'BB', 'CCab']:
         return None
@@ -32,7 +32,7 @@ def get_transform_TR(name, der=0):
     raises ValueError for unknown quantities"""
     if name in ['Ham']:  # even before derivative
         p = 0
-    elif name in ['CC', 'FF', 'OO', 'GG', 'SS', 'rotAA', 'rotAAab', 'CCab_antisym']:  # odd before derivative
+    elif name in ['CC', 'FF', 'OO', 'GG', 'SS', 'SOT', 'rotAA', 'rotAAab', 'CCab_antisym']:  # odd before derivative
         p = 1
     elif name in ['D', 'AA', 'BB', 'CCab']:
         return None
