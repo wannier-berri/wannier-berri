@@ -789,11 +789,8 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
-class TorqueOmega(Formula_ln):
-    r"""
-    Kubo-Greenwood formula for Torkance Berry curvature.
-    \Omega_{ab} = -2 Im \sum_{m \neq n} [ <n|\mathcal{T}_a|m><m|v_b|n> / (E_n - E_m)^2 ]
-    """
+class TorqueEvenOmega(Formula_ln):
+    """ Even Torkance component """
 
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, ndim=2, **parameters)
@@ -820,8 +817,40 @@ class TorqueOmega(Formula_ln):
         return -2 * np.imag(term)
 
     def ln(self, ik, inn, out):
-        result = self.nn(ik, out, inn)
-        return result.conj().transpose(1, 0, 2, 3)
+        raise NotImplementedError("The ln cross-block is physically undefined for Torkance.")
+
+
+class TorqueOddOmega(Formula_ln):
+    """ odd Torkance component """
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, ndim=2, **parameters)
+        self.data_K = data_K
+        self.T_cov = self.data_K.covariant('SOT')
+        self.V_cov = self.data_K.covariant('Ham', commader=1)
+
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        T_native = self.T_cov.matrix[ik]
+        V_native = self.V_cov.matrix[ik]
+
+        num_inn = len(inn)
+        result = np.zeros((num_inn, num_inn, 3, 3), dtype=complex)
+
+        T_diag = T_native[inn, inn, :]  # Shape: (num_inn, 3)
+        V_diag = V_native[inn, inn, :]  # Shape: (num_inn, 3)
+
+        diag_outer = np.einsum('na,nb->nab', T_diag, V_diag)
+
+        # Assign to the diagonal of the output matrix
+        idx = np.arange(num_inn)
+        result[idx, idx] = diag_outer
+
+        return result
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError("The ln cross-block is physically undefined for Torkance")
 
 ####################################
 #                                  #

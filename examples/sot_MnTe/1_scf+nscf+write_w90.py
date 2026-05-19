@@ -21,8 +21,6 @@ if do_scf:
             [2 / 3, 1 / 3, 3 / 4],
         ]
     )
-    typat = [1, 1, 2, 2]
-    magmom = [[0, 1, 0], [0, -1, 0], [0, 0, 0], [0, 0, 0]]
 
     atoms = Atoms(
         "Mn2Te2", cell=[a, a, c, 90, 90, 120], pbc=[1, 1, 1], scaled_positions=positions

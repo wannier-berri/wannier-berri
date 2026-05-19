@@ -1,47 +1,57 @@
-# import pytest
+import os
 import numpy as np
-from pathlib import Path
-from wannierberri.system.system_soc import SystemSOC
-from wannierberri.calculators.static import Torkance
 import wannierberri as wberri
+from wannierberri.calculators.static import TorkanceEven, TorkanceOdd
 
-# I am assuming your test data directory structure here based on your imports.
-HERE = Path(__file__).parent.resolve()
-DATA_DIR = HERE / "data/Fe_system_soc"
-
-
-def test_sot_operator_generation():
-    """Validates the generation of the SOT operator matrix in real space."""
-    system_soc = SystemSOC.from_npz(str(DATA_DIR / "system_soc"))
-
-    # Generate current matrix
-    system_soc.set_torque_operators_R(theta=0, phi=0)
-    current_SOT_R = system_soc.get_R_mat('SOT')
-
-    # Load reference matrix
-    ref_SOT_R = np.load(HERE / "ref_data/ref_SOT_R.npy")
-
-    # Compare (atol sets the absolute tolerance for near-zero values)
-    np.testing.assert_allclose(current_SOT_R, ref_SOT_R, rtol=1e-5, atol=1e-8)
+# Clean relative import to grab the path variables from tests/common.py
+from .common import REF_DIR_INTEGRATE
 
 
-def test_torkance_calculation():
-    """Validates the output tensor of the Torkance calculator."""
-    system_soc = SystemSOC.from_npz(str(DATA_DIR / "system_soc"))
+def test_torkance_even_calculation(system_Fe_gpaw_soc_angle_symmetrized):
+    """Validates the interband even component of the Torkance tensor (Fermi-sea)."""
+    system_soc = system_Fe_gpaw_soc_angle_symmetrized
+    
+    # Must explicitly set operators for the rotated basis matching the fixture
+    system_soc.set_torque_operators_R(theta=49, phi=33, units="degrees")
+    
     grid = wberri.Grid(system_soc, length=20)
     Efermi = np.linspace(-2.0, 2.0, 5)
-
-    torkance_calc = Torkance(Efermi=Efermi, Emin=-2.0, Emax=2.0)
+    calc_even = TorkanceEven(Efermi=Efermi, Emin=-2.0, Emax=2.0)
 
     run_results = wberri.run(
         system_soc,
         grid=grid,
-        calculators={"torkance": torkance_calc},
+        calculators={"torkance_even": calc_even},
         use_irred_kpt=False,
         symmetrize=False
     )
 
-    current_tensor = run_results.results["torkance"].data
-    ref_tensor = np.load(HERE / "ref_data/ref_torkance.npy")
+    current_tensor = run_results.results["torkance_even"].data
+    ref_tensor = np.load(os.path.join(REF_DIR_INTEGRATE, "ref_torkance_even.npy"))
+
+    np.testing.assert_allclose(current_tensor, ref_tensor, rtol=1e-5, atol=1e-8)
+
+
+def test_torkance_odd_calculation(system_Fe_gpaw_soc_angle_symmetrized):
+    """Validates the intraband odd component of the Torkance tensor (Fermi-surface)."""
+    system_soc = system_Fe_gpaw_soc_angle_symmetrized
+    
+    # Must explicitly set operators for the rotated basis matching the fixture
+    system_soc.set_torque_operators_R(theta=49, phi=33, units="degrees")
+    
+    grid = wberri.Grid(system_soc, length=20)
+    Efermi = np.linspace(-2.0, 2.0, 5)
+    calc_odd = TorkanceOdd(Efermi=Efermi, Emin=-2.0, Emax=2.0)
+
+    run_results = wberri.run(
+        system_soc,
+        grid=grid,
+        calculators={"torkance_odd": calc_odd},
+        use_irred_kpt=False,
+        symmetrize=False
+    )
+
+    current_tensor = run_results.results["torkance_odd"].data
+    ref_tensor = np.load(os.path.join(REF_DIR_INTEGRATE, "ref_torkance_odd.npy"))
 
     np.testing.assert_allclose(current_tensor, ref_tensor, rtol=1e-5, atol=1e-8)
