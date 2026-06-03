@@ -789,8 +789,8 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
-class TorqueEvenOmega(Formula_ln):
-    """ Even Torkance component """
+class TorkanceBase(Formula_ln):
+    """ Base class for Torkance components """
 
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, ndim=2, **parameters)
@@ -800,6 +800,13 @@ class TorqueEvenOmega(Formula_ln):
 
         self.transformTR = transform_ident
         self.transformInv = transform_odd
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError("The ln cross-block is physically undefined for Torkance.")
+
+
+class TorqueEvenOmega(TorkanceBase):
+    """ Even Torkance component """
 
     def nn(self, ik, inn, out):
         T_native = self.T_cov.matrix[ik]
@@ -816,20 +823,9 @@ class TorqueEvenOmega(Formula_ln):
         term = np.einsum('anm, bmp, nm, pm -> npab', T_sub, V_sub, dE_n_m, dE_n_m)
         return -2 * np.imag(term)
 
-    def ln(self, ik, inn, out):
-        raise NotImplementedError("The ln cross-block is physically undefined for Torkance.")
 
-
-class TorqueOddOmega(Formula_ln):
-    """ odd Torkance component """
-    def __init__(self, data_K, **parameters):
-        super().__init__(data_K, ndim=2, **parameters)
-        self.data_K = data_K
-        self.T_cov = self.data_K.covariant('SOT')
-        self.V_cov = self.data_K.covariant('Ham', commader=1)
-
-        self.transformTR = transform_ident
-        self.transformInv = transform_odd
+class TorqueOddOmega(TorkanceBase):
+    """ Odd Torkance component """
 
     def nn(self, ik, inn, out):
         T_native = self.T_cov.matrix[ik]
@@ -849,8 +845,6 @@ class TorqueOddOmega(Formula_ln):
 
         return result
 
-    def ln(self, ik, inn, out):
-        raise NotImplementedError("The ln cross-block is physically undefined for Torkance")
 
 ####################################
 #                                  #
