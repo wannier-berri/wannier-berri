@@ -194,7 +194,7 @@ class SystemSOC(System_R):
         return self.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
 
 
-    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians"):
+    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians", torque=False):
         units = units.lower()
         if units.startswith("r"):
             pass
@@ -252,7 +252,11 @@ class SystemSOC(System_R):
                                     magmom=magmoms)
             self.set_pointgroup(spacegroup=mag_group)
 
-        return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
+        ret_val = [self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')]
+        if torque:
+            self.set_torque_operators_R(theta=theta, phi=phi, units="radians")
+            ret_val.append(self.get_R_mat('SOT'))
+        return tuple(ret_val)
 
     def set_torque_operators_R(self, theta=0, phi=0, units="radians"):
         units = units.lower()
@@ -329,6 +333,7 @@ class SystemSOC(System_R):
         system_soc.load_npz(path, exclude_properties=exclude_properties, matrices=matrices)
         if system_soc.has_soc_R:
             system_soc.has_soc = True
+        print(f"SystemSOC loaded successfully from {path}")
         return system_soc
 
     def symmetrize2(self, symmetrizer=None,

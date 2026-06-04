@@ -10,10 +10,8 @@ from .common import REF_DIR_INTEGRATE
 def test_torkance_even_calculation(system_Fe_gpaw_soc_angle_symmetrized):
     """Validates the interband even component of the Torkance tensor (Fermi-sea)."""
     system_soc = system_Fe_gpaw_soc_angle_symmetrized
-    
-    # Must explicitly set operators for the rotated basis matching the fixture
-    system_soc.set_torque_operators_R(theta=49, phi=33, units="degrees")
-    
+    # this system has SOT operators
+        
     grid = wberri.Grid(system_soc, length=20)
     Efermi = np.linspace(-2.0, 2.0, 5)
     calc_even = TorkanceEven(Efermi=Efermi, Emin=-2.0, Emax=2.0)

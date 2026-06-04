@@ -151,9 +151,10 @@ class SOC(W90_file):
         """
         from gpaw.spinorbit import soc
         from ase.units import Hartree
-        from gpaw import GPAW
+        
         if isinstance(calculator, str):
-            calculator = GPAW(calculator, txt=None)
+            import gpaw
+            calculator = gpaw.GPAW(calculator, txt=None)
         nspin = calculator.get_number_of_spins()
         assert nspin in [1, 2], f"Only nspin=1 or 2 supported, got {nspin}"
 

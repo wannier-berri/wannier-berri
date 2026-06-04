@@ -825,6 +825,7 @@ class System_R(System):
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
             logfile.write(" - Ok!\n")
+        logfile.write(f"system loaded successfully from {path}\n")   
         return self
 
     @classmethod
