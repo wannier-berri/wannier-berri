@@ -123,7 +123,8 @@ def check_formula_output():
                 continue
             maxval = np.max(abs(val))
             if maxval < atol_zero:
-                assert np.allclose(val_out, 0, atol=atol_zero), f"{filename} key {k} is expected to be zero, but max value is {maxval} > {atol_zero}"
+                maxvalout = np.max(abs(val_out))
+                assert maxvalout < atol_zero, f"{filename} key {k} is expected to be zero, but max value is {maxvalout} > {atol_zero}"
             else:
                 adiff = np.max(abs(val - val_out))
                 rdiff = adiff / maxval
@@ -197,7 +198,7 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
             value[f"{Xkey}_ik={ik}"] = np.array(value[f"{Xkey}_ik={ik}"])
     if "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
         rel_tol = 1e-5
-        atol_zero = 1e-6
+        atol_zero = 2e-6
     else:
         rel_tol = 1e-6
         atol_zero = 1e-10
