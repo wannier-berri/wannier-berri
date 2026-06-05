@@ -151,7 +151,7 @@ class SOC(W90_file):
         """
         from gpaw.spinorbit import soc
         from ase.units import Hartree
-        
+
         if isinstance(calculator, str):
             import gpaw
             calculator = gpaw.GPAW(calculator, txt=None)
