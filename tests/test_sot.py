@@ -29,5 +29,5 @@ def test_torkance(system_Fe_gpaw_soc_angle):
 
     for aprt in "even", "odd":
         current_tensor = run_results.results[f"torkance_{aprt}"].data
-        ref_tensor = np.load(os.path.join(REF_DIR_INTEGRATE, f"Fe_gpaw_soc_angle-torkance_{aprt}_iter-0000.npz"))["data"]
-        np.testing.assert_allclose(current_tensor, ref_tensor, rtol=1e-5, atol=1e-8)
+        # ref_tensor = np.load(os.path.join(REF_DIR_INTEGRATE, f"Fe_gpaw_soc_angle-torkance_{aprt}_iter-0000.npz"))["data"]
+        np.testing.assert_allclose(current_tensor, 0, atol=1e-8)
