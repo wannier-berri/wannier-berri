@@ -44,7 +44,7 @@ class Data_K_soc(Data_K_R):
         if key not in self._bar_quantities:
             need_rotate = True
             if name in ["SS", "SOT"]:
-                Xbar = self.rvec.R_to_k(self.get_R_mat('SS'), der=der, hermitian=True)
+                Xbar = self.rvec.R_to_k(self.get_R_mat(name), der=der, hermitian=True)
             elif name.startswith("S"):
                 raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
                                           "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")

@@ -37,8 +37,8 @@ def datak_Fe():
 
 @pytest.fixture(scope="module")
 def datak_Fe_gpaw_soc_angle():
-    system_Fe_sym_W90 = wberri.system.SystemSOC.from_npz(os.path.join(REF_DIR, "systems", "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00"))
-    return get_datak(system_Fe_sym_W90, NKFFT=[1, 2, 3])
+    system_Fe_gpaw = wberri.system.SystemSOC.from_npz(os.path.join(REF_DIR, "systems", "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00"))
+    return get_datak(system_Fe_gpaw, NKFFT=[1, 2, 3])
 
 
 @pytest.mark.parametrize("terms", [(True, True)])  # , (True, False), (False, True)])
