@@ -4,7 +4,7 @@ import wannierberri as wberri
 from wannierberri.calculators.static import TorkanceEven, TorkanceOdd
 
 # Clean relative import to grab the path variables from tests/common.py
-from .common import OUTPUT_DIR_RUN, REF_DIR_INTEGRATE
+from .common import OUTPUT_DIR_RUN
 
 
 def test_torkance(system_Fe_gpaw_soc_angle):

@@ -23,14 +23,22 @@ def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
     data_k_class = wberri.data_K.get_data_k_class_from_system(system)
-    data_k = data_k_class(system, dK=[0, 0, 0], grid=grid, Kpoint=kpoint, fftlib='fftw')
+    print(f"Using data_k_class {data_k_class} for system {system.__class__}")
+    data_k = data_k_class(system, dK=k, grid=grid, Kpoint=kpoint, fftlib='fftw')
+    print(f"Data_k has keys: {data_k.__dict__.keys()}")
     return data_k
 
 
 @pytest.fixture(scope="module")
 def datak_Fe():
     system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
-    return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[1, 2, 3])
+    return get_datak(system_Fe_sym_W90, k=[0, 0, 0], NKFFT=[1, 2, 3])
+
+
+@pytest.fixture(scope="module")
+def datak_Fe_gpaw_soc_angle():
+    system_Fe_sym_W90 = wberri.system.SystemSOC.from_npz(os.path.join(REF_DIR, "systems", "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00"))
+    return get_datak(system_Fe_sym_W90, NKFFT=[1, 2, 3])
 
 
 @pytest.mark.parametrize("terms", [(True, True)])  # , (True, False), (False, True)])
@@ -227,3 +235,19 @@ def test_formula_sdct(datak_Fe, formula_class_name, check_formula_output, term, 
                 lst.append(formula.trace_ln(ik, inn1, inn2))
         value[f"trace_ln_ik={ik}"] = np.array(lst)
     check_formula_output(value=value, filename=f"{formula_class_name}_{term}_{sym_name}")
+
+
+@pytest.mark.parametrize("formula_class_name", ["TorqueEvenOmega", "TorqueOddOmega"])
+def test_formula_torkance(datak_Fe_gpaw_soc_angle, formula_class_name, check_formula_output):
+    data = datak_Fe_gpaw_soc_angle
+    degen_groups = data.get_bands_in_range_groups(emin=-10, emax=30, degen_thresh=0.01)
+    formula_class = getattr(frml_cov, formula_class_name)
+    formula = formula_class(data)
+    value = {}
+    for ik in range(data.nk):
+        lst = []
+        for n in degen_groups[ik]:
+            inn = np.arange(n[0], n[1])
+            lst.append(formula.trace(ik, inn, inn))
+        value[f"trace_nn_ik={ik}"] = np.array(lst)
+    check_formula_output(value=value, filename=f"{formula_class_name}")
