@@ -124,7 +124,7 @@ def check_formula_output():
             maxval = np.max(abs(val))
             if maxval < atol_zero:
                 maxvalout = np.max(abs(val_out))
-                assert maxvalout < atol_zero, f"{filename} key {k} is expected to be zero, but max value is {maxval} > {atol_zero}"
+                assert maxvalout < atol_zero, f"{filename} key {k} is expected to be zero, but max value is {maxvalout} > {atol_zero}"
             else:
                 adiff = np.max(abs(val - val_out))
                 rdiff = adiff / maxval
