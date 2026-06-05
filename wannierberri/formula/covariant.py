@@ -811,8 +811,7 @@ class TorqueEvenOmega(TorkanceBase):
     def nn(self, ik, inn, out):
         dE_n_m = self.dE_inv[ik][inn, :][:, out]
         T_sub = self.T_cov.nl(ik, inn, out) * dE_n_m[:, :, None]
-        V_sub = self.V_cov.ln(ik, out, inn) * dE_n_m.swapaxes(0, 1)[:, :, None]
-
+        V_sub = self.V_cov.ln(ik, inn, out) * dE_n_m.swapaxes(0, 1)[:, :, None]
         term = cached_einsum('nma, mpb -> npab', T_sub, V_sub)
         return 2j * term
 
