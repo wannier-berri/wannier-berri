@@ -271,13 +271,14 @@ class System:
         """
         Set the symmetry group of the :class:`System`. Requires spglib to be installed.
         :meth:`System.set_structure` must be called in advance.
-
-        For magnetic systems, symmetries involving time reversal are not detected because
-        spglib does not support time reversal symmetry for noncollinear systems.
         """
         import spglib
 
-        spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
+        cell = self.get_spglib_cell()
+        if self.magnetic_moments is None:
+            spglib_symmetry = spglib.get_symmetry(cell)
+        else:
+            spglib_symmetry = spglib.get_magnetic_symmetry(cell)
         symmetry_gen = []
         for isym, W in enumerate(spglib_symmetry["rotations"]):
             # spglib gives real-space rotations in reduced coordinates. Here,
@@ -299,13 +300,10 @@ class System:
         elif not tr_found:
             warnings.warn(
                 "you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
-                f"proobably it is because you have an old spglib version {spglib.__version__}."
-                "We suggest upgrading to spglib>=2.0.2")
-        else:
-            if not all([len(x) for x in self.magnetic_moments]):
-                raise ValueError("magnetic_moments must be a list of 3d vector")
-            warnings.warn("spglib does not find symmetries including time reversal operation. "
-                          "To include such symmetries, use set_symmetry.")
+                f"probably it is because you have an old spglib version {spglib.__version__}. "
+                "we suggest upgrading to spglib>=2.0.2")
+        elif not all([len(x) for x in self.magnetic_moments]):
+            raise ValueError("magnetic_moments must be a list of 3d vector")
 
 
         self.pointgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
