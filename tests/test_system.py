@@ -619,5 +619,5 @@ def test_system_Fe_sot(check_system, system_Fe_gpaw_soc_angle):
     check_system(
         system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
         matrices=['SOT'],
-        properties=['num_wann', 'real_lattice', 'iRvec'], 
+        properties=['num_wann', 'real_lattice', 'iRvec'],
     )
