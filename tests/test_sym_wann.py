@@ -435,7 +435,8 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
 
     norb = proj.num_wann_per_site
 
-    print(f"basis list : \n{"\n".join(str(a) for a in proj_set.projections[0].basis_list)}")
+    basis_str = '\n'.join(str(a) for a in proj_set.projections[0].basis_list)
+    print(f"basis list : \n{basis_str}")
 
 
     symmetrizer = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
