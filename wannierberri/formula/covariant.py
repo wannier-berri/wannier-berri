@@ -809,41 +809,21 @@ class TorqueEvenOmega(TorkanceBase):
     """ Even Torkance component """
 
     def nn(self, ik, inn, out):
-        T_native = self.T_cov.matrix[ik]
-        V_native = self.V_cov.matrix[ik]
-        
+        dE_n_m = self.dE_inv[ik][inn, :][:, out]        
+        T_sub = self.T_cov.nl(ik, inn, out)*dE_n_m[:, :, None]
+        V_sub = self.V_cov.ln(ik, out, inn)*dE_n_m.swapaxes(0, 1)[:, :, None]
 
-        T = np.transpose(T_native, (2, 0, 1))
-        V = np.transpose(V_native, (2, 0, 1))
-
-        T_sub = T[:, inn][:, :, out]
-        V_sub = V[:, out][:, :, inn]
-        dE_n_m = self.dE_inv[ik][inn, :][:, out]
-
-        term = np.einsum('anm, bmp, nm, pm -> npab', T_sub, V_sub, dE_n_m, dE_n_m)
-        return -2 * np.imag(term)
+        term = cached_einsum('nma, mpb -> npab', T_sub, V_sub)
+        return 2j * term
 
 
 class TorqueOddOmega(TorkanceBase):
     """ Odd Torkance component """
 
     def nn(self, ik, inn, out):
-        T_native = self.T_cov.matrix[ik]
-        V_native = self.V_cov.matrix[ik]
-
-        num_inn = len(inn)
-        result = np.zeros((num_inn, num_inn, 3, 3), dtype=complex)
-
-        T_diag = T_native[inn, inn, :]  # Shape: (num_inn, 3)
-        V_diag = V_native[inn, inn, :]  # Shape: (num_inn, 3)
-
-        diag_outer = np.einsum('na,nb->nab', T_diag, V_diag)
-
-        # Assign to the diagonal of the output matrix
-        idx = np.arange(num_inn)
-        result[idx, idx] = diag_outer
-
-        return result
+        T = self.T_cov.matrix[ik, inn, :][:, inn]
+        V = self.V_cov.matrix[ik, inn, :][:, inn]
+        return cached_einsum('npa,pmb->nmab', T, V)
 
 
 ####################################
