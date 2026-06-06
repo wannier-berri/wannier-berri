@@ -324,7 +324,7 @@ def update_chk(wandata, U_opt_full_BZ,
 
     wandata.chk.v_matrix = {ik: U for ik, U in enumerate(U_opt_full_BZ) if U is not None}
     if (wcc is None) or (spreads is None) or print_wcc:
-        wcc_new, spreads_new = wandata.chk.get_wannier_centers(wandata.mmn, spreads=True)
+        wcc_new, spreads_new = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
         if wcc is None:
             wcc = wcc_new
         if spreads is None:
