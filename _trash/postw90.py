@@ -1,13 +1,3 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file 'LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                                                            #
-# ------------------------------------------------------------
 """This utility emulates (at least partly) the behaviour of postw90.x. It sahould start from the same `*.win` file and produce the same result.
 
     optionally, parameters can be given in the command line (theose will override the parameters in the ffile)

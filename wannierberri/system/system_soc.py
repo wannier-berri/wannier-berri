@@ -2,7 +2,6 @@ from functools import cached_property
 import os
 import warnings
 import numpy as np
-from irrep.spacegroup import SpaceGroup
 
 from ..symmetry.point_symmetry import PointGroup
 
@@ -11,8 +10,6 @@ from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
 from .system_R import System_R
-from .system_w90 import System_w90
-
 
 
 class SystemSOC(System_R):
@@ -216,7 +213,6 @@ class SystemSOC(System_R):
             soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_1'), pauli_rotated[1, 1, :])
             dV01 = self.get_R_mat('dV_soc_wann_0_1')
             soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", dV01, pauli_rotated[0, 1, :])
-            # soc_R_W[:,1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_0'), pauli_rotated[1, 0, :])
             soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.rvec.conj_XX_R(dV01), pauli_rotated[1, 0, :])
         elif self.nspin == 1:
             soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])
@@ -247,6 +243,7 @@ class SystemSOC(System_R):
             axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
             magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
             print(f"using magmoms \n {magmoms}")
+            from irrep.spacegroup import SpaceGroup
             mag_group = SpaceGroup.from_cell(real_lattice=self.real_lattice,
                                     positions=self.cell["positions"],
                                     typat=self.cell["typat"],
@@ -261,13 +258,13 @@ class SystemSOC(System_R):
     def essential_properties(self):
         return super().essential_properties + ['cell']
 
-    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         # if not self.silent:
         print(f"Saving SystemSOC to {path}")
-        super().save_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
-        self.system_up.save_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+        super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
         if self.nspin == 2:
-            self.system_down.save_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+            self.system_down.to_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
 
     @property
     def has_soc_R(self):
@@ -396,23 +393,23 @@ class SystemSOC(System_R):
 
 
     @classmethod
-    def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
-        system_up = System_w90(w90data=w90data.data_up, **kwargs)
-        if w90data.nspin == 2:
-            system_down = System_w90(w90data=w90data.data_down, **kwargs)
+    def from_wannierdata(cls, wandata, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
+        system_up = System_R.from_wannierdata(wandata=wandata.data_up, **kwargs)
+        if wandata.nspin == 2:
+            system_down = System_R.from_wannierdata(wandata=wandata.data_down, **kwargs)
         else:
             system_down = None
-        system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)
-        kptirr, weights_k = w90data.data_up.kptirr_system
-        system_soc.set_soc_R(w90data.get_file("soc"),
-                             chk_up=w90data.get_file_ud("up", "chk"),
-                             chk_down=w90data.get_file_ud("down", "chk"),
+        system_soc = cls(system_up=system_up, system_down=system_down, cell=wandata.cell)
+        kptirr, weights_k = wandata.data_up.kptirr_system
+        system_soc.set_soc_R(wandata.get_file("soc"),
+                             chk_up=wandata.get_file_ud("up", "chk"),
+                             chk_down=wandata.get_file_ud("down", "chk"),
                              kptirr=kptirr, weights_k=weights_k
         )
-        if w90data.is_irreducible:
+        if wandata.irreducible:
             symmetrize = True
         if symmetrize:
-            system_soc.symmetrize2(symmetrizer_up=w90data.get_file_ud('up', 'symmetrizer'),
-                           symmetrizer_down=w90data.get_file_ud('down', 'symmetrizer'))
+            system_soc.symmetrize2(symmetrizer_up=wandata.get_file_ud('up', 'symmetrizer'),
+                           symmetrizer_down=wandata.get_file_ud('down', 'symmetrizer'))
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
         return system_soc

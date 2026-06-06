@@ -1,4 +1,7 @@
 import numpy as np
+
+from .basic import FormulaSymmetric, tildeFab, tildeFab_d
+from .elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, Eavln, DEinv_ln
 from ..utility import alpha_A, beta_A, cached_einsum, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry.point_symmetry import transform_ident, transform_odd
@@ -17,85 +20,6 @@ class Identity(Formula_ln):
 
     def ln(self, ik, inn, out):
         return np.zeros((len(out), len(inn)))
-
-
-class Eavln(Matrix_ln):
-    """ be careful : this is not a covariant matrix"""
-
-    def __init__(self, data_K):
-        super().__init__(0.5 * (data_K.E_K[:, :, None] + data_K.E_K[:, None, :]))
-        self.ndim = 0
-        self.transformTR = transform_ident
-        self.transformInv = transform_ident
-
-
-class DEinv_ln(Matrix_ln):
-    """DEinv_ln.matrix[ik, m, n] = 1 / (E_mk - E_nk)"""
-
-    def __init__(self, data_K):
-        super().__init__(data_K.dEig_inv)
-
-    def nn(self, ik, inn, out):
-        raise NotImplementedError("dEinv_ln should not be called within inner states")
-
-
-class Dcov(Matrix_ln):
-
-    def __init__(self, data_K):
-        super().__init__(data_K.D_H)
-
-    def nn(self, ik, inn, out):
-        raise ValueError("Dln should not be called within inner states")
-
-
-class DerDcov(Dcov):
-
-    def __init__(self, data_K):
-        self.W = data_K.covariant('Ham', commader=2)
-        self.V = data_K.covariant('Ham', gender=1)
-        self.D = data_K.Dcov
-        self.dEinv = DEinv_ln(data_K)
-
-    def ln(self, ik, inn, out):
-        summ = self.W.ln(ik, inn, out)
-        tmp = cached_einsum("lpb,pnd->lnbd", self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += tmp + tmp.swapaxes(2, 3)
-        tmp = -cached_einsum("lmb,mnd->lnbd", self.D.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += tmp + tmp.swapaxes(2, 3)
-        summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None]
-        return summ
-
-
-class Der2Dcov(Formula_ln):
-
-    def __init__(self, data_K):
-        self.dD = DerDcov(data_K)
-        self.WV = DerWln(data_K)
-        self.dV = InvMass(data_K)
-        self.V = data_K.covariant('Ham', commader=1)
-        self.D = Dcov(data_K)
-        self.dEinv = DEinv_ln(data_K)
-
-    def ln(self, ik, inn, out):
-        summ = self.WV.ln(ik, inn, out)
-        summ += cached_einsum("lpbe,pnd->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += cached_einsum("lpde,pnb->lnbde", self.dV.ll(ik, inn, out), self.D.ln(ik, inn, out))
-        summ += cached_einsum("lpe,pnbd->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += cached_einsum("lpd,pnbe->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += cached_einsum("lpb,pnde->lnbde", self.V.ll(ik, inn, out), self.dD.ln(ik, inn, out))
-        summ += -cached_einsum("lmde,mnb->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmbd,mne->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmbe,mnd->lnbde", self.dD.ln(ik, inn, out), self.V.nn(ik, inn, out))
-        summ += -cached_einsum("lmb,mnde->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-        summ += -cached_einsum("lmd,mnbe->lnbde", self.D.ln(ik, inn, out), self.dV.nn(ik, inn, out))
-
-        summ *= -self.dEinv.ln(ik, inn, out)[:, :, None, None, None]
-        return summ
-
-    def nn(self, ik, inn, out):
-        raise ValueError("Dln should not be called within inner states")
-
-# TODO Der2A,B,O,H,S can be merged to one class.
 
 
 class Der2A(Formula_ln):
@@ -151,12 +75,15 @@ class Der2B(Formula_ln):
 
 
 class Der2O(Formula_ln):
-    def __init__(self, data_K):
+
+    def __init__(self, data_K, key_OO='rotAA'):
         self.dD = DerDcov(data_K)
         self.D = Dcov(data_K)
-        self.O = data_K.covariant('OO')
-        self.dO = data_K.covariant('OO', gender=1)
-        self.Obar_de = Matrix_GenDer_ln(data_K.covariant('OO', commader=1), data_K.covariant('OO', commader=2),
+
+        self.O = data_K.covariant(key_OO)
+        self.dO = data_K.covariant(key_OO, gender=1)
+
+        self.Obar_de = Matrix_GenDer_ln(data_K.covariant(key_OO, commader=1), data_K.covariant(key_OO, commader=2),
                     Dcov(data_K))
 
     def nn(self, ik, inn, out):
@@ -192,29 +119,9 @@ class Der2H(Formula_ln):
         raise NotImplementedError()
 
 
-
-class InvMass(Matrix_GenDer_ln):
-    r""" :math:`\overline{V}^{b:d}`"""
-
-    def __init__(self, data_K):
-        super().__init__(data_K.covariant('Ham', commader=1), data_K.covariant('Ham', commader=2), data_K.Dcov)
-        self.transformTR = transform_ident
-        self.transformInv = transform_ident
-
-
-class DerWln(Matrix_GenDer_ln):
-    r""" :math:`\overline{W}^{bc:d}`"""
-
-    def __init__(self, data_K):
-        super().__init__(data_K.covariant('Ham', 2), data_K.covariant('Ham', 3), data_K.Dcov)
-        self.transformTR = transform_odd
-        self.transformInv = transform_odd
-
-
 #############################
 #   Third derivative of  E  #
 #############################
-
 
 class Der3E(Formula_ln):
 
@@ -259,7 +166,7 @@ class Omega(Formula_ln):
 
         if self.external_terms:
             self.A = data_K.covariant('AA')
-            self.O = data_K.covariant('OO')
+            self.O = data_K.covariant(self.key_OO)
 
         self.ndim = 1
         self.transformTR = transform_odd
@@ -312,7 +219,7 @@ class DerOmega(Formula_ln):
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
-            self.dO = data_K.covariant('OO', gender=1)
+            self.dO = data_K.covariant(self.key_OO, gender=1)
         self.ndim = 2
         self.transformTR = transform_ident
         self.transformInv = transform_odd
@@ -517,7 +424,7 @@ class Morb_H(Formula_ln):
 class Morb_Hpm(Formula_ln):
 
     def __init__(self, data_K, sign=+1, **parameters):
-        r""" Morb_H  +- (En+Em)/2 * Omega """
+        r""" Morb_H  +- (En+Em)/2 * Omega  in units of eV*angstrom^2 """
         super().__init__(data_K, **parameters)
         self.H = Morb_H(data_K, **parameters)
         self.sign = sign
@@ -601,7 +508,7 @@ class DerMorb_H(Formula_ln):
                 summ += -2 * s * cached_einsum(
                     "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                     self.dD.ln(ik, inn, out)[:, :, b, :])
-
+        summ = (summ + summ.swapaxes(0, 1).conj()) / 2
         return summ
 
     def ln(self, ik, inn, out):
@@ -623,6 +530,7 @@ class DerMorb(Formula_ln):
             self.dO = DerOmega(data_K, **parameters)
             self.O = Omega(data_K, **parameters)
             self.E = data_K.E_K
+            self.Eav = Eavln(data_K)
         self.ndim = 2
         self.transformTR = transform_ident
         self.transformInv = transform_odd
@@ -630,8 +538,10 @@ class DerMorb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.dermorb_H.nn(ik, inn, out)
         if self.sign != 0:
-            res += self.sign * cached_einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            res += self.sign * self.E[ik][inn][:, None, None, None] * self.dO.nn(ik, inn, out)
+            tmp = self.Eav.nn(ik, inn, out)[:, :, None, None] * self.dO.nn(ik, inn, out)
+            tmp += 0.5 * cached_einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mld,lnc->mncd", self.V.nn(ik, inn, out), self.O.nn(ik, inn, out))
+            res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
         return res
 
     def ln(self, ik, inn, out):
@@ -697,15 +607,15 @@ class Der2Morb_H(Formula_ln):
             summ += -2j * cached_einsum("mpc,plde,lnc->mncde", self.A.nn(ik, inn, out)[:, :, alpha_A],
                     self.dV.nn(ik, inn, out), self.A.nn(ik, inn, out)[:, :, beta_A])
             for s, a, b in (+1, alpha_A, beta_A), (-1, beta_A, alpha_A):
-                summ += -1j * cached_einsum("mpce,pld,lnc->mncde", self.dA.nn(ik, inn, out)[:, :, a],
+                summ += -1j * s * cached_einsum("mpce,pld,lnc->mncde", self.dA.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.A.nn(ik, inn, out)[:, :, b])
-                summ += -1j * cached_einsum("mpc,pld,lnce->mncde", self.A.nn(ik, inn, out)[:, :, a],
+                summ += -1j * s * cached_einsum("mpc,pld,lnce->mncde", self.A.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.dA.nn(ik, inn, out)[:, :, b])
                 summ += -2j * s * cached_einsum("mlce,lncd->mncde",
                         self.dA.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None, None], self.dA.nn(ik, inn, out)[:, :, b])
                 summ += -2j * s * cached_einsum("mlc,lncde->mncde",
                         self.A.nn(ik, inn, out)[:, :, a] * self.E[ik][inn][None, :, None], self.ddA.nn(ik, inn, out)[:, :, b])
-                summ += -2j * s * cached_einsum("mlc,ple,lncd->mncde", self.A.nn(ik, inn, out)[:, :, a],
+                summ += -2j * s * cached_einsum("mlc,lpe,pncd->mncde", self.A.nn(ik, inn, out)[:, :, a],
                         self.V.nn(ik, inn, out), self.dA.nn(ik, inn, out)[:, :, b])
                 summ += -2 * s * cached_einsum("mlce,lncd->mncde", self.dD.nl(ik, inn, out)[:, :, a],
                         self.dB.ln(ik, inn, out)[:, :, b, :])
@@ -716,6 +626,7 @@ class Der2Morb_H(Formula_ln):
                 summ += -2 * s * cached_einsum("mlc,lncde->mncde", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                         self.ddD.ln(ik, inn, out)[:, :, b])
 
+        summ = (summ + summ.swapaxes(0, 1).conj()) / 2
         return summ
 
     def ln(self, ik, inn, out):
@@ -739,6 +650,7 @@ class Der2Morb(Formula_ln):
             self.ddO = Der2Omega(data_K, **parameters)
             self.O = Omega(data_K, **parameters)
             self.E = data_K.E_K
+            self.Eav = Eavln(data_K)
         self.ndim = 3
         self.transformTR = transform_odd
         self.transformInv = transform_ident
@@ -750,10 +662,14 @@ class Der2Morb(Formula_ln):
     def nn(self, ik, inn, out):
         res = self.der2morb_H.nn(ik, inn, out)
         if self.sign != 0:
-            res += self.sign * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
-            res += self.sign * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
-            res += self.sign * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
-            res += self.sign * self.E[ik][inn][:, None, None, None, None] * self.ddO.nn(ik, inn, out)
+            tmp = self.Eav.nn(ik, inn, out)[:, :, None, None, None] * self.ddO.nn(ik, inn, out)
+            tmp += 0.5 * cached_einsum("mlce,lnd->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlcd,lne->mncde", self.dO.nn(ik, inn, out), self.V.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mld,lnce->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
+            tmp += 0.5 * cached_einsum("mlde,lnc->mncde", self.dV.nn(ik, inn, out), self.O.nn(ik, inn, out))
+            res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
         return res
 
     def ln(self, ik, inn, out):
@@ -995,3 +911,26 @@ class NLDrude_Z_orb_Omega(FormulaSum):
         term1 = FormulaProduct([Der3E(data_K), Omega(data_K, **kwargs_formula)], name='Der3EOmega')
         term2 = FormulaProduct([Der2Omega(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2OmegaVel')
         super().__init__([term1, term2], [-1, 1], ['apsu', 'uaps'])
+
+
+class QuantumMetric_ab(FormulaSymmetric):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(tildeFab, data_K, axes=[0, 1], **parameters)
+        self.transformTR = transform_ident
+        self.transformInv = transform_ident
+
+
+class DerQuantumMetric_ab_d(FormulaSymmetric):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(tildeFab_d, data_K, axes=[0, 1], **parameters)
+        self.transformTR = transform_odd
+        self.transformInv = transform_odd
+
+
+class VelDQM(FormulaProduct):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__([data_K.covariant('Ham', commader=1), DerQuantumMetric_ab_d(data_K, **parameters)],
+                         name='VelDQM')

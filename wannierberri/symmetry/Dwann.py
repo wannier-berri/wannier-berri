@@ -1,7 +1,6 @@
 import numpy as np
 from .orbitals import num_orbitals
 from .unique_list import UniqueListMod1
-from irrep.symmetry_operation import get_atom_map
 
 
 class Dwann:
@@ -50,7 +49,7 @@ class Dwann:
     Notes
     -----
     * the spin ordering is always assumed "iterlaced", i.e. like in QE (or new VASP). If you are using an old VASP version,
-    you should change the spin_ordering to "block" in the of w90data.amn object.
+    you should change the spin_ordering to "block" in the of wandata.amn object.
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
@@ -88,6 +87,7 @@ class Dwann:
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=int)
 
+        from irrep.symmetry_operation import get_atom_map
         for isym, symop in enumerate(spacegroup.symmetries):
             self.atommap[:, isym], self.T[:, isym, :] = get_atom_map(symop=symop, positions=self.orbit)
 

@@ -10,7 +10,7 @@ from collections import defaultdict
 from math import ceil
 from copy import copy
 from ..formula import covariant as frml
-from ..formula import covariant_basic as frml_basic
+from ..formula import basic as frml_basic
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
@@ -28,7 +28,7 @@ class StaticCalculator(Calculator):
         super().__init__(**kwargs)
         if kwargs_formula is None:
             kwargs_formula = {}
-        self.Efermi = Efermi
+        self.Efermi = np.array(Efermi)
         self.Emin = Emin
         self.Emax = Emax
         self.tetra = tetra
@@ -263,7 +263,7 @@ class GME_orb_FermiSurf(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha m^{orb}_\mu f'`
         | Where :math:`m^{orb} = H + G - 2E_f \cdot \Omega`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml.VelHplus
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -281,7 +281,7 @@ class GME_orb_FermiSea(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math:`m = H + G - 2E_f \cdot \Omega`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml.DerMorb
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -300,7 +300,7 @@ class GME_orb_FermiSea_test(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math: `m = H + G - 2E_f \cdot \Omega` """
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml_basic.tildeHGc_d
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -319,7 +319,7 @@ class GME_spin_FermiSea(StaticCalculator):
         | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = -\int [dk] \partial_\alpha s_\mu f`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_spin, **kwargs):
         self.Formula = frml.DerSpin
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -337,7 +337,7 @@ class GME_spin_FermiSurf(StaticCalculator):
         | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = \tau \int [dk] v_\alpha s_\mu f'`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_spin, **kwargs):
         self.Formula = frml.VelSpin
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -651,4 +651,24 @@ class SHC(StaticCalculator):
     def __init__(self, constant_factor=-factors.factor_ahc / 2, **kwargs):
         self.Formula = frml.SpinOmega
         self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class QuantumMetric_FermiSea(StaticCalculator):
+    r"""Quantum metric of all occupied states (Angstr^-1)
+    """
+
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.QuantumMetric_ab
+        self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class QuantumMetric_Vel_DQ(StaticCalculator):
+    r"""Quantum metric dipole with velocity (Angstr^-1)
+    """
+
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.VelDQM
+        self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)

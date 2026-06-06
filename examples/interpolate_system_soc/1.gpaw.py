@@ -1,4 +1,4 @@
-#  parallel execution: 
+#  parallel execution:
 #   gpaw -P 16 python Fe-gpaw.py
 import numpy as np
 from ase import Atoms
@@ -30,10 +30,10 @@ for m in 0.0, 2.2:
     e = fe.get_potential_energy()
     calc.write(f'{seed}-gs.gpw')
     sg = SpaceGroup.from_gpaw(calc)
-    kpoints_irred = sg.get_irreducible_kpoints_grid([4,4,4], sg)
+    kpoints_irred = sg.get_irreducible_kpoints_grid([4, 4, 4], sg)
     calc_nscf = calc.fixed_density(
-    kpts=kpoints_irred,
-    nbands=40,
-    convergence={'bands': 32},
-    txt=f'{seed}-nscf.txt')
+        kpts=kpoints_irred,
+        nbands=40,
+        convergence={'bands': 32},
+        txt=f'{seed}-nscf.txt')
     calc_nscf.write(f'{seed}-nscf-irred-444.gpw', mode='all')

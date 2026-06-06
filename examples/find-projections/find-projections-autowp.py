@@ -1,10 +1,10 @@
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
+from wannierberri.symmetry.projections_searcher import EBRsearcher
 from irrep.bandstructure import BandStructure
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 
 MINIMAL_DISTANCE_THRESHOLD = 0.5
 
-from wannierberri.symmetry.projections_searcher import EBRsearcher
-from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 
 print("calculating symmetrizer")
@@ -25,13 +25,13 @@ except FileNotFoundError:
 
 trial_projections = ProjectionsSet()
 
-positions = spacegroup.get_wyckoff_positions(False,False)
+positions = spacegroup.get_wyckoff_positions(False, False)
 
 print(positions)
 
 
 for p in positions:
-    for o in ['s','p']:
+    for o in ['s', 'p']:
         proj = Projection(position_sym=p, orbital=o, spacegroup=spacegroup)
         trial_projections.add(proj)
 
@@ -62,5 +62,3 @@ for c in combinations:
         trial_sets.append(newset)
         # print(newset.write_wannier90(mod1=True))
     # print(newset.write_wannier90(mod1=True))
-
-

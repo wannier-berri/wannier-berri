@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from pytest import approx
-from wannierberri.w90files.w90data import BKVectors
+from wannierberri.w90files.wandata import BKVectors
 from tests.common import ROOT_DIR
 
 

@@ -9,12 +9,8 @@ class Data_K_R(Data_K, System_R):
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
     def __init__(self, system, dK, grid,
-                 _FF_antisym=False,
-                 _CCab_antisym=False,
                  **parameters):
         super().__init__(system, dK, grid, **parameters)
-        self._FF_antisym = _FF_antisym
-        self._CCab_antisym = _CCab_antisym
 
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
@@ -32,16 +28,17 @@ class Data_K_R(Data_K, System_R):
         return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 
     def get_R_mat(self, key):
-        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc']
-        try:
+        # print(f"data_k : get_R_mat({key})")
+        memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc', 'rotAA', 'FF']
+        if self.has_R_mat(key):
             return self._XX_R[key]
-        except KeyError:
-            if key == 'OO':
-                res = self._OO_R()
-            elif key == 'CCab':
-                res = self._CCab_R()
-            elif key == 'FF':
-                res = self._FF_R()
+        else:
+            if key == 'rotAA':
+                res = self.rotAA()
+            elif key == 'rotAAab':
+                res = self.rotAAab()
+            elif key == 'CCab_antisym':
+                res = self.CCab_antisym_R()
             else:
                 X_R = self.system.get_R_mat(key)
                 res = self.rvec.apply_expdK(X_R)
@@ -50,32 +47,47 @@ class Data_K_R(Data_K, System_R):
         return res
 
 
-    def _OO_R(self):
+    def rotAA(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
-        OO = self.rvec.derivative(self.get_R_mat('AA'))
-        return OO[:, :, :, beta_A, alpha_A] - OO[:, :, :, alpha_A, beta_A]
+        rotAA = self.rvec.derivative(self.get_R_mat('AA'))
+        return rotAA[:, :, :, beta_A, alpha_A] - rotAA[:, :, :, alpha_A, beta_A]
 
-    def _CCab_R(self):
-        if self._CCab_antisym:
-            CCab = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
-            CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
-            CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
-            return CCab
-        else:
-            return self.rvec.apply_expdK(self.system.get_R_mat('CCab'))
+    def rotAAab(self):
+        # We do not multiply by expdK, because it is already accounted in AA_R
+        rotAA = self.rotAA()
+        rotAAab = np.zeros(rotAA.shape + (3,), dtype=complex)
+        rotAAab[:, :, :, alpha_A, beta_A] = -0.5j * rotAA
+        rotAAab[:, :, :, beta_A, alpha_A] = 0.5j * rotAA
+        return rotAAab
 
-    def _FF_R(self):
-        if self._FF_antisym:
-            return -1j * self.rvec.derivative(self.get_R_mat('AA')).swapaxes(3, 4)
-        # self.cRvec_wcc[:, :, :, :, None] * self.get_R_mat('AA')[:, :, :, None, :]
-        else:
-            return self.rvec.apply_expdK(self.system.get_R_mat('FF'))
+
+    def CCab_antisym_R(self):
+        CCab = np.zeros((self.rvec.nRvec, self.num_wann, self.num_wann, 3, 3), dtype=complex)
+        CCab[:, :, :, alpha_A, beta_A] = -0.5j * self.get_R_mat('CC')
+        CCab[:, :, :, beta_A, alpha_A] = 0.5j * self.get_R_mat('CC')
+        return CCab
+
 
     def Xbar(self, name, der=0):
         key = (name, der)
         if key not in self._bar_quantities:
-            self._bar_quantities[key] = self._R_to_k_H(
-                self.get_R_mat(name).copy(), der=der, hermitian=(name in ['AA', 'SS', 'OO']))
+            # print(f"data_k : Xbar({name}, der={der}) has OO : {self.system.has_R_mat('OO')} has_GG : {self.system.has_R_mat('GG')}")
+            if name == 'GG' and not self.system.has_R_mat('GG'):
+                print("data_k : using FF to get GG")
+                res = self.Xbar('FF', der=der)
+                res = 0.5 * (res + res.swapaxes(3, 4))
+                res = 0.5 * (res + res.swapaxes(1, 2).conj())
+            elif name == 'OO' and not self.system.has_R_mat('OO'):
+                # print("data_k : using FF to get OO")
+                res = self.Xbar('FF', der=der)
+                res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
+                res = 0.5 * (res + res.swapaxes(1, 2).conj())
+            else:
+                res = self._R_to_k_H(
+                    self.get_R_mat(name).copy(),
+                    der=der,
+                    hermitian=(name in ['AA', 'SS', 'OO', 'rotAA', ]))
+            self._bar_quantities[key] = res
         return self._bar_quantities[key]
 
     def _R_to_k_H(self, XX_R, der=0, hermitian=True):

@@ -2,7 +2,7 @@ import numpy as np
 from .w90file import W90_file, check_shape
 from .utility import readstr
 from ..utility import cached_einsum
-from ..io import FortranFileR
+
 
 
 class UXU(W90_file):
@@ -33,6 +33,7 @@ class UXU(W90_file):
             header = f_uXu_in.readline().strip()
             NB, NK, NNB = (int(x) for x in f_uXu_in.readline().split())
         else:
+            from .fortio import FortranFileR
             f_uXu_in = FortranFileR(seedname + "." + suffix)
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
@@ -158,6 +159,7 @@ class SXU(W90_file):
             header = f_sXu_in.readline().strip()
             NB, NK, NNB = (int(x) for x in f_sXu_in.readline().split())
         else:
+            from .fortio import FortranFileR
             f_sXu_in = FortranFileR(seedname + "." + suffix)
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')

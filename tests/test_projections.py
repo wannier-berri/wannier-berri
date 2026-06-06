@@ -1,6 +1,6 @@
 """test auxilary functions"""
 
-from wannierberri.wannierise import wannierise
+from wannierberri import wannierise
 import glob
 import os
 import shutil
@@ -282,20 +282,20 @@ def test_create_amn_diamond_s_bond():
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
-    w90data.set_symmetrizer(symmetrizer=symmetrizer)
-    w90data.set_projections(projections=[projection],
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata.set_symmetrizer(symmetrizer=symmetrizer)
+    wandata.set_projections(projections=[projection],
                             bandstructure=bandstructure,
                             all_kpoints=True)
-    amn = w90data.get_file("amn")
+    amn = wandata.get_file("amn")
     print(f"amn,data,keys : {amn.data.keys()}")
 
     print("amn.shape = ", amn.data[0].shape)
-    print("mmn.shape = ", w90data.mmn.data[0].shape)
-    print("eig.shape = ", w90data.eig.data[0].shape)
-    # w90data.set_file("amn", amn)
-    mmn = w90data.get_file("mmn")
-    bkvec = w90data.get_file("bkvec")
+    print("mmn.shape = ", wandata.mmn.data[0].shape)
+    print("eig.shape = ", wandata.eig.data[0].shape)
+    # wandata.set_file("amn", amn)
+    mmn = wandata.get_file("mmn")
+    bkvec = wandata.get_file("bkvec")
     err_mmn = symmetrizer.check_mmn(bkvec=bkvec,
                                     mmn=mmn,
                                     ignore_upper_bands=2)
@@ -304,7 +304,7 @@ def test_create_amn_diamond_s_bond():
     assert err_amn < 1e-6, f"amn is not symmetric, error={err_amn}"
 
     # Now wannierise the system
-    wannierise(w90data,
+    wannierise(wandata,
         froz_min=-8,
         froz_max=20,
         num_iter=100,
@@ -317,10 +317,10 @@ def test_create_amn_diamond_s_bond():
         localise=True
     )
 
-    wannier_centers = w90data.chk.wannier_centers_cart
+    wannier_centers = wandata.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
     assert wannier_centers == approx(0.806995 * np.array([[0, 0, 0], [-1, 1, 0], [0, 1, 1], [-1, 0, 1]]), abs=1e-6)
-    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_spreads = wandata.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
     assert wannier_spreads == approx(.398647548, abs=1e-5)
 
@@ -374,28 +374,28 @@ def test_create_amn_diamond_p_bond():
     print("prefix = ", prefix)
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data.from_w90_files(
+    wandata = wberri.WannierData.from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
         files=["mmn", "eig", "win", "unk"])
 
     amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                             normalize=True)
-    w90data.set_file("amn", amn)
+    wandata.set_file("amn", amn)
     err_amn = symmetrizer.check_amn(amn, ignore_upper_bands=2)
     assert err_amn < 1e-6, f"amn is not symmetric, error={err_amn}"
 
-    err_eig = symmetrizer.check_eig(w90data.get_file("eig"))
+    err_eig = symmetrizer.check_eig(wandata.get_file("eig"))
     assert err_eig < 1e-6, f"eig is not symmetric, error={err_eig}"
-    mmn = w90data.get_file("mmn")
-    bkvec = w90data.get_file("bkvec")
+    mmn = wandata.get_file("mmn")
+    bkvec = wandata.get_file("bkvec")
     err_mmn = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, ignore_upper_bands=2)
     assert err_mmn < 1e-6, f"mmn is not symmetric, error={err_mmn}"
 
 
-    w90data.set_symmetrizer(symmetrizer=symmetrizer)
-    w90data.select_bands(win_min=22, win_max=1000)
+    wandata.set_symmetrizer(symmetrizer=symmetrizer)
+    wandata.select_bands(win_min=22, win_max=1000)
     # Now wannierise the system
-    wannierise(w90data,
+    wannierise(wandata,
         froz_min=22,
         froz_max=30,
         num_iter=20,
@@ -406,13 +406,13 @@ def test_create_amn_diamond_p_bond():
         sitesym=True,
         localise=True
     )
-    w90data.plotWF()
+    wandata.plotWF()
 
-    wannier_centers = w90data.chk.wannier_centers_cart
+    wannier_centers = wandata.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
     assert wannier_centers == approx(0.806995 * np.array([[0, 0, 0], [-1, 1, 0], [0, 1, 1], [-1, 0, 1]]), abs=1e-6)
-    wannier_spreads = w90data.chk.wannier_spreads
-    V = np.array([w90data.chk.v_matrix[k] for k in range(w90data.chk.NK)])
+    wannier_spreads = wandata.chk.wannier_spreads
+    V = np.array([wandata.chk.v_matrix[k] for k in range(wandata.chk.NK)])
     print(f"shape of V matrix {V.shape}")
     err_chk = symmetrizer.check_amn(V, verbose=True, ignore_upper_bands=None)
     print(f"max error in chk : {err_chk}")
@@ -462,14 +462,14 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    w90data = wberri.w90files.Wannier90data.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
-    w90data.set_file("amn", amn)
-    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata.set_file("amn", amn)
+    wandata.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
-    # w90data.apply_window(win_min=20, win_max=100)
+    # wandata.apply_window(win_min=20, win_max=100)
     print(f"amn is symmetric with accuracy {amn_symm_prec}")
     # Now wannierise the system
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-20,
         froz_max=35,
         num_iter=20,
@@ -482,10 +482,10 @@ def test_create_amn_diamond_sp3():
     )
 
 
-    wannier_centers = w90data.chk.wannier_centers_cart
+    wannier_centers = wandata.chk.wannier_centers_cart
     print("wannierr_centers = ", wannier_centers)
     # assert wannier_centers == approx(0.806995*np.array([[0, 0, 0], [-1,1,0], [0,1,1], [-1,0,1]]), abs=1e-6)
-    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_spreads = wandata.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
 
     shifts1 = wannier_centers[:4, :] - pos_atoms_cart[0, None, :]

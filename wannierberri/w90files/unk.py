@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 
-from ..io import FortranFileR
 from .w90file import W90_file, auto_kptirr, check_shape
 from glob import glob
 
@@ -45,7 +44,7 @@ class UNK(W90_file):
     @classmethod
     def from_w90_file(cls, seedname=None,
                       path=None,
-                      NK=None, NKmax=10000, spinor=False,
+                      NK=None, spinor=False,
                       spin_channel=1,
                       reduce_grid=(1, 1, 1),
                       selected_kpoints=None,
@@ -82,6 +81,7 @@ class UNK(W90_file):
             filename = os.path.join(path, f"UNK{ik + 1:05d}.{spin_channel}")
             assert os.path.exists(filename), f"UNK file {filename} does not exist"
             # print(f"reading {filename}")
+            from .fortio import FortranFileR
             f = FortranFileR(filename)
             nr1, nr2, nr3, ikr, NB = f.read_record(dtype=np.int32)
             nr1_red, nr2_red, nr3_red = int(nr1 // reduce_grid[0]), int(nr2 // reduce_grid[1]), int(nr3 // reduce_grid[2])

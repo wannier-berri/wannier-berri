@@ -4,30 +4,35 @@ from wannierberri.formula import covariant as frml
 from wannierberri.result import EnergyResult, KBandResult
 from .common import OUTPUT_DIR, REF_DIR
 from .common_comparers import error_message
+from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
 
 
-from .common_systems import Efermi_Fe
+from .common_systems import Efermi_Fe, Efermi_Si
 
 
 @pytest.fixture
 def check_calculator(compare_any_result):
-    """
-
-    """
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
                precision=-1e-8,
                compare_zero=False,
                do_not_compare=False,
                result_type=EnergyResult,
-               factor=1
+               factor=1,
+               transformTR=None,
+               transformInv=None,
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
-        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
-        result = calc(data_K) * factor
+        data_k_class = wberri.data_K.get_data_k_class_from_system(system)
+        data_K = data_k_class(system, dK=dK, grid=grid, **param_K)
+        result = calc(data_K)
+        print(f"result = {result}")
+        result = result * factor
+        print(f"result * {factor} = {result}")
+
 
         filename = "calculator-" + name
         path_filename = os.path.join(OUTPUT_DIR, filename)
@@ -41,7 +46,13 @@ def check_calculator(compare_any_result):
             assert precision > 0, "comparing with zero is possible only with absolute precision"
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
-            result_ref = result_type(file_npz=path_filename_ref)
+            print(f"Comparing with reference file {path_filename_ref}")
+            result_ref = result_type.from_npz(path_filename_ref)
+        if transformTR is not None:
+            result_ref.transformTR = transformTR
+        if transformInv is not None:
+            result_ref.transformInv = transformInv
+
         maxval = result_ref._maxval_raw
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)
@@ -74,7 +85,7 @@ def test_tab_fit(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
     grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
-    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
     morb = wberri.calculators.tabulate.OrbitalMoment
     berry = wberri.calculators.tabulate.BerryCurvature
     noext = dict(kwargs_formula={"external_terms": False})
@@ -98,7 +109,7 @@ def test_BD_trace(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
     grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
-    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
     noext = dict(kwargs_formula={"external_terms": False})
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
     result = bd(data_K)
@@ -112,36 +123,66 @@ def check_save_result():
     def _inner(system, calc, result_type, filename="dummy"):
         grid = wberri.Grid(system=system, NKFFT=3, NK=5)
         dK = np.random.random(3)
-        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+        data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
         result = calc(data_K)
         path_filename = os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
-        result_read = result_type(file_npz=path_filename + ".npz")
+        result_read = result_type.from_npz(path_filename + ".npz")
         assert result.data.shape == result_read.data.shape
         assert str(result.transformTR) == str(result_read.transformTR)
         assert str(result.transformInv) == str(result_read.transformInv)
     return _inner
 
 
-def test_SDCT(system_random_load_bare, check_calculator):
+@pytest.mark.parametrize(
+    ("system", "system_type", "Efermi"),
+    [
+        pytest.param("system_random_load_bare", "random", np.linspace(-2, 2, 5), id="random"),
+        pytest.param("system_Si_W90_JM_sym", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym"),
+        pytest.param("system_Si_W90_JM_sym_FF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_FF"),
+        pytest.param("system_Si_W90_JM_sym_OOGGFF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF"),
+        pytest.param("system_Si_W90_JM_OOGG", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGG"),
+        pytest.param("system_Si_W90_JM_FF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_FF"),
+        pytest.param("system_Si_W90_JM_OOGGFF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGGFF"),
+    ],
+    indirect=["system"],
+)
+def test_SDCT(system, system_type, Efermi, check_calculator):
 
-    from .test_run import Efermi_GaAs, calculators_SDCT
-    param = {'Efermi': Efermi_GaAs,
+    param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
 
+    skip_S = system_type.startswith("Si_W90")
+    calculators_SDCT = get_calculators_sdct(implementation=1)
     for key, calculator in calculators_SDCT.items():
-        for term in ["M1", "E2", "V", "all"]:
-            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}
-            if term != "all":
-                param_terms[f"{term}_terms"] = True
-            name = f"random-{key}-{term}_terms"
+        for term in ["M1", "E2", "V", "S", "all", "none", "M1_uIu"]:
+            if skip_S and term == "S":
+                continue
+            kwargs_formula = {"OO_uIu": False}
+            if term == "all":
+                param_terms = {f"{t}_terms": True for t in ["M1", "E2", "V", "S"]}
+                if skip_S:
+                    param_terms["S_terms"] = False
+            else:
+                param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
+                if term == "M1_uIu":
+                    param_terms["M1_terms"] = True
+                    kwargs_formula["OO_uIu"] = True
+                elif term != "none":
+                    param_terms[f"{term}_terms"] = True
+
+            name = f"{system_type}-{key}-{term}_terms"
             print(name)
-            calc = calculator(**param_terms, **param)
-            check_calculator(system_random_load_bare, calc, name, do_not_compare=False)
-
-
+            calc = calculator(kwargs_formula=kwargs_formula,
+                              **param_terms, **param)
+            transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
+            check_calculator(system, calc,
+                             name, do_not_compare=False,
+                             compare_zero=(term == "none"),
+                             precision=1e-8 if term == "none" else None,
+                             transformTR=transform_TR)
 
 
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):

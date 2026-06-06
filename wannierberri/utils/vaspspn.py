@@ -9,7 +9,6 @@
 #    now at : Iniversity of Zurich
 import warnings
 import numpy as np
-from ..io import FortranFileW
 from ..utility import cached_einsum, time_now_iso
 
 PAW_warning = """vaspspn uses pseudo-wavefunction instead of the full PAW
@@ -121,7 +120,7 @@ def main(argv):
         NBout = NBin - IBstart
 
     print(f"WAVECAR contains {NK} k-points and {NBin} bands.\n Writing {NBout} bands in the output starting from")
-
+    from ..w90files.fortio import FortranFileW
     SPN = FortranFileW(fout)
     header = f"Created from WAVECAR at {time_now_iso()}"
     header = header[:60]

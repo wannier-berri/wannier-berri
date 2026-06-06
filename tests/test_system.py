@@ -6,11 +6,9 @@ from packaging import version
 
 from .common import OUTPUT_DIR, REF_DIR
 
-from .common_systems import model_1d_pythtb
 import wannierberri as wberri
-
+from wannierberri.utility import alpha_A, beta_A
 from wannierberri.system.system_R import System_R
-from wannierberri.system.system_tb import System_tb
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
@@ -175,6 +173,23 @@ def check_system():
                 prec_loc = precision_matrix_elements
             check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
             print(f"check matrix {key} - Ok!")
+        if system.has_R_mat_all(['FF', 'OO']):
+            FF = system.get_R_mat('FF')
+            OO = system.get_R_mat('OO')
+            FF = 1j * (FF[:, :, :, alpha_A, beta_A] - FF[:, :, :, beta_A, alpha_A])
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - OO).max()
+            assert diff < 1e-10, f"antisymmetric part of FF fiffers from  OO  by {diff}"
+            print("check antisymmetric part of FF - Ok!")
+        if system.has_R_mat_all(['FF', 'GG']):
+            FF = system.get_R_mat('FF')
+            GG = system.get_R_mat('GG')
+            FF = (FF + FF.swapaxes(3, 4)) / 2
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - GG).max()
+            assert diff < 1e-10, f"symmetric part of FF fiffers from  GG  by {diff}"
+            print("check symmetric part of FF - Ok!")
+
 
     return _inner
 
@@ -263,6 +278,14 @@ def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     )
 
 
+def test_system_GaAs_W90_JM_OOGG(check_system, system_GaAs_W90_JM_OOGG):
+    check_system(
+        system_GaAs_W90_JM_OOGG, "GaAs_W90_JM",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
+        legacy=True,
+    )
+
+
 def test_system_GaAs_tb(check_system, system_GaAs_tb):
     check_system(
         system_GaAs_tb, "GaAs_tb",
@@ -305,40 +328,30 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     )
 
 
-def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
-    check_system(
-        system_Si_W90_JM, "Si_W90_JM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+kwargs_sym_Si = dict(matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
         sort_iR=True,
-        legacy=True,
-    )
+        legacy=True)
+
+
+def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
+    check_system(system_Si_W90_JM, "Si_W90_JM", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
-    check_system(
-        system_Si_W90_JM_sym, "Si_W90_JM_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_JM_sym, "Si_W90_JM_sym", **kwargs_sym_Si)
+
+
+def test_system_Si_W90_JM_sym_OOGGFF(check_system, system_Si_W90_JM_sym_OOGGFF):
+    check_system(system_Si_W90_JM_sym_OOGGFF, "Si_W90_JM_sym", **kwargs_sym_Si)
 
 
 def test_system_Si_W90(check_system, system_Si_W90):
-    check_system(
-        system_Si_W90, "Si_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90, "Si_W90", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
-    check_system(
-        system_Si_W90_sym, "Si_W90_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_sym, "Si_W90_sym", **kwargs_sym_Si)
+
 
 
 
@@ -458,7 +471,11 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
 
 
 def test_system_pythtb_spinor():
-    model1, model2 = model_1d_pythtb()
+    from wannierberri.models import model_1d_pythtb
+    rnd = np.random.random(8)
+
+    model1 = model_1d_pythtb(Delta=1, hoppings=rnd, spinor_manual=False)
+    model2 = model_1d_pythtb(Delta=1, hoppings=rnd, spinor_manual=True)
     k = np.linspace(0, 1, 20, endpoint=False)
     import pythtb
     if version.parse(pythtb.__version__) < version.parse("2.0.0"):
@@ -473,7 +490,7 @@ def test_system_pythtb_spinor():
     for model, comment, e in (model2, "in a scalar way", e2), (model1, "using spinors", e1), :
         system = wberri.system.System_PythTB(model)
         grid = wberri.Grid(system=system, NKFFT=[20, 1, 1], NKdiv=1)
-        datak = wberri.data_K.get_data_k(system=system, dK=[0, 0, 0], grid=grid)
+        datak = wberri.data_K.Data_K_R(system=system, dK=[0, 0, 0], grid=grid)
         ew = datak.E_K.T
         assert e == pytest.approx(ew), ("System gave eigenvalues different from the model "
                                       f"defined in pythtb {comment}"
@@ -502,7 +519,7 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
 def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
     path = os.path.join(OUTPUT_DIR, "random_GaAS_tb")
     system_random_GaAs_load_bare.to_tb_file(path)
-    system_tb = System_tb(path, berry=True)
+    system_tb = System_R.from_tb_dat(path, berry=True)
     print(system_tb.wannier_centers_cart)
     print(system_random_GaAs_load_bare.wannier_centers_cart)
 

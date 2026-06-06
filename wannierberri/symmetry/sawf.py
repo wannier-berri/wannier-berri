@@ -1,13 +1,9 @@
 from functools import cached_property, lru_cache
 import warnings
-from irrep.bandstructure import BandStructure
-from irrep.spacegroup import SpaceGroup
-from irrep.utility import get_kpt_from_kptirr_isym
 import numpy as np
 
 
 from ..utility import cached_einsum, clear_cached, arr_to_string
-from ..w90files.amn import AMN
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
@@ -90,7 +86,7 @@ class SymmetrizerSAWF:
         self.kptirr2kpt = np.zeros((0, 0), dtype=int)
 
     @classmethod
-    def from_irrep(cls, bandstructure: BandStructure,
+    def from_irrep(cls, bandstructure,
                  grid=None, degen_thresh=1e-2, store_eig=True,
                  ecut=None,  # not used, but kept for compatibility
                  irreducible=False,
@@ -221,6 +217,9 @@ class SymmetrizerSAWF:
         return OrbitalRotator()
         # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
+    @classmethod
+    def from_spacegroup_and_projections(cls, spacegroup, projections):
+        return cls().set_spacegroup(spacegroup).set_D_wann_from_projections(projections)
 
     def set_D_wann_from_projections(self,
                                     projections,
@@ -245,7 +244,7 @@ class SymmetrizerSAWF:
         for proj in projections:
             orbitals = proj.orbitals
             basis_list = proj.basis_list
-            print(f"orbitals = {orbitals}")
+            # print(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
                 warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
             for orb in orbitals:
@@ -256,7 +255,7 @@ class SymmetrizerSAWF:
         self.atommap_list = []
         self.rot_orb_list = []
         for positions, proj, basis_list in projections_list:
-            print(f"calculating Wannier functions for {proj} at {positions}")
+            # print(f"calculating Wannier functions for {proj} at {positions}")
             _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbitalrotator=self.orbitalrotator,
                            spinor=self.spacegroup.spinor,
                            basis_list=basis_list)
@@ -294,7 +293,7 @@ class SymmetrizerSAWF:
         self.clear_inverse(d=False, D=True)
         if not isinstance(D_wann, list):
             D_wann = [D_wann]
-        print("D.shape", [D.shape for D in D_wann])
+        # print("D.shape", [D.shape for D in D_wann])
         self.D_wann_block_indices = []
         num_wann = 0
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -309,8 +308,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        print("num_wann", num_wann)
-        print("D_wann_block_indices", self.D_wann_block_indices)
+        # print("num_wann", num_wann)
+        # print("D_wann_block_indices", self.D_wann_block_indices)
 
 
     def symmetrize_wannier_property(self, wannier_property):
@@ -421,8 +420,12 @@ class SymmetrizerSAWF:
             self.__setattr__(k, v)
 
         if not hasattr(self, "kpt_from_kptirr_isym"):
+            from irrep.utility import get_kpt_from_kptirr_isym
             self.kpt_from_kptirr_isym = get_kpt_from_kptirr_isym(kptirr2kpt=self.kptirr2kpt,
                                                         kpt2kptirr=self.kpt2kptirr)
+
+        if not hasattr(self, "selected_kpoints"):
+            self.selected_kpoints = np.arange(self.NK)
 
 
         self.d_band_block_indices = [dic[f'd_band_block_indices_{ik}'] for ik in range(self.NKirr)]
@@ -447,6 +450,7 @@ class SymmetrizerSAWF:
         l = len(prefix)
         dic_spacegroup = {k[l:]: v for k, v in dic.items() if k.startswith(prefix)}
         if len(dic_spacegroup) > 0:
+            from irrep.spacegroup import SpaceGroup
             self.spacegroup = SpaceGroup(**dic_spacegroup)
         for prefix in ["T", "atommap", "rot_orb"]:
             keys = sorted([k for k in dic.keys() if k.startswith(prefix)])
@@ -653,7 +657,9 @@ class SymmetrizerSAWF:
         -----
         Works only when ALL k-points are included in the amn.
         """
+        from ..w90files.amn import AMN
         if isinstance(amn, AMN):
+            assert None not in amn.data.keys(), "AMN data should contain all k-points, not only the irreducible ones"
             amn = amn.data
         if isinstance(amn, dict):
             amn = np.array([amn[ik] for ik in range(self.NK)])
@@ -722,7 +728,7 @@ class SymmetrizerSAWF:
         return self.U_to_full_BZ(amn_sym_irr)
 
     def get_random_amn(self):
-        """ generate a random amn array that is comaptible with the symmetries of the Wanier functions in thesymmetrizer object
+        """ generate a random amn array that is compatible with the symmetries of the Wannier functions in the symmetrizer object
 
         Returns
         -------

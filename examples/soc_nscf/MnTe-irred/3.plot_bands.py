@@ -1,11 +1,11 @@
 import functools
 from matplotlib import pyplot as plt
-import wannierberri as wberri
 from wannierberri.grid import Path
 from wannierberri.evaluate_k import evaluate_k_path
+from wannierberri.parallel import ray_init
 from wannierberri.system.system_soc import SystemSOC
 
-wberri.ray_init()
+ray_init()
 
 system_soc = SystemSOC.from_npz("system_soc")
 theta = 90

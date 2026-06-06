@@ -37,7 +37,16 @@ Some implemented formulae:
 Some extra formulae (for testiing):
 ------------------------------------
 
-.. automodule:: wannierberri.formula.covariant_basic
+.. automodule:: wannierberri.formula.basic
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Elementary formulae (for developers):
+------------------------------------
+
+.. automodule:: wannierberri.formula.elementary
    :members:
    :undoc-members:
    :show-inheritance:

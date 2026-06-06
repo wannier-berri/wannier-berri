@@ -3,7 +3,6 @@ from .Kpoint import KpointBZpath
 import warnings
 from collections.abc import Iterable
 import numpy as np
-import seekpath
 from .path_order import flatten_path
 
 
@@ -203,7 +202,8 @@ class Path(GridAbstract):
             if lattice is None or positions is None or numbers is None:
                 raise ValueError("Either 'cell' or ('lattice', 'positions', 'numbers') should be set")
             cell = (lattice, positions, numbers)
-        path = seekpath.get_path_orig_cell(cell, with_time_reversal=with_time_reversal)
+        from seekpath import get_path_orig_cell
+        path = get_path_orig_cell(cell, with_time_reversal=with_time_reversal)
         point_coords = path['point_coords']
         path_seek = path['path']
         point_coords, path_seek = flatten_path(point_coords, path_seek, direction=twoD_direction)

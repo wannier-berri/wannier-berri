@@ -221,10 +221,6 @@ def test_tabulate_path(system_Haldane_PythTB, check_run):
         calculators=calculators,
         fout_name="berry_Fe_W90",
         suffix="run",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,  # should have no effect, but will check the cases and give a warning
         #                parameters_K = parameters_K,
         #                frmsf_name = None,

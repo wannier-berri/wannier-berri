@@ -12,8 +12,13 @@ Note: work on this functionality is in progress
 Projections and Wyckoff positions
 +++++++++++++++++++++++++++++++++
 
-.. automodule:: wannierberri.symmetry.projections
-   :members: 
+.. autoclass:: wannierberri.symmetry.projections.Projection
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: wannierberri.symmetry.projections.ProjectionsSet
+   :members:
    :undoc-members:
    :show-inheritance:
 

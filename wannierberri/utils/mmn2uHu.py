@@ -1,15 +1,3 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 """This utility calculates the matrices .uHu, .uIu, .sHu, and/or .sIu from the .mmn, .spn matrices, and also reduces the number of bands in .amn, .mmn, .eig  and .spn files
 
         Usage example: ::
@@ -51,7 +39,6 @@
 
 import numpy as np
 import os
-from ..io import FortranFileR, FortranFileW
 from ..utility import cached_einsum, time_now_iso
 
 
@@ -215,6 +202,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                     f_uXu_out.write("".join(header) + "\n")
                     f_uXu_out.write(f"{NB_out}   {NK}   {NNB} \n")
                 else:
+                    from ..w90files.fortio import FortranFileW
                     f_uXu_out = FortranFileW(path)
                     f_uXu_out.write_record(bytearray(header, encoding='ascii'))
                     f_uXu_out.write_record(np.array([NB_out, NK, NNB], dtype=np.int32))
@@ -257,6 +245,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
             SPNheader = f_spn_in.readline().strip()
             nbnd, NK = (int(x) for x in f_spn_in.readline().split())
         else:
+            from ..w90files.fortio import FortranFileR
             f_spn_in = FortranFileR(inputpath + ".spn")
             SPNheader = (f_spn_in.read_record(dtype='c'))
             nbnd, NK = f_spn_in.read_record(dtype=np.int32)
@@ -274,6 +263,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
             f_spn_out.write(SPNheader + "\n")
             f_spn_out.write(f"{NB_out}  {NK}\n")
         else:
+            from ..w90files.fortio import FortranFileW
             f_spn_out = FortranFileW(outputpath + ".spn")
             f_spn_out.write_record(SPNheader.encode('ascii'))
             f_spn_out.write_record(np.array([NB_out, NK], dtype=np.int32))
@@ -328,6 +318,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                     f_sXu_out.write("".join(header) + "\n")
                     f_sXu_out.write(f"{NB_out}   {NK}   {NNB} \n")
                 else:
+                    from ..w90files.fortio import FortranFileW
                     f_sXu_out = FortranFileW(path)
                     f_sXu_out.write_record(bytearray(header, encoding='ascii'))
                     f_sXu_out.write_record(np.array([NB_out, NK, NNB], dtype=np.int32))

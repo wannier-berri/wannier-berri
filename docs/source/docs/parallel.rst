@@ -11,12 +11,12 @@ ray.init(num_cpus=4)  # specify the number of cpus you want to use
 
 Pleas refer to ray `documentation <https://docs.ray.io/en/latest/>`__ for more options of 
 
-Then, when calling ``wbrun`` function, please set the argument ``parallel=True``. e.g.
+Then, when calling ``wannierberri.run()`` function, please set the argument ``parallel=True``.
 
 **NOTE**: 
 Ray will produce a lot of temorary files during running. `/tmp` is the default directory for temporary data files. More information about `temorary files <https://docs.ray.io/en/stable/tempfile.html>`__.
 
-If you are using a cluster, you may have no permission to delete them under `/tmp`. Please store them under the folder which under your control by adding ``ray_init={'_temp_dir': Your_Path}``.
+If you are using a cluster, you may have no permission to delete them under `/tmp`. Please store them under the folder which under your control by adding ``_temp_dir={Your_Path}``.
 Please keep ``Your_Path`` shorter. There is a problem if your path is long. Please check `temp_dir too long bug <https://github.com/ray-project/ray/issues/7724>`__
 
 multi-node mode

@@ -39,8 +39,8 @@ class System_R(System):
             set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
         SHCqiao : bool
             set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
-        _getFF : bool
-            generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
+        FF : bool
+            generate the FF_R matrix based on the uIu file. 
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
         ws_dist_tol : float
@@ -281,33 +281,26 @@ class System_R(System):
         atom_name: list
             Name of each atom.
         proj: list
-            Should be the same with projections card in relative Wannier90.win.
+            Projections from the corresponding ``wannier90.win`` file.
 
-            eg: ``['Te: s','Te:p']``
+            Examples:
 
-            If there is hybrid orbital, grouping the other orbitals.
+            - ``['Te:s', 'Te:p']``
+            - ``['Fe:sp3d2;t2g']`` instead of ``['Fe:sp3d2;dxz,dyz,dxy]``
+            - ``['X:sp;p2']`` instead of ``['X:sp;pz,py]``
 
-            eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
-
-                ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
-
-            Note: If in `wannier90.win` file one sets several projections in one line like ``['Fe':d;sp3]``
-            the actual order (as written to the `wannier90.nnkp` file) may be different. It is ordered by the orbital number l,
-            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see
-            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__
-            chapter 3). So, the actual order will be ``['Fe':sp3;d]``. To  avoid confusion, it is recommended to put the different groups of projectons
-            as separate lines of the `wannier90.win` file. See also `here <https://github.com/wannier-developers/wannier90/issues/463>`__
+            If ``wannier90.win`` contains several projections in one line, for example
+            ``['Fe:d;sp3]``, the actual order written to ``wannier90.nnkp`` may differ.
+            It is ordered by the orbital quantum number `l`, and hybrids are assigned
+            negative values (for example, for `sp3`, `l=-3`; see the
+            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__, chapter 3).
+            In that case the actual order becomes ``['Fe:sp3;d]``. To avoid confusion,
+            it is recommended to put different projection groups on separate lines of
+            ``wannier90.win``. See also `Wannier90 issue #463 <https://github.com/wannier-developers/wannier90/issues/463>`__.
         soc: bool
             Spin orbital coupling.
         magmom: 2D array
             Magnetic momens of each atoms.
-        store_symm_wann: bool
-            Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
-            Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
-        rotations: array-like (shape=(N,3,3))
-            Rotations of the symmetry operations. (optional)
-        translations: array-like (shape=(N,3))
-            Translations of the symmetry operations. (optional)
         silent: bool
             If True, do not print the symmetrization process.
         reorder_back: bool
@@ -315,17 +308,21 @@ class System_R(System):
 
         Returns
         -------
-        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
+        symmetrizer : :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF`
             the symmetrizer object that was used for symmetrization. Can be used for further analysis of the symmetry properties of the system.
 
         Notes
         -----
-        * after symmetrization, the wannier functions may be reordered, to group the atoms 
-        by same wyckoff positions. In this case, the symmetrizer is not returned, because it would be 
-        inconsistent with the order of the projections.
+                * After symmetrization, the Wannier functions may be reordered to group atoms
+                    by the same Wyckoff positions. In this case, the symmetrizer is not returned,
+                    because it would be inconsistent with the order of the projections.
 
-        * Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
-        Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
+                * Works only with phase convention I (`use_wcc_phase=True`), which is now the
+                    only supported option.
+
+                * Spin ordering is assumed to be interlaced (like in the amn file of QE and
+                    new versions of VASP). If it is not, use
+                    :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
         """
         from irrep import __version__ as irrep_version
         from irrep.spacegroup import SpaceGroup
@@ -378,7 +375,7 @@ class System_R(System):
                                   do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
                 print(f"proj: {proj}")
-                num_wann_per_position = proj.num_wann_per_site_spinor
+                num_wann_per_position = proj.num_wann_per_site
                 print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:
                     for j in range(num_wann_per_position):
@@ -387,7 +384,7 @@ class System_R(System):
 
         print(f"new_wann_indices: {new_wann_indices}")
         self.reorder(new_wann_indices)
-        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
+        symmetrizer = SymmetrizerSAWF.from_spacegroup_and_projections(spacegroup=spacegroup, projections=proj_list)
         self.symmetrize2(symmetrizer, silent=silent)
         if reorder_back:
             self.reorder(np.argsort(new_wann_indices))
@@ -711,7 +708,7 @@ class System_R(System):
         else:
             return key + ".npz"
 
-    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
         Parameters
@@ -764,6 +761,7 @@ class System_R(System):
             logfile.write(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
             logfile.write(" - Ok!\n")
+
 
     @classmethod
     def from_npz(cls, path, exclude_properties=(), legacy=False, matrices=None):
@@ -852,3 +850,90 @@ class System_R(System):
             self.set_R_mat(key, a)
             logfile.write(" - Ok!\n")
         return self
+
+    @classmethod
+    def from_wannierdata(cls,
+        wandata,
+        *args, **kwargs,
+    ):
+        """
+        Create a System_R object from a Wannier90 data object (wandata). 
+        Wannierized either by wannier90 or by WannierBerri
+
+        see :func:`~wannierberri.system.system_w90.get_system_w90` for input data and details
+        """
+        from .system_w90 import get_system_w90
+        return get_system_w90(wandata=wandata, *args, **kwargs)
+
+
+    @classmethod
+    def from_tb_dat(cls, *args, **kwargs):
+        """
+        Create a System_R object from a wannier90_tb.dat file. 
+        see :func:`~wannierberri.system.system_tb.get_system_tb` for input data and details
+        """
+        from .system_tb import system_tb
+        return system_tb(*args, **kwargs)
+
+    @classmethod
+    def from_pythtb(cls, *args, **kwargs):
+        """
+        Create a System_R object from a pythtb model. 
+        see :func:`~wannierberri.system.system_tb_py.get_system_pythtb` for input data and details
+        """
+        from .system_tb_py import get_system_pythtb
+        return get_system_pythtb(*args, **kwargs)
+
+    @classmethod
+    def from_tbmodels(cls, *args, **kwargs):
+        """
+        Create a System_R object from a TBmodels model. 
+        see :func:`~wannierberri.system.system_tb_py.get_system_tbmodels` for input data and details
+        """
+        from .system_tb_py import get_system_tbmodels
+        return get_system_tbmodels(*args, **kwargs)
+
+    @classmethod
+    def from_fplo(cls, *args, **kwargs):
+        """
+        Create a System_R object from a FPLO calculation. 
+        see :func:`~wannierberri.system.system_fplo.get_system_fplo` for input data and details
+        """
+        from .system_fplo import get_system_fplo
+        return get_system_fplo(*args, **kwargs)
+
+    @classmethod
+    def from_ase(cls, *args, **kwargs):
+        """
+        Create a System_R object from an ASE Atoms object. 
+        see :func:`~wannierberri.system.system_ase.get_system_ase` for input data and details
+        """
+        from .system_ase import get_system_ase
+        return get_system_ase(*args, **kwargs)
+
+    @classmethod
+    def from_phonons_qe(cls, *args, **kwargs):
+        """
+        Create a System_R object for phonons from a Quantum Espresso calculation. 
+        see :func:`~wannierberri.system.system_phonon_qe.get_system_phonons_qe` for input data and details
+        """
+        from .system_phonon_qe import get_system_phonons_qe
+        return get_system_phonons_qe(*args, **kwargs)
+
+    @classmethod
+    def from_random(cls, *args, **kwargs):
+        """
+        Create a System_R object with random parameters. 
+        see :func:`~wannierberri.system.system_random.get_system_random` for input data and details
+        """
+        from .system_random import get_system_random
+        return get_system_random(*args, **kwargs)
+
+    @classmethod
+    def from_sparse(cls, *args, **kwargs):
+        """
+        Create a System_R object from a sparse representation. 
+        see :func:`~wannierberri.system.system_sparse.get_system_sparse` for input data and details
+        """
+        from .system_sparse import get_system_sparse
+        return get_system_sparse(*args, **kwargs)

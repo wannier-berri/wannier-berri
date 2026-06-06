@@ -1,15 +1,3 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file 'LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 
 import numpy as np
 import os
@@ -17,10 +5,9 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
-from .system_R import System_R
 
 
-def System_tb(tb_file="wannier90_tb.dat",
+def system_tb(tb_file="wannier90_tb.dat",
               convention_II_to_I=True,
               wannier_centers_cart=None,
               **parameters):
@@ -37,7 +24,7 @@ def System_tb(tb_file="wannier90_tb.dat",
     convention_II_to_I : bool
         By default, the tb file in wannier90 format is in the convention II, which is different from the convention I used in wannierberri.
         If the file is already in the convention I, set this parameter to False.
-    wannier_centers_cart : np.ndarray(num_wann, 3)
+    wannier_centers_cart : np.ndarray, shape=(n_wann, 3)
         If provided, will override the wannier centers read from the file. (and hence they will be subtracted from the AA_R matrix if convention_II_to_I is True)
 
     Notes
@@ -49,6 +36,7 @@ def System_tb(tb_file="wannier90_tb.dat",
         parameters["name"] = os.path.splitext(os.path.split(tb_file)[-1])[0]
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
+    from .system_R import System_R
     system = System_R(**parameters)
     for key in needed_data.matrices:
         if key not in ['Ham', 'AA']:

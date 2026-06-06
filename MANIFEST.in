@@ -1,0 +1,5 @@
+# MANIFEST.in
+recursive-exclude tests *
+recursive-exclude examples *
+include LICENSE
+include README.md

@@ -4,11 +4,16 @@ import copy
 
 from matplotlib import pyplot
 import wannierberri as wberri
+import wannierberri.calculators as calculators
 import numpy as np
+from wannierberri.system import System_R
+from wannierberri.system.interpolate import SystemInterpolator
 
 
 seedname = "../../tests/data/Fe_sym_Wannier90/Fe_sym"
-system0 = wberri.system.System_w90(seedname, berry=True, spin=True, )
+wandata = wberri.WannierData.from_w90_files(seedname,
+                                            files=['mmn', 'eig', 'chk', 'spn'],)
+system0 = System_R.from_wannierdata(wandata, berry=True, spin=True)
 
 system_raw = copy.deepcopy(system0)
 
@@ -30,14 +35,14 @@ system0.symmetrize(
     soc=True,
 )
 
-interpolator = wberri.system.interpolate.SystemInterpolator(system0, system1)
+interpolator = SystemInterpolator(system0, system1)
 
-tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
-              "berry": wberri.calculators.tabulate.BerryCurvature(),
-              "spin": wberri.calculators.tabulate.Spin(),
+tabulators = {"Energy": calculators.tabulate.Energy(),
+              "berry": calculators.tabulate.BerryCurvature(),
+              "spin": calculators.tabulate.Spin(),
              }
 
-tab_all_path = wberri.calculators.TabulatorAll(
+tab_all_path = calculators.TabulatorAll(
     tabulators,
     ibands=np.arange(0, 18),
     mode="path"
