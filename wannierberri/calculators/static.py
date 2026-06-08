@@ -481,6 +481,44 @@ class BerryDipole_FermiSea(StaticCalculator):
         return res
 
 
+class SpinBerryDipole_FermiSurf(StaticCalculator):
+    r"""Spin Berry-curvature dipole with a Fermi-surface integral.
+
+    Output raw tensor :math:`D_{\beta,ab,s} = -\int [dk] v_\beta
+    \Omega^{\mathrm{spin}}_{ab,s} f'`.
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelSpinOmega
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class SpinBerryDipole_FermiSea(StaticCalculator):
+    r"""Spin Berry-curvature dipole with a Fermi-sea integral.
+
+    Output raw tensor :math:`D_{\beta,ab,s} = \int [dk]
+    \partial_\beta \Omega^{\mathrm{spin}}_{ab,s} f`.
+
+    Notes
+    -----
+    The present implementation is available for
+    ``spin_current_type='simple'`` with ``external_terms=False``.
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerSpinOmegaSimple
+        self.fder = 0
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        # Formula outputs (a, b, s, beta); move beta to match the Fermi-surface
+        # convention (beta, a, b, s).
+        res.data = np.moveaxis(res.data, -1, 1)
+        return res
+
+
 class NLAHC_FermiSea(BerryDipole_FermiSea):
     r"""Nonlinear anomalous Hall conductivity  (:math:`S^2/A`)
 
