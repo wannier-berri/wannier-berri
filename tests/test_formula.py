@@ -27,6 +27,14 @@ def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
     return data_k
 
 
+FORMULA_REFERENCE_FILENAMES = {
+    "DerMorb": "DerMorb_upper",
+    "Dermorb": "Dermorb_lower",
+    "Der2Morb": "Der2Morb_upper",
+    "Der2morb": "Der2morb_lower",
+}
+
+
 @pytest.fixture(scope="module")
 def datak_Fe():
     system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
@@ -202,7 +210,8 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
     else:
         rel_tol = 1e-6
         atol_zero = 1e-10
-    check_formula_output(value=value, filename=f"{formula_class_name}", rel_tol=rel_tol, atol_zero=atol_zero)
+    reference_name = FORMULA_REFERENCE_FILENAMES.get(formula_class_name, formula_class_name)
+    check_formula_output(value=value, filename=reference_name, rel_tol=rel_tol, atol_zero=atol_zero)
 
 
 @pytest.mark.parametrize("formula_class_name", formula_sdct)
