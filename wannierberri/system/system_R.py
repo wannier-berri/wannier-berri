@@ -625,13 +625,13 @@ class System_R(System):
                 )
         f.close()
 
-    def to_hr_file(self, hr_file=None, use_convention_II=True,seedname='seedname'):
+    def to_hr_file(self, hr_file=None,seedname='seedname'):
         """
         Write the system in the format of the wannier90_hr.dat file, see http://www.wanniertools.com/input.html#wannier90-dat
         for more informations
         """
         if hr_file is None:
-            hr_file = seedname + "_hr.dat"
+            hr_file = seedname+"_hr.dat"
         f = open(hr_file, "w")
         f.write("written by wannier-berri from the chk file\n")
         f.write(f"{self.num_wann}\n")
@@ -648,7 +648,14 @@ class System_R(System):
                         "{:3d} {:3d} {:3d} {:3d} {:3d} {:15.8e} {:15.8e}\n".format(*tuple(self.rvec.iRvec[iR]),m + 1,n + 1,_ham[m, n].real,_ham[m, n].imag)
                     )
         f.close()
-
+        r=open(seedname+"_wannier_centre_WT_format.dat","w")
+        data=self.wannier_centers_cart
+        for i in data[::2]:
+            r.write(f"{(i[0] if np.abs(i[0]) >1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) >1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) >1e-7 else 0.0):10}\n")
+        for i in data[1::2]:
+            r.write(f"{(i[0] if np.abs(i[0]) >1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) >1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) >1e-7 else 0.0):10}\n")
+        r.close()
+        
     @property
     def NKFFT_recommended(self):
         """finds a minimal FFT grid on which different R-vectors do not overlap"""
