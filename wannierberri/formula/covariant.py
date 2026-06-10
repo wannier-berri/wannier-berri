@@ -5,6 +5,7 @@ from .elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, Eavln, DEinv_l
 from ..utility import alpha_A, beta_A, cached_einsum, delta_f
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry.point_symmetry import transform_ident, transform_odd
+from .. import factors
 
 
 class Identity(Formula_ln):
@@ -701,29 +702,34 @@ def _spin_velocity_einsum_opt(C, A, B):
 
 
 class SpinVelocity(Matrix_ln):
-    """spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"""
+    """spin and/or orbital current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"""
 
-    def __init__(self, data_K, spin_current_type, external_terms=True):
+    def __init__(self, data_K, spin_current_type, external_terms=True, spin=True, orb_M1=False, orb_AH=False, orb_V=False):
         if spin_current_type == "simple":
             # tight-binding case
-            super().__init__(self._J_H_simple(data_K, external_terms=external_terms))
-        elif spin_current_type == "qiao":
-            # J. Qiao et al PRB (2018)
-            super().__init__(self._J_H_qiao(data_K, external_terms=external_terms))
-        elif spin_current_type == "ryoo":
-            # J. H. Ryoo et al PRB (2019)
-            super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
+            super().__init__(self._J_H_simple(data_K, external_terms=external_terms, spin=spin, orb_M1=orb_M1, orb_AH=orb_AH, orb_V=orb_V))
         else:
-            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
+            if orb_M1 or orb_AH or orb_V:
+                raise NotImplementedError("orbital current is implemented only for `spin_current_type='simple'`")
+            if not spin:
+                raise NotImplementedError("no spin current is implemented only for `spin_current_type='simple'`")
+            if spin_current_type == "qiao":
+                # J. Qiao et al PRB (2018)
+                super().__init__(self._J_H_qiao(data_K, external_terms=external_terms))
+            elif spin_current_type == "ryoo":
+                # J. H. Ryoo et al PRB (2019)
+                super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
+            else:
+                raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
         self.transformTR = transform_ident
         self.transformInv = transform_odd
 
-    def _J_H_simple(self, data_K, external_terms=True):
-        # Spin current operator, J. Qiao et al PRB (2019)
+    def _J_H_simple(self, data_K, external_terms=True, spin=True, orb_M1=False, orb_AH=False, orb_V=False):
+        # Spin and/or orbital current operator, J. Qiao et al PRB (2019)
         # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
-        S = data_K.Xbar('SS')
+        M = data_K.get_M1_AH(spin=spin, M1_term=orb_M1, V_term=orb_V, AH_term=orb_AH) / factors.m_spin_prefactor
         V = Velocity(data_K, external_terms=external_terms).matrix
-        J = cached_einsum("klms,kmna->klnas", S, V)
+        J = cached_einsum("klms,kmna->klnas", M, V)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
     def _J_H_qiao(self, data_K, external_terms=True):
@@ -759,12 +765,14 @@ class SpinVelocity(Matrix_ln):
 class SpinOmega(Formula_ln):
     """spin Berry curvature"""
 
-    def __init__(self, data_K, spin_current_type="ryoo", **parameters):
+    def __init__(self, data_K, spin_current_type="ryoo", spin=True,
+                 orb_M1=False, orb_AH=False, orb_V=False,
+                 **parameters):
         super().__init__(data_K, **parameters)
         if self.external_terms:
             self.A = data_K.covariant('AA')
         self.D = data_K.Dcov
-        self.J = SpinVelocity(data_K, spin_current_type, external_terms=self.external_terms)
+        self.J = SpinVelocity(data_K, spin_current_type, external_terms=self.external_terms, spin=spin, orb_M1=orb_M1, orb_AH=orb_AH, orb_V=orb_V)
         self.dEinv = DEinv_ln(data_K)
         self.ndim = 3
         self.transformTR = transform_ident

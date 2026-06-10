@@ -203,9 +203,12 @@ class OpticalConductivity(DynamicCalculator):
 
 class Formula_SHC(Formula):
 
-    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None, **parameters):
+    def __init__(self, data_K, SHC_type='ryoo', shc_abc=None,
+                 spin=True,
+                 orb_M1=False, orb_AH=False, orb_V=False, **parameters):
         super().__init__(data_K, **parameters)
-        A = SpinVelocity(data_K, SHC_type, external_terms=self.external_terms).matrix
+        A = SpinVelocity(data_K, SHC_type, external_terms=self.external_terms,
+                         spin=spin, orb_M1=orb_M1, orb_AH=orb_AH, orb_V=orb_V).matrix
         B = -1j * data_K.get_A_H(external_terms=self.external_terms)
         self.imAB = np.imag(A[:, :, :, :, None, :] * B.swapaxes(1, 2)[:, :, :, None, :, None])
         self.ndim = 3
@@ -221,11 +224,14 @@ class Formula_SHC(Formula):
         return self.imAB[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 
-class SHC(DynamicCalculator):
+class MHC(DynamicCalculator):
 
-    def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
+    """ spin and/or orbital Hall conductivity"""
+
+    def __init__(self, SHC_type="ryoo", shc_abc=None,
+                 spin=True, orb_M1=False, orb_AH=False, orb_V=False, **kwargs):
         super().__init__(**kwargs)
-        self.kwargs_formula.update(dict(SHC_type=SHC_type, shc_abc=shc_abc))
+        self.kwargs_formula.update(dict(SHC_type=SHC_type, shc_abc=shc_abc, spin=spin, orb_M1=orb_M1, orb_AH=orb_AH, orb_V=orb_V))
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 
@@ -237,9 +243,29 @@ class SHC(DynamicCalculator):
         return cfac / 2
 
 
+class SHC(MHC):
+
+    """ spin Hall conductivity"""
+
+    def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
+        super().__init__(SHC_type=SHC_type, shc_abc=shc_abc, spin=True, orb_M1=False, orb_AH=False, orb_V=False, **kwargs)
+        self.constant_factor = factors.factor_shc
+
+
+class OHC(MHC):
+
+    """ orbital Hall conductivity"""
+
+    def __init__(self, shc_abc=None,
+                 M1=True, AH=True, V=True,
+                 **kwargs):
+        super().__init__(SHC_type="simple", shc_abc=shc_abc, spin=False, orb_M1=M1, orb_AH=AH, orb_V=V, **kwargs)
+        self.constant_factor = factors.factor_shc
+
 # ===============
 #  Shift current
 # ===============
+
 
 class ShiftCurrentFormula(Formula):
 

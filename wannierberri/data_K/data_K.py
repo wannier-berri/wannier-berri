@@ -440,6 +440,29 @@ class Data_K(System, abc.ABC):
         M += -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
         return M
 
+    @lru_cache
+    def get_M1_AH(self, external_terms=True,
+               M1_term=True,
+               V_term=True,
+               spin=False,
+               key_OO='rotAA', degen_thresh=1e-3,
+               AH_term=False):
+        ''' Magnetic dipole moment '''
+        M = self.get_M1(external_terms=external_terms, spin=spin, orb=M1_term,
+                        key_OO=key_OO, degen_thresh=degen_thresh)
+        if V_term:
+            Vn = self.delE_K
+            Vnm_plus = (Vn[:, :, None, :] + Vn[:, None, :, :])
+            A = self.get_E1(external_terms=external_terms, degen_thresh=degen_thresh)
+            M += 0.5 * (Vnm_plus[:, :, :, alpha_A] * A[:, :, :, beta_A] -
+                    Vnm_plus[:, :, :, beta_A] * A[:, :, :, alpha_A])
+        if AH_term:
+            En = self.E_K
+            O_H = self.get_O1(external_terms=external_terms, key_OO=key_OO, degen_thresh=degen_thresh)
+            Eln_minus = (En[:, :, None] - En[:, None, :])
+            M += 0.25 * Eln_minus[:, :, :, None] * O_H
+        return M
+
 
     @lru_cache
     def get_E2(self, external_terms=True, degen_thresh=1e-3):

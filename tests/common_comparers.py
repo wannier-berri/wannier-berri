@@ -181,6 +181,7 @@ def compare_any_result():
             else:
                 filename_ref = fout_name_ref + f"-{suffix_ref}_iter-{i_iter:04d}" + ext
                 path_filename_ref = os.path.join(path_ref, filename_ref)
+                assert os.path.isfile(path_filename_ref), f"reference file {path_filename_ref} does not exist"
                 result_ref = result_type.from_npz(path_filename_ref)
                 if transformTR is not None:
                     result_ref.transformTR = transformTR

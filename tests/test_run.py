@@ -293,6 +293,8 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
     calculators['opt_conductivity'] = wberri.calculators.dynamic.OpticalConductivity(**parameters_optical)
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
+    calculators['OHC_M1'] = wberri.calculators.dynamic.OHC(M1=True, AH=False, V=False, **parameters_optical)
+    calculators['OHC_full'] = wberri.calculators.dynamic.OHC(M1=True, AH=True, V=True, **parameters_optical)
 
     result = check_run(
         system_Fe_W90,
@@ -300,9 +302,9 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         grid_param=grid_param_Fe,
         fout_name="Fe_W90",
         extra_precision={"Morb": -1e-6},
-        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
+        skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo', 'OHC_M1', 'OHC_full'])
 
-    for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo':
+    for quant in 'opt_conductivity', 'opt_SHCryoo', 'opt_SHCryoo', 'OHC_M1', 'OHC_full':
         compare_any_result(
             "Fe_W90",
             quant,
