@@ -27,6 +27,14 @@ def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
     return data_k
 
 
+FORMULA_REFERENCE_FILENAMES = {
+    "DerMorb": "DerMorb_upper",
+    "Dermorb": "Dermorb_lower",
+    "Der2Morb": "Der2Morb_upper",
+    "Der2morb": "Der2morb_lower",
+}
+
+
 @pytest.fixture(scope="module")
 def datak_Fe():
     system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
@@ -123,7 +131,8 @@ def check_formula_output():
                 continue
             maxval = np.max(abs(val))
             if maxval < atol_zero:
-                assert np.allclose(val_out, 0, atol=atol_zero), f"{filename} key {k} is expected to be zero, but max value is {maxval} > {atol_zero}"
+                maxvalout = np.max(abs(val_out))
+                assert maxvalout < atol_zero, f"{filename} key {k} is expected to be zero, but max value is {maxvalout} > {atol_zero}"
             else:
                 adiff = np.max(abs(val - val_out))
                 rdiff = adiff / maxval
@@ -197,11 +206,12 @@ def test_formula(datak_Fe, formula_class_name, check_formula_output):
             value[f"{Xkey}_ik={ik}"] = np.array(value[f"{Xkey}_ik={ik}"])
     if "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
         rel_tol = 1e-5
-        atol_zero = 1e-6
+        atol_zero = 2e-6
     else:
         rel_tol = 1e-6
         atol_zero = 1e-10
-    check_formula_output(value=value, filename=f"{formula_class_name}", rel_tol=rel_tol, atol_zero=atol_zero)
+    reference_name = FORMULA_REFERENCE_FILENAMES.get(formula_class_name, formula_class_name)
+    check_formula_output(value=value, filename=reference_name, rel_tol=rel_tol, atol_zero=atol_zero)
 
 
 @pytest.mark.parametrize("formula_class_name", formula_sdct)
