@@ -609,6 +609,15 @@ def test_system_Fe_gpaw_soc_111_irred(check_system, system_Fe_gpaw_soc_111_irred
 def test_system_Fe_gpaw_soc_angle(check_system, system_Fe_gpaw_soc_angle):
     check_system(
         system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        matrices=['SOT', 'Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+    )
+
+
+def test_system_Fe_sot(check_system, system_Fe_gpaw_soc_angle):
+    system_Fe_gpaw_soc_angle.set_torque_operators_R(theta=49, phi=33, units="degrees")
+    check_system(
+        system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
+        matrices=['SOT'],
+        properties=['num_wann', 'real_lattice', 'iRvec'],
     )
