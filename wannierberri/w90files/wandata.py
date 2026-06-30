@@ -554,7 +554,7 @@ class WannierData:
             return None
 
     def set_symmetrizer(self, symmetrizer=None,
-                        overwrite=True,
+                        overwrite=False,
                         allow_selected_bands=False):
         """
         Set the symmetrizer of the system
@@ -690,11 +690,18 @@ class WannierData:
         if val is None:
             if read:
                 val = CheckPoint.from_w90_file(self.seedname, kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol)
+                wannierised = True
             else:
                 val = CheckPoint.from_win(win=self.win)
+                wannierised = False
+        else:
+            if not isinstance(val, CheckPoint):
+                raise ValueError("val should be a CheckPoint object")
+            else:
+                wannierised = val.wannierised
 
         self._files['chk'] = val
-        self.wannierised = read
+        self.wannierised = wannierised
         self.kpt_mp_grid = [tuple(k) for k in
                             np.array(np.round(self.chk.kpt_red * np.array(self.chk.mp_grid)[None, :]),
                                      dtype=int) % self.chk.mp_grid]
