@@ -822,20 +822,8 @@ class DerSpinOmegaSimple(Formula_ln):
         all_bands = np.arange(nw)
         d_cov = Dcov(data_K)
 
-        s_beta_formula = Matrix_GenDer_ln(
-            Matrix_ln(S),
-            Matrix_ln(dS),
-            d_cov,
-            transformTR=transform_ident,
-            transformInv=transform_odd,
-        )
-        v_beta_formula = Matrix_GenDer_ln(
-            Matrix_ln(V),
-            Matrix_ln(dV),
-            d_cov,
-            transformTR=transform_ident,
-            transformInv=transform_ident,
-        )
+        s_beta_formula = Matrix_GenDer_ln(Matrix_ln(S), Matrix_ln(dS), d_cov)
+        v_beta_formula = Matrix_GenDer_ln(Matrix_ln(V), Matrix_ln(dV), d_cov)
 
         dEinv = np.array(data_K.dEig_inv, copy=False)
         delta_v = data_K.delE_K[:, :, None, :] - data_K.delE_K[:, None, :, :]
@@ -856,12 +844,12 @@ class DerSpinOmegaSimple(Formula_ln):
         Jbar_va = J_va * dEinv[:, :, :, None, None, None]
         Dbar_vb = V_beta * dEinv[:, :, :, None, None]
 
-        self.Jbar = Matrix_ln(Jbar, transformTR=transform_ident, transformInv=transform_odd)
-        self.Jbar_s = Matrix_ln(Jbar_s, transformTR=transform_ident, transformInv=transform_ident)
-        self.Jbar_va = Matrix_ln(Jbar_va, transformTR=transform_ident, transformInv=transform_ident)
+        self.Jbar = Matrix_ln(Jbar)
+        self.Jbar_s = Matrix_ln(Jbar_s)
+        self.Jbar_va = Matrix_ln(Jbar_va)
         self.Dbar = data_K.Dcov
-        self.Dbar_vb = Matrix_ln(Dbar_vb, transformTR=transform_ident, transformInv=transform_ident)
-        self.delta_helper = Matrix_ln(delta_v_over_de, transformTR=transform_ident, transformInv=transform_ident)
+        self.Dbar_vb = Matrix_ln(Dbar_vb)
+        self.delta_helper = Matrix_ln(delta_v_over_de)
 
     def nn(self, ik, inn, out):
         jbar_nl = self.Jbar.nl(ik, inn, out)
@@ -870,29 +858,12 @@ class DerSpinOmegaSimple(Formula_ln):
         jbar_va_nl = self.Jbar_va.nl(ik, inn, out)
         dbar_vb_ln = self.Dbar_vb.ln(ik, inn, out)
         delta_helper_nl = self.delta_helper.nl(ik, inn, out)
-
-        term_s = -2.0 * cached_einsum(
-            "mlasd,lnb->mnabsd",
-            jbar_s_nl,
-            dbar_ln,
-        ).imag
-        term_va = -2.0 * cached_einsum(
-            "mlasd,lnb->mnabsd",
-            jbar_va_nl,
-            dbar_ln,
-        ).imag
-        term_vb = +2.0 * cached_einsum(
-            "mlas,lnbd->mnabsd",
-            jbar_nl,
-            dbar_vb_ln,
-        ).imag
-        term_delta = +4.0 * cached_einsum(
-            "mlas,lnb,mld->mnabsd",
-            jbar_nl,
-            dbar_ln,
-            delta_helper_nl,
-        ).imag
-        return term_s + term_va + term_vb + term_delta
+        summ = 0.0
+        summ += -2.0 * cached_einsum("mlasd,lnb->mnabsd", jbar_s_nl, dbar_ln).imag  # Term_s
+        summ += -2.0 * cached_einsum("mlasd,lnb->mnabsd", jbar_va_nl, dbar_ln).imag  # Term_va
+        summ += +2.0 * cached_einsum("mlas,lnbd->mnabsd", jbar_nl, dbar_vb_ln).imag  # Term_vb
+        summ += +4.0 * cached_einsum("mlas,lnb,mld->mnabsd", jbar_nl, dbar_ln, delta_helper_nl).imag  # Term_delta
+        return summ
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()

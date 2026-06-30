@@ -93,7 +93,7 @@ class Matrix_ln(Formula_ln):
 
 
 class Matrix_GenDer_ln(Formula_ln):
-    "generalized erivative of MAtrix_ln"
+    "generalized erivative of Matrix_ln"
 
     def __init__(self, matrix, matrix_comader, D, transformTR=None, transformInv=None):
         self.A = matrix
