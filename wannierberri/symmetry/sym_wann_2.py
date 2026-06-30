@@ -486,8 +486,8 @@ class SymWann:
                 XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
             if symop.inversion:
                 XX_L *= self.parity_I[X] * (-1)**n_cart
-        result = _rotate_matrix(X=XX_L, 
-                                L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym], 
+        result = _rotate_matrix(X=XX_L,
+                                L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
                                 R=self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
         if do_rotate_vector(X):
             if symop.time_reversal:
