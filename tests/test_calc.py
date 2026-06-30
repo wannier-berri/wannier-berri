@@ -1,4 +1,4 @@
-from .test_formula import datak_Fe as datak_Fe_
+from .test_formula import datak_Fe_Gamma as datak_Fe_
 import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
@@ -231,9 +231,9 @@ def test_get_transform():
 
 
 @pytest.mark.parametrize("tetra", [True, False])
-def test_band_resolved(tetra, system_Fe_W90, datak_Fe):
+def test_band_resolved(tetra, system_Fe_sym_W90, datak_Fe):
     calc_class = wberri.calculators.static.Ohmic_FermiSurf
-    system = system_Fe_W90
+    system = system_Fe_sym_W90
     NB = system.num_wann
     Efermi_Fe_loc = np.linspace(Efermi_Fe[0], Efermi_Fe[-1], 100)
     calculators_band = {f"{i:02d}": calc_class(Efermi=Efermi_Fe_loc, tetra=tetra, select_bands=(i,)) for i in range(NB)}
