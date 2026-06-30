@@ -7,7 +7,7 @@ from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
 
 
-def system_hr(hr_file,wannier_centers_cart=None,real_lattice=None,**parameters):
+def system_hr(hr_file, wannier_centers_cart=None, real_lattice=None, **parameters):
     """
     System initialized from the `*_hr.dat` file and wannier centres (cartesian) +lattice vectors in array format (Ang)
 
@@ -36,7 +36,7 @@ def system_hr(hr_file,wannier_centers_cart=None,real_lattice=None,**parameters):
     f = open(hr_file, "r")
     line = f.readline().strip()
     cprint(f"reading HR file {hr_file} ( {line} )", 'green', attrs=['bold'])
-    system.real_lattice = real_lattice#np.array([f.readline().split()[:3] for _ in range(3)], dtype=float)
+    system.real_lattice = real_lattice  # np.array([f.readline().split()[:3] for _ in range(3)], dtype=float)
 
     system.num_wann = int(f.readline())
     nRvec = int(f.readline())

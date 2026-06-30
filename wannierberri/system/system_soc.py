@@ -393,7 +393,7 @@ class SystemSOC(System_R):
 
 
     @classmethod
-    def from_wannierdata(cls, wandata, theta=0, phi=0, alpha_soc=1.0, symmetrize=True,full_ham=False, **kwargs):
+    def from_wannierdata(cls, wandata, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
         system_up = System_R.from_wannierdata(wandata=wandata.data_up, **kwargs)
         if wandata.nspin == 2:
             system_down = System_R.from_wannierdata(wandata=wandata.data_down, **kwargs)
@@ -412,20 +412,3 @@ class SystemSOC(System_R):
             system_soc.symmetrize2(symmetrizer_up=wandata.get_file_ud('up', 'symmetrizer'),
                            symmetrizer_down=wandata.get_file_ud('down', 'symmetrizer'))
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
-        
-        if full_ham:#full_ham for [[Hscalar, 0],[0,Hscalar]](2n x 2n) +H_soc(2n x 2n)
-                ham_soc_2N = system_soc.get_R_mat('Ham_SOC')
-                ham_scalar_1N = system_up.get_R_mat('Ham')
-                R_up = [tuple(r) for r in system_up.rvec.iRvec]
-                R_soc= [tuple(r) for r in system_soc.rvec.iRvec]
-                soc_dict = {tuple(R): i for i, R in enumerate(R_soc)}
-                mapping = [soc_dict[r] for r in R_up]
-                ham_soc_reordered = ham_soc_2N[mapping]
-                nR, N, _ = ham_scalar_1N.shape
-                ham_scalar_2N = np.zeros((nR, 2*N, 2*N), dtype=complex)
-                ham_scalar_2N[:, ::2, ::2] = ham_scalar_1N
-                ham_scalar_2N[:, 1::2, 1::2] =ham_scalar_1N
-                ham_total_2N=ham_scalar_2N + ham_soc_reordered
-                system_soc.rvec.iRvec=system_up.rvec.iRvec.copy()
-                system_soc.set_R_mat("Ham", ham_total_2N,reset=True)               
-        return system_soc
