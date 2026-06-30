@@ -212,7 +212,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize2(self, symmetrizer, silent=True, use_symmetries_index=None,
+    def symmetrize2(self, symmetrizer, silent=None, use_symmetries_index=None,
                     cutoff=-1, cutoff_dict=None):
         """
         Symmetrize the system according to the Symmetrizer object.
@@ -223,14 +223,17 @@ class System_R(System):
             The symmetrizer object that will be used for symmetrization. (make sure it is consistent with the order of projections)
         silent : bool
             If True, do not print the symmetrization process. (set to False to see more debug information)
+            If None - the self.silent is used
         use_symmetries_index : list of int
             List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
         """
         from ..symmetry.sym_wann_2 import SymWann
+        if silent is None:
+            silent = self.silent
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
             iRvec=self.rvec.iRvec,
-            silent=self.silent or silent,
+            silent=silent,
             use_symmetries_index=use_symmetries_index,
         )
 
@@ -267,7 +270,7 @@ class System_R(System):
         self.symmetrized = True
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=True,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=None,
                    reorder_back=False):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers

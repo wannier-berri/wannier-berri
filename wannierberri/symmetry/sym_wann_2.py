@@ -2,6 +2,8 @@ import os
 import sys
 import warnings
 import numpy as np
+
+from ..utility import cached_einsum
 from ..system.system import num_cart_dim
 from collections import defaultdict
 import copy
@@ -210,7 +212,6 @@ class SymWann:
             atom_R_map = self.get_atom_R_map(self.iRvec, isym, block1, block2)
             for a, a1 in enumerate(map1[:, isym]):
                 for b, b1 in enumerate(map2[:, isym]):
-                    # logfile.write(f"a = {a}, b = {b}, a1 = {a1}, b1 = {b1}, (a1, b1) >= (a, b) = {(a1, b1) >= (a, b)}\n")
                     if (a1, b1) >= (a, b):
                         for iR in range(self.nRvec):
                             if irreducible[iR, a, b]:
@@ -280,7 +281,6 @@ class SymWann:
             norb1 = self.num_orb_list_left[block1]
             np1 = self.num_points_list_left[block1]
             for block2 in range(self.num_blocks_right):
-                logfile.write(f"Symmetrizing blocks {block1} and {block2}\n")
                 ws2, we2 = self.symmetrizer_right.D_wann_block_indices[block2]
                 norb2 = self.num_orb_list_right[block2]
                 np2 = self.num_points_list_right[block2]
@@ -337,9 +337,6 @@ class SymWann:
                 iRvec_block = full_iRvec_list[(block1, block2)]
                 iRvec_map = [iRvec_new_index[r] for i, r in enumerate(iRvec_block)]
                 for k in return_dic:
-                    logfile.write(f"Symmetrizing blocks {block1} and {block2} for matrix {k}\n")
-                    logfile.write(f"ws1 = {ws1}, we1 = {we1}, ws2 = {ws2}, we2 = {we2}\n")
-                    logfile.write(f"full_matrix_dict_list[(block1, block2)][k] = {full_matrix_dict_list[(block1, block2)][k][(0, 0)].keys()}\n")
                     for (a, b), X in full_matrix_dict_list[(block1, block2)][k].items():
                         ws1a = ws1 + a * norb1
                         we1a = ws1a + norb1
@@ -504,9 +501,10 @@ def _rotate_matrix(X, L, R):
     comptes L.dot(X).dot(R) where X can have additional dimensions in the end, which are not touched
     assumed to be a faster version of np.einsum("ij,jk...,kl->il...", L, X, R)
     """
-    _ = np.tensordot(L, X, axes=((1,), (0,)))
-    _ = np.tensordot(R, _, axes=((0,), (1,)))
-    return _.swapaxes(0, 1)
+    return cached_einsum("ij,jk...,kl->il...", L, X, R)
+    # _ = np.tensordot(L, X, axes=((1,), (0,)))
+    # _ = np.tensordot(R, _, axes=((0,), (1,)))
+    # return _.swapaxes(0, 1)
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
