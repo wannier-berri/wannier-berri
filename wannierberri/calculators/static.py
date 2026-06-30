@@ -14,7 +14,7 @@ from ..formula import basic as frml_basic
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
-from ..utility import alpha_A, beta_A, cached_einsum
+from ..utility import alpha_A, beta_A, cached_einsum, weight_select_bands
 
 
 # The base class for Static Calculators
@@ -130,10 +130,10 @@ class StaticCalculator(Calculator):
                 valuesik = values[ik]
                 for n, E in sorted(weights.items()):
                     if E < self.EFmin:
-                        restot[ik_to_result(ik)] += valuesik[n][None]
+                        restot[ik_to_result(ik)] += valuesik[n][None] * weight_select_bands(n[0], n[1], self.select_bands)
                     elif E <= self.EFmax:
                         iEf = ceil((E - self.EFmin) / self.dEF)
-                        restot[ik_to_result(ik), iEf:] += valuesik[n]
+                        restot[ik_to_result(ik), iEf:] += valuesik[n] * weight_select_bands(n[0], n[1], self.select_bands)
             if self.fder == 0:
                 pass
             elif self.fder == 1:

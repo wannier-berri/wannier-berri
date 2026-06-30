@@ -4,6 +4,8 @@ from numba import njit
 
 from functools import lru_cache
 
+from wannierberri.utility import weight_select_bands
+
 
 @lru_cache
 def ones(n):
@@ -237,7 +239,7 @@ class TetraWeights:
                 select_bands=select_bands
             )
             weights = {
-                (ib1, ib2): sum(self.__weight_1b(ief, ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
+                (ib1, ib2): sum(self.__weight_1b(ief, ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1) * weight_select_bands(ib1, ib2, select_bands)
                 for ib1, ib2 in bands_in_range
             }
 
