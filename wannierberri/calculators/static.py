@@ -24,7 +24,9 @@ from ..utility import alpha_A, beta_A, cached_einsum
 class StaticCalculator(Calculator):
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula=None,
-                 Emin=-np.inf, Emax=np.inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
+                 Emin=-np.inf, Emax=np.inf, hole_like=False, k_resolved=False, Formula=None, fder=None,
+                 select_bands=None,
+                 **kwargs):
         super().__init__(**kwargs)
         if kwargs_formula is None:
             kwargs_formula = {}
@@ -34,6 +36,7 @@ class StaticCalculator(Calculator):
         self.tetra = tetra
         self.kwargs_formula = copy(kwargs_formula)
         self.k_resolved = k_resolved
+        self.select_bands = select_bands
         self.smoother = smoother
         self.use_factor = use_factor
         self.hole_like = hole_like
@@ -77,7 +80,9 @@ class StaticCalculator(Calculator):
         if self.tetra:
             weights = data_K.tetraWeights.weights_all_band_groups(
                 self.Efermi, der=-1 if self.hole_like else self.fder, degen_thresh=self.degen_thresh,
-                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax)  # here W is array of shape Efermi
+                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax,
+                select_bands=self.select_bands
+            )  # here W is array of shape Efermi
         else:
             weights = data_K.get_bands_in_range_groups(
                 self.EFmin,
@@ -86,7 +91,8 @@ class StaticCalculator(Calculator):
                 degen_Kramers=self.degen_Kramers,
                 sea=(self.fder == 0),
                 Emin=self.Emin,
-                Emax=self.Emax
+                Emax=self.Emax,
+                select_bands=self.select_bands
             )  # here W is energy
 
         #        """formula  - TraceFormula to evaluate
