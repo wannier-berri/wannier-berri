@@ -1,3 +1,4 @@
+from .test_formula import datak_Fe_Gamma as datak_Fe_
 import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
@@ -8,9 +9,10 @@ from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
-
-
 from .common_systems import Efermi_Fe, Efermi_Si
+
+
+datak_Fe = datak_Fe_
 
 
 @pytest.fixture
@@ -223,3 +225,25 @@ def test_get_transform():
         transform_from_dict({"transformTR": np.zeros(5)}, "transformTR")
     with pytest.raises(ValueError):
         transform_from_dict({"transformTR": np.array((1, 2, 3), dtype=object)}, "transformTR")
+
+
+
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+def test_band_resolved(tetra, system_Fe_sym_W90, datak_Fe):
+    calc_class = wberri.calculators.static.Ohmic_FermiSurf
+    system = system_Fe_sym_W90
+    NB = system.num_wann
+    Efermi_Fe_loc = np.linspace(Efermi_Fe[0], Efermi_Fe[-1], 100)
+    calculators_band = {f"{i:02d}": calc_class(Efermi=Efermi_Fe_loc, tetra=tetra, select_bands=(i,)) for i in range(NB)}
+    calculator_all = calc_class(Efermi=Efermi_Fe_loc, tetra=tetra, select_bands=None)
+    res_bands = sum([calc(datak_Fe) for calc in calculators_band.values()]).data
+    res_all = calculator_all(datak_Fe).data
+    scale_bands = np.max(np.abs(res_bands))
+    scale_all = np.max(np.abs(res_all))
+    scale = min(scale_bands, scale_all)
+    assert scale > 1e-10, f"scale = {scale}, scale_bands = {scale_bands}, scale_all = {scale_all}"
+    rel_diff = np.max(np.abs(res_bands - res_all) / scale)
+    print(f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}")
+    assert rel_diff < 1e-8, f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}"

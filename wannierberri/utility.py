@@ -394,3 +394,11 @@ def group_numbers(lst, precision):
         avg_num = np.mean(group_num)
         lst_out[group_ind] = avg_num
     return lst_out
+
+
+def weight_select_bands(ib1, ib2, select_bands=None):
+    """return the weight of the bands in the range [ib1, ib2)"""
+    if select_bands is None:
+        return 1.0
+    else:
+        return np.sum((select_bands >= ib1) * (select_bands < ib2)) / (ib2 - ib1)
