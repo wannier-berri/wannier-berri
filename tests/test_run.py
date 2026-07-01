@@ -1297,7 +1297,7 @@ def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
 
 @pytest.fixture
 def check_Fe_gpaw_soc(check_run, compare_any_result):
-    def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}, tetra=False):
+    def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}, tetra=False, R=False):
         Efermi_Fe_gpaw = np.linspace(8.5, 10, 16)
         param = {'Efermi': Efermi_Fe_gpaw, 'tetra': tetra,
                  }
@@ -1318,7 +1318,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
             calculators,
             precision=precision,
             fout_name=f"Fe_gpaw_soc_{suffix}" + ("" if not tetra else "-tetra"),
-            suffix=("" if use_symmetry else "nosym"),
+            suffix="_".join([("" if use_symmetry else "nosym"), ("R" if R else "")]).strip("_"),
             use_symmetry=use_symmetry,
             extra_precision=extra_precision,
         )
@@ -1395,6 +1395,13 @@ def test_Fe_gpaw_soc_111_irred(system_Fe_gpaw_soc_111_irred, check_Fe_gpaw_soc, 
 def test_Fe_gpaw_soc_angle(system_Fe_gpaw_soc_angle, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle, suffix="angle",
                       use_symmetry=use_symmetry,
+                      precision=-1e-8 if use_symmetry else -2e-5)
+
+
+@pytest.mark.parametrize("use_symmetry", [True, False])
+def test_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle_R, check_Fe_gpaw_soc, use_symmetry):
+    check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle_R, suffix="angle",
+                      use_symmetry=use_symmetry, R=True,
                       precision=-1e-8 if use_symmetry else -2e-5)
 
 

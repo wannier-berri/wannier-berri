@@ -412,3 +412,33 @@ class SystemSOC(System_R):
             system_soc.symmetrize2(symmetrizer_up=wandata.get_file_ud('up', 'symmetrizer'),
                            symmetrizer_down=wandata.get_file_ud('down', 'symmetrizer'))
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        return system_soc
+
+    def get_system_R(self):
+        from ..fourier.rvectors import merge_Rvectors
+        rvectors_merged, rvectors_map_list = merge_Rvectors([self.rvec, self.system_up.rvec, self.system_down.rvec])
+
+        system_R = System_R()
+        system_R.rvec = rvectors_merged
+        system_R.is_phonon = self.is_phonon
+        system_R.num_wann = self.num_wann
+        system_R.real_lattice = self.real_lattice
+        system_R.periodic = self.periodic.copy()
+        system_R.wannier_centers_cart = self.wannier_centers_cart.copy()
+        system_R.pointgroup = self.pointgroup
+        system_R.force_internal_terms_only = self.force_internal_terms_only
+        system_R.has_soc = False
+        system_R.cell = self.cell.copy() if self.cell is not None else None
+
+        for key, value in self.system_up._XX_R.items():
+            print(f"setting matrix {key} from system_up")
+            matrix = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann) + value.shape[3:], dtype=value.dtype)
+            if key == 'Ham':
+                matrix[rvectors_map_list[0]] += self.get_R_mat('Ham_SOC')
+            matrix[rvectors_map_list[1], ::2, ::2] += self.system_up.get_R_mat(key)
+            matrix[rvectors_map_list[2], 1::2, 1::2] += self.system_down.get_R_mat(key)
+            system_R.set_R_mat(key, matrix)
+        SS_R = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+        SS_R[rvectors_map_list[0]] = self.get_R_mat('SS')
+        system_R.set_R_mat('SS', SS_R)
+        return system_R
