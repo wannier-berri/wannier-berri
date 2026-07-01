@@ -4,6 +4,8 @@ from numba import njit
 
 from functools import lru_cache
 
+from wannierberri.utility import weight_select_bands
+
 
 @lru_cache
 def ones(n):
@@ -135,13 +137,16 @@ def get_borders(A, degen_thresh, degen_Kramers=False):
 
 
 # @njit
-def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, Ebandmin=None, Ebandmax=None):
+def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, Ebandmin=None, Ebandmax=None, select_bands=None):
     if Ebandmin is None:
         Ebandmin = Eband
     if Ebandmax is None:
         Ebandmax = Eband
     bands = []
     for ib1, ib2 in get_borders(Eband, degen_thresh, degen_Kramers=degen_Kramers):
+        if select_bands is not None:
+            if set(range(ib1, ib2)).intersection(set(select_bands)) == set():
+                continue
         if Ebandmax[ib1:ib2].max() >= emin and Ebandmin[ib1:ib2].min() <= emax:
             bands.append([ib1, ib2])
     return bands
@@ -211,7 +216,7 @@ class TetraWeights:
                 return i
         return -1
 
-    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.inf, Emax=np.inf):
+    def weights_all_band_groups(self, eFermi, der, degen_thresh=-1, degen_Kramers=False, Emin=-np.inf, Emax=np.inf, select_bands=None):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
@@ -230,13 +235,17 @@ class TetraWeights:
                 degen_thresh=degen_thresh,
                 degen_Kramers=degen_Kramers,
                 Ebandmin=self.Emin[ik],
-                Ebandmax=self.Emax[ik])
+                Ebandmax=self.Emax[ik],
+                select_bands=select_bands
+            )
             weights = {
-                (ib1, ib2): sum(self.__weight_1b(ief, ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1)
+                (ib1, ib2): sum(self.__weight_1b(ief, ik, ib, der) for ib in range(ib1, ib2)) / (ib2 - ib1) * weight_select_bands(ib1, ib2, select_bands)
                 for ib1, ib2 in bands_in_range
             }
 
             if der == 0:
+                if select_bands is not None:
+                    raise NotImplementedError("Selection of bands for Fermi sea is not implemented")
                 bandmax = get_bands_below_range(eFermi[0], self.eCenter[ik], Ebandmax=self.Emax[ik])
                 bandmin = get_bands_below_range(Emin, self.eCenter[ik], Ebandmax=self.Emax[ik])
                 if len(bands_in_range) > 0:
@@ -245,6 +254,8 @@ class TetraWeights:
                     weights[(bandmin, bandmax)] = ones(len(eFermi))
 
             if der == -1:
+                if select_bands is not None:
+                    raise NotImplementedError("Selection of bands for inverse Fermi sea is not implemented")
                 bandmin = get_bands_above_range(eFermi[-1], self.eCenter[ik], Ebandmin=self.Emin[ik])
                 bandmax = get_bands_above_range(Emax, self.eCenter[ik], Ebandmin=self.Emin[ik])
                 if len(bands_in_range) > 0:

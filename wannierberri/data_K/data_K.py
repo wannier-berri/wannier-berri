@@ -149,12 +149,14 @@ class Data_K(System, abc.ABC):
             raise RuntimeError()
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
-                                     Emin=-np.inf, Emax=np.inf):
+                                     Emin=-np.inf, Emax=np.inf, select_bands=None):
         from ..grid.tetrahedron import get_bands_in_range, get_bands_below_range
         bands_in_range = get_bands_in_range(
-            emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers)
+            emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers, select_bands=select_bands)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}
         if sea:
+            if select_bands is not None:
+                raise NotImplementedError("Selection of bands for Fermi sea is not implemented")
             bandmax = get_bands_below_range(emin, self.E_K[ik])
             if len(bands_in_range) > 0:
                 bandmax = min(bandmax, bands_in_range[0][0])
@@ -163,11 +165,11 @@ class Data_K(System, abc.ABC):
         return weights
 
     def get_bands_in_range_groups(self, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False, Emin=-np.inf,
-                                  Emax=np.inf):
+                                  Emax=np.inf, select_bands=None):
         res = []
         for ik in range(self.nk):
             res.append(self.get_bands_in_range_groups_ik(ik, emin, emax, degen_thresh, degen_Kramers, sea, Emin=Emin,
-                                                         Emax=Emax))
+                                                         Emax=Emax, select_bands=select_bands))
         return res
 
     ###################################################

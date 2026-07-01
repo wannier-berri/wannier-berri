@@ -41,6 +41,12 @@ def datak_Fe():
     return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[1, 2, 3])
 
 
+@pytest.fixture(scope="module")
+def datak_Fe_Gamma():
+    system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
+    return get_datak(system_Fe_sym_W90, k=[0.0, 0.0, 0.0], NKFFT=[4, 4, 4])
+
+
 @pytest.mark.parametrize("terms", [(True, True)])  # , (True, False), (False, True)])
 def test_Hermitean(datak_Fe, terms):
     data = datak_Fe
