@@ -26,6 +26,7 @@ from .common_systems import (
     soc_Fe_gpaw,
     system_SSH_PythTB,
     system_Fe_gpaw_soc_angle,
+    system_Fe_gpaw_soc_angle_R,
     system_Fe_gpaw_soc_angle_symmetrized,
     system_Fe_gpaw_soc_z,
     system_Fe_gpaw_soc_z_symmetrized,

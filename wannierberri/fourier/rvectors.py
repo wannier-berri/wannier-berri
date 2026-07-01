@@ -596,3 +596,41 @@ class WignerSeitz:
         iRvec = np.array(iRvec)
         Ndegen = np.array(Ndegen)
         return iRvec, Ndegen, iRvec % self.mp_grid
+
+
+def merge_Rvectors(rvec_list):
+    """
+    Merge several Rvectors objects into a new one.
+
+    Parameters
+    ----------
+    rvec_list : list of Rvectors
+        The list of Rvectors objects to merge.
+
+    Returns
+    -------
+    Rvectors
+        A new Rvectors object containing the merged data from the input list.
+    R_map_list : list of np.ndarray
+        A list of mapping arrays, where each array maps the R-vectors of the corresponding input Rvectors object to the R-vectors of the merged Rvectors object.
+    """
+    if len(rvec_list) == 0:
+        raise ValueError("rvec_list is empty")
+    rvec0 = rvec_list[0]
+    lattice = rvec0.lattice
+    shifts_left_red = rvec0.shifts_left_red
+    shifts_right_red = rvec0.shifts_right_red
+    dim = rvec0.dim
+    iRvec_tuple_set = set(tuple(R) for R in rvec0.iRvec)
+    for rvec in rvec_list[1:]:
+        assert np.allclose(rvec.lattice, lattice), "lattices are not the same"
+        assert rvec.dim == dim, "dimensions are not the same"
+        iRvec_tuple_set.update(tuple(R) for R in rvec.iRvec)
+    iRvec_merged = list(iRvec_tuple_set)
+    iRvec_map_list = []
+    for rvec in rvec_list:
+        iRvec_map = np.array([iRvec_merged.index(tuple(R)) for R in rvec.iRvec])
+        iRvec_map_list.append(iRvec_map)
+    rvec_merged = Rvectors(lattice=lattice, shifts_left_red=shifts_left_red,
+                          shifts_right_red=shifts_right_red, iRvec=iRvec_merged, dim=dim)
+    return rvec_merged, iRvec_map_list
