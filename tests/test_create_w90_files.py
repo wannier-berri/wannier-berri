@@ -71,10 +71,8 @@ def check_sawf():
 def test_create_sawf_diamond(check_sawf):
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso",
-                                                      include_TR=False,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100,
+                                                                    include_TR=False)
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]],
                             orbital='s',
                             spacegroup=bandstructure.spacegroup
@@ -93,11 +91,9 @@ def test_create_w90files_diamond_irred(select_grid):
 
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di-irred",
-                                                      code="espresso",
-                                                      include_TR=False,
-                                                      select_grid=select_grid,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di-irred",
+                                                                    include_TR=False,
+                                                                    select_grid=select_grid)
     path_tmp = os.path.join(OUTPUT_DIR, "diamond-create-w90-files-irred")
     os.makedirs(path_tmp, exist_ok=True)
     prefix = "di-irred"
@@ -144,10 +140,10 @@ def test_create_w90files_diamond_irred(select_grid):
 def test_create_sawf_Fe(check_sawf, include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
     spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=200,
-                                normalize=False, magmom=[[0, 0, 1]],
-                                # include_TR=include_TR
-                                spacegroup=spacegroup)
+    bandstructure = BandStructure.from_espresso(prefix=path_data + '/Fe', Ecut=200,
+                                                normalize=False, magmom=[[0, 0, 1]],
+                                                # include_TR=include_TR
+                                                spacegroup=spacegroup)
     # spacegroup = bandstructure.spacegroup
     # np.savez(os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}_spacegroup.npz"),
     #          **spacegroup.as_dict())
@@ -169,11 +165,11 @@ def test_create_sawf_Fe(check_sawf, include_TR):
 def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
     spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]],
-                                spacegroup=spacegroup,
-                                # include_TR=include_TR,
-                                  irreducible=irr_bs)
+    bandstructure = BandStructure.from_espresso(prefix=path_data + '/Fe', Ecut=100,
+                                                normalize=False, magmom=[[0, 0, 1]],
+                                                spacegroup=spacegroup,
+                                                # include_TR=include_TR,
+                                                irreducible=irr_bs)
     sawf_new = SymmetrizerSAWF.from_irrep(bandstructure, irreducible=True, ecut=None)
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
@@ -190,15 +186,14 @@ def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
 
 def test_irreducible_vs_full_Fe():
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-    kwargs_bs = dict(code='espresso',
-                  prefix=path_data + '/Fe',
-                normalize=False,
-                  magmom=[[0, 0, 1]],
-                  include_TR=True,)
+    kwargs_bs = dict(prefix=path_data + '/Fe',
+                     normalize=False,
+                     magmom=[[0, 0, 1]],
+                     include_TR=True,)
 
-    bandstructure_full = BandStructure(**kwargs_bs, irreducible=False)
+    bandstructure_full = BandStructure.from_espresso(**kwargs_bs, irreducible=False)
     print(f"kpoints in full bz: {[KP.k for KP in bandstructure_full.kpoints]}")
-    bandstructure_irr = BandStructure(**kwargs_bs, irreducible=True)
+    bandstructure_irr = BandStructure.from_espresso(**kwargs_bs, irreducible=True)
     print(f"kpoints in irreducible bz: {[KP.k for KP in bandstructure_irr.kpoints]}")
 
     nkp_full = len(bandstructure_full.kpoints)
@@ -308,12 +303,13 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     path_tmp = os.path.join(OUTPUT_DIR, f"Fe-create-w90-files-irreducible={irr_bs}-{irreducible}")
     os.makedirs(path_tmp, exist_ok=True)
 
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/' + prefix,
-                                normalize=False, magmom=[[0, 0, 1]],
-                                irreducible=irr_bs,
-                                include_TR=True,
-                                select_grid=select_grid,
-                                )
+    bandstructure = BandStructure.from_espresso(prefix=path_data + '/' + prefix,
+                                                normalize=False,
+                                                magmom=[[0, 0, 1]],
+                                                irreducible=irr_bs,
+                                                include_TR=True,
+                                                select_grid=select_grid,
+                                                )
     print(f"kpoints in bandstructure: {[KP.k for KP in bandstructure.kpoints]}")
 
     norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
@@ -630,9 +626,9 @@ def get_diamond_projections():
     Returns:
         dict: Dictionary with projection names as keys and Projection/ProjectionsSet objects as values.
     """
-    bandstructure = BandStructure(code='espresso', prefix=os.path.join(ROOT_DIR, "data", "diamond", "di"),
-                                normalize=False,
-                                onlysym=True)
+    bandstructure = BandStructure.from_espresso(prefix=os.path.join(ROOT_DIR, "data", "diamond", "di"),
+                                                normalize=False,
+                                                onlysym=True)
     spacegroup = bandstructure.spacegroup
     pos_bond = [[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]]
     pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
@@ -688,9 +684,8 @@ def test_create_Amn(projname):
         os.chdir(ROOT_DIR)
 
     amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(amnfiles_path, f"{projname}"))
-    bandstructure = BandStructure(code='espresso',
-                                prefix=os.path.join(amnfiles_path, "di"),
-                                normalize=False, include_TR=False)
+    bandstructure = BandStructure.from_espresso(prefix=os.path.join(amnfiles_path, "di"),
+                                                normalize=False, include_TR=False)
     amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)
     positions_proj = projset.wannier_centers_red
     assert amn_wb.positions == approx(positions_proj, abs=1e-6), f"Positions of projections differ for {projname}: {amn_wb.positions} != {positions_proj}"
