@@ -821,7 +821,7 @@ class System_R(System):
         """
         from .system_tb import get_system_tb
         return get_system_tb(*args, **kwargs)
-    
+
     @classmethod
     def from_tb_file(cls, *args, **kwargs):
         """ alias for from_tb_dat, to be consistent with from_hr_file """

@@ -87,6 +87,7 @@ def get_system_hr(seedname, wannier_centers_cart=None, real_lattice=None, **para
     cprint(f"Reading the system from {hr_file} finished successfully", 'green', attrs=['bold'])
     return system
 
+
 def write_hr_file(system, seedname=None):
     """
     Write the system in the format of the wannier90_hr.dat file, see http://www.wanniertools.com/input.html#wannier90-dat
