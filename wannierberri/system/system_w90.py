@@ -18,6 +18,7 @@ def get_system_w90(
     wannier_centers_from_chk=True,
     symmetrize=True,
     ws_dist_tol=1e-5,
+    silent_symmetrize=True,
     **parameters
 ):
     """
@@ -343,7 +344,7 @@ def get_system_w90(
                             set_zero=transl_inv_MV or transl_inv_JM,
                             threshold=0.1 if transl_inv_JM else 1e5)
     if symmetrize and wandata.has_file('symmetrizer'):
-        system.symmetrize2(wandata.symmetrizer)
+        system.symmetrize2(wandata.symmetrizer, silent=silent_symmetrize)
     return system
 
     ###########################################################################
