@@ -7,7 +7,8 @@ from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
 
 
-def system_tb(tb_file="wannier90_tb.dat",
+def get_system_tb(tb_file=None,
+                  seedname="wannier90",
               convention_II_to_I=True,
               wannier_centers_cart=None,
               **parameters):
@@ -31,7 +32,8 @@ def system_tb(tb_file="wannier90_tb.dat",
     -----
     see also  parameters of the :class:`~wannierberri.system.System`
     """
-
+    if tb_file is None:
+        tb_file = seedname + "_tb.dat"
     if "name" not in parameters:
         parameters["name"] = os.path.splitext(os.path.split(tb_file)[-1])[0]
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
@@ -119,3 +121,47 @@ def system_tb(tb_file="wannier90_tb.dat",
 
     cprint(f"Reading the system from {tb_file} finished successfully", 'green', attrs=['bold'])
     return system
+
+
+def write_tb_file(system, tb_file=None, seedname=None, use_convention_II=True):
+    """
+    Write the system in the format of the wannier90_tb.dat file
+    Note : it is written in phase convention II (as inb wannier90), unless use_convention_II=False
+    """
+    logfile = system.logfile
+    if tb_file is None:
+        if seedname is None:
+            seedname = system.seedname
+        tb_file = seedname + "_tb.dat"
+    f = open(tb_file, "w")
+    f.write("written by wannier-berri form the chk file\n")
+    logfile.write(f"writing TB file {tb_file}\n")
+    np.savetxt(f, system.real_lattice)
+    f.write(f"{system.num_wann}\n")
+    f.write(f"{system.rvec.nRvec}\n")
+    Ndegen = np.ones(system.rvec.nRvec, dtype=int)
+    for i in range(0, system.rvec.nRvec, 15):
+        a = Ndegen[i:min(i + 15, system.rvec.nRvec)]
+        f.write("  ".join(f"{x:2d}" for x in a) + "\n")
+    for iR in range(system.rvec.nRvec):
+        f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(system.rvec.iRvec[iR])))
+        _ham = system.Ham_R[iR] * Ndegen[iR]
+        f.write(
+            "".join(
+                f"{m + 1:3d} {n + 1:3d} {_ham[m, n].real:15.8e} {_ham[m, n].imag:15.8e}\n"
+                for n in system.range_wann for m in system.range_wann)
+        )
+    if system.has_R_mat('AA'):
+        AA = np.copy(system.get_R_mat('AA'))
+        if use_convention_II:
+            AA[system.rvec.iR0, system.range_wann, system.range_wann] += system.wannier_centers_cart
+        for iR in range(system.rvec.nRvec):
+            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(system.rvec.iRvec[iR])))
+            _aa = AA[iR] * Ndegen[iR]
+            f.write(
+                "".join(
+                    f"{m + 1:3d} {n + 1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}" for a in _aa[m, n]) + "\n"
+                    for n in system.range_wann for m in system.range_wann
+                )
+            )
+    f.close()
