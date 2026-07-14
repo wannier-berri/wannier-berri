@@ -36,10 +36,25 @@ class AMN(W90_file):
     """
 
     extension = "amn"
+    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor"]
 
-    def __init__(self, data, NK=None):
+    def __init__(self,
+                 data,
+                 NK=None,
+                 positions=None,
+                 orbitals=None,
+                 radial_nodes_list=None,
+                 basis_list=None,
+                 spread_list=None,
+                 spinor=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
+        self.positions = positions
+        self.orbitals = orbitals
+        self.radial_nodes_list = radial_nodes_list
+        self.basis_list = basis_list
+        self.spread_list = spread_list
+        self.spinor = spinor
 
     @property
     def num_wann(self):
@@ -130,6 +145,10 @@ class AMN(W90_file):
             if verbose:
                 print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
         spinor = projections.spinor
+        positions = np.array(positions)
+        orbitals = np.array(orbitals)
+        radial_nodes_list = np.array(radial_nodes_list)
+        basis_list = np.array(basis_list)
 
 
 
@@ -173,7 +192,7 @@ class AMN(W90_file):
                 data[ikirr] = np.array(datak).T
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
-        return AMN(data=data, NK=NK)
+        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list, spread_list=spread_list, spinor=spinor)
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)

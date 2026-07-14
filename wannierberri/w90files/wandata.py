@@ -300,19 +300,23 @@ class WannierData:
                   return_bandstructure=False,
                   verbosity=0,):
         from irrep.bandstructure import BandStructure
-        # from irrep.spacegroup import SpaceGroup
-        bandstructure = BandStructure(code="gpaw",
-                                      calculator_gpaw=calculator,
-                                      Ecut=ecut_pw,
-                                      select_grid=select_grid,
-                                      read_paw=("mmn" in files),
-                                      irreducible=irreducible,
-                                      spin_channel=spin_channel,
-                                      spacegroup=spacegroup,
-                                      verbosity=verbosity,
-                                      include_TR=include_TR
-                                      )
-
+        args_bandstructure = dict(calculator_gpaw=calculator,
+                                  Ecut=ecut_pw,
+                                  select_grid=select_grid,
+                                  read_paw=("mmn" in files),
+                                  irreducible=irreducible,
+                                  spin_channel=spin_channel,
+                                  spacegroup=spacegroup,
+                                  verbosity=verbosity,
+                                  include_TR=include_TR
+                                    )
+        try:
+            # irrep-3
+            bandstructure = BandStructure.from_gpaw(**args_bandstructure)
+        except AttributeError as e:
+            # irrep<3
+            print(f"Failed to create BandStructure.from_gpaw(): {e} probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead")
+            bandstructure = BandStructure(code="gpaw", **args_bandstructure)
 
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
         self = cls.from_bandstructure(bandstructure,
