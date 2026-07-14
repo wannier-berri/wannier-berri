@@ -6,6 +6,7 @@ from functools import cached_property
 from collections import defaultdict
 import glob
 
+
 from ..fourier.rvectors import Rvectors
 from .system import System
 from ..utility import clear_cached, one2three, pauli_xyz
@@ -628,13 +629,12 @@ class System_R(System):
                 )
         f.close()
 
-    def to_hr_file(self, hr_file=None, seedname='seedname'):
+    def to_hr_file(self, seedname='seedname'):
         """
         Write the system in the format of the wannier90_hr.dat file, see http://www.wanniertools.com/input.html#wannier90-dat
         for more informations
         """
-        if hr_file is None:
-            hr_file = seedname + "_hr.dat"
+        hr_file = seedname + "_hr.dat"
         f = open(hr_file, "w")
         f.write("written by wannier-berri from the chk file\n")
         f.write(f"{self.num_wann}\n")
@@ -658,6 +658,8 @@ class System_R(System):
         for i in data[1::2]:
             r.write(f"{(i[0] if np.abs(i[0]) > 1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) > 1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) > 1e-7 else 0.0):10}\n")
         r.close()
+        from .system_hr import write_WCC_WT_format
+        write_WCC_WT_format(seedname, self.wannier_centers_cart)
 
     @property
     def NKFFT_recommended(self):
@@ -884,6 +886,15 @@ class System_R(System):
         """
         from .system_tb import system_tb
         return system_tb(*args, **kwargs)
+
+    @classmethod
+    def from_hr_file(cls, *args, **kwargs):
+        """
+        Create a System_R object from a wannier90_hr.dat file. 
+        see :func:`~wannierberri.system.system_tb.get_system_hr` for input data and details
+        """
+        from .system_hr import get_system_hr
+        return get_system_hr(*args, **kwargs)
 
     @classmethod
     def from_pythtb(cls, *args, **kwargs):
