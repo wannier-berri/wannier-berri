@@ -692,6 +692,8 @@ def test_create_Amn(projname):
                                 prefix=os.path.join(amnfiles_path, "di"),
                                 normalize=False, include_TR=False)
     amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)
+    positions_proj = projset.wannier_centers_red
+    assert amn_wb.positions == approx(positions_proj, abs=1e-6), f"Positions of projections differ for {projname}: {amn_wb.positions} != {positions_proj}"
     amn_wb.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-wb.amn.npz"))
     amn_w90.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-w90.amn.npz"))
     assert amn_w90.NK == amn_wb.NK, f"Number of k-points differ for {projname}: {amn_w90.NK} != {amn_wb.NK} for projname {projname}"

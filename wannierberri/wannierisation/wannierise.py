@@ -201,10 +201,16 @@ def wannierise(wandata,
     else:
         raise ValueError("init should be 'amn' or 'random'")
 
-    if hasattr(wandata.chk, "wannier_centers_cart") and wcc_start_red is None:
-        wcc_cart = wandata.chk.wannier_centers_cart
-        if wcc_cart is not None:
-            wcc_start_red = wcc_cart.dot(np.linalg.inv(wandata.bkvec.real_lattice))
+    if wcc_start_red is None:
+        if hasattr(wandata.chk, "wannier_centers_cart") and wandata.chk.wannier_centers_cart is not None:
+            print("Using the Wannier centers from the chk file as initial guess")
+            wcc_start_red = wandata.chk.wannier_centers_cart.dot(np.linalg.inv(wandata.bkvec.real_lattice))
+        elif init == "amn" and hasattr(wandata.amn, "positions") and wandata.amn.positions is not None:
+            print("Using the Wannier centers from the projections as initial guess")
+            wcc_start_red = wandata.amn.positions
+    else:
+        print("wcc_start_red is provided, using it as initial guess")
+    print(f"Starting Wannier centers (in reduced coordinates) = \n {wcc_start_red}")
     if wcc_start_red is not None:
         wcc_start_red = np.array(wcc_start_red, dtype=float)
     if wcc_start_red is None or wcc_start_red.shape != (wandata.chk.num_wann, 3):
