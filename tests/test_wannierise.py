@@ -33,8 +33,6 @@ def test_wannierise(outer_window, starting_wcc):
     if starting_wcc != "amn" and outer_window is not None:
         pytest.skip("different windows are only tested with starting_wcc='amn' ")
 
-    cwd = os.getcwd()
-
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond")
 
     # Check if the directory exists
@@ -150,7 +148,7 @@ def test_wannierise(outer_window, starting_wcc):
         d, acc = np.max(diff), 0.0005
         assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
-    os.chdir(cwd)
+    os.chdir(ROOT_DIR)
 
 
 

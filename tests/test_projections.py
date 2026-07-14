@@ -320,6 +320,7 @@ def test_create_amn_diamond_s_bond():
     wannier_spreads = wandata.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
     assert wannier_spreads == approx(.398647548, abs=1e-5)
+    os.chdir(ROOT_DIR)
 
 
 def test_create_amn_diamond_p_bond():
@@ -418,6 +419,7 @@ def test_create_amn_diamond_p_bond():
 
     expected_spread = 0.73
     assert wannier_spreads == approx(expected_spread, abs=0.05)
+    os.chdir(ROOT_DIR)
 
 
 def test_create_amn_diamond_sp3():
@@ -506,6 +508,7 @@ def test_create_amn_diamond_sp3():
 
     expected_spread = 0.5
     assert wannier_spreads == approx(expected_spread, abs=0.1)
+    os.chdir(ROOT_DIR)
 
 
 
