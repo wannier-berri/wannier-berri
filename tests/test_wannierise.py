@@ -27,8 +27,11 @@ PARALLEL = True
                                           (-10, 40, "outer"),
                                           (-10, 22, "outer"),
                                           ])
-def test_wannierise(outer_window):
+@pytest.mark.parametrize("starting_wcc", [None, "chk", "amn", "arg"])
+def test_wannierise(outer_window, starting_wcc):
     systems = {}
+    if starting_wcc != "amn" and outer_window is not None:
+        pytest.skip("different windows are only tested with starting_wcc='amn' ")
 
     cwd = os.getcwd()
 
@@ -56,6 +59,11 @@ def test_wannierise(outer_window):
     # Read the data from the Wanier90 inputs
     wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
+    wcc_start_red = np.array([[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]])
+    if starting_wcc == "chk":
+        wandata.chk.wannier_centers_cart = wcc_start_red.dot(wandata.bkvec.real_lattice)
+    elif starting_wcc == "amn":
+        wandata.amn.positions = wcc_start_red
     outer_min = -np.inf
     outer_max = np.inf
     if outer_window is not None:
@@ -79,6 +87,7 @@ def test_wannierise(outer_window):
         sitesym=True,
         localise=True,
         parallel=PARALLEL,
+        wcc_start_red=wcc_start_red if starting_wcc == "arg" else None,
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads
