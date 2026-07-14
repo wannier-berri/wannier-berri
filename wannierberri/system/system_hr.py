@@ -87,6 +87,42 @@ def get_system_hr(seedname, wannier_centers_cart=None, real_lattice=None, **para
     cprint(f"Reading the system from {hr_file} finished successfully", 'green', attrs=['bold'])
     return system
 
+def write_hr_file(system, seedname=None):
+    """
+    Write the system in the format of the wannier90_hr.dat file, see http://www.wanniertools.com/input.html#wannier90-dat
+    for more informations
+    """
+    if seedname is None:
+        seedname = system.seedname
+    if seedname is None:
+        seedname = "seedname"
+    hr_file = seedname + "_hr.dat"
+    f = open(hr_file, "w")
+    f.write("written by wannier-berri from the chk file\n")
+    f.write(f"{system.num_wann}\n")
+    f.write(f"{system.rvec.nRvec}\n")
+    Ndegen = np.ones(system.rvec.nRvec, dtype=int)
+    for i in range(0, system.rvec.nRvec, 15):
+        a = Ndegen[i:min(i + 15, system.rvec.nRvec)]
+        f.write("  ".join(f"{x:2d}" for x in a) + "\n")
+    for iR in range(system.rvec.nRvec):
+        _ham = system.Ham_R[iR] * Ndegen[iR]
+        for n in system.range_wann:
+            for m in system.range_wann:
+                f.write(
+                    "{:3d} {:3d} {:3d} {:3d} {:3d} {:15.8e} {:15.8e}\n".format(*tuple(system.rvec.iRvec[iR]), m + 1, n + 1, _ham[m, n].real, _ham[m, n].imag)
+                )
+    f.close()
+    r = open(seedname + "_wannier_centre_WT_format.dat", "w")
+    data = system.wannier_centers_cart
+    for i in data[::2]:
+        r.write(f"{(i[0] if np.abs(i[0]) > 1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) > 1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) > 1e-7 else 0.0):10}\n")
+    for i in data[1::2]:
+        r.write(f"{(i[0] if np.abs(i[0]) > 1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) > 1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) > 1e-7 else 0.0):10}\n")
+    r.close()
+    from .system_hr import write_WCC_WT_format
+    write_WCC_WT_format(seedname, system.wannier_centers_cart)
+
 
 def write_WCC_WT_format(seedname, wannier_centers_cart):
     r = open(seedname + "_wannier_centre_WT_format.dat", "w")

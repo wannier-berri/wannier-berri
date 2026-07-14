@@ -588,79 +588,6 @@ class System_R(System):
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
 
-    def to_tb_file(self, tb_file=None, use_convention_II=True):
-        """
-        Write the system in the format of the wannier90_tb.dat file
-        Note : it is written in phase convention II (as inb wannier90), unless use_convention_II=False
-        """
-        logfile = self.logfile
-        if tb_file is None:
-            tb_file = self.seedname + "_fromchk_tb.dat"
-        f = open(tb_file, "w")
-        f.write("written by wannier-berri form the chk file\n")
-        logfile.write(f"writing TB file {tb_file}\n")
-        np.savetxt(f, self.real_lattice)
-        f.write(f"{self.num_wann}\n")
-        f.write(f"{self.rvec.nRvec}\n")
-        Ndegen = np.ones(self.rvec.nRvec, dtype=int)
-        for i in range(0, self.rvec.nRvec, 15):
-            a = Ndegen[i:min(i + 15, self.rvec.nRvec)]
-            f.write("  ".join(f"{x:2d}" for x in a) + "\n")
-        for iR in range(self.rvec.nRvec):
-            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
-            _ham = self.Ham_R[iR] * Ndegen[iR]
-            f.write(
-                "".join(
-                    f"{m + 1:3d} {n + 1:3d} {_ham[m, n].real:15.8e} {_ham[m, n].imag:15.8e}\n"
-                    for n in self.range_wann for m in self.range_wann)
-            )
-        if self.has_R_mat('AA'):
-            AA = np.copy(self.get_R_mat('AA'))
-            if use_convention_II:
-                AA[self.rvec.iR0, self.range_wann, self.range_wann] += self.wannier_centers_cart
-            for iR in range(self.rvec.nRvec):
-                f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
-                _aa = AA[iR] * Ndegen[iR]
-                f.write(
-                    "".join(
-                        f"{m + 1:3d} {n + 1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}" for a in _aa[m, n]) + "\n"
-                        for n in self.range_wann for m in self.range_wann
-                    )
-                )
-        f.close()
-
-    def to_hr_file(self, seedname='seedname'):
-        """
-        Write the system in the format of the wannier90_hr.dat file, see http://www.wanniertools.com/input.html#wannier90-dat
-        for more informations
-        """
-        hr_file = seedname + "_hr.dat"
-        f = open(hr_file, "w")
-        f.write("written by wannier-berri from the chk file\n")
-        f.write(f"{self.num_wann}\n")
-        f.write(f"{self.rvec.nRvec}\n")
-        Ndegen = np.ones(self.rvec.nRvec, dtype=int)
-        for i in range(0, self.rvec.nRvec, 15):
-            a = Ndegen[i:min(i + 15, self.rvec.nRvec)]
-            f.write("  ".join(f"{x:2d}" for x in a) + "\n")
-        for iR in range(self.rvec.nRvec):
-            _ham = self.Ham_R[iR] * Ndegen[iR]
-            for n in self.range_wann:
-                for m in self.range_wann:
-                    f.write(
-                        "{:3d} {:3d} {:3d} {:3d} {:3d} {:15.8e} {:15.8e}\n".format(*tuple(self.rvec.iRvec[iR]), m + 1, n + 1, _ham[m, n].real, _ham[m, n].imag)
-                    )
-        f.close()
-        r = open(seedname + "_wannier_centre_WT_format.dat", "w")
-        data = self.wannier_centers_cart
-        for i in data[::2]:
-            r.write(f"{(i[0] if np.abs(i[0]) > 1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) > 1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) > 1e-7 else 0.0):10}\n")
-        for i in data[1::2]:
-            r.write(f"{(i[0] if np.abs(i[0]) > 1e-7 else 0.0):10} {(i[1] if np.abs(i[1]) > 1e-7 else 0.0):10} {(i[2] if np.abs(i[2]) > 1e-7 else 0.0):10}\n")
-        r.close()
-        from .system_hr import write_WCC_WT_format
-        write_WCC_WT_format(seedname, self.wannier_centers_cart)
-
     @property
     def NKFFT_recommended(self):
         """finds a minimal FFT grid on which different R-vectors do not overlap"""
@@ -719,6 +646,14 @@ class System_R(System):
             return "_XX_R_" + key + ".npz"
         else:
             return key + ".npz"
+
+    def to_tb_file(self, *args, **kwargs):
+        from .system_tb import write_tb_file
+        write_tb_file(self, *args, **kwargs)
+
+    def to_hr_file(self, *args, **kwargs):
+        from .system_hr import write_hr_file
+        write_hr_file(self, *args, **kwargs)
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         """
@@ -884,8 +819,13 @@ class System_R(System):
         Create a System_R object from a wannier90_tb.dat file. 
         see :func:`~wannierberri.system.system_tb.get_system_tb` for input data and details
         """
-        from .system_tb import system_tb
-        return system_tb(*args, **kwargs)
+        from .system_tb import get_system_tb
+        return get_system_tb(*args, **kwargs)
+    
+    @classmethod
+    def from_tb_file(cls, *args, **kwargs):
+        """ alias for from_tb_dat, to be consistent with from_hr_file """
+        return cls.from_tb_dat(*args, **kwargs)
 
     @classmethod
     def from_hr_file(cls, *args, **kwargs):

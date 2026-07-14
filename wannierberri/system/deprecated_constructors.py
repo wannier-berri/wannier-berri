@@ -23,8 +23,8 @@ def System_fplo(*args, **kwargs):
 
 def System_tb(*args, **kwargs):
     constructor_deprecation_warning("System_tb", "tb_dat")
-    from .system_tb import system_tb
-    return system_tb(*args, **kwargs)
+    from .system_tb import get_system_tb
+    return get_system_tb(*args, **kwargs)
 
 
 def System_TBmodels(*args, **kwargs):
