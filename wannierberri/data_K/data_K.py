@@ -3,6 +3,8 @@ import numpy as np
 import abc
 from functools import cached_property, lru_cache
 
+from ..grid.Kpoint import KpointBZpath
+
 from ..utility import alpha_A, beta_A, cached_einsum
 from ..system.system import System
 from .. import formula
@@ -68,7 +70,7 @@ class Data_K(System, abc.ABC):
     #    delta_fz:float
     #        size of smearing for B matrix with frozen window, from frozen_max-delta_fz to frozen_max.
 
-    def __init__(self, system, dK, grid, Kpoint=None,
+    def __init__(self, system, dK=None, grid=None, Kpoint=None,
                  # Those are not used at the moment, but will be restored (TODO):
                  # frozen_max = -np.inf,
                  # delta_fz = 0.1,
@@ -76,8 +78,19 @@ class Data_K(System, abc.ABC):
                  Emax=np.inf,
                  fftlib='fftw',
                  random_gauge=False,
-                 degen_thresh_random_gauge=1e-4
+                 degen_thresh_random_gauge=1e-4,
+                 k_list=None,
                  ):
+        if k_list is None:
+            if isinstance(Kpoint, KpointBZpath):
+                k_list = Kpoint.K
+                dK = None
+        assert (dK is None) != (k_list is None), "either dK or k_list must be specified, but not both"
+        if k_list is not None:
+            self.fftlib = 'slow'
+        self.dK = dK
+        self.k_list = k_list
+
         self.system = system
         self.Emin = Emin
         self.Emax = Emax
@@ -86,14 +99,12 @@ class Data_K(System, abc.ABC):
         self.degen_threshold_random_gauge = degen_thresh_random_gauge
         self.force_internal_terms_only = system.force_internal_terms_only
         self.grid = grid
-        self.NKFFT = grid.FFT
         self.select_K = np.ones(self.nk, dtype=bool)
         #   self.findif = grid.findif
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
 
-        self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
 
@@ -125,16 +136,26 @@ class Data_K(System, abc.ABC):
     #####################
 
     @cached_property
+    def NKFFT(self):
+        return self.grid.FFT
+
+    @cached_property
     def nbands(self):
         return self.num_wann
 
     @cached_property
     def kpoints_all(self):
-        return (self.grid.points_FFT + self.dK[None]) % 1
+        if self.k_list is None:
+            return (self.grid.points_FFT + self.dK[None]) % 1
+        else:
+            return self.k_list
 
     @cached_property
     def nk(self):
-        return np.prod(self.NKFFT)
+        if self.k_list is None:
+            return np.prod(self.NKFFT)
+        else:
+            return len(self.k_list)
 
     @cached_property
     def tetraWeights(self):

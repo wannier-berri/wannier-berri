@@ -440,35 +440,46 @@ class Rvectors:
         else:
             self.logfile.write(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0)):
+    def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0), k_list=None):
         """
         set the FFT for the R to k conversion
 
         Parameters
         ----------
         NK : tuple of 3 integers
-            The number of k-points in the Monkhorst-Pack grid
+            The number of k-points in the FFT grid
         num_wann : int
             The number of Wannier functions
         fftlib : str
             The FFT library to use ('fftw' or 'numpy' or 'slow')
         dK : tuple of 3 floats in range [0,1)
             the shift of the grid in coordinates of the reciprocal lattice divided by the grid
+        k_list : array of shape (nk, 3)
+            the list of k-points in reduced coordinates, overrides dK and NK if provided. 
         """
-        self.dK = np.array(dK)
-        self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
+        if k_list is not None:
+            self.fft_R_to_k = FFT_R_to_k(
+                iRvec=self.iRvec,
+                k_list=k_list,
+                num_wann=num_wann,
+                fftlib="slow")
+        else:
+            self.dK = np.array(dK)
+            self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
 
-        self.fft_R_to_k = FFT_R_to_k(
-            iRvec=self.iRvec,
-            NKFFT=NK,
-            num_wann=num_wann,
-            fftlib=fftlib)
+            self.fft_R_to_k = FFT_R_to_k(
+                iRvec=self.iRvec,
+                NKFFT=NK,
+                num_wann=num_wann,
+                fftlib=fftlib)
         self.fft_R2k_set = True
 
     def apply_expdK(self, XX_R):
         """ apply the exp(2 pi i dK R) to the matrix elements in real space
             XX_R should be of shape (num_wann, num_wann, nRvec, ...)
             """
+        if self.fft_R_to_k.lib == "slow_path":
+            return XX_R
         assert XX_R.shape[0] == self.nRvec, f"XX_R {XX_R.shape} should have {self.nRvec} R-vectors"
         shape = [self.expdK.shape[0]] + [1] * (XX_R.ndim - 1)
         return XX_R * self.expdK.reshape(shape)

@@ -10,7 +10,7 @@ class Data_K_soc(Data_K_R):
     """
 
     def __init__(self, system, dK, grid, **parameters):
-        super().__init__(system, dK, grid, **parameters)
+        super().__init__(system, dK=dK, grid=grid, **parameters)
         self.num_wann_scalar = system.num_wann_scalar
         self.data_K_up = Data_K_R(system=system.system_up, dK=dK, grid=grid,
                                   **parameters)

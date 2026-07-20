@@ -95,7 +95,7 @@ class KpointBZ():
 class KpointBZpath(KpointBZ):
 
     def __init__(self, K=np.zeros(3), pointgroup=None):
-        super().__init__(K=np.copy(K), pointgroup=pointgroup)
+        super().__init__(K=np.copy(K).reshape(-1, 3), pointgroup=pointgroup)
 
     def __str__(self):
         return "coord in rec.lattice = [ " + " , ".join(f"{x:10.6f}" for x in self.K) + " ]"
