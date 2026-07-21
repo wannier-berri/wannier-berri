@@ -329,11 +329,21 @@ class System:
             by seekpath based on the lattice of the system. 
         **kwargs
             additional keyword arguments to pass to the evaluation function (quantities, calculators, etc.)
+        
+        Returns
+        -------
+        path : Path
+            the path along which the band structure was calculated (if return_path is True)
+        bandstructure : TABresult
+            the band structure along the path
         """
         from ..grid.path import Path
         from ..evaluate_k import evaluate_k_path
         cell = self.get_spglib_cell(ignore_no_atoms=True)
-        if self.periodic.sum() == 0:
+        if path is not None:
+            if not isinstance(path, Path):
+                raise ValueError("path must be an instance of Path class")
+        elif self.periodic.sum() == 0:
             path = Path.from_nodes(cell[0], nodes=[[0, 0, 0]], labels=['G'], dk=dk)
         elif self.periodic.sum() == 1:
             directionk = np.where(self.periodic)[0][0]

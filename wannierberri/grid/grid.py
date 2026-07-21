@@ -62,7 +62,7 @@ class GridAbstract(abc.ABC):
 
 
     @abc.abstractmethod
-    def get_K_list(self, use_symmetry=False):
+    def get_K_list(self, use_symmetry=False, k_batch=None):
         """ get all K-points in the grid """
 
     @cached_property
@@ -146,7 +146,7 @@ class Grid(GridAbstract):
     def dense(self):
         return self.div * self.FFT
 
-    def get_K_list(self, use_symmetry=True):
+    def get_K_list(self, use_symmetry=True, k_batch=None):
         """ returns the list of Symmetry-irreducible K-points"""
         dK = 1. / self.div
         factor = 1. / np.prod(self.div)

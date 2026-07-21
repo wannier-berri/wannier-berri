@@ -191,9 +191,9 @@ def test_irreducible_vs_full_Fe():
                      magmom=[[0, 0, 1]],
                      include_TR=True,)
 
-    bandstructure_full = BandStructure.from_espresso(**kwargs_bs, irreducible=False)
+    bandstructure_full = BandStructure.from_espresso(**kwargs_bs, irreducible=False, verbosity=1)
     print(f"kpoints in full bz: {[KP.k for KP in bandstructure_full.kpoints]}")
-    bandstructure_irr = BandStructure.from_espresso(**kwargs_bs, irreducible=True)
+    bandstructure_irr = BandStructure.from_espresso(**kwargs_bs, irreducible=True, verbosity=1)
     print(f"kpoints in irreducible bz: {[KP.k for KP in bandstructure_irr.kpoints]}")
 
     nkp_full = len(bandstructure_full.kpoints)

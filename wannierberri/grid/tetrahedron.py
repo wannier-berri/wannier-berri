@@ -4,7 +4,7 @@ from numba import njit
 
 from functools import lru_cache
 
-from wannierberri.utility import weight_select_bands
+from ..utility import weight_select_bands
 
 
 @lru_cache

@@ -8,17 +8,15 @@ from ..system.system_R import System_R
 class Data_K_R(Data_K, System_R):
     """ The Data_K class for systems defined by R-space matrix elements (Wannier/TB)"""
 
-    def __init__(self, system, dK, grid,
-                 **parameters):
-        super().__init__(system, dK, grid, **parameters)
+    def __init__(self, system, **parameters):
+        super().__init__(system, **parameters)
 
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
             self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
                                 fftlib=self.fftlib,
-                                dK=dK)
+                                dK=self.dK, k_list=self.k_list)
 
-        self.dK = dK
         self._bar_quantities = {}
         self._covariant_quantities = {}
         self._XX_R = {}
