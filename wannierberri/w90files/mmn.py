@@ -8,6 +8,8 @@ from .utility import convert
 from .w90file import W90_file, auto_kptirr, check_shape
 from .io import sparselist_to_dict
 from ..utility import cached_einsum
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MMN(W90_file):
@@ -176,7 +178,7 @@ class MMN(W90_file):
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
+        logger.info(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
         identity_operation = bandstructure.spacegroup.get_identity_operation()
 
@@ -184,7 +186,7 @@ class MMN(W90_file):
         nspinor = 2 if spinor else 1
 
         if verbose:
-            print("Creating mmn. ")
+            logger.info("Creating mmn. ")
 
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
@@ -199,11 +201,11 @@ class MMN(W90_file):
         if hasattr(bandstructure, "kpoints_paw") and bandstructure.kpoints_paw is not None:
             use_paw = True
             kpoints_in = bandstructure.kpoints_paw
-            print(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
+            logger.info(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         else:
             use_paw = False
             kpoints_in = bandstructure.kpoints
-            print(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
+            logger.info(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
@@ -224,7 +226,7 @@ class MMN(W90_file):
                         # if use_paw:
                         #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
                         isym = kpt_from_kptirr_isym[ik2]
-                        # print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
+                        # logger.info(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
                         ik_origin = kpt2kptirr[ik2]
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
@@ -264,8 +266,8 @@ class MMN(W90_file):
             bra = wavefunc_all_left.get_WF(kirr, conj=True)
             # overlaps = wavefunc_all.product(bra, bra)
             # overlaps_err = np.max(abs((overlaps - np.eye(NB))))
-            # print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
-            # print(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
+            # logger.info(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
+            # logger.info(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
             ib_is_set = np.zeros(NNB, dtype=bool)
             for ib in bkirr[ikirr]:  # only calculate for irreducible bk points
                 assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
@@ -281,8 +283,8 @@ class MMN(W90_file):
                     ikb_origin = int(bkvec.neighbours[kirr][ib_origin])
                     isym = bk_from_bk_irr_isym[ikirr][ib]
                     assert symmetrizer.kptirr2kpt[ikirr, isym] == kirr
-                    # print(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
-                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikikirr}, ib={ib_origin}, ikb={ikb_origin}")
+                    # logger.info(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
+                    # logger.info(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikikirr}, ib={ib_origin}, ikb={ikb_origin}")
                     data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin],
                                                                         isym=isym, ikirr=ikirr, ib=ib_origin,
                                                                         ikb=ikb_origin,
@@ -328,7 +330,7 @@ class Grid_ig_all:
         self.igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         self.ig_grid = self.igmax_glob - self.igmin_glob + 1
-        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        # logger.info(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
         self.normalize = normalize
         if normalize:
             self.norm = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)

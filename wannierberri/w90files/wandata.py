@@ -1,23 +1,25 @@
 
+from .chk import CheckPoint
+from .unk import UNK
+from .spn import SPN
+from .xxu import UIU, UHU, SIU, SHU
+from .amn import AMN
+from .mmn import MMN
+from .eig import EIG
+from .win import WIN
+from .soc import SOC
+from .bkvectors import BKVectors
+from ..utility import cached_einsum
 import datetime
 from functools import cached_property
 from copy import copy
 import os
 import warnings
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
-from ..utility import cached_einsum
 
-from .bkvectors import BKVectors
-from .soc import SOC
-from .win import WIN
-from .eig import EIG
-from .mmn import MMN
-from .amn import AMN
-from .xxu import UIU, UHU, SIU, SHU
-from .spn import SPN
-from .unk import UNK
-from .chk import CheckPoint
 
 FILES_CLASSES = {'win': WIN,
                 'eig': EIG,
@@ -117,13 +119,13 @@ class WannierData:
         """
         from .utility import grid_from_kpoints
         self = cls()
-        print(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files},  projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
+        logger.debug(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files},  projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
             kpt_red = np.array([KP.K  for KP in bandstructure.kpoints])
-            # print(f"kpt_red={kpt_red}")
+            # logger.info(f"kpt_red={kpt_red}")
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
-            print(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
+            logger.debug(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
             if len(selected_kpoints) < np.prod(grid):
                 warnings.warn(f"detected grid {grid} od {np.prod(grid)} kpoints, "
                               f"but only {len(selected_kpoints)} kpoints are available."
@@ -132,14 +134,14 @@ class WannierData:
             else:
                 irreducible = False
         self.irreducible = irreducible
-        print(f"self.irreducible={self.irreducible}")
+        logger.debug(f"self.irreducible={self.irreducible}")
 
 
         self.seedname = copy(seedname)
 
         if self.irreducible:
             if "symmetrizer" not in files:
-                warnings.warn("irreducible=True, but symmetrizer is not requested. Adding it automatically")
+                logger.warning("irreducible=True, but symmetrizer is not requested. Adding it automatically")
                 files = list(files) + ["symmetrizer"]
 
         if "symmetrizer" in files:
@@ -258,12 +260,12 @@ class WannierData:
                 kwargs["kptirr"] = self.symmetrizer.kptirr
                 kwargs["NK"] = self.symmetrizer.NK
             kwargs["selected_kpoints"] = self.symmetrizer.selected_kpoints
-        print(f"Setting AMN with kwargs={kwargs}")
+        logger.debug(f"Setting AMN with kwargs={kwargs}")
         amn = AMN.from_bandstructure(bandstructure=bandstructure,
                             projections=projectionsSet,
                             normalize=normalize,
                             **kwargs)
-        print(f"AMN file created with NK={amn.NK}")
+        logger.debug(f"AMN file created with NK={amn.NK}")
         if self.bands_were_selected:
             amn.select_bands(selected_bands=self.selected_bands)
         self.set_file('amn', amn, overwrite=True, allow_selected_bands=True)
@@ -315,7 +317,7 @@ class WannierData:
             bandstructure = BandStructure.from_gpaw(**args_bandstructure)
         except AttributeError as e:
             # irrep<3
-            print(f"Failed to create BandStructure.from_gpaw(): {e} probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead")
+            logger.warning(f"Failed to create BandStructure.from_gpaw(): {e} probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead")
             bandstructure = BandStructure(code="gpaw", **args_bandstructure)
 
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
@@ -359,9 +361,9 @@ class WannierData:
         if set(["mmn", "uhu", "uiu", "shu", "siu"]).intersection(set(files)):
             if "bkvec" not in files:
                 files.append("bkvec")
-        print(f"files = {files}")
+        logger.debug(f"files = {files}")
         for f in files:
-            print(f"Trying to read file {f} from npz {seedname}.{f}.npz")
+            logger.debug(f"Trying to read file {f} from npz {seedname}.{f}.npz")
             try:
                 if f == "symmetrizer":
                     from ..symmetry.sawf import SymmetrizerSAWF
@@ -377,11 +379,11 @@ class WannierData:
                     val = cls.from_npz(filepath)
                 else:
                     raise ValueError(f"file {f} is not a valid w90 file")
-                print(f"setting file {f} from npz {filepath} as {val}")
+                logger.info(f"setting file {f} from npz {filepath} as {val}")
                 self.set_file(f, val=val)
             except FileNotFoundError as e:
                 if ignore_missing_files:
-                    warnings.warn(f"file {filepath} not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                    logger.warning(f"file {filepath} not found, cannot read {f} file ({e}).\n Set it manually, if needed")
                 else:
                     raise FileNotFoundError(f"Missing required npz file: {filepath} ({e}). aborting")
         for f in self._files:
@@ -958,14 +960,14 @@ class WannierData:
                 selected_bands_bool = selected_bands_bool * select_energy
             selected_bands = np.where(selected_bands_bool)[0]
 
-        print(f"selected_bands = {selected_bands}")
+        logger.info(f"selected_bands = {selected_bands}")
         if verbose:
-            print("before selecting bands")
+            logger.info("before selecting bands")
             for key, val in self._files.items():
                 if key != 'win' and key != 'chk':
-                    print(f"key = {key} ,number of bands = {val.NB}")
+                    logger.info(f"key = {key} ,number of bands = {val.NB}")
                 if key == 'chk':
-                    print(f"key = {key} ,number of bands = {val.num_bands}")
+                    logger.info(f"key = {key} ,number of bands = {val.num_bands}")
         for key in FILES_CLASSES:
             if key in self._files:
                 if key == 'win':
@@ -973,19 +975,19 @@ class WannierData:
                     win['dis_win_min'] = win_min
                     win['dis_win_max'] = win_max
                 else:
-                    # print(f"applying window to {key} {val}")
+                    # logger.info(f"applying window to {key} {val}")
                     self.get_file(key).select_bands(selected_bands)
         if self.has_file('symmetrizer'):
             self.symmetrizer.select_bands(selected_bands)
         if verbose:
-            print("after selecting bands")
+            logger.info("after selecting bands")
             for key, val in self._files.items():
                 if key != 'win' and key != 'chk':
-                    print(f"key = {key} ,number of bands = {val.NB}")
+                    logger.info(f"key = {key} ,number of bands = {val.NB}")
                     if hasattr(val, 'data') and key != 'unk':
-                        print(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
+                        logger.info(f"key = {key} ,shape of data= {[d.shape for d in val.data.values()]}")
                 if key == 'chk':
-                    print(f"key = {key} ,number of bands = {val.num_bands}")
+                    logger.info(f"key = {key} ,number of bands = {val.num_bands}")
         self.bands_were_selected = True
         self.selected_bands = selected_bands
         return selected_bands
@@ -999,8 +1001,8 @@ class WannierData:
         err_eig = self.symmetrizer.check_eig(self.eig)
         err_amn = self.symmetrizer.check_amn(self.amn)
         if not silent:
-            print(f"eig symmetry error : {err_eig}")
-            print(f"amn symmetry error : {err_amn}")
+            logger.info(f"eig symmetry error : {err_eig}")
+            logger.info(f"amn symmetry error : {err_amn}")
         return err_eig, err_amn
 
     def set_random_symmetric_projections(self):
@@ -1065,8 +1067,8 @@ class WannierData:
         sc_size_vec = sc_max_vec - sc_min_vec
 
         reduce_r_points = to_3array(reduce_r_points)
-        print(f"self.unk.grid_size={self.unk.grid_size}")
-        print(f"reduc_r_points = {reduce_r_points}")
+        logger.info(f"self.unk.grid_size={self.unk.grid_size}")
+        logger.info(f"reduc_r_points = {reduce_r_points}")
         real_grid = np.array(self.unk.grid_size)
         assert np.all(real_grid % reduce_r_points == 0), f"cannot reduce grid {real_grid} by factors {reduce_r_points} - not divisible"
         real_grid = real_grid // reduce_r_points
@@ -1124,7 +1126,7 @@ class WannierData:
                 w = data[pos]
                 data *= w.conj() / abs(w)
                 imag_max = abs(data.imag).max()
-                print(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max / abs(w)} ({data[pos]})")
+                logger.info(f"wannier function {select_WF[i]} : Im/Re ratio {imag_max / abs(w)} ({data[pos]})")
                 WF[i] = data.reshape(shape)
 
         rho = np.sum((WF * WF.conj()).real, axis=4)

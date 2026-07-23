@@ -2,6 +2,8 @@ import numpy as np
 from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
+import logging
+logger = logging.getLogger(__name__)
 
 
 def get_system_ase(
@@ -33,7 +35,7 @@ def get_system_ase(
     system.num_wann = ase_wannier.nwannier
     system.num_kpts = ase_wannier.Nk
     system.wannier_centers_cart = ase_wannier.get_centers()
-    print(f"got the Wannier centers : {system.wannier_centers_cart}")
+    logger.info(f"got the Wannier centers : {system.wannier_centers_cart}")
 
     system.rvec = Rvectors(lattice=system.real_lattice, shifts_left_red=system.wannier_centers_red)
     system.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)

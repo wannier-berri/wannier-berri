@@ -2,6 +2,8 @@ import warnings
 import numpy as np
 from .w90file import W90_file, check_shape
 from ..utility import cached_einsum, pauli_xyz
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SOC(W90_file):
@@ -124,7 +126,7 @@ class SOC(W90_file):
         }
 
         m = calculator.get_number_of_bands()
-        print(f"number of bands = {m}")
+        logger.info(f"number of bands = {m}")
         nk = len(calculator.get_ibz_k_points())
 
         # H_a = {}

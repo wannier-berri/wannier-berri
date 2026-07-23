@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import wannierberri as wberri
+wberri.configure_logging()
+
+
 import wannierberri.calculators as calculators
 from wannierberri.symmetry import point_symmetry as SYM
 from wannierberri.system import System_R
@@ -32,7 +35,7 @@ system = System_R.from_wannierdata(wandata=wandata, berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system=system, length=30, length_FFT=15)
+grid = wberri.Grid(system=system, length=50, length_FFT=15)
 
 
 param_tabulate = {'ibands': np.arange(4, 10)}

@@ -1,5 +1,6 @@
 
 import functools
+import logging
 import warnings
 import numpy as np
 
@@ -8,6 +9,8 @@ from .needed_data import NeededData
 from ..fourier.rvectors import Rvectors
 from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
 from .system_R import System_R
+
+logger = logging.getLogger(__name__)
 
 
 def get_system_w90(
@@ -90,7 +93,7 @@ def get_system_w90(
     wandata.check_wannierised(msg="creation of System_w90")
     if wandata.irreducible:
         symmetrize = True
-    print(f"irreducible : {wandata.irreducible}, symmetrize set to {symmetrize}")
+    logger.info(f"irreducible : {wandata.irreducible}, symmetrize set to {symmetrize}")
     chk = wandata.chk
     system.real_lattice, system.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
     system.set_pointgroup(spacegroup=wandata.get_spacegroup())
@@ -201,7 +204,7 @@ def get_system_w90(
 
         # A_a(R,b) matrix
         if needed_data.need_any('AA'):
-            print("setting AA..")
+            logger.debug("setting AA..")
             getter_from_chk = functools.partial(chk.get_AABB_q_ib,
                                                 mmn=wandata.mmn,
                                                 bkvec=wandata.bkvec,
@@ -211,24 +214,24 @@ def get_system_w90(
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1),
                             Hermitian=True)
 
-            print("setting AA - OK")
+            logger.debug("setting AA - OK")
 
 
         # B_a(R,b) matrix
         if needed_data.need_any('BB'):
-            print("setting BB...")
+            logger.debug("setting BB...")
             getter_from_chk = functools.partial(chk.get_AABB_q_ib,
                                                 mmn=wandata.mmn,
                                                 bkvec=wandata.bkvec,
                                                 eig=wandata.eig,
                                                 **kwargs_kpt)
             system.set_R_mat('BB', sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=1))
-            print("setting BB - OK")
+            logger.debug("setting BB - OK")
 
 
         # C_a(R,b1,b2) matrix
         if needed_data.need_any('CC'):
-            print("setting CC..")
+            logger.debug("setting CC..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                 bkvec=wandata.bkvec,
                                                 uhu=wandata.uhu,
@@ -237,11 +240,11 @@ def get_system_w90(
             system.set_R_mat('CC',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2),
                             Hermitian=True)
-            print("setting CC - OK")
+            logger.debug("setting CC - OK")
 
         # G_bc(R,b1,b2) matrix
         if needed_data.need_any('FF'):
-            print("setting FF..")
+            logger.debug("setting FF..")
             getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                 bkvec=wandata.bkvec,
                                                 uhu=wandata.uiu,
@@ -250,17 +253,17 @@ def get_system_w90(
             system.set_R_mat('FF',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=2),
                             Hermitian=False)
-            print("setting FF - OK")
+            logger.debug("setting FF - OK")
 
 
         # O_a(R,b1,b2) matrix
         if needed_data.need_any('OO'):
-            print("setting OO..")
+            logger.debug("setting OO..")
             if system.has_R_mat('FF'):
-                print("setting OO from FF ..")
+                logger.debug("setting OO from FF ..")
                 OO = 1j * (system.get_R_mat('FF')[:, :, :, alpha_A, beta_A] - system.get_R_mat('FF')[:, :, :, beta_A, alpha_A])
             else:
-                print("setting OO from chk ..")
+                logger.debug("setting OO from chk ..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                     uhu=wandata.uiu,
                                                     bkvec=wandata.bkvec,
@@ -269,16 +272,16 @@ def get_system_w90(
                 OO = sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=1, nb=2)
             system.set_R_mat('OO', OO, Hermitian=True)
             del OO
-            print("setting OO - ok")
+            logger.debug("setting OO - ok")
 
 
         # G_bc(R,b1,b2) matrix
         if needed_data.need_any('GG'):
             if system.has_R_mat('FF'):
-                print("setting GG from FF ..")
+                logger.debug("setting GG from FF ..")
                 GG = 0.5 * (system.get_R_mat('FF') + system.get_R_mat('FF').swapaxes(3, 4))
             else:
-                print("setting GG from chk ..")
+                logger.debug("setting GG from chk ..")
                 getter_from_chk = functools.partial(chk.get_CCOOGG_ib,
                                                     bkvec=wandata.bkvec,
                                                     uhu=wandata.uiu,
@@ -286,7 +289,7 @@ def get_system_w90(
                                                     **kwargs_kpt)
                 GG = sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=2)
             system.set_R_mat('GG', GG, Hermitian=True)
-            print("setting GG - OK")
+            logger.debug("setting GG - OK")
 
         #######################################################################
 
@@ -294,43 +297,43 @@ def get_system_w90(
         # TODO : FIXME: check JaeMo's notes to see if it is intended, or overlooked
 
         if needed_data.need_any('SR'):
-            print("setting SR..")
+            logger.debug("setting SR..")
             system.set_R_mat('SR', system.rvec.q_to_R(chk.get_SHR_q(spn=wandata.spn, mmn=wandata.mmn,
                                                 bkvec=wandata.bkvec,
                                                                 **kwargs_kpt, phase=expjphase1)))
-            print("setting SR - Ok")
+            logger.debug("setting SR - Ok")
         if needed_data.need_any('SH'):
             system.set_R_mat('SH',
                             system.rvec.q_to_R(chk.get_SH_q(wandata.spn, wandata.eig, **kwargs_kpt)))
-            print("setting SH - Ok")
+            logger.debug("setting SH - Ok")
         if needed_data.need_any('SHR'):
-            print("setting SHR..")
+            logger.debug("setting SHR..")
             system.set_R_mat('SHR', system.rvec.q_to_R(
                 chk.get_SHR_q(spn=wandata.spn, mmn=wandata.mmn,
                               bkvec=wandata.bkvec,
                               **kwargs_kpt,
                               eig=wandata.eig, phase=expjphase1)))
-            print("setting SHR - OK")
+            logger.debug("setting SHR - OK")
 
         if needed_data.need_any('SA'):
-            print("setting SA..")
+            logger.debug("setting SA..")
             getter_from_chk = functools.partial(chk.get_SHA_q,
                                                 shu=wandata.siu,
                                                 bkvec=wandata.bkvec,
                                                 **kwargs_kpt)
             system.set_R_mat('SA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
-            print("setting SA - OK")
+            logger.debug("setting SA - OK")
 
         if needed_data.need_any('SHA'):
-            print("setting SHA..")
+            logger.debug("setting SHA..")
             getter_from_chk = functools.partial(chk.get_SHA_q,
                                                 shu=wandata.shu,
                                                 bkvec=wandata.bkvec,
                                                 **kwargs_kpt)
             system.set_R_mat('SHA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
-            print("setting SHA - OK")
+            logger.debug("setting SHA - OK")
 
         del expjphase1, expjphase2
 
@@ -420,4 +423,4 @@ def recenter_JM(system, centers):
     # --- G_bc(R) matrix --- #
     if system.has_R_mat('GG'):
         pass
-    print("recentering JM - OK")
+    logger.info("recentering JM - OK")

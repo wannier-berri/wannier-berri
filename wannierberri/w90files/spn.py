@@ -1,6 +1,8 @@
 import numpy as np
 from .w90file import W90_file, auto_kptirr, check_shape
 from ..utility import cached_einsum, pauli_xyz
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SPN(W90_file):
@@ -19,7 +21,7 @@ class SPN(W90_file):
 
     @classmethod
     def from_w90_file(cls, seedname='wannier90', formatted=False):
-        print("----------\n SPN  \n---------\n")
+        logger.info("----------\n SPN  \n---------\n")
         if formatted:
             f_spn_in = open(seedname + ".spn", 'r')
             SPNheader = f_spn_in.readline().strip()
@@ -31,7 +33,7 @@ class SPN(W90_file):
             nbnd, NK = f_spn_in.read_record(dtype=np.int32)
             SPNheader = "".join(a.decode('ascii') for a in SPNheader)
 
-        print(f"reading {seedname}.spn : {SPNheader}")
+        logger.info(f"reading {seedname}.spn : {SPNheader}")
 
         indm, indn = np.tril_indices(nbnd)
         data = np.zeros((NK, nbnd, nbnd, 3), dtype=complex)
@@ -49,7 +51,7 @@ class SPN(W90_file):
             if check > 1e-10:
                 raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
             data[ik] = A.transpose(1, 2, 0)
-        print("----------\n SPN OK  \n---------\n")
+        logger.info("----------\n SPN OK  \n---------\n")
         return SPN(data=data)
 
     @classmethod
@@ -76,11 +78,11 @@ class SPN(W90_file):
         assert bandstructure.spinor, "SPN only works for spinor bandstructures"
 
         if verbose:
-            print(f"Creating SPN from bandstructure with {bandstructure.num_bands} bands and {len(bandstructure.kpoints)} k-points")
+            logger.info(f"Creating SPN from bandstructure with {bandstructure.num_bands} bands and {len(bandstructure.kpoints)} k-points")
         data = {}
         for ikirr in kptirr:
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
-            # print(f"setting spn for k={kp.k}")
+            # logger.info(f"setting spn for k={kp.k}")
             wf = kp.WF
             if normalize:
                 wf = wf / np.linalg.norm(wf, axis=(1, 2))[:, None, None]

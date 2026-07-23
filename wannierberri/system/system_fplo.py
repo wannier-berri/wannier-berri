@@ -9,6 +9,8 @@ from .system_R import System_R
 from collections import defaultdict
 from scipy.constants import physical_constants, angstrom
 from .needed_data import NeededData
+import logging
+logger = logging.getLogger(__name__)
 
 bohr = physical_constants['Bohr radius'][0] / angstrom
 
@@ -107,9 +109,9 @@ def get_system_fplo(hamdata="+hamdata",
     system.rvec = Rvectors(lattice=system.real_lattice, iRvec=iRvec, shifts_left_red=system.wannier_centers_red)
 
     system.do_at_end_of_init()
-    print("FPLO system initialized")
-    print(f"wannier_centers_cart: {system.wannier_centers_cart}")
-    print(f"wannier_centers_red: {system.wannier_centers_red}")
+    logger.info("FPLO system initialized")
+    logger.info(f"wannier_centers_cart: {system.wannier_centers_cart}")
+    logger.info(f"wannier_centers_red: {system.wannier_centers_red}")
     if mp_grid is not None:
         system.do_ws_dist(mp_grid=mp_grid)
 

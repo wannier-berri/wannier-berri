@@ -1,6 +1,8 @@
 # inheriting just in order to have possibility to change default values, without changing the rest of the code
 import abc
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SavableNPZ(abc.ABC):
@@ -21,7 +23,7 @@ class SavableNPZ(abc.ABC):
 
     def to_npz(self, f_npz):
         dic = self.as_dict()
-        print(f"saving to {f_npz} : ")
+        logger.info(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
         return self
 

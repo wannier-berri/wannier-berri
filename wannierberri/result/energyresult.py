@@ -7,6 +7,9 @@ from ..smoother import VoidSmoother
 from .result import Result, VoidResult
 from ..utility import get_head
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class EnergyResult(Result):
     """A class to store data dependent on several energies, e.g. Efermi and Omega
@@ -83,7 +86,7 @@ class EnergyResult(Result):
     @classmethod
     def from_npz(cls, file_npz, void_if_missing=True):
         if void_if_missing and not os.path.isfile(file_npz):
-            print(f"File {file_npz} does not exist, returning VoidResult.")
+            logger.info(f"File {file_npz} does not exist, returning VoidResult.")
             return VoidResult()
         res = np.load(open(file_npz, "rb"), allow_pickle=True)
         if "type" in res and res["type"] == "VoidResult":

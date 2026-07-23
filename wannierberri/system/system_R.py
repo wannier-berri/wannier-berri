@@ -1,3 +1,9 @@
+from packaging import version
+from ..symmetry.wyckoff_position import split_into_orbits
+from ..symmetry.point_symmetry import PointGroup
+from ..utility import clear_cached, one2three, pauli_xyz
+from .system import System
+from ..fourier.rvectors import Rvectors
 import copy
 import warnings
 import numpy as np
@@ -5,14 +11,10 @@ import os
 from functools import cached_property
 from collections import defaultdict
 import glob
+import logging
+logger = logging.getLogger(__name__)
 
 
-from ..fourier.rvectors import Rvectors
-from .system import System
-from ..utility import clear_cached, one2three, pauli_xyz
-from ..symmetry.point_symmetry import PointGroup
-from ..symmetry.wyckoff_position import split_into_orbits
-from packaging import version
 
 
 class System_R(System):
@@ -244,10 +246,10 @@ class System_R(System):
         if not silent:
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
-        print(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
+        logger.info(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
         self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
-        print(f"number o R-vectors after symmetrization: {len(iRvec)}")
+        logger.info(f"number o R-vectors after symmetrization: {len(iRvec)}")
         self.clear_cached_wcc()
         rvec_new = Rvectors(
             lattice=self.real_lattice,
@@ -369,7 +371,7 @@ class System_R(System):
                          "it is recommentded to name atoms at different wyckoff positions differently:\n"
                          "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
-            print(f"pos_list: {suborbit_list}")
+            logger.info(f"pos_list: {suborbit_list}")
             if ";" in orbital:
                 warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
                               "But you need to do it consistently in wannier90 ")
@@ -378,15 +380,15 @@ class System_R(System):
                 proj = Projection(position_num=pos_loc, orbital=orbital, spacegroup=spacegroup,
                                   do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
-                print(f"proj: {proj}")
+                logger.info(f"proj: {proj}")
                 num_wann_per_position = proj.num_wann_per_site
-                print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
+                logger.info(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:
                     for j in range(num_wann_per_position):
                         new_wann_indices.append(num_wann_loc + i * num_wann_per_position + j)
             num_wann_loc = len(new_wann_indices)
 
-        print(f"new_wann_indices: {new_wann_indices}")
+        logger.info(f"new_wann_indices: {new_wann_indices}")
         self.reorder(new_wann_indices)
         symmetrizer = SymmetrizerSAWF.from_spacegroup_and_projections(spacegroup=spacegroup, projections=proj_list)
         self.symmetrize2(symmetrizer, silent=silent)
@@ -562,15 +564,13 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_pointgroup()
         self.check_periodic()
-        logfile = self.logfile
-        logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
-        logfile.write(f"Number of wannier functions: {self.num_wann}\n")
-        logfile.write(f"Number of R points: {self.rvec.nRvec}\n")
-        logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
+        logger.debug(f"Real-space lattice:\n {self.real_lattice}")
+        logger.debug(f"Number of wannier functions: {self.num_wann}")
+        logger.debug(f"Number of R points: {self.rvec.nRvec}")
+        logger.debug(f"Recommended size of FFT grid {self.NKFFT_recommended}")
 
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None, ws_dist_tol=1e-5):
-        logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
             assert mp_grid is not None
@@ -583,7 +583,7 @@ class System_R(System):
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)
         for key, val in self._XX_R.items():
-            logfile.write(f"using new ws_dist for {key}\n")
+            logger.debug(f"using new ws_dist for {key}\n")
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
@@ -674,7 +674,7 @@ class System_R(System):
         logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
-        print(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
+        logger.info(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 
@@ -686,7 +686,7 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
-            print(f"saving {key} to {fullpath}")
+            logger.info(f"saving {key} to {fullpath}")
             if key == 'iRvec':
                 val = self.rvec.iRvec
             else:

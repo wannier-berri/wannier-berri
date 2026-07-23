@@ -5,6 +5,9 @@ from collections.abc import Iterable
 import numpy as np
 from .path_order import flatten_path
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class Path(GridAbstract):
     """ A class containing information about the k-path
@@ -270,7 +273,7 @@ class Path(GridAbstract):
         """ returns the list of K-points"""
         if use_symmetry:
             warnings.warn("symmetry is not used for a tabulation along path")
-        print("generating K_list")
+        logger.debug("generating K_list")
         K_list = []
         for ik in range(0, len(self.K_list), k_batch):
             K = self.K_list[ik:ik + k_batch]
@@ -278,7 +281,7 @@ class Path(GridAbstract):
                 break
             K_list.append(KpointBZpath(K=K, pointgroup=self.pointgroup))
 
-        print("Done ")
+        logger.debug("Done generating K_list")
         return K_list
 
 

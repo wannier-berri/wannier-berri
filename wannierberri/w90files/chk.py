@@ -5,6 +5,8 @@ import numpy as np
 from .utility import readstr
 from ..utility import alpha_A, beta_A
 from .io import SavableNPZ
+import logging
+logger = logging.getLogger(__name__)
 
 
 class CheckPoint(SavableNPZ):
@@ -137,7 +139,7 @@ class CheckPoint(SavableNPZ):
             a = readfloat()
             return a[::2] + 1j * a[1::2]
 
-        print('Reading restart information from file ' + seedname + '.chk :')
+        logger.info('Reading restart information from file ' + seedname + '.chk :')
         readstr(FIN)  # comment line
         num_bands = readint()[0]
         num_exclude_bands = readint()[0]
@@ -155,12 +157,12 @@ class CheckPoint(SavableNPZ):
         num_wann = readint()[0]
         readstr(FIN)  # checkpoint string
         have_disentangled = bool(readint()[0])
-        # print(f"have_disentangled={have_disentangled}")
+        # logger.info(f"have_disentangled={have_disentangled}")
         if have_disentangled:
             _ = readfloat()[0]  # omega_invariant
             lwindow = np.array(readint().reshape((num_kpts, num_bands)), dtype=bool)
             ndimwin = readint()
-            # print(f"ndimwin={ndimwin}")
+            # logger.info(f"ndimwin={ndimwin}")
             u_matrix_opt = readcomplex().reshape((num_kpts, num_wann, num_bands)).swapaxes(1, 2)
             win_min = np.array([np.where(lwin)[0].min() for lwin in lwindow])
             win_max = np.array([np.where(lwin)[0].max() for lwin in lwindow])
@@ -186,7 +188,7 @@ class CheckPoint(SavableNPZ):
             v_matrix = u_matrix
         wannier_centers_cart = readfloat().reshape((num_wann, 3))
         wannier_spreads = readfloat().reshape((num_wann))
-        print(f"Time to read .chk : {time() - t0}")
+        logger.info(f"Time to read .chk : {time() - t0}")
         return cls(real_lattice=real_lattice,
                    v_matrix=v_matrix,
                    wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
@@ -511,7 +513,7 @@ class CheckPoint(SavableNPZ):
 
     @classmethod
     def from_win(cls, win):
-        print("creating empty CheckPoint from Win file")
+        logger.info("creating empty CheckPoint from Win file")
         mp_grid = np.array(win.data["mp_grid"])
         kpt_red = win.get_kpoints()
         real_lattice = win.get_unit_cell_cart_ang()
