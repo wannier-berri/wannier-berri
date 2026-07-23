@@ -14,8 +14,7 @@ path = "pwscf/"
 try:
     symmetrizer = SAWF.from_npz("Ni4W.sawf.npz")
 except FileNotFoundError:
-    bandstructure = BandStructure(prefix=path + "Ni4W", code="espresso",
-                                Ecut=100, include_TR=False)
+    bandstructure = BandStructure.from_espresso(prefix=path + "Ni4W", Ecut=100, include_TR=False)
     symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.to_npz("Ni4W.sawf.npz")
 
