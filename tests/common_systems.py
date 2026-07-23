@@ -2,7 +2,6 @@
 
 import os
 import tarfile
-from gpaw import GPAW
 import pytest
 import numpy as np
 import pickle
@@ -43,6 +42,11 @@ Efermi_Chiral = np.linspace(-5, 8, 27)
 omega_chiral = np.linspace(0, 1., 11)
 omega_phonon = np.linspace(-0.01, 0.1, 23)
 Efermi_Mn3Sn = np.linspace(2, 3, 11)
+
+
+def _configure_gpaw_env():
+    # Ubuntu 26.04 + OpenMPI/hwloc can stall on first communicator init.
+    os.environ.setdefault("HWLOC_COMPONENTS", "-gl")
 
 
 def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"]):
@@ -289,6 +293,7 @@ PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
 @pytest.fixture(scope="session")
 def soc_Fe_gpaw():
     """Create SOC object for Fe from GPAW calculation"""
+    _configure_gpaw_env()
     selected_bands_up = np.load(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))['selected_bands']
     selected_bands_down = np.load(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))['selected_bands']
     soc = SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
@@ -322,6 +327,7 @@ def system_Fe_gpaw_dw():
 @pytest.fixture(scope="session")
 def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
     def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0,
+               torque=False,
                do_symmetrize=False):
         theta = theta_deg / 180 * np.pi
         phi = phi_deg / 180 * np.pi
@@ -345,7 +351,7 @@ def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
             symmetrizer_up = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
             symmetrizer_dw = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
             system_soc.symmetrize2(symmetrizer_up=symmetrizer_up, symmetrizer_down=symmetrizer_dw, silent=False)
-        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc, torque=torque)
         # system_soc.set_pointgroup(spacegroup=mg)
         path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}" +
                                  f"{'_symmetrized' if do_symmetrize else ''}")
@@ -367,7 +373,7 @@ def system_Fe_gpaw_soc_z_symmetrized(get_system_Fe_gpaw_soc):
 
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0)
+    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, torque=True)
 
 
 @pytest.fixture(scope="session")
@@ -378,7 +384,7 @@ def system_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle):
 
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_angle_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, do_symmetrize=True)
+    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, do_symmetrize=True, torque=True)
 
 
 @pytest.fixture(scope="session")
@@ -395,7 +401,9 @@ def system_Fe_gpaw_soc_111_symmetrized(get_system_Fe_gpaw_soc):
 def system_Fe_gpaw_soc_111_irred():
     PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
 
-    gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
+    _configure_gpaw_env()
+    import gpaw
+    gpaw_calc = gpaw.GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
     sg = SpaceGroup.from_gpaw(gpaw_calc)
     projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
     projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
@@ -797,6 +805,7 @@ def system_CuMnAs_2d_broken():
 def data_Te_ASE():
     """read data for Te from ASE+GPAW"""
     try:
+        _configure_gpaw_env()
         import gpaw
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import gpaw")
