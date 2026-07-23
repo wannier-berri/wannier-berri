@@ -17,7 +17,7 @@ ray.init()
 
 
 def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
-    bandstructure = BandStructure(code="gpaw",
+    bandstructure = BandStructure.from_gpaw(
                               calculator_gpaw=calc_gpaw,
                                 Ecut=200,
                                 normalize=True,

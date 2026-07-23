@@ -31,7 +31,7 @@ if sitesym:
     except (FileNotFoundError, AssertionError) as e:
         print(f"SAWF file not found ({e}), creating it")
         from irrep.bandstructure import BandStructure
-        bandstructure = BandStructure(code='espresso',
+        bandstructure = BandStructure.from_espresso(
                                     prefix=os.path.join(path_data, "Ni4W"),
                                     Ecut=100,
                                     normalize=False, include_TR=includeTR)
