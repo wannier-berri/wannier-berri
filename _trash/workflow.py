@@ -481,7 +481,7 @@ class WorkflowQE:
         self.pickle()
 
     def get_spacegroup(self, from_sym_file=None):
-        bandstructure = BandStructure(code='espresso',
+        bandstructure = BandStructure.from_espresso(
                                       prefix=self.prefix,
                                       onlysym=True,
                                     from_sym_file=from_sym_file
@@ -512,7 +512,7 @@ class WorkflowQE:
     #     TODO : unify his with set_projections
     #     """
 
-    #     bandstructure = BandStructure(code='espresso',
+    #     bandstructure = BandStructure.from_espresso(
     #                                   prefix=self.prefix,
     #                                   Ecut=Ecut,
     #                                   normalize=False,

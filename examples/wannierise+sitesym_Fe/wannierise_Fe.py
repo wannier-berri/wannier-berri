@@ -8,7 +8,7 @@ wandata = wb.wberri.WannierData.from_w90_files(
     files=["mmn", "eig", "win", ])
 
 
-bandstructure = BandStructure(code='espresso',
+bandstructure = BandStructure.from_espresso(
                             prefix=path_data + "/Fe",
                             Ecut=200,
                             normalize=True,
