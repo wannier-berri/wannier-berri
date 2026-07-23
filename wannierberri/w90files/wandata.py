@@ -316,7 +316,7 @@ class WannierData:
         except AttributeError as e:
             # irrep<3
             print(f"Failed to create BandStructure.from_gpaw(): {e} probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead")
-            bandstructure = BandStructure.from_gpaw( **args_bandstructure)
+            bandstructure = BandStructure.from_gpaw(**args_bandstructure)
 
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
         self = cls.from_bandstructure(bandstructure,
