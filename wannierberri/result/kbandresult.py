@@ -1,8 +1,12 @@
+import logging
+
 import numpy as np
 from .result import Result
 import itertools
 import abc
 from ..symmetry.point_symmetry import transform_from_dict
+
+logger = logging.getLogger(__name__)
 
 
 class K__Result(Result, abc.ABC):
@@ -40,7 +44,7 @@ class K__Result(Result, abc.ABC):
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
-                print(f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
+                logger.warning(f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
                 return False
         return True
 
@@ -186,7 +190,7 @@ class KBandResult(K__Result):
 
     def fit(self, other):
         if self.nband != other.nband:
-            print(f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
+            logger.info(f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
             return False
         return super().fit(other)
 
@@ -237,7 +241,7 @@ def get_component(data, ndim, component=None):
         else:
             dims = tuple(np.arange(data.ndim))
             _data = data.transpose(dims[-ndim:] + dims[:-ndim])
-            print(f"dims={dims}, data_shape={data.shape}, , _data_shape={_data.shape}")
+            logger.info(f"dims={dims}, data_shape={data.shape}, , _data_shape={_data.shape}")
             if component == "trace":
                 return sum([_data[((i,) * ndim)] for i in range(3)])
             else:

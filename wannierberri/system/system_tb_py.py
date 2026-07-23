@@ -5,7 +5,9 @@ from termcolor import cprint
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
 from packaging import version
-# from .Rvec import Rvec
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 
@@ -36,7 +38,7 @@ def get_system_tb_py(model,
     system = System_R(force_internal_terms_only=True,
                      name=f'model_{names[module]}',
                      **parameters)
-    print(f"Reading the system from {names[module]} model. Needed data: {needed_data.matrices}")
+    logger.info(f"Reading the system from {names[module]} model. Needed data: {needed_data.matrices}")
     if module == 'tbmodels':
         # Extract the parameters from the model
         real = model.uc
@@ -70,7 +72,7 @@ def get_system_tb_py(model,
             positions = np.array(sum(([p, p] for p in positions), []))
         else:
             raise Exception("\n\nWrong value of nspin!")
-        print("number of wannier functions:", system.num_wann)
+        logger.info("number of wannier functions:", system.num_wann)
         if version1:
             iRvec = [hop[-1] for hop in hoppings]
         else:
@@ -109,7 +111,7 @@ def get_system_tb_py(model,
         for hop in model.hop.items():
             R = np.array(hop[0], dtype=int)
             hops = np.array(hop[1]).reshape((system.num_wann, system.num_wann))
-            print(np.argwhere(np.all((R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0])
+            logger.info(np.argwhere(np.all((R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0])
             iR = int(np.argwhere(np.all((R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0][0])
             inR = int(np.argwhere(np.all((-R[None, :] - iRvec[:, :dimr]) == 0, axis=1))[0][0])
             Ham_R[iR] += hops
@@ -135,7 +137,7 @@ def get_system_tb_py(model,
                 Ham_R[iR, i, j] += amplitude
                 Ham_R[inR, j, i] += np.conjugate(amplitude)
             elif model._nspin == 2:
-                print("hopping :", amplitude.shape, Ham_R.shape, iR,
+                logger.info("hopping :", amplitude.shape, Ham_R.shape, iR,
                       Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape)
                 Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += amplitude
                 Ham_R[inR, 2 * j:2 * j + 2, 2 * i:2 * i + 2] += np.conjugate(amplitude.T)
@@ -150,7 +152,7 @@ def get_system_tb_py(model,
             system.set_spin_pairs([(i, i + 1) for i in range(0, system.num_wann, 2)])
 
     system.set_R_mat('Ham', Ham_R)
-    print(f"shape of Ham_R = {Ham_R.shape}")
+    logger.info(f"shape of Ham_R = {Ham_R.shape}")
 
     system.do_at_end_of_init()
     cprint(f"Reading the system from {names[module]} finished successfully", 'green', attrs=['bold'])

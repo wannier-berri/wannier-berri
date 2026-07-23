@@ -3,9 +3,11 @@ from time import time
 import multiprocessing
 import functools
 from collections.abc import Iterable
-import warnings
 from .result import Result
 from .kbandresult import get_component
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class TABresult(Result):
@@ -133,11 +135,11 @@ class TABresult(Result):
 
     def to_grid(self, grid, order='C'):
         assert (self.mode == "grid")
-        print("setting the grid")
+        logger.debug("setting the grid")
         grid1 = [np.linspace(0., 1., g, False) for g in grid]
-        print("setting new kpoints")
+        logger.debug("setting new kpoints")
         k_new = np.array(np.meshgrid(grid1[0], grid1[1], grid1[2], indexing='ij')).reshape((3, -1), order=order).T
-        print("finding equivalent kpoints")
+        logger.debug("finding equivalent kpoints")
         # check if each k point is on the regular grid
         kpoints_int = np.rint(self.kpoints * grid[None, :]).astype(int)
         on_grid = np.all(abs(kpoints_int / grid[None, :] - self.kpoints) < 1e-5, axis=1)
@@ -152,20 +154,20 @@ class TABresult(Result):
             if on_grid[ik]:
                 k_map[ind_grid[ik]].append(ik)
             else:
-                warnings.warn(f"k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
+                logger.debug(f"k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
         t0 = time()
-        print("collecting")
+        logger.debug("collecting")
         results = {r: self.results[r].to_grid(k_map) for r in self.results}
         t1 = time()
-        print(f"collecting: to_grid  : {t1 - t0}")
+        logger.debug(f"collecting: to_grid  : {t1 - t0}")
         res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results, mode=self.mode,
                         save_mode=self.save_mode)
         t2 = time()
-        print(f"collecting: TABresult  : {t2 - t1}")
+        logger.debug(f"collecting: TABresult  : {t2 - t1}")
         res.grid = np.copy(grid)
         res.gridorder = order
         t3 = time()
-        print(f"collecting - OK : {t3 - t0} ({t3 - t2})")
+        logger.debug(f"collecting - OK : {t3 - t0} ({t3 - t2})")
         return res
 
     def self_to_path(self, path):
@@ -505,7 +507,7 @@ def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
         if limits is not None:
             raise ValueError("limits shpould not be used in parallel mode")
         nppproc = a.shape[0] // npar + (1 if a.shape[0] % npar > 0 else 0)
-        print(f"using a pool of {npar} processes to write txt frmsf of {nppproc} points per process")
+        logger.info(f"using a pool of {npar} processes to write txt frmsf of {nppproc} points per process")
         asplit = [(i, i + nppproc) for i in range(0, a.shape[0], nppproc)]
         p = multiprocessing.Pool(npar)
         res = p.map(functools.partial(_savetxt, a=a, fmt=fmt, npar=0), asplit)
@@ -515,7 +517,7 @@ def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
 
 
 def fermiSurfer(recip_lattice, Enk, data=None, efermi=0, npar=0, frmsf_name=None):
-    print("Enk", Enk.shape)
+    logger.debug("Enk", Enk.shape)
     grid = Enk.shape[:3]
     nband = Enk.shape[3]
     FSfile = ""
@@ -526,7 +528,7 @@ def fermiSurfer(recip_lattice, Enk, data=None, efermi=0, npar=0, frmsf_name=None
     for ib in range(nband):
         FSfile += _savetxt(a=Enk[:, :, :, ib].flatten(order='C') - efermi, npar=npar)
     if data is not None:
-        print("Xnk", data.shape)
+        logger.debug("Xnk", data.shape)
         assert data.shape[:4] == Enk.shape
         for ib in range(nband):
             FSfile += _savetxt(a=data[:, :, :, ib].flatten(order='C'), npar=npar)

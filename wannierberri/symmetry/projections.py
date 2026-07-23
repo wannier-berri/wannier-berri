@@ -1,7 +1,13 @@
+from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
+from .unique_list import UniqueListMod1
+from ..symmetry.orbitals import num_orbitals, orbitals_sets_dic
+from ..utility import cached_einsum
 import copy
 from functools import cached_property
 import itertools
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 
 try:
@@ -16,10 +22,6 @@ except ImportError:
     from scipy.optimize import minimize as jminimize
     from functools import partial as jjit
 
-from ..utility import cached_einsum
-from ..symmetry.orbitals import num_orbitals, orbitals_sets_dic
-from .unique_list import UniqueListMod1
-from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
 
 
 class Projection:
@@ -335,7 +337,7 @@ class ProjectionsSet:
     @property
     def num_points(self):
         """number of points in all projections in the set (i.e. number of sites in all orbits)"""
-        print(f"finding num points from {self.num_proj} projections")
+        logger.info(f"finding num points from {self.num_proj} projections")
         return sum([p.wyckoff_position.num_points for p in self.projections])
 
     @property
@@ -504,19 +506,19 @@ class ProjectionsSet:
                         proj1 = set(p.orbitals)
                         proj2 = set(p2.orbitals)
                         # check if they may be merged
-                        print(f"checking if they may be merged {proj1} and {proj2}")
+                        logger.info(f"checking if they may be merged {proj1} and {proj2}")
                         merge = True
                         for p1, p2 in itertools.product(proj1, proj2):
-                            print(p1, p2)
+                            logger.info(p1, p2)
                             if (p1 == p2 or
                                     (p1, p2) in unmergable_loc or
                                     (p2, p1) in unmergable_loc
                                     ):
-                                print("not merging")
+                                logger.info("not merging")
                                 merge = False
                                 break
                         else:
-                            print("merging")
+                            logger.info("merging")
                         if not merge:
                             break
                     else:
@@ -592,8 +594,8 @@ class ProjectionsSet:
         rot, trans = self.map_free_vars
         self.clear_cached_properties(["_free_vars"])
         self.map_free_vars_cached = rot @ new_map, rot @ new_map_fix + trans
-        # print(f"updated rot,trans  {self.map_free_vars[0].shape}, {self.map_free_vars[1].shape}")
-        # print(f"updated rot,trans  {self.map_free_vars_cached[0].shape}, {self.map_free_vars_cached[1].shape}")
+        # logger.info(f"updated rot,trans  {self.map_free_vars[0].shape}, {self.map_free_vars[1].shape}")
+        # logger.info(f"updated rot,trans  {self.map_free_vars_cached[0].shape}, {self.map_free_vars_cached[1].shape}")
 
 
     def write_wannier90(self, mod1=False, beginend=True, numwann=True):
@@ -700,21 +702,21 @@ class ProjectionsSet:
 
         if num_free_vars > 0:
             free_var_values = self.free_var_values
-            print(f"starting minimization with free vars {free_var_values} ")
-            print(f"starting potential {jit_potential(free_var_values)}")
-            print(f"minimal distance {self.get_min_distance()}")
+            logger.info(f"starting minimization with free vars {free_var_values} ")
+            logger.info(f"starting potential {jit_potential(free_var_values)}")
+            logger.info(f"minimal distance {self.get_min_distance()}")
             res = jminimize(jit_potential, free_var_values, method='BFGS')
             v = res.x
-            print(f"minimized free vars {v}")
-            print(f"minimized potential {jit_potential(v)}")
+            logger.info(f"minimized free vars {v}")
+            logger.info(f"minimized potential {jit_potential(v)}")
         else:
             v = jnp.zeros(0)
         pot = jit_potential(v)
         self.free_var_values = v
         self.potential = pot
-        print(f"minimal distance {self.get_min_distance()}")
-        print(f"positions\n {self.get_positions().round(4)}")
-        print(f"distances\n {self.get_distances().round(2)}")
+        logger.info(f"minimal distance {self.get_min_distance()}")
+        logger.info(f"positions\n {self.get_positions().round(4)}")
+        logger.info(f"distances\n {self.get_distances().round(2)}")
 
     @property
     def free_var_values(self):

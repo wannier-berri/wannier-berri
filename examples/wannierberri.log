@@ -1,0 +1,112 @@
+2026-07-23 21:28:54,298 INFO wannierberri.w90files.wandata: setting file mmn from npz ../tests/data/Fe_Wannier90/Fe.mmn.npz as <wannierberri.w90files.mmn.MMN object at 0x7a0dd80d6510>
+2026-07-23 21:28:54,299 INFO wannierberri.w90files.wandata: setting file eig from npz ../tests/data/Fe_Wannier90/Fe.eig.npz as <wannierberri.w90files.eig.EIG object at 0x7a0dd80afb60>
+2026-07-23 21:28:54,303 INFO wannierberri.w90files.wandata: setting file chk from npz ../tests/data/Fe_Wannier90/Fe.chk.npz as <wannierberri.w90files.chk.CheckPoint object at 0x7a0dd80216a0>
+2026-07-23 21:28:54,307 INFO wannierberri.w90files.wandata: setting file bkvec from npz ../tests/data/Fe_Wannier90/Fe.bkvec.npz as <wannierberri.w90files.bkvectors.BKVectors object at 0x7a0dd8023380>
+2026-07-23 21:28:54,308 INFO wannierberri.system.system_w90: irreducible : False, symmetrize set to True
+2026-07-23 21:28:54,423 INFO wannierberri.grid.grid: length=200 was converted into NK=[99 99 99]
+2026-07-23 21:28:54,423 WARNING wannierberri.grid.grid:  the requested k-grid [99 99 99] was adjusted to [98 98 98]. 
+2026-07-23 21:28:54,423 INFO wannierberri.grid.grid: The grids were set to NKdiv=[14 14 14], NKFFT=[7 7 7], NKtot=[98 98 98]
+2026-07-23 21:28:54,424 INFO wannierberri.run_grid: 
+ Using the follwing calculators :
+############################################################
+
+ 'ahc'  :  <wannierberri.calculators.static.AHC object at 0x7a0dd80d67b0>  : Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
+
+| With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
+| Output: :math:`O = -e^2/\hbar \int [dk] \Omega f`
+| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta` 'tabulate'  :  <wannierberri.calculators.tabulate.TabulatorAll object at 0x7a0dd80d6a50>  : 
+TabulatorAll - a pack of all k-resolved calculators (Tabulators)
+
+ Includes the following tabulators : 
+--------------------------------------------------
+ "Energy" : <wannierberri.calculators.tabulate.Energy object at 0x7a0dd805bc50> : calculator not described
+
+ "berry" : <wannierberri.calculators.tabulate.BerryCurvature object at 0x7a0dd803dba0> : Berry curvature :math:`\Omega_a` in units of angstrom^2
+
+--------------------------------------------------
+ 'opt_conductivity'  :  <wannierberri.calculators.dynamic.OpticalConductivity object at 0x7a0dd80d6ba0>  : calculator not described
+2026-07-23 21:28:54,424 INFO wannierberri.run_grid: Grid is regular
+2026-07-23 21:28:54,424 INFO wannierberri.run_grid: The set of k points is a Grid() with NKdiv=[14 14 14], NKFFT=[7 7 7], NKtot=[98 98 98]
+2026-07-23 21:28:54,511 INFO wannierberri.grid.grid: K_list contains 244 Irreducible points(8.89%) out of initial 14x14x14=2744 grid
+2026-07-23 21:28:54,512 OUTPUT wannierberri.run_grid: Iteration 0 out of 0 
+2026-07-23 21:28:54,513 INFO wannierberri.run_grid: processing 244 K points using 4 processes.
+2026-07-23 21:28:54,513 INFO wannierberri.run_grid: # K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)
+2026-07-23 21:28:59,570 INFO wannierberri.run_grid:                   16              5.1                  72.1                  77.1
+2026-07-23 21:29:05,430 INFO wannierberri.run_grid:                   36             10.9                  63.1                  74.0
+2026-07-23 21:29:11,223 INFO wannierberri.run_grid:                   56             16.7                  56.1                  72.8
+2026-07-23 21:29:17,102 INFO wannierberri.run_grid:                   76             22.6                  49.9                  72.5
+2026-07-23 21:29:23,215 INFO wannierberri.run_grid:                   96             28.7                  44.3                  73.0
+2026-07-23 21:29:29,778 INFO wannierberri.run_grid:                  116             35.3                  38.9                  74.2
+2026-07-23 21:29:35,912 INFO wannierberri.run_grid:                  136             41.4                  32.9                  74.3
+2026-07-23 21:30:09,033 INFO wannierberri.w90files.wandata: setting file mmn from npz ../tests/data/Fe_Wannier90/Fe.mmn.npz as <wannierberri.w90files.mmn.MMN object at 0x7606e86be660>
+2026-07-23 21:30:09,034 INFO wannierberri.w90files.wandata: setting file eig from npz ../tests/data/Fe_Wannier90/Fe.eig.npz as <wannierberri.w90files.eig.EIG object at 0x7606e8693cb0>
+2026-07-23 21:30:09,037 INFO wannierberri.w90files.wandata: setting file chk from npz ../tests/data/Fe_Wannier90/Fe.chk.npz as <wannierberri.w90files.chk.CheckPoint object at 0x7606e86097f0>
+2026-07-23 21:30:09,041 INFO wannierberri.w90files.wandata: setting file bkvec from npz ../tests/data/Fe_Wannier90/Fe.bkvec.npz as <wannierberri.w90files.bkvectors.BKVectors object at 0x7606e860b4d0>
+2026-07-23 21:30:09,041 INFO wannierberri.system.system_w90: irreducible : False, symmetrize set to True
+2026-07-23 21:30:09,155 INFO wannierberri.grid.grid: length=50 was converted into NK=[25 25 25]
+2026-07-23 21:30:09,155 WARNING wannierberri.grid.grid:  the requested k-grid [25 25 25] was adjusted to [28 28 28]. 
+2026-07-23 21:30:09,156 INFO wannierberri.grid.grid: The grids were set to NKdiv=[4 4 4], NKFFT=[7 7 7], NKtot=[28 28 28]
+2026-07-23 21:30:09,156 INFO wannierberri.run_grid: 
+ Using the follwing calculators :
+############################################################
+
+ 'ahc'  :  <wannierberri.calculators.static.AHC object at 0x7606e86be900>  : Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
+
+| With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
+| Output: :math:`O = -e^2/\hbar \int [dk] \Omega f`
+| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta` 'tabulate'  :  <wannierberri.calculators.tabulate.TabulatorAll object at 0x7606e86beba0>  : 
+TabulatorAll - a pack of all k-resolved calculators (Tabulators)
+
+ Includes the following tabulators : 
+--------------------------------------------------
+ "Energy" : <wannierberri.calculators.tabulate.Energy object at 0x7606e8647d90> : calculator not described
+
+ "berry" : <wannierberri.calculators.tabulate.BerryCurvature object at 0x7606e863da70> : Berry curvature :math:`\Omega_a` in units of angstrom^2
+
+--------------------------------------------------
+ 'opt_conductivity'  :  <wannierberri.calculators.dynamic.OpticalConductivity object at 0x7606e86becf0>  : calculator not described
+2026-07-23 21:30:09,156 INFO wannierberri.run_grid: Grid is regular
+2026-07-23 21:30:09,156 INFO wannierberri.run_grid: The set of k points is a Grid() with NKdiv=[4 4 4], NKFFT=[7 7 7], NKtot=[28 28 28]
+2026-07-23 21:30:09,193 INFO wannierberri.grid.grid: K_list contains 13 Irreducible points(20.31%) out of initial 4x4x4=64 grid
+2026-07-23 21:30:09,193 OUTPUT wannierberri.run_grid: Iteration 0 out of 0 
+2026-07-23 21:30:09,194 INFO wannierberri.run_grid: processing 13 K points using 4 processes.
+2026-07-23 21:30:09,194 INFO wannierberri.run_grid: # K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)
+2026-07-23 21:30:14,031 INFO wannierberri.run_grid: time for processing     13 K-points on   4 processes:     4.8378 ; per K-point          0.3721 ; proc-sec per K-point          1.4886
+2026-07-23 21:30:14,654 INFO wannierberri.run_grid: Totally processed 13 K-points 
+2026-07-23 21:30:14,654 INFO wannierberri.run_grid: run() finished
+2026-07-23 21:32:41,515 INFO wannierberri.w90files.wandata: setting file mmn from npz ../tests/data/Fe_Wannier90/Fe.mmn.npz as <wannierberri.w90files.mmn.MMN object at 0x74939c1fe510>
+2026-07-23 21:32:41,516 INFO wannierberri.w90files.wandata: setting file eig from npz ../tests/data/Fe_Wannier90/Fe.eig.npz as <wannierberri.w90files.eig.EIG object at 0x74939c1d3b60>
+2026-07-23 21:32:41,519 INFO wannierberri.w90files.wandata: setting file chk from npz ../tests/data/Fe_Wannier90/Fe.chk.npz as <wannierberri.w90files.chk.CheckPoint object at 0x74939c1456a0>
+2026-07-23 21:32:41,523 INFO wannierberri.w90files.wandata: setting file bkvec from npz ../tests/data/Fe_Wannier90/Fe.bkvec.npz as <wannierberri.w90files.bkvectors.BKVectors object at 0x74939c147380>
+2026-07-23 21:32:41,523 INFO wannierberri.system.system_w90: irreducible : False, symmetrize set to True
+2026-07-23 21:32:41,634 INFO wannierberri.grid.grid: length=50 was converted into NK=[25 25 25]
+2026-07-23 21:32:41,635 WARNING wannierberri.grid.grid:  the requested k-grid [25 25 25] was adjusted to [28 28 28]. 
+2026-07-23 21:32:41,635 INFO wannierberri.grid.grid: The grids were set to NKdiv=[4 4 4], NKFFT=[7 7 7], NKtot=[28 28 28]
+2026-07-23 21:32:41,635 OUTPUT wannierberri.run_grid: 
+ Using the follwing calculators :
+############################################################
+
+ 'ahc'  :  <wannierberri.calculators.static.AHC object at 0x74939c1fe7b0>  : Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
+
+| With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
+| Output: :math:`O = -e^2/\hbar \int [dk] \Omega f`
+| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta` 'tabulate'  :  <wannierberri.calculators.tabulate.TabulatorAll object at 0x74939c1fea50>  : 
+TabulatorAll - a pack of all k-resolved calculators (Tabulators)
+
+ Includes the following tabulators : 
+--------------------------------------------------
+ "Energy" : <wannierberri.calculators.tabulate.Energy object at 0x74939c17fc50> : calculator not described
+
+ "berry" : <wannierberri.calculators.tabulate.BerryCurvature object at 0x74939c171ba0> : Berry curvature :math:`\Omega_a` in units of angstrom^2
+
+--------------------------------------------------
+ 'opt_conductivity'  :  <wannierberri.calculators.dynamic.OpticalConductivity object at 0x74939c1feba0>  : calculator not described
+2026-07-23 21:32:41,635 INFO wannierberri.run_grid: Grid is regular
+2026-07-23 21:32:41,635 INFO wannierberri.run_grid: The set of k points is a Grid() with NKdiv=[4 4 4], NKFFT=[7 7 7], NKtot=[28 28 28]
+2026-07-23 21:32:41,674 INFO wannierberri.grid.grid: K_list contains 13 Irreducible points(20.31%) out of initial 4x4x4=64 grid
+2026-07-23 21:32:41,674 OUTPUT wannierberri.run_grid: Iteration 0 out of 0 
+2026-07-23 21:32:41,675 INFO wannierberri.run_grid: processing 13 K points using 4 processes.
+2026-07-23 21:32:41,675 INFO wannierberri.run_grid: # K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)
+2026-07-23 21:32:46,204 INFO wannierberri.run_grid: time for processing     13 K-points on   4 processes:     4.5299 ; per K-point          0.3485 ; proc-sec per K-point          1.3938
+2026-07-23 21:32:46,799 OUTPUT wannierberri.run_grid: Totally processed 13 K-points 
+2026-07-23 21:32:46,799 OUTPUT wannierberri.run_grid: run() finished

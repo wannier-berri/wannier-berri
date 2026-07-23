@@ -1,0 +1,23 @@
+ the requested k-grid [25 25 25] was adjusted to [28 28 28]. 
+
+ Using the follwing calculators :
+############################################################
+
+ 'ahc'  :  <wannierberri.calculators.static.AHC object at 0x74939c1fe7b0>  : Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
+
+| With Fermi sea integral Eq(11) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
+| Output: :math:`O = -e^2/\hbar \int [dk] \Omega f`
+| Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta = \epsilon_{\alpha\beta\delta} O_\delta E_\beta` 'tabulate'  :  <wannierberri.calculators.tabulate.TabulatorAll object at 0x74939c1fea50>  : 
+TabulatorAll - a pack of all k-resolved calculators (Tabulators)
+
+ Includes the following tabulators : 
+--------------------------------------------------
+ "Energy" : <wannierberri.calculators.tabulate.Energy object at 0x74939c17fc50> : calculator not described
+
+ "berry" : <wannierberri.calculators.tabulate.BerryCurvature object at 0x74939c171ba0> : Berry curvature :math:`\Omega_a` in units of angstrom^2
+
+--------------------------------------------------
+ 'opt_conductivity'  :  <wannierberri.calculators.dynamic.OpticalConductivity object at 0x74939c1feba0>  : calculator not described
+Iteration 0 out of 0 
+Totally processed 13 K-points 
+run() finished
