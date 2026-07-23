@@ -302,7 +302,8 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
         the boolean array of the frozen bands  (True for frozen)
     """
     NB = len(E)
-    ind = list(np.where((E <= win_max) * (E >= win_min))[0])
+    inside = (E <= win_max) & (E >= win_min)          
+    ind = list(np.where(inside)[0])
     if len(ind) == 0:
         if return_indices:
             return []
@@ -313,28 +314,26 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
     for i in range(ind[-1], NB - 1):
         if E[i + 1] - E[i] < thresh:
             if include_degen:
-                ind[i + 1] = True
+                inside[i + 1] = True
             else:
-                ind[i] = False
+                inside[i] = False
                 break
         else:
             break
 
     # The lower bound
-    for i in range(ind[0], 1, -1):
+    for i in range(ind[0], 0, -1):
         if E[i] - E[i - 1] < thresh:
             if include_degen:
-                ind[i - 1] = True
+                inside[i - 1] = True
             else:
-                ind[i] = False
+                inside[i] = False
                 break
         else:
             break
     if return_indices:
-        return ind
+        return list(np.where(inside)[0])
     else:
-        inside = np.zeros(E.shape, dtype=bool)
-        inside[ind] = True
         return inside
 
 
