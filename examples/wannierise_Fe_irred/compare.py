@@ -20,16 +20,15 @@ nkirr = 4
 # nkirr = 13
 # path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym","pwscf")
 
-kwargs_bs = dict(code='espresso',
-                prefix=path_data + '/Fe',
+kwargs_bs = dict(prefix=path_data + '/Fe',
                 # Ecut=200,
                 normalize=False,
                 magmom=[[0, 0, 1]],
                 include_TR=True,)
 
-bandstructure_full = BandStructure(**kwargs_bs, irreducible=False)
+bandstructure_full = BandStructure.from_espresso(**kwargs_bs, irreducible=False)
 print(f"kpoints in full bz: {[KP.k for KP in bandstructure_full.kpoints]}")
-bandstructure_irr = BandStructure(**kwargs_bs, irreducible=True)
+bandstructure_irr = BandStructure.from_espresso(**kwargs_bs, irreducible=True)
 print(f"kpoints in irreducible bz: {[KP.k for KP in bandstructure_irr.kpoints]}")
 
 nkp_full = len(bandstructure_full.kpoints)

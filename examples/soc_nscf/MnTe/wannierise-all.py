@@ -30,7 +30,7 @@ def get_wannierised(prefix, spin_channel, save_name=None):
     try:
         bandstructure = pickle.load(open(f"bandstructure-spin-{spin_channel}.pkl", "rb"))
     except FileNotFoundError:
-        bandstructure = BandStructure(code="gpaw",
+        bandstructure = BandStructure.from_gpaw(
                                 calculator_gpaw=calc_gpaw,
                                 Ecut=200,
                                 normalize=True,
