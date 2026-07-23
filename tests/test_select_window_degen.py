@@ -7,7 +7,8 @@ from wannierberri.utility import select_window_degen
 
 # bands 6 and 7 are degenerate (gap 1 meV << thresh = 10 meV)
 E_DEGEN = np.array([-5., -4., -3., -2., -1., 0., 1., 1.001, 3., 4.])
- 
+# bands 1 and 2 are degenerate -- lower edge
+E_DEGEN_LOW = np.array([-5., -4.001, -4.0, -2., -1., 0., 1., 2., 3., 4.])
  
 @pytest.mark.parametrize("include_degen", [True, False])
 def test_edge_cutting_multiplet_does_not_raise(include_degen):
@@ -37,15 +38,23 @@ def test_mask_and_indices_agree(include_degen, win_max):
     assert np.array_equal(np.where(mask)[0], np.array(sorted(ind), dtype=int))
  
  
-def test_degenerate_pair_not_split():
-    """A degenerate multiplet is either fully in or fully out of the selection."""
-    for win_max in (0.999, 1.0, 1.0005, 1.001):
-        for include_degen in (True, False):
-            mask = select_window_degen(E_DEGEN, win_min=-6, win_max=win_max,
-                                       include_degen=include_degen)
-            assert mask[6] == mask[7], (
-                f"bands 6,7 are degenerate but selection split them "
-                f"(win_max={win_max}, include_degen={include_degen})")
+@pytest.mark.parametrize("include_degen", [True, False])
+@pytest.mark.parametrize("E,pair,win", [
+    # upper window edge cutting the degenerate pair (bands 6,7)
+    *[(E_DEGEN, (6, 7), (-6.0, wmax)) for wmax in (0.999, 1.0, 1.0005, 1.001)],
+    # lower window edge cutting the degenerate pair (bands 1,2)
+    *[(E_DEGEN_LOW, (1, 2), (wmin, 5.0)) for wmin in (-4.002, -4.0005, -4.0)],
+])
+def test_degenerate_pair_not_split(E, pair, win, include_degen):
+    """A degenerate multiplet is either fully in or fully out of the selection,
+    whether it straddles the upper or the lower window edge."""
+    i, j = pair
+    win_min, win_max = win
+    mask = select_window_degen(E, win_min=win_min, win_max=win_max,
+                               include_degen=include_degen)
+    assert mask[i] == mask[j], (
+        f"bands {i},{j} are degenerate but the selection split them "
+        f"(window=({win_min}, {win_max}), include_degen={include_degen})")
  
  
 def test_unaffected_cases_unchanged():
@@ -62,4 +71,8 @@ def test_empty_window():
     assert select_window_degen(E_DEGEN, win_min=10, win_max=20,
                                return_indices=True) == []
     assert not select_window_degen(E_DEGEN, win_min=10, win_max=20).any()
- 
+
+def test_degeneracy_between_bands_0_and_1():
+    E = np.array([-4.001, -4.0, -2., -1., 0., 1.])   # bands 0,1 degenerate
+    mask = select_window_degen(E, win_min=-4.0005, win_max=2.0, include_degen=True)
+    assert mask[0] == mask[1], "degeneracy between bands 0 and 1 was not handled"
