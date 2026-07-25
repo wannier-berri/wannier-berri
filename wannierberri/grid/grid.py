@@ -10,6 +10,10 @@ from .Kpoint import KpointBZparallel
 from ..utility import one2three
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
@@ -150,7 +154,7 @@ class Grid(GridAbstract):
         """ returns the list of Symmetry-irreducible K-points"""
         dK = 1. / self.div
         factor = 1. / np.prod(self.div)
-        print("generating K_list")
+        logger.debug("generating K_list")
         t00 = time()
         K_list = [
             [
@@ -165,10 +169,10 @@ class Grid(GridAbstract):
                 ] for y in range(self.div[1])
             ] for x in range(self.div[0])
         ]
-        print(f"Done in {time() - t00} s ")
+        logger.debug(f"Done in {time() - t00} s ")
         if use_symmetry:
             t0 = time()
-            print("excluding symmetry-equivalent K-points from initial grid")
+            logger.debug("excluding symmetry-equivalent K-points from initial grid")
             for z in range(self.div[2]):
                 for y in range(self.div[1]):
                     for x in range(self.div[0]):
@@ -179,10 +183,10 @@ class Grid(GridAbstract):
                                 if k != (x, y, z):
                                     KP.absorb(K_list[k[0]][k[1]][k[2]])
                                     K_list[k[0]][k[1]][k[2]] = None
-            print(f"Done in {time() - t0} s ")
+            logger.debug(f"Done in {time() - t0} s ")
 
         K_list = [K for Kyz in K_list for Kz in Kyz for K in Kz if K is not None]
-        print(
+        logger.info(
             "K_list contains {} Irreducible points({}%) out of initial {}x{}x{}={} grid".format(
                 len(K_list), round(len(K_list) / np.prod(self.div) * 100, 2), self.div[0], self.div[1], self.div[2],
                 np.prod(self.div)))
@@ -197,7 +201,7 @@ def autoNK(NK, NKFFTrec, pointgroup):
     # frist determine all symmetric sets between NKFFTmin and 2*NKFFTmin
     FFT_symmetric = np.array([fft for fft in iterate_vector(NKFFTrec, NKFFTrec * 3) if pointgroup.symmetric_grid(fft)])
     NKFFTmin = FFT_symmetric[np.argmin(FFT_symmetric.prod(axis=1))]
-    print("Minimal symmetric FFT grid : ", NKFFTmin)
+    logger.info(f"Minimal symmetric FFT grid : {NKFFTmin}")
     FFT_symmetric = np.array(
         [fft for fft in iterate_vector(NKFFTmin, NKFFTmin * 2) if pointgroup.symmetric_grid(fft)])
     NKdiv_tmp = np.array(np.round(NK[None, :] / FFT_symmetric), dtype=int)
@@ -213,7 +217,7 @@ def autoNK(NK, NKFFTrec, pointgroup):
 
 
 def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, length=None, length_FFT=None):
-    # print(f"determining grids from NK={NK} ({type(NK)}), NKdiv={NKdiv} ({type(NKdiv)}), NKFFT={NKFFT} ({type(NKFFT)})")
+    logger.debug(f"determining grids from NK={NK} ({type(NK)}), NKdiv={NKdiv} ({type(NKdiv)}), NKFFT={NKFFT} ({type(NKFFT)})")
     NKdiv = one2three(NKdiv)
     NKFFT = one2three(NKFFT)
     NK = one2three(NK)
@@ -221,7 +225,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
     if length is not None:
         if NK is None:
             NK = np.array(np.round(length / (2 * np.pi) * np.linalg.norm(pointgroup.recip_lattice, axis=1)), dtype=int)
-            # print(f"length={length} was converted into NK={NK}")
+            logger.info(f"length={length} was converted into NK={NK}")
         else:
             warnings.warn("length is disregarded in presence of NK")
 
@@ -229,9 +233,9 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
         if NKFFT is None:
             NKFFT = np.array(
                 np.round(length_FFT / (2 * np.pi) * np.linalg.norm(pointgroup.recip_lattice, axis=1)), dtype=int)
-            # print(f"length_FFT={length_FFT} was converted into NKFFT={NKFFT}")
+            logger.debug(f"length_FFT={length_FFT} was converted into NKFFT={NKFFT}")
         else:
-            warnings.warn("length_FFT is disregarded in presence of NKFFT")
+            logger.warning("length_FFT is disregarded in presence of NKFFT")
 
     for nkname in 'NKdiv', 'NK', 'NKFFT':
         nk = locals()[nkname]
@@ -240,12 +244,12 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
 
     if (NKdiv is not None) and (NKFFT is not None):
         if length is not None:
-            warnings.warn("length is disregarded in presence of NKdiv,NKFFT")
+            logger.warning("length is disregarded in presence of NKdiv,NKFFT")
         elif NK is not None:
-            warnings.warn("NK is disregarded in presence of NKdiv,NKFFT")
+            logger.warning("NK is disregarded in presence of NKdiv,NKFFT")
     elif NK is not None:
         if NKdiv is not None:
-            warnings.warn("NKdiv is disregarded in presence of NK or length")
+            logger.warning("NKdiv is disregarded in presence of NK or length")
         if NKFFT is not None:
             NKdiv = np.array(np.round(NK / NKFFT), dtype=int)
             NKdiv[NKdiv <= 0] = 1
@@ -257,10 +261,10 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
 
     if NK is not None:
         if not np.all(NK == NKFFT * NKdiv):
-            warnings.warn(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
+            logger.warning(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
 
     notperiodic = np.logical_not(periodic)
     NKdiv[notperiodic] = 1
     NKFFT[notperiodic] = 1
-    # print(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
+    logger.info(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
     return NKdiv, NKFFT

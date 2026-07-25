@@ -34,6 +34,7 @@ Contains a general class for Rotation, Mirror, and also some pre-defined shortcu
 
 """
 
+import logging
 import numpy as np
 import scipy
 # import scipy.spatial
@@ -45,6 +46,7 @@ from collections.abc import Iterable
 
 
 SYMMETRY_PRECISION = 1e-6
+logger = logging.getLogger(__name__)
 
 
 class PointSymmetry:
@@ -81,7 +83,7 @@ class PointSymmetry:
         return dict(R=self.R * (-1 if self.Inv else 1), TR=self.TR)
 
     def show(self):
-        print(self)
+        logger.info(self)
 
     def __str__(self):
         return f"rotation:\n{np.round(self.R, decimals=4)} , TR: {self.TR} , I: {self.Inv}"

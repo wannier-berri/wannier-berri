@@ -4,6 +4,9 @@ from .utility import get_mp_grid
 from .io import sparselist_to_dict
 from .w90file import W90_file, check_shape
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class BKVectors(W90_file):
 
@@ -241,7 +244,7 @@ class BKVectors(W90_file):
             shell_new_latt = shell_klatt[i_shell]
             # print (f"Trying shell {i_shell} with k_cart:\n{shell_new_cart}\nand k_latt:\n{shell_new_latt}")
             if is_parallel_shell(projector_list_cart, shell_new_latt, tol=kmesh_tol):
-                # print(f"Skipping shell {i_shell} with k_cart {shell_new_cart} because it is parallel to previously selected shells {shell_list_cart}")
+                # logger.info(f"Skipping shell {i_shell} with k_cart {shell_new_cart} because it is parallel to previously selected shells {shell_list_cart}")
                 continue
             shell_list_cart_tmp = shell_list_cart + [shell_new_cart]
             shell_list_latt_tmp = shell_list_latt + [shell_new_latt]
@@ -291,7 +294,7 @@ class BKVectors(W90_file):
         shell_mat = np.array([kcart.T.dot(kcart) for kcart in shell_kcart])
         shell_mat_line = shell_mat.reshape(-1, 9)
         u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-        # print(f"SVD values for shell matrix:\n {s}")
+        # logger.info(f"SVD values for shell matrix:\n {s}")
         if np.any(s < 1e-10) or np.any(s > 1e10):
             msg = (f"Warning: shell matrix is close to singular, with SVD values:\n {s}. "
                    f"This may indicate that the shells are not linearly independent, and the weights may be unreliable.")
@@ -316,7 +319,7 @@ class BKVectors(W90_file):
                     f"shell_klatt={shell_klatt}\n"
                     f"shell_kcart={shell_kcart}\n")
 
-        print(f"Shells found with weights {weight_shell} and tolerance {tol}")
+        logger.debug(f"Shells found with weights {weight_shell} and tolerance {tol}")
         bk_grid = []
         bk_cart = []
         wk = []

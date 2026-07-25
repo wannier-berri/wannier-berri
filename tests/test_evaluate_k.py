@@ -132,10 +132,6 @@ def test_evaluate_k_1f(system_Fe_W90):
             f"by {np.max(abs(result - data_ref[key]))} greater than the required accuracy {acc}")
 
 
-def test_evaluate_k_hlp():
-    result = wberri.evaluate_k()
-    assert result is None
-
 
 def test_evaluate_fail(system_Fe_W90):
     with pytest.raises(ValueError):

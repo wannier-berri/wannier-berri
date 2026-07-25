@@ -10,6 +10,8 @@ from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
 from .system_R import System_R
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SystemSOC(System_R):
@@ -129,7 +131,7 @@ class SystemSOC(System_R):
         # chack number of spin channels
         nspin = soc.nspin
         assert self.nspin == nspin, f"Number of spin channels in SystemSOC ({self.nspin}) does not match that in SOC ({nspin})"
-        print(f"nspin in SOC: {nspin}")
+        logger.info(f"nspin in SOC: {nspin}")
         if nspin == 1:
             chk_list = [chk_up]
         elif nspin == 2:
@@ -149,9 +151,6 @@ class SystemSOC(System_R):
 
         mp_grid = chk_up.mp_grid
 
-        # selected_bands_list = [chk.get_selected_bands() for chk in [chk_up, chk_down]]
-
-        # print(f"setting the Rvectors with wannier centers (cart): \n {self.wannier_centers_cart}\n (red): \n {self.wannier_centers_red}")
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
 
@@ -242,7 +241,7 @@ class SystemSOC(System_R):
         if self.cell is not None:
             axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
             magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
-            print(f"using magmoms \n {magmoms}")
+            logger.info(f"using magmoms \n {magmoms}")
             from irrep.spacegroup import SpaceGroup
             mag_group = SpaceGroup.from_cell(real_lattice=self.real_lattice,
                                     positions=self.cell["positions"],
@@ -260,7 +259,7 @@ class SystemSOC(System_R):
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         # if not self.silent:
-        print(f"Saving SystemSOC to {path}")
+        logger.info(f"Saving SystemSOC to {path}")
         super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
         self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
         if self.nspin == 2:
@@ -277,7 +276,7 @@ class SystemSOC(System_R):
     @classmethod
     def from_npz(cls, path, silent=True, exclude_properties=(), matrices=None):
         if not silent:
-            print(f"Loading SystemSOC from {path}")
+            logger.info(f"Loading SystemSOC from {path}")
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
         system_up = System_R.from_npz(path=os.path.join(path, "system_up"), exclude_properties=exclude_properties, matrices=matrices)
@@ -431,7 +430,7 @@ class SystemSOC(System_R):
         system_R.cell = self.cell.copy() if self.cell is not None else None
 
         for key, value in self.system_up._XX_R.items():
-            print(f"setting matrix {key} from system_up")
+            logger.info(f"setting matrix {key} from system_up")
             matrix = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann) + value.shape[3:], dtype=value.dtype)
             if key == 'Ham':
                 matrix[rvectors_map_list[0]] += self.get_R_mat('Ham_SOC')

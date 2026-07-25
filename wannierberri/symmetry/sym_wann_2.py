@@ -8,6 +8,9 @@ from ..system.system import num_cart_dim
 from collections import defaultdict
 import copy
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def do_rotate_vector(key):
     return True
@@ -81,7 +84,7 @@ class SymWann:
         self.symmetrizer_right = symmetrizer_right
         self.num_blocks_left = len(symmetrizer_left.D_wann_block_indices)
         self.num_blocks_right = len(symmetrizer_right.D_wann_block_indices)
-        print(f"num_blocks_left = {self.num_blocks_left}, num_blocks_right = {self.num_blocks_right}")
+        logger.info(f"num_blocks_left = {self.num_blocks_left}, num_blocks_right = {self.num_blocks_right}")
         self.num_orb_list_left = [symmetrizer_left.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks_left)]
         self.num_orb_list_right = [symmetrizer_right.rot_orb_list[i][0][0].shape[0] for i in range(self.num_blocks_right)]
         self.num_points_list_left = [symmetrizer_left.atommap_list[i].shape[0] for i in range(self.num_blocks_left)]
@@ -270,9 +273,7 @@ class SymWann:
         # ========================================================
         # symmetrize existing R vectors and find additional R vectors
         # ========================================================
-        logfile = self.logfile
-        logfile.write('##########################')
-        logfile.write('Symmetrizing Started')
+        logger.debug('Symmetrizing Started')
         full_matrix_dict_list = {}
         full_iRvec_list = {}
         full_iRvec_set = set()
@@ -285,7 +286,7 @@ class SymWann:
                 norb2 = self.num_orb_list_right[block2]
                 np2 = self.num_points_list_right[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
-                logfile.write(f"iRab_irred = {iRab_irred}\n")
+                logger.debug(f"iRab_irred = {iRab_irred}")
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
                     v = np.copy(v1)[:, ws1:we1, ws2:we2]
@@ -299,12 +300,12 @@ class SymWann:
                                                                         iRvec_origin=self.iRvec, mode="sum",
                                                                         block1=block1, block2=block2)
 
-                logfile.write(f"iRvec_ab_all = {iRvec_ab_all}\n")
-                logfile.write(f"iRab_irred = {iRab_irred}\n")
+                logger.debug(f"iRvec_ab_all = {iRvec_ab_all}")
+                logger.debug(f"iRab_irred = {iRab_irred}")
                 for k, val in matrix_dict_list_res.items():
-                    logfile.write(f"matrix_dict_list_res[{k}]  = \n")
+                    logger.debug(f"matrix_dict_list_res[{k}]  = \n")
                     for ab, X in val.items():
-                        logfile.write(f"  ({ab}):\n {X}\n")
+                        logger.debug(f"  ({ab}):\n {X}\n")
 
 
                 iRvec_new_set = set.union(*iRvec_ab_all.values())
@@ -322,7 +323,7 @@ class SymWann:
                 full_iRvec_set = set.union(full_iRvec_set, iRvec_new_set)
 
         iRvec_new = list(full_iRvec_set)
-        logfile.write(f'\n\niRvec_new = {np.array(iRvec_new)}\n')
+        logger.debug(f'\n\niRvec_new = {np.array(iRvec_new)}\n')
         nRvec_new = len(iRvec_new)
         iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
 
@@ -346,7 +347,7 @@ class SymWann:
                             # print (f"iR = {iR}, blocks: {block1, block2} \n   iRvec_map[iR] = {iRvec_map[iR]} ws1a = {ws1a}, we1a = {we1a}, ws2b = {ws2b}, we2b = {we2b}, XX_L.shap={XX_L.shape}")
                             return_dic[k][iRvec_map[iR], ws1a:we1a, ws2b:we2b] += XX_L
 
-        logfile.write('Symmetrizing Finished\n')
+        logger.debug('Symmetrizing Finished\n')
         return return_dic, np.array(iRvec_new)
 
     # def symmetrize_inplace_no_change_iRvec(self, XX_R_dict, iRvec, cutoff=-1, cutoff_dict=None):
@@ -363,7 +364,7 @@ class SymWann:
     #     for k in XX_R_dict:
     #         XX_R_copy = XX_R_dict[k].copy()
     #         XX_R_dict[k][reorder] = XX_R_dict_new[k][:]
-    #         print(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
+    #         logger.info(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
     #     return XX_R_dict
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
@@ -404,7 +405,6 @@ class SymWann:
         matrix_dict_list_res = {k: defaultdict(lambda: defaultdict(lambda: 0)) for k in matrix_dict_in}
 
         iRab_all = defaultdict(lambda: set())
-        logfile = self.logfile
 
         for isym in self.use_symmetries_index:
             symop = self.spacegroup.symmetries[isym]
@@ -413,7 +413,7 @@ class SymWann:
             T2 = self.symmetrizer_right.T_list[block2][:, isym]
             atommap1 = self.symmetrizer_left.atommap_list[block1][:, isym]
             atommap2 = self.symmetrizer_right.atommap_list[block2][:, isym]
-            logfile.write(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}\n")
+            logger.debug(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
             R_map = iRvec_origin_array @ symop.rotation.T
             R_map_round = np.rint(R_map).astype(int)
             assert np.allclose(R_map, R_map_round), f"R_map not integer: {R_map}"

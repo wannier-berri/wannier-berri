@@ -1,5 +1,9 @@
+import logging
 import os
 import warnings
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_ray_runtime_env(runtime_env=None, use_current_checkout=True):
@@ -70,7 +74,7 @@ def ray_init_cluster(
     if runtime_env is not None:
         ray_init_loc['runtime_env'] = runtime_env
     ray_init_loc['num_cpus'] = num_cpus
-    print("initializing ray with ", ray_init_loc)
+    logger.info(f"initializing ray with {ray_init_loc}")
     ray.init(**ray_init_loc)
 
 
@@ -88,7 +92,7 @@ def ray_init(ignore_missing=True, use_current_checkout=True, **kwargs):
     try:
         import ray
         if ray.is_initialized():
-            print(f"ray is already initialized with {get_ray_cpus_count()} cpus")
+            logger.info(f"ray is already initialized with {get_ray_cpus_count()} cpus")
         else:
             runtime_env = get_ray_runtime_env(kwargs.get('runtime_env'), use_current_checkout=use_current_checkout)
             if runtime_env is not None:
@@ -96,7 +100,7 @@ def ray_init(ignore_missing=True, use_current_checkout=True, **kwargs):
             ray.init(**kwargs)
     except ImportError as err:
         if ignore_missing:
-            print(f"write : unable to import ray, no initialization performed:{err}")
+            logger.info(f"write : unable to import ray, no initialization performed:{err}")
         else:
             raise RuntimeError(f"write : unable to import ray, no initialization performed:{err}. Exiting")
 

@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from time import time
 import pickle
 import glob
+
 from termcolor import cprint
 from .utility import remove_dir
 from .data_K import get_data_k_class_from_system
@@ -12,6 +13,20 @@ from .grid import exclude_equiv_points, Path, Grid, GridTetra
 from .parallel import get_ray_cpus_count, check_ray_initialized
 from .result.tabresult import TABresult
 from .result import ResultDict
+
+import logging
+logger = logging.getLogger(__name__)
+
+
+def cprint_logger(*args, **kwargs):
+    msg = args[0] if args else ""
+    color = kwargs.get('color')
+    attrs = kwargs.get('attrs', [])
+    end = kwargs.get('end', '\n')
+    termcolor = kwargs.get('termcolor', True)
+    if termcolor:
+        cprint(msg, color=color, attrs=attrs)
+    return msg + end
 
 
 def print_progress(count, total, t0, tprev, progress_step_time):
@@ -24,7 +39,7 @@ def print_progress(count, total, t0, tprev, progress_step_time):
         t_remain = f"{t_rem_s:22.1f}"
         t_est_tot = f"{t_rem_s + t:22.1f}"
     if t - tprev > progress_step_time:
-        print(f"{count:20d}{t:17.1f}{t_remain:>22s}{t_est_tot:>22s}", flush=True)
+        logger.info(f"{count:20d}{t:17.1f}{t_remain:>22s}{t_est_tot:>22s}")
         tprev = t
     return tprev
 
@@ -43,17 +58,13 @@ def process(paralfunc,
     numK = len(selK)
     dK_list = [K_list[ik] for ik in selK]
     if len(dK_list) == 0:
-        print("nothing to process now")
+        logger.info("nothing to process now")
         return 0, None
 
-    print(f"processing {len(dK_list)} K points :", end=" ")
     nproc_loc = get_ray_cpus_count()
-    if nproc_loc == 1:
-        print("in serial.")
-    else:
-        print(f"using  {nproc_loc} processes.")
+    logger.info(f"processing {len(dK_list)} K points " + ("in serial." if nproc_loc == 1 else f"using {nproc_loc} processes."))
 
-    print("# K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)", flush=True)
+    logger.info("# K-points calculated  Wall time (sec)  Est. remaining (sec)   Est. total (sec)")
     nstep_print = max(1, nproc_loc, int(round(numK * progress_step_percent / 100)))
 
     def set_result(Kp, res):
@@ -110,8 +121,7 @@ def process(paralfunc,
 
     t = time() - t0
 
-    print(f"time for processing {numK:6d} K-points on {nproc_loc:3d} processes: ", end="")
-    print(f"{t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_loc / numK:15.4f}", flush=True)
+    logger.info(f"time for processing {numK:6d} K-points on {nproc_loc:3d} processes: {t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_loc / numK:15.4f}")
     return len(dK_list), result_sum
 
 
@@ -137,6 +147,7 @@ def run(
         adpt_fac=1,
         print_progress_step_time=5,
         print_progress_step_percent=1,
+        termcolor=False,
         data_k_class=None,
         k_batch=50
 ):
@@ -210,34 +221,34 @@ def run(
     if data_k_class is None:
         data_k_class = get_data_k_class_from_system(system)
 
-    cprint("Starting run()", 'red', attrs=['bold'])
+    cprint_logger("Starting run()", 'red', attrs=['bold'], termcolor=termcolor)
     if parameters_K is None:
         parameters_K = {}
-    print_calculators(calculators)
+    print_calculators(calculators, termcolor=termcolor)
     # along a path only tabulating is possible
     if isinstance(grid, Path):
-        print("Calculation along a path - checking calculators for compatibility")
+        logger.debug("Calculation along a path - checking calculators for compatibility")
         for key, calc in calculators.items():
-            print(key, calc)
+            logger.debug(f"Checking calculator `{key}`")
             if not calc.allow_path:
                 raise ValueError(
                     f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
-        print("All calculators are compatible")
+        logger.debug("All calculators are compatible")
         if symmetrize:
-            print("Symmetrization switched off for Path")
+            logger.info("Symmetrization switched off for Path")
             symmetrize = False
         allow_restart = False
         dump_results = False
     else:
-        print("Calculation on  grid - checking calculators for compatibility")
+        logger.debug("Calculation on  grid - checking calculators for compatibility")
         if use_irred_kpt:
             symmetrize = True
         for key, calc in calculators.items():
-            print(key, calc)
+            logger.debug(f"Checking calculator `{key}`")
             if not calc.allow_grid:
                 raise ValueError(
                     f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
-        print("All calculators are compatible")
+        logger.debug("All calculators are compatible")
 
     if dump_results:
         allow_restart = True
@@ -247,11 +258,11 @@ def run(
 
 
     if isinstance(grid, GridTetra):
-        print("Grid is tetrahedral")
+        logger.info("Grid is tetrahedral")
     else:
-        print("Grid is regular")
+        logger.info("Grid is regular")
 
-    print(f"The set of k points is a {grid.str_short}")
+    logger.info(f"The set of k points is a {grid.str_short}")
 
     remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators, 'symmetrize': symmetrize}
 
@@ -277,9 +288,9 @@ def run(
                 try:
                     K_list += pickle.load(fr)
                 except EOFError:
-                    print(f"Finished reading Klist from file {file_Klist}")
+                    logger.info(f"Finished reading Klist from file {file_Klist}")
                     break
-            print(f"{len(K_list)} K-points were read from {file_Klist}")
+            logger.info(f"{len(K_list)} K-points were read from {file_Klist}")
         nk_prev = len(K_list)
         start_iter, factors = read_factors(file_Klist_path=file_Klist_path, iter=restart_iteration)
         factors = np.hstack([factors, np.zeros(len(K_list) - len(factors))])  # If we have more K-points than factors, add zeros for the new ones
@@ -289,7 +300,7 @@ def run(
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt, k_batch=k_batch)
         factors = np.array([Kp.factor for Kp in K_list])
-        print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
+        logger.debug(f"Done, sum of weights: {sum(Kp.factor for Kp in K_list)}")
         start_iter = 0
         nk_prev = 0
         if allow_restart or dump_results:
@@ -320,14 +331,12 @@ def run(
         for ik in range(nk_prev, len(K_list)):
             K_list[ik].set_storage_path(get_Kpoint_storage_path(file_Klist_path=file_Klist_path, ik=ik))
         i_iter_global = i_iter + start_iter
-        print("\n" + "#" * 60)
-        print(f"Iteration {i_iter_global} out of {adpt_num_iter + start_iter} ")
+        logger.output(f"Iteration {i_iter_global} out of {adpt_num_iter + start_iter} ")
         if print_Kpoints:
-            print("iteration {0} - {1} points. New points are:".format(i_iter + start_iter,
-                                                                       len([K for K in K_list if K.result is None])))
+            logger.output(f"iteration {i_iter + start_iter} - {len([K for K in K_list if K.result is None])} points. New points are:")
             for i, K in enumerate(K_list):
                 if not K.was_evaluated_flag:
-                    print(f" K-point {i} : {K} ")
+                    logger.output(f" K-point {i} : {K} ")
         count_iter, result_sum_iter = process(
             paralfunc=paralfunc,
             K_list=K_list,
@@ -347,8 +356,6 @@ def run(
                 pickle.dump(K_list[ink:ink + Klist_part], fw)
             fw.close()
 
-        time0 = time()
-
         if (result_all is None):
             result_all = result_sum_iter
         else:
@@ -356,14 +363,12 @@ def run(
             factors = np.array([kp.factor for kp in K_list])
             factors_diff = factors[:len(factors_old)] - factors_old
             factors_diff_dict = {i: fac for i, fac in enumerate(factors_diff) if abs(fac) > 1.e-8}
-            print(f"factors changed for old points : {factors_diff_dict} ")
+            logger.info(f"factors changed for old points : {factors_diff_dict} ")
             result_all += result_sum_iter
             result_all += sum(K_list[i].get_result() * fac for i, fac in factors_diff_dict.items())
             if allow_restart:
                 write_factors(file_Klist_path=file_Klist_path, factors=factors, iter=i_iter_global)
 
-        time1 = time()
-        print("time1 = ", time1 - time0)
         if not (restart and i_iter == 0):
             result_all.savedata(prefix=fout_name, suffix=suffix, i_iter=i_iter + start_iter)
 
@@ -374,8 +379,6 @@ def run(
         Kmax = np.array([K.max for K in K_list]).T
         select_points = set().union(*(np.argsort(Km)[-adpt_fac:] for Km in Kmax))
 
-        time2 = time()
-        print("time2 = ", time2 - time1)
         l1 = len(K_list)
 
         nk_prev = nk
@@ -386,10 +389,10 @@ def run(
         if use_irred_kpt and isinstance(grid, Grid):
             exclude_equiv_points(K_list, new_points=len(K_list) - l1)
 
-        print("sum of weights now :{}".format(sum(Kp.factor for Kp in K_list)))
+        logger.info(f"sum of weights now : {sum(Kp.factor for Kp in K_list)}")
 
-    print(f"Totally processed {counter} K-points ")
-    print("run() finished")
+    logger.output(f"Totally processed {counter} K-points ")
+    logger.output("run() finished")
 
     # This reordering is important for the case of Path calculation in parallel
     # Because in this case the K-points are not processed in the order of the path
@@ -403,14 +406,17 @@ def run(
     return result_all
 
 
-def print_calculators(calculators):
-    cprint("Using the follwing calculators : \n" + "#" * 60 + "\n", "cyan", attrs=["bold"])
+def print_calculators(calculators, termcolor=True):
+    msg = ""
+    msg += cprint_logger("\n Using the follwing calculators :" + "\n" + "#" * 60 + "\n", color="cyan", attrs=["bold"], termcolor=termcolor)
     for key, val in calculators.items():
-        cprint(f" '{key}' ", "magenta", attrs=["bold"], end="")
-        print(" : ", end="")
-        cprint(f" {val} ", "yellow", attrs=["bold"], end="")
-        print(f" : {val.comment}")
-    cprint("#" * 60, "cyan", attrs=["bold"])
+        msg += cprint_logger(f" '{key}' ", "magenta", attrs=["bold"], end="", termcolor=termcolor)
+        msg += cprint_logger(" : ", color=None, end="", termcolor=termcolor)
+        msg += cprint_logger(f" {val} ", "yellow", attrs=["bold"], end="", termcolor=termcolor)
+        msg += cprint_logger(f" : {val.comment}", color=None, end="", termcolor=termcolor)
+    if termcolor:
+        cprint("#" * 60, "cyan", attrs=["bold"], termcolor=termcolor)
+    logger.output(msg)
 
 
 def get_Kpoint_storage_path(file_Klist_path, ik):

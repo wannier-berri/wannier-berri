@@ -10,6 +10,8 @@ from .projections_searcher import EBRsearcher
 
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SymmetrizerSAWF:
@@ -243,7 +245,7 @@ class SymmetrizerSAWF:
         for proj in projections:
             orbitals = proj.orbitals
             basis_list = proj.basis_list
-            # print(f"orbitals = {orbitals}")
+            # logger.info(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
                 warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
             for orb in orbitals:
@@ -254,7 +256,7 @@ class SymmetrizerSAWF:
         self.atommap_list = []
         self.rot_orb_list = []
         for positions, proj, basis_list in projections_list:
-            # print(f"calculating Wannier functions for {proj} at {positions}")
+            # logger.info(f"calculating Wannier functions for {proj} at {positions}")
             _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbitalrotator=self.orbitalrotator,
                            spinor=self.spacegroup.spinor,
                            basis_list=basis_list)
@@ -292,7 +294,7 @@ class SymmetrizerSAWF:
         self.clear_inverse(d=False, D=True)
         if not isinstance(D_wann, list):
             D_wann = [D_wann]
-        # print("D.shape", [D.shape for D in D_wann])
+        # logger.info("D.shape", [D.shape for D in D_wann])
         self.D_wann_block_indices = []
         num_wann = 0
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -307,8 +309,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        # print("num_wann", num_wann)
-        # print("D_wann_block_indices", self.D_wann_block_indices)
+        # logger.info("num_wann", num_wann)
+        # logger.info("D_wann_block_indices", self.D_wann_block_indices)
 
 
     def symmetrize_wannier_property(self, wannier_property):
@@ -496,11 +498,11 @@ class SymmetrizerSAWF:
         #     include_k = np.arange(self.NK)
         # else:
         #     include_k = np.where(include_k)[0]
-        # print(f"{self.kpt_from_kptirr_isym=}, {self.NK=}, {self.NKirr=}, {self.Nsym=}")
+        # logger.info(f"{self.kpt_from_kptirr_isym=}, {self.NK=}, {self.NKirr=}, {self.Nsym=}")
         # for ik in include_k:
         #     ikirr = self.kpt2kptirr[ik]
         #     isym = self.kpt_from_kptirr_isym[ik]
-        #     print(f"{ik=}, {isym=}, {ikirr=}")
+        #     logger.info(f"{ik=}, {isym=}, {ikirr=}")
         #     Ufull[ik] =  self.rotate_U(U[ikirr], ikirr, isym, forward=True)
         for ikirr in range(self.NKirr):
             for isym in range(self.Nsym):
@@ -569,7 +571,7 @@ class SymmetrizerSAWF:
             return
         selected_bands_bool = np.zeros(self.NB, dtype=bool)
         selected_bands_bool[selected_bands] = True
-        # print(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
+        # logger.info(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
         for ikirr in range(self.NKirr):
             self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_bands_in_blocks(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands_bool)
         self.clear_inverse(d=True, D=False)
@@ -579,7 +581,7 @@ class SymmetrizerSAWF:
             assert block_ind[0, 0] == 0
             assert np.all(block_ind[1:, 0] == block_ind[:-1, 1])
             assert block_ind[-1, -1] == self.NB
-        # print(f"new NB = {self.NB}")
+        # logger.info(f"new NB = {self.NB}")
 
 
 
@@ -629,7 +631,7 @@ class SymmetrizerSAWF:
                 e2 = eig.data[self.kptirr2kpt[ikirr, isym]][:ignore_upper_bands]
                 maxerr_loc = np.linalg.norm(e1 - e2)
                 if maxerr_loc > warning_precision:
-                    print(f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, isym={isym}, iksym={self.kptirr2kpt[ikirr, isym]} : \n "
+                    logger.info(f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, isym={isym}, iksym={self.kptirr2kpt[ikirr, isym]} : \n "
                           f"   eirr = {e1}\n"
                           f"   esym = {e2}\n"
                           f"   diff = {e1 - e2}\n")
@@ -687,11 +689,11 @@ class SymmetrizerSAWF:
                 diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))
                 if diff > warning_precision:
-                    print(f"ikirr={ikirr}, isym={isym} kpt  {ik_origin} -> {ik_rotated}: {diff}")
+                    logger.info(f"ikirr={ikirr}, isym={isym} kpt  {ik_origin} -> {ik_rotated}: {diff}")
                     if verbose:
-                        print(f"   a1  = \n{arr_to_string(a1)}")
-                        print(f"   a1' = \n{arr_to_string(a1p)}")
-                        print(f"   a2  = \n{arr_to_string(a2)}")
+                        logger.info(f"   a1  = \n{arr_to_string(a1)}")
+                        logger.info(f"   a1' = \n{arr_to_string(a1p)}")
+                        logger.info(f"   a2  = \n{arr_to_string(a2)}")
 
         return maxerr
 
@@ -743,7 +745,7 @@ class SymmetrizerSAWF:
         if f_npz is None:
             return self
         dic = self.as_dict()
-        print(f"saving to {f_npz} : ")
+        logger.info(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
         return self
 
@@ -775,9 +777,9 @@ class SymmetrizerSAWF:
         assert mmn.NB == self.NB
         b1 = ignore_lower_bands
         b2 = ignore_upper_bands
-        print(f"irreducible k-points : {self.kptirr}")
-        print(f"kpt2kptirr : {self.kpt2kptirr}")
-        print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
+        logger.info(f"irreducible k-points : {self.kptirr}")
+        logger.info(f"kpt2kptirr : {self.kpt2kptirr}")
+        logger.info(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
         nnb = len(bkvec.bk_grid)
@@ -799,7 +801,7 @@ class SymmetrizerSAWF:
 
                     if ik_sym not in mmn.data:
                         continue
-                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
+                    # logger.info(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
                     M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_grid_map=bk_grid_map, bk_cart=bkvec.bk_cart)
                     M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
 
@@ -810,7 +812,7 @@ class SymmetrizerSAWF:
                     err = np.max(diff)
 
                     if err > warning_precision or verbose:
-                        print(("CORRECT :" if err < warning_precision else "ERROR   :") +
+                        logger.info(("CORRECT :" if err < warning_precision else "ERROR   :") +
                               f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {bkvec.neighbours[ik_sym][ib_sym]}: err = {err}"
                             #   "\n M_ref   = \n" + arr_to_string(M_ref) +
                             #     "\n M'  = \n" + arr_to_string(M_loc) +

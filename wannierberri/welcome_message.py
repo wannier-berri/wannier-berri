@@ -1,3 +1,5 @@
+
+
 _need_for_symmetry_str = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
 _needed_packages = {
     "irrep": "symmetry related ",
@@ -57,5 +59,5 @@ def welcome():
             else:
                 cprint(f"{package} : not found. {nfor}", 'yellow')
             versions[package] = None
-    print("#")
+    cprint("#" * 60, 'cyan')
     return versions

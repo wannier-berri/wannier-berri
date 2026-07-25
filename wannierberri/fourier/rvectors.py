@@ -1,11 +1,15 @@
 
 from functools import cached_property
+import logging
 from typing import Iterable
 import warnings
 
 import numpy as np
 from ..utility import clear_cached, iterate3dpm, iterate_nd
 from .fft import FFT_R_to_k, execute_fft
+
+
+logger = logging.getLogger(__name__)
 
 
 class Rvectors:
@@ -51,8 +55,6 @@ class Rvectors:
         self.fft_R2k_set = False
         self.fft_q2R_set = False
 
-        # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
-
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """
@@ -69,7 +71,7 @@ class Rvectors:
             if ws_toleranece is negative, the absolute value is used and all shifts are considered different with tolerance 1e-8 (This is mainly to comply with legacy tests)
             TODO: this should be removed in the future, and test data should be updated
         """
-        print("setting Rvec")
+        logger.debug("setting Rvec")
         assert len(mp_grid) == 3, "NK should be a list of 3 integers"
         self.mp_grid = mp_grid
         self._NKFFTrec = mp_grid
@@ -129,7 +131,7 @@ class Rvectors:
 
         XX_R should have dimensions (num_wann, num_wann, len(iRvec_old), ....)
         """
-        print(f"remapping {XX_R.shape} ")
+        logger.info(f"remapping {XX_R.shape} ")
         assert (XX_R.shape[1] == self.nshifts_left) or (self.nshifts_left == 1)
         assert (XX_R.shape[2] == self.nshifts_right) or (self.nshifts_right == 1)
         XX_R_sum_old = XX_R.sum(axis=0)
@@ -246,7 +248,7 @@ class Rvectors:
         XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2, 3, 4, 5))
         num_wann_r = XX_RR_grid.shape[6]
         num_wann_l = XX_RR_grid.shape[8]
-        print(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
+        logger.debug(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
         nl = self.nshifts_left
         nr = self.nshifts_right
         assert (nr == 1) or (XX_RR_grid.shape[6] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
@@ -254,7 +256,7 @@ class Rvectors:
         assert (nl == 1) or (XX_RR_grid.shape[8] == nl), f"XX_RR_grid {XX_RR_grid.shape} should have {nl} right shifts"
 
         shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,) * 2 + XX_RR_grid.shape[9:]
-        print(f"shape_new {shape_new}")
+        logger.debug(f"shape_new {shape_new}")
         XX_RR_new = np.zeros(shape_new, dtype=XX_RR_grid.dtype)
         for a in range(num_wann_r):
             ia = 0 if self.nshifts_right == 1 else a
@@ -264,7 +266,7 @@ class Rvectors:
                     ic = 0 if self.nshifts_left == 1 else c
                     ishift1 = self.shift_index[ic, ia]
                     ishift2 = self.shift_index[ic, ib]
-                    print(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
+                    logger.debug(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
                     for iRi1, iRm1, nd1 in zip(self.iRvec_index_list[ishift1],
                                             self.iRvec_mod_list[ishift1],
                                             self.Ndegen_list[ishift1]):
@@ -438,7 +440,7 @@ class Rvectors:
             _X = self.get_R_mat(key).copy()
             assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
         else:
-            self.logfile.write(f"{key} is missing, nothing to check\n")
+            logger.info(f"{key} is missing, nothing to check\n")
 
     def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0), k_list=None):
         """
@@ -523,7 +525,6 @@ class Rvectors:
             kpt_red = np.array(kpt_red)
             kpt_red_mp = kpt_red * self.mp_grid[None, :]
             kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
-            # print(f"{kpt_red=} \n {kpt_red_mp_int=} \n {kpt_red_mp=}")
             assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
             assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"
         else:

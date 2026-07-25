@@ -5,6 +5,8 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
+import logging
+logger = logging.getLogger(__name__)
 
 
 def get_system_tb(tb_file=None,
@@ -86,7 +88,7 @@ def get_system_tb(tb_file=None,
             wannier_centers_cart = np.diagonal(AA_R[iR0], axis1=0, axis2=1).T.copy().real
         if convention_II_to_I:
             # convert to convention I
-            # print(f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {self.num_wann}, A.shape = {AA_R.shape}")
+            logger.debug(f"convention_II_to_I = {convention_II_to_I} wannier_centers_cart = \n{wannier_centers_cart}\n num_wann = {system.num_wann}, A.shape = {AA_R.shape}")
             AA_R[iR0, np.arange(system.num_wann), np.arange(system.num_wann), :] -= wannier_centers_cart
         system.set_R_mat('AA', AA_R)
     elif wannier_centers_cart is None:

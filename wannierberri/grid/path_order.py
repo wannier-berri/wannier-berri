@@ -1,13 +1,16 @@
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def flatten_path(nodes, segments, direction=None):
     """Flattens a path defined by nodes and segments. If direction is given, then the path is flattened along this direction, otherwise the path is flattened along the direction of the first segment"""
     if direction is None:
         return nodes, segments
-    print(f"Flattening path along direction {direction}")
-    print(f"Original nodes: {nodes}")
-    print(f"Original segments: {segments}")
+    logger.info(f"Flattening path along direction {direction}")
+    logger.info(f"Original nodes: {nodes}")
+    logger.info(f"Original segments: {segments}")
     nodes_flat = {k: np.array(v) for k, v in nodes.items() if abs(v[direction]) < 1e-7}
     flatten_map = {}
     for k, v in nodes.items():
@@ -17,11 +20,11 @@ def flatten_path(nodes, segments, direction=None):
             if np.linalg.norm(diff) < 1e-7:
                 flatten_map[k] = kf
                 break
-    print(f"Flatten map: {flatten_map}")
+    logger.info(f"Flatten map: {flatten_map}")
     segments_flat = [(flatten_map[s[0]], flatten_map[s[1]]) for s in segments]
-    print(f"Segments after flattening: {segments_flat}")
+    logger.info(f"Segments after flattening: {segments_flat}")
     segments_flat = [seg for seg in segments_flat if seg[0] != seg[1]]  # remove vertical lines
-    print(f"Segments after removing vertical lines: {segments_flat}")
+    logger.info(f"Segments after removing vertical lines: {segments_flat}")
     repeated = np.zeros(len(segments_flat), dtype=bool)
     for i, seg in enumerate(segments_flat):
         for j in range(i):
