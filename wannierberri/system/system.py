@@ -329,7 +329,7 @@ class System:
             by seekpath based on the lattice of the system. 
         **kwargs
             additional keyword arguments to pass to the evaluation function (quantities, calculators, etc.)
-        
+
         Returns
         -------
         path : Path

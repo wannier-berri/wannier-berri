@@ -20,7 +20,7 @@ systems = {}
 # for data_dir in ['diamond', 'diamond-444']:
 for data_dir in ['diamond']:
     from irrep.bandstructure import BandStructure
-    bandstructure = BandStructure(code='espresso',
+    bandstructure = BandStructure.from_espresso(
                                 prefix=os.path.join("../../tests/data", data_dir, "di"),
                                 Ecut=200,
                                 normalize=False, include_TR=False)

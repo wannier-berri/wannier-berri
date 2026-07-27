@@ -11,7 +11,7 @@ print("calculating symmetrizer")
 
 path = "../../tests/data/diamond/"
 
-bandstructure = BandStructure(prefix=path + "di", code="espresso",
+bandstructure = BandStructure.from_espresso(prefix=path + "di",
                             Ecut=100, include_TR=False)
 spacegroup = bandstructure.spacegroup
 # spacegroup.show()

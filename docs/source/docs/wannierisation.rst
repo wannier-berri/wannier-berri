@@ -30,7 +30,7 @@ Example
    wandata = wb.WannierData.from_w90_files(seedname=path_data + "Fe", files=["mmn", "eig", "win", ])
 
 
-   bandstructure = BandStructure(code='espresso',
+   bandstructure = BandStructure.from_espresso(
                               prefix=path_data + "/Fe",
                               Ecut=200,
                               normalize=True,
