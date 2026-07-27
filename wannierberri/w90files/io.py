@@ -1,6 +1,7 @@
 # inheriting just in order to have possibility to change default values, without changing the rest of the code
 import abc
 import numpy as np
+from ..utility import normalize_type
 
 
 class SavableNPZ(abc.ABC):
@@ -49,6 +50,7 @@ class SavableNPZ(abc.ABC):
 
     @classmethod
     def from_dict(cls, dic=None, return_obj=True, **kwargs):
+        dic = {k: normalize_type(v) for k, v in dic.items()} if dic is not None else None
         dic_loc = {}
         for k in cls.npz_tags:
             if k in kwargs:

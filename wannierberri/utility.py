@@ -401,3 +401,12 @@ def weight_select_bands(ib1, ib2, select_bands=None):
         return 1.0
     else:
         return np.sum((select_bands >= ib1) * (select_bands < ib2)) / (ib2 - ib1)
+
+
+def normalize_type(obj, recursive=True):
+    """convert a scalar-like object with np.ndarray type (typically from a file created with np.savez) to a Python scalar"""
+    if isinstance(obj, np.ndarray) and obj.ndim == 0:
+        return obj.item()
+    if recursive and isinstance(obj, dict):
+        return {k: normalize_type(v, recursive=True) for k, v in obj.items()}
+    return obj

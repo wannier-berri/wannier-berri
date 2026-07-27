@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 
 
-from ..utility import cached_einsum, clear_cached, arr_to_string
+from ..utility import cached_einsum, clear_cached, arr_to_string, normalize_type
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
@@ -406,6 +406,7 @@ class SymmetrizerSAWF:
         return dic
 
     def from_dict(self, dic=None, return_obj=True, **kwargs):
+        dic = {k: normalize_type(v) for k, v in dic.items()} if dic is not None else None
         dic_loc = {}
         cls = self.__class__
         for k in self.__class__.npz_tags:
