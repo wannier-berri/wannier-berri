@@ -6,9 +6,11 @@ from functools import cached_property
 from collections import defaultdict
 import glob
 
+from build.lib.build.lib.wannierberri.symmetry.sym_wann_2 import _rotate_matrix
+
 
 from ..fourier.rvectors import Rvectors
-from .system import System
+from .system import System, num_cart_dim
 from ..utility import clear_cached, one2three, pauli_xyz
 from ..symmetry.point_symmetry import PointGroup
 from ..symmetry.wyckoff_position import split_into_orbits
@@ -469,10 +471,11 @@ class System_R(System):
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
-            self.iRvec = self.iRvec[notexclude]
+            self.rvec.iRvec = self.rvec.iRvec[notexclude]
             for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
                 if X in self._XX_R:
                     self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
+            self.rvec.clear_cached()
 
     def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
         """
@@ -898,3 +901,42 @@ class System_R(System):
         """
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
+
+
+    def transform(self, 
+                  rotation_cart=None, rotation_latt=None, 
+                  translation_cart=None, translation_latt=None,
+                  time_reversal=False):
+        assert (rotation_cart is not None) != (rotation_latt is not None), "either rotation_cart or rotation_latt should be provided, but not both"
+        assert (translation_cart is not None) != (translation_latt is not None), "either translation_cart or translation_latt should be provided, but not both"
+        if rotation_latt is None:
+            rotation_latt = np.linalg.inv(self.real_lattice.T).dot(rotation_cart).dot(self.real_lattice.T)
+        elif rotation_cart is None:
+            rotation_cart = self.real_lattice.T.dot(rotation_latt).dot(np.linalg.inv(self.real_lattice.T))
+        if translation_latt is None:
+            translation_latt = np.linalg.inv(self.real_lattice).dot(translation_cart)
+        rotation_latt_int = np.round(rotation_latt).astype(int)
+        assert np.allclose(rotation_latt, rotation_latt_int), f"rotation_latt is not integer: {rotation_latt}"
+        rotation_latt = rotation_latt_int
+        print(f"{rotation_cart=}, \n{rotation_latt=}, {translation_cart=}, {translation_latt=}")
+        wannier_centers_red = self.wannier_centers_red
+        wannier_centers_red_new = (wannier_centers_red @ rotation_latt.T + translation_latt) 
+        self.set_wannier_centers(wannier_centers_red=wannier_centers_red_new)
+        self.rvec.transform(rotation_latt=rotation_latt, translation_latt=translation_latt)
+        self.clear_cached_wcc()
+        from ..symmetry.sym_wann_2 import parity_I, parity_TR
+        for key in self._XX_R:
+            XX_R = self.get_R_mat(key)
+            XX_R_new = np.copy(XX_R)
+            n_cart = num_cart_dim(XX_R)
+            for _ in range(XX_R.ndim - 3):
+                # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
+                # n_cart times puts dimensions on the right place
+                XX_R_new = np.tensordot(XX_L, rotation_cart, axes=((-n_cart,), (1,)))
+            if np.linalg.det(rotation_cart) < 0:
+                XX_R_new *= (-1)**n_cart * parity_I[key]  # parity of the operator
+            if time_reversal:
+                XX_R_new = XX_R_new.conj() * parity_TR[key]
+            self.set_R_mat(key, XX_R_new, reset=True)
+        return self
+

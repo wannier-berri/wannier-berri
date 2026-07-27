@@ -18,6 +18,46 @@ def do_rotate_vector(key):
     # return True
 
 
+parity_I = {
+    'overlap_up_down': 1,
+    'dV_soc_wann_0_0': 1,
+    'dV_soc_wann_0_1': 1,
+    'dV_soc_wann_1_1': 1,
+    'Ham': 1,
+    'AA': -1,
+    'BB': -1,
+    'CC': 1,
+    'SS': 1,
+    'OO': 1,
+    'GG': 1,
+    'FF': 1,
+    'SH': 1,
+    'SA': -1,
+    'SHA': -1,
+    'SR': -1,
+    'SHR': -1,
+}  #
+parity_TR = {
+    'overlap_up_down': 1,
+    'dV_soc_wann_0_0': -1,
+    'dV_soc_wann_0_1': -1,
+    'dV_soc_wann_1_1': -1,
+    'Ham': 1,
+    'AA': 1,
+    'BB': 1,
+    'CC': -1,
+    'SS': -1,
+    'OO': -1,
+    'GG': 1,
+    'FF': 1,
+    'SH': -1,
+    'SA': -1,
+    'SHA': -1,
+    'SR': -1,
+    'SHR': -1,
+        }
+
+
 class SymWann:
     """
     Symmetrize wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,...
@@ -101,44 +141,6 @@ class SymWann:
 
 
         # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
-        self.parity_I = {
-            'overlap_up_down': 1,
-            'dV_soc_wann_0_0': 1,
-            'dV_soc_wann_0_1': 1,
-            'dV_soc_wann_1_1': 1,
-            'Ham': 1,
-            'AA': -1,
-            'BB': -1,
-            'CC': 1,
-            'SS': 1,
-            'OO': 1,
-            'GG': 1,
-            'FF': 1,
-            'SH': 1,
-            'SA': -1,
-            'SHA': -1,
-            'SR': -1,
-            'SHR': -1,
-        }  #
-        self.parity_TR = {
-            'overlap_up_down': 1,
-            'dV_soc_wann_0_0': -1,
-            'dV_soc_wann_0_1': -1,
-            'dV_soc_wann_1_1': -1,
-            'Ham': 1,
-            'AA': 1,
-            'BB': 1,
-            'CC': -1,
-            'SS': -1,
-            'OO': -1,
-            'GG': 1,
-            'FF': 1,
-            'SH': -1,
-            'SA': -1,
-            'SHA': -1,
-            'SR': -1,
-            'SHR': -1,
-        }
 
     @property
     def logfile(self):
@@ -485,13 +487,13 @@ class SymWann:
                 # n_cart times puts dimensions on the right place
                 XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
             if symop.inversion:
-                XX_L *= self.parity_I[X] * (-1)**n_cart
+                XX_L *= parity_I[X] * (-1)**n_cart
         result = _rotate_matrix(X=XX_L,
                                 L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
                                 R=self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
         if do_rotate_vector(X):
             if symop.time_reversal:
-                result = result.conj() * self.parity_TR[X]
+                result = result.conj() * parity_TR[X]
         return result
 
 

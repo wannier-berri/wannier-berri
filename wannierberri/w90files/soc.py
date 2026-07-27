@@ -106,13 +106,17 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_gpaw(cls, calculator, calc_overlap=True):
+    def from_gpaw(cls, calculator, 
+                  calc_overlap=True,
+                  IBstart=None,
+                  IBend=None):
         """
         Create SOC from a GPAW magnetic calculation.
         """
         from gpaw.spinorbit import soc
         from ase.units import Hartree
         from gpaw import GPAW
+
         if isinstance(calculator, str):
             calculator = GPAW(calculator, txt=None)
         nspin = calculator.get_number_of_spins()
@@ -123,8 +127,9 @@ class SOC(W90_file):
             for a, D_sp in calculator.density.D_asp.items()
         }
 
-        m = calculator.get_number_of_bands()
-        print(f"number of bands = {m}")
+        NBin = calculator.get_number_of_bands()
+        IBstart, IBend, NBout = default_IBstartend(NBin, IBstart, IBend)
+        print(f"number of bands in = {NBin} , IBstart = {IBstart}, IBend = {IBend}, NBout = {NBout}")
         nk = len(calculator.get_ibz_k_points())
 
         # H_a = {}
@@ -138,29 +143,29 @@ class SOC(W90_file):
         #     H_a[a] = H_ssii
 
 
-        dV_soc = np.zeros((nk, nspin, nspin, 3, m, m), complex)
+        dV_soc = np.zeros((nk, nspin, nspin, 3, NBout, NBout), complex)
 
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
             for a, H_ssii in dVL_avii.items():
                 for s1 in range(nspin):
                     for s2 in range(nspin):
-                        P1_mi = calculator.wfs.kpt_qs[q][s1].P_ani[a].conj()
-                        P2_mi = calculator.wfs.kpt_qs[q][s2].P_ani[a].T
+                        P1_mi = calculator.wfs.kpt_qs[q][s1].P_ani[a][IBstart:IBend].conj()
+                        P2_mi = calculator.wfs.kpt_qs[q][s2].P_ani[a][IBstart:IBend].T
                         for t in range(3):
                             dV_soc[q, s1, s2, t] += P1_mi @ H_ssii[t] @ P2_mi
         dV_soc *= Hartree
 
         if nspin == 2 and calc_overlap:
-            overlap = np.zeros((nk, m, m), complex)
+            overlap = np.zeros((nk, NBout, NBout), complex)
             alpha = calculator.wfs.gd.dv / calculator.wfs.gd.N_c.prod()
             for q in range(nk):
-                psi1 = calculator.wfs.kpt_qs[q][0].psit_nG[:]
-                psi2 = calculator.wfs.kpt_qs[q][1].psit_nG[:]
+                psi1 = calculator.wfs.kpt_qs[q][0].psit_nG[IBstart:IBend]
+                psi2 = calculator.wfs.kpt_qs[q][1].psit_nG[IBstart:IBend]
                 overlap[q] += alpha * psi1.conj() @ psi2.T
                 for a, setup in enumerate(calculator.wfs.setups):
-                    P1_mi = calculator.wfs.kpt_qs[q][0].P_ani[a]
-                    P2_mi = calculator.wfs.kpt_qs[q][1].P_ani[a]
+                    P1_mi = calculator.wfs.kpt_qs[q][0].P_ani[a][IBstart:IBend]
+                    P2_mi = calculator.wfs.kpt_qs[q][1].P_ani[a][IBstart:IBend]
                     overlap_ii = setup.dO_ii
                     overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
         else:
@@ -185,3 +190,19 @@ class SOC(W90_file):
                 for t in range(self.nspin):
                     data_new[s, t] = self.data[ik][s, t][:, selected_bands[s]][:, :, selected_bands[t]]
             self.data[ik] = data_new
+
+
+def default_IBstartend(NBin, IBstart=None, IBend=None):
+    # like in irrep. TODO : in irrep separate to a function, and use here
+    if IBstart is None:
+        IBstart = 0
+    elif IBstart < 0:
+        IBstart = NBin + IBstart
+    if IBend is None:
+        IBend = NBin
+    elif IBend <= 0:
+        IBend = NBin + IBend
+    NBout = IBend - IBstart
+    if NBout <= 0:
+        raise RuntimeError("No bands to calculate")
+    return IBstart, IBend, NBout

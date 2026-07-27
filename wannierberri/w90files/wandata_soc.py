@@ -155,7 +155,9 @@ class WannierDataSOC(WannierData):
 
         if "soc" in files:
             from .soc import SOC
-            soc = SOC.from_gpaw(calculator=calculator)
+            soc = SOC.from_gpaw(calculator=calculator, 
+                                IBstart=kwargs.get("IBstart", None),
+                                IBend=kwargs.get("IBend", None),)
             data.set_file("soc", soc)
 
         if "mmn_ud" in files and nspin == 2:

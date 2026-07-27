@@ -298,6 +298,8 @@ class WannierData:
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
                   return_bandstructure=False,
+                  IBstart=None,
+                  IBend=None,
                   verbosity=0,):
         from irrep.bandstructure import BandStructure
         args_bandstructure = dict(calculator_gpaw=calculator,
@@ -308,7 +310,9 @@ class WannierData:
                                   spin_channel=spin_channel,
                                   spacegroup=spacegroup,
                                   verbosity=verbosity,
-                                  include_TR=include_TR
+                                  include_TR=include_TR,
+                                    IBstart=IBstart,
+                                    IBend=IBend
                                     )
         try:
             # irrep-3

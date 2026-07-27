@@ -304,6 +304,24 @@ class Rvectors:
         self.shifts_right_red = shifts_right_red_new
         self.clear_cached()
 
+    def transform(self, rotation_latt, translation_latt):
+        """
+        Transform the Rvectors according to the given rotation and translation.
+
+        Parameters
+        ----------
+        rotation_latt : np.ndarray
+            The rotation matrix in lattice coordinates.
+        translation_latt : np.ndarray
+            The translation vector in lattice coordinates.
+        """
+        self.shifts_left_red = self.shifts_left_red @ rotation_latt.T + translation_latt
+        self.shifts_right_red = self.shifts_right_red @ rotation_latt.T + translation_latt
+        irvec_old = np.copy(self.iRvec)
+        print (f"{rotation_latt=}, {translation_latt=}")
+        self.iRvec = (self.iRvec @ rotation_latt.T).astype(int)
+        print(np.hstack((irvec_old, self.iRvec)))
+        self.clear_cached()
 
     def reorder(self, order_left=None, order_right=None):
         """
