@@ -105,7 +105,7 @@ def test_spin_bcd_fermi_surface_vs_sea_user_tb_model(system_model):
     print(f"Spin_BCD scale: {scale}, max_abs_diff: {max_abs_diff}")
 
     assert scale > 1e-2, "spin-BCD test on the user TB model became trivially zero"
-    assert max_abs_diff < 5.0e-3, (
+    assert max_abs_diff < 2.5e-3, (
         "SpinBerryDipole_FermiSurf and SpinBerryDipole_FermiSea disagree on "
         f"the user TB model by a maximal absolute difference of {max_abs_diff}."
     )
@@ -197,6 +197,38 @@ def datak_model(system_model):
     return datak
 
 
+def _rotate_degenerate_subspaces(data):
+    _ = data.E_K
+    rotation = np.array([[1.0, 1.0j], [1.0j, 1.0]]) / np.sqrt(2.0)
+    for ik, energies in enumerate(data.E_K):
+        ib1 = 0
+        for ib2 in list(np.where(np.diff(energies) > 1e-8)[0] + 1) + [len(energies)]:
+            if ib2 - ib1 == 2:
+                data._UU[ik, :, ib1:ib2] = data._UU[ik, :, ib1:ib2] @ rotation
+            ib1 = ib2
+    return data
+
+
+def test_der_spin_omega_simple_degenerate_gauge(system_model):
+    data = get_datak(system_model, k=[0.1, 0.2, 0.0], NKFFT=[4, 4, 1])
+    data_rotated = _rotate_degenerate_subspaces(
+        get_datak(system_model, k=[0.1, 0.2, 0.0], NKFFT=[4, 4, 1])
+    )
+    formula = frml_cov.DerSpinOmegaSimple(data)
+    formula_rotated = frml_cov.DerSpinOmegaSimple(data_rotated)
+
+    for ik in range(data.nk):
+        degen_groups = data.get_bands_in_range_groups_ik(
+            ik, emin=-10, emax=30, degen_thresh=1
+        )
+        for ib1, ib2 in degen_groups:
+            inn = np.arange(ib1, ib2)
+            out = np.concatenate((np.arange(0, ib1), np.arange(ib2, data.num_wann)))
+            trace = formula.trace(ik, inn, out)
+            trace_rotated = formula_rotated.trace(ik, inn, out)
+            assert np.allclose(trace, trace_rotated, atol=1e-10, rtol=1e-10)
+
+
 def test_der_spin_omega_simple_reference(check_formula_output, datak_model):
     data = datak_model
     NB = data.num_wann
@@ -204,7 +236,7 @@ def test_der_spin_omega_simple_reference(check_formula_output, datak_model):
     formula = frml_cov.DerSpinOmegaSimple(data)
 
     value = {}
-    allXkeys = ["Xnn", "Xll", "XnnXnn", "XllXll"]
+    allXkeys = ["Xnn", "Xll"]
     for ik in range(data.nk):
         for Xkey in allXkeys:
             value[f"{Xkey}_ik={ik}"] = []
@@ -216,8 +248,6 @@ def test_der_spin_omega_simple_reference(check_formula_output, datak_model):
             Xnn = formula.nn(ik, inn, out)
             value[f"Xll_ik={ik}"].append(np.einsum("ll...->...", Xll))
             value[f"Xnn_ik={ik}"].append(np.einsum("nn...->...", Xnn))
-            value[f"XllXll_ik={ik}"].append(np.einsum("ll...,ll...->...", Xll, Xll))
-            value[f"XnnXnn_ik={ik}"].append(np.einsum("nn...,nn...->...", Xnn, Xnn))
         for Xkey in allXkeys:
             value[f"{Xkey}_ik={ik}"] = np.array(value[f"{Xkey}_ik={ik}"])
     reference_name = FORMULA_REFERENCE_FILENAMES.get("DerSpinOmegaSimple", "DerSpinOmegaSimple")

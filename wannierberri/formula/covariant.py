@@ -827,10 +827,10 @@ class DerSpinOmegaSimple(Formula_ln):
         )
         self.dJ = Matrix_GenDer_ln(self.J, Matrix_ln(dJ), Dcov(data_K))
 
+        self.V = Velocity(data_K, external_terms=False)
         self.D = data_K.Dcov
         self.dD = DerDcov(data_K)
         self.dEinv = DEinv_ln(data_K)
-        self.band_velocity = data_K.delE_K
 
     def nn(self, ik, inn, out):
         inn = np.asarray(inn)
@@ -840,17 +840,15 @@ class DerSpinOmegaSimple(Formula_ln):
         dj_nl = self.dJ.nl(ik, inn, out)
         deinv_nl = self.dEinv.nl(ik, inn, out)
 
-        delta_velocity_nl = (
-            self.band_velocity[ik][inn][:, None, :] -
-            self.band_velocity[ik][out][None, :, :]
-        )
-        ddeinv_nl = -delta_velocity_nl * deinv_nl[:, :, None] ** 2
-
         j_over_de = j_nl * deinv_nl[:, :, None, None]
-        dj_over_de = (
-            dj_nl * deinv_nl[:, :, None, None, None] +
-            j_nl[:, :, :, :, None] * ddeinv_nl[:, :, None, None, :]
+        dj_over_de = dj_nl.copy()
+        dj_over_de -= cached_einsum(
+            "mpd,plas->mlasd", self.V.nn(ik, inn, out), j_over_de
         )
+        dj_over_de += cached_einsum(
+            "mqas,qld->mlasd", j_over_de, self.V.ll(ik, inn, out)
+        )
+        dj_over_de *= deinv_nl[:, :, None, None, None]
 
         summ = cached_einsum("mlasd,lnb->mnabsd", dj_over_de, self.D.ln(ik, inn, out))
         summ += cached_einsum("mlas,lnbd->mnabsd", j_over_de, self.dD.ln(ik, inn, out))
