@@ -797,7 +797,9 @@ class DerSpinOmegaSimple(Formula_ln):
     r"""Derivative of the spin Berry curvature for simple spin current.
 
     This implementation follows the ``simple`` spin-current definition and is
-    currently limited to ``external_terms=False``.
+    currently limited to ``external_terms=False``.  The derivative is evaluated
+    with the covariant product rule for
+    :math:`\Omega^{\mathrm{spin}}=-2\,\mathrm{Im}[(J/\Delta E)D]`.
     """
 
     def __init__(self, data_K, spin_current_type="simple", external_terms=False, **parameters):
@@ -813,57 +815,46 @@ class DerSpinOmegaSimple(Formula_ln):
         self.transformTR = transform_odd
         self.transformInv = transform_odd
 
-        S = data_K.Xbar("SS")
-        dS = data_K.Xbar("SS", 1)
-        V = Velocity(data_K, external_terms=False).matrix
-        dV = data_K.Xbar("Ham", 2)
+        spin = data_K.Xbar("SS")
+        dspin = data_K.Xbar("SS", 1)
+        velocity = data_K.Xbar("Ham", 1)
+        dvelocity = data_K.Xbar("Ham", 2)
 
-        nw = dS.shape[1]
-        all_bands = np.arange(nw)
-        d_cov = Dcov(data_K)
+        self.J = SpinVelocity(data_K, spin_current_type="simple", external_terms=False)
+        dJ = _hermitize_band_matrix(
+            cached_einsum("klmsd,kmna->klnasd", dspin, velocity) +
+            cached_einsum("klms,kmnad->klnasd", spin, dvelocity)
+        )
+        self.dJ = Matrix_GenDer_ln(self.J, Matrix_ln(dJ), Dcov(data_K))
 
-        s_beta_formula = Matrix_GenDer_ln(Matrix_ln(S), Matrix_ln(dS), d_cov)
-        v_beta_formula = Matrix_GenDer_ln(Matrix_ln(V), Matrix_ln(dV), d_cov)
-
-        dEinv = np.array(data_K.dEig_inv, copy=False)
-        delta_v = data_K.delE_K[:, :, None, :] - data_K.delE_K[:, None, :, :]
-        delta_v_over_de = delta_v * dEinv[:, :, :, None]
-
-        S_beta = np.empty_like(dS)
-        V_beta = np.empty_like(dV)
-        for ik in range(S.shape[0]):
-            S_beta[ik] = s_beta_formula.nn(ik, all_bands, all_bands)
-            V_beta[ik] = v_beta_formula.nn(ik, all_bands, all_bands)
-
-        J = _hermitize_band_matrix(cached_einsum("klms,kmna->klnas", S, V))
-        J_s = _hermitize_band_matrix(cached_einsum("klmsd,kmna->klnasd", S_beta, V))
-        J_va = _hermitize_band_matrix(cached_einsum("klms,kmnad->klnasd", S, V_beta))
-
-        Jbar = J * dEinv[:, :, :, None, None]
-        Jbar_s = J_s * dEinv[:, :, :, None, None, None]
-        Jbar_va = J_va * dEinv[:, :, :, None, None, None]
-        Dbar_vb = V_beta * dEinv[:, :, :, None, None]
-
-        self.Jbar = Matrix_ln(Jbar)
-        self.Jbar_s = Matrix_ln(Jbar_s)
-        self.Jbar_va = Matrix_ln(Jbar_va)
-        self.Dbar = data_K.Dcov
-        self.Dbar_vb = Matrix_ln(Dbar_vb)
-        self.delta_helper = Matrix_ln(delta_v_over_de)
+        self.D = data_K.Dcov
+        self.dD = DerDcov(data_K)
+        self.dEinv = DEinv_ln(data_K)
+        self.band_velocity = data_K.delE_K
 
     def nn(self, ik, inn, out):
-        jbar_nl = self.Jbar.nl(ik, inn, out)
-        dbar_ln = self.Dbar.ln(ik, inn, out)
-        jbar_s_nl = self.Jbar_s.nl(ik, inn, out)
-        jbar_va_nl = self.Jbar_va.nl(ik, inn, out)
-        dbar_vb_ln = self.Dbar_vb.ln(ik, inn, out)
-        delta_helper_nl = self.delta_helper.nl(ik, inn, out)
-        summ = 0.0
-        summ += -2.0 * cached_einsum("mlasd,lnb->mnabsd", jbar_s_nl, dbar_ln).imag  # Term_s
-        summ += -2.0 * cached_einsum("mlasd,lnb->mnabsd", jbar_va_nl, dbar_ln).imag  # Term_va
-        summ += +2.0 * cached_einsum("mlas,lnbd->mnabsd", jbar_nl, dbar_vb_ln).imag  # Term_vb
-        summ += +4.0 * cached_einsum("mlas,lnb,mld->mnabsd", jbar_nl, dbar_ln, delta_helper_nl).imag  # Term_delta
-        return summ
+        inn = np.asarray(inn)
+        out = np.asarray(out)
+
+        j_nl = self.J.nl(ik, inn, out)
+        dj_nl = self.dJ.nl(ik, inn, out)
+        deinv_nl = self.dEinv.nl(ik, inn, out)
+
+        delta_velocity_nl = (
+            self.band_velocity[ik][inn][:, None, :] -
+            self.band_velocity[ik][out][None, :, :]
+        )
+        ddeinv_nl = -delta_velocity_nl * deinv_nl[:, :, None] ** 2
+
+        j_over_de = j_nl * deinv_nl[:, :, None, None]
+        dj_over_de = (
+            dj_nl * deinv_nl[:, :, None, None, None] +
+            j_nl[:, :, :, :, None] * ddeinv_nl[:, :, None, None, :]
+        )
+
+        summ = cached_einsum("mlasd,lnb->mnabsd", dj_over_de, self.D.ln(ik, inn, out))
+        summ += cached_einsum("mlas,lnbd->mnabsd", j_over_de, self.dD.ln(ik, inn, out))
+        return -2.0 * summ.imag
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()

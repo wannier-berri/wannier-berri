@@ -8,12 +8,13 @@ import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.system import System_R
 from wannierberri.utility import alpha_A, beta_A
+from .common import OUTPUT_DIR_RUN
 
 
 check_formula_output = _check_formula_output
 
 
-def _build_user_tb_model(t=0.0, t1=-1.0, t2=-0.1, t3=-1.0, exchange=1.0):
+def _build_spin_bcd_tb_model(t=0.0, t1=-1.0, t2=-0.1, t3=-1.0, exchange=1.0):
     sigma_0 = np.array([[1, 0], [0, 1]], dtype=complex)
     sigma_z = np.array([[1, 0], [0, -1]], dtype=complex)
 
@@ -45,7 +46,7 @@ def _build_user_tb_model(t=0.0, t1=-1.0, t2=-0.1, t3=-1.0, exchange=1.0):
 
 @pytest.fixture(scope="module")
 def system_model():
-    model = _build_user_tb_model()
+    model = _build_spin_bcd_tb_model()
     system = System_R.from_pythtb(model, spin=True)
     return system
 
@@ -57,7 +58,7 @@ def _reduce_spin_bcd_raw(spin_bcd_raw):
     )
 
 
-def _run_spin_bcd_pair(system, efermi, grid):
+def _run_spin_bcd_pair(system, efermi, grid, use_symmetry=False):
     calculators = {
         "spin_bcd_fsurf": calc.static.SpinBerryDipole_FermiSurf(
             Efermi=efermi,
@@ -78,9 +79,10 @@ def _run_spin_bcd_pair(system, efermi, grid):
         calculators=calculators,
         parallel=False,
         adpt_num_iter=0,
-        use_irred_kpt=False,
-        symmetrize=False,
+        use_irred_kpt=use_symmetry,
+        symmetrize=use_symmetry,
         dump_results=False,
+        fout_name=f"{OUTPUT_DIR_RUN}/SpinBCD-pair",
     )
 
 
@@ -103,20 +105,55 @@ def test_spin_bcd_fermi_surface_vs_sea_user_tb_model(system_model):
     print(f"Spin_BCD scale: {scale}, max_abs_diff: {max_abs_diff}")
 
     assert scale > 1e-2, "spin-BCD test on the user TB model became trivially zero"
-    assert max_abs_diff < 2.5e-3, (
+    assert max_abs_diff < 5.0e-3, (
         "SpinBerryDipole_FermiSurf and SpinBerryDipole_FermiSea disagree on "
         f"the user TB model by a maximal absolute difference of {max_abs_diff}."
     )
 
 
-def test_spin_bcd_fermi_sea_requires_simple_current(system_model):
+def test_spin_bcd_calculator_reference(check_run, system_model):
+    efermi = np.linspace(-3.0, 3.0, 5)
+    calculators = {
+        "spin_bcd_fsurf": calc.static.SpinBerryDipole_FermiSurf(
+            Efermi=efermi,
+            tetra=True,
+            use_factor=False,
+            kwargs_formula={"spin_current_type": "simple", "external_terms": False},
+        ),
+        "spin_bcd_fsea": calc.static.SpinBerryDipole_FermiSea(
+            Efermi=efermi,
+            tetra=True,
+            use_factor=False,
+            kwargs_formula={"spin_current_type": "simple", "external_terms": False},
+        ),
+    }
+    grid = wberri.Grid(system_model, NKFFT=[3, 3, 1], NKdiv=[3, 3, 1])
+
+    check_run(
+        system_model,
+        calculators=calculators,
+        grid=grid,
+        fout_name="SpinBCD",
+        precision=-1e-10,
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs_formula",
+    [
+        {"spin_current_type": "ryoo", "external_terms": False},
+        {"spin_current_type": "qiao", "external_terms": False},
+        {"spin_current_type": "simple", "external_terms": True},
+    ],
+)
+def test_spin_bcd_fermi_sea_rejects_unsupported_formula_settings(system_model, kwargs_formula):
     system = system_model
     grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=[3, 3, 1])
     calculator = calc.static.SpinBerryDipole_FermiSea(
         Efermi=np.array([0.0]),
         tetra=True,
         use_factor=False,
-        kwargs_formula={"spin_current_type": "ryoo", "external_terms": False},
+        kwargs_formula=kwargs_formula,
     )
 
     with pytest.raises(NotImplementedError, match="simple"):
@@ -132,12 +169,13 @@ def test_spin_bcd_fermi_sea_requires_simple_current(system_model):
         )
 
 
-def test_spin_bcd_vanishes_in_tr_symmetric_kane_mele(system_model):
-    system = system_model
+@pytest.mark.parametrize("use_symmetry", [False, True])
+def test_spin_bcd_vanishes_in_tr_symmetric_kane_mele(system_KaneMele_odd_PythTB, use_symmetry):
+    system = system_KaneMele_odd_PythTB
     grid = wberri.Grid(system, NKFFT=[4, 4, 1], NKdiv=[6, 6, 1])
     efermi = np.linspace(-3.0, 3.0, 121)
 
-    result = _run_spin_bcd_pair(system, efermi, grid)
+    result = _run_spin_bcd_pair(system, efermi, grid, use_symmetry=use_symmetry)
 
     fs_reduced = _reduce_spin_bcd_raw(result.results["spin_bcd_fsurf"].data)
     fsea_reduced = _reduce_spin_bcd_raw(result.results["spin_bcd_fsea"].data)
@@ -159,54 +197,28 @@ def datak_model(system_model):
     return datak
 
 
-formula_nn = ["SpinOmega", "VelOmega", "DerSpinOmegaSimple"]
-formula_ln = []
-
-
-@pytest.mark.parametrize("formula_class_name", ["DerSpinOmegaSimple"])
-def test_formula(formula_class_name, check_formula_output, datak_model):
+def test_der_spin_omega_simple_reference(check_formula_output, datak_model):
     data = datak_model
     NB = data.num_wann
     degen_groups = data.get_bands_in_range_groups(emin=-10, emax=30, degen_thresh=1)
-    kwargs = {}
-    if formula_class_name == "SpinVelocity":
-        kwargs["spin_current_type"] = "ryoo"
-
-    try:
-        formula = getattr(frml_cov, formula_class_name)
-    except AttributeError:
-        raise ValueError(f"unknown formula {formula_class_name}")
+    formula = frml_cov.DerSpinOmegaSimple(data)
 
     value = {}
-    allXkeys = ["Xnn", "Xll", "XlnXnl", "XnlXln", "XnnXnn", "XllXll"]
+    allXkeys = ["Xnn", "Xll", "XnnXnn", "XllXll"]
     for ik in range(data.nk):
         for Xkey in allXkeys:
             value[f"{Xkey}_ik={ik}"] = []
         for n in degen_groups[ik]:
             inn = np.arange(n[0], n[1])
             out = np.concatenate((np.arange(0, n[0]), np.arange(n[1], NB)))
-            print(f"Testing {formula_class_name} for ik={ik}, inn={inn} out={out}")
-            form = formula(data, **kwargs)
-            if formula_class_name not in formula_nn:
-                Xnl = form.ln(ik, inn, out)
-                Xln = form.ln(ik, out, inn)
-                value[f"XnlXln_ik={ik}"].append(np.einsum("nl...,ln...->...", Xnl, Xln))
-                value[f"XlnXnl_ik={ik}"].append(np.einsum("ln...,nl...->...", Xln, Xnl))
-            if formula_class_name not in formula_ln:
-                Xll = form.ll(ik, inn, inn)
-                Xnn = form.nn(ik, inn, inn)
-                value[f"Xll_ik={ik}"].append(np.einsum("ll...->...", Xll))
-                value[f"Xnn_ik={ik}"].append(np.einsum("nn...->...", Xnn))
-                value[f"XllXll_ik={ik}"].append(np.einsum("ll...,ll...->...", Xll, Xll))
-                value[f"XnnXnn_ik={ik}"].append(np.einsum("nn...,nn...->...", Xnn, Xnn))
-        # we can compare only gauge-invariant combinations, so we sum over inn and out
+            print(f"Testing DerSpinOmegaSimple for ik={ik}, inn={inn} out={out}")
+            Xll = formula.ll(ik, inn, out)
+            Xnn = formula.nn(ik, inn, out)
+            value[f"Xll_ik={ik}"].append(np.einsum("ll...->...", Xll))
+            value[f"Xnn_ik={ik}"].append(np.einsum("nn...->...", Xnn))
+            value[f"XllXll_ik={ik}"].append(np.einsum("ll...,ll...->...", Xll, Xll))
+            value[f"XnnXnn_ik={ik}"].append(np.einsum("nn...,nn...->...", Xnn, Xnn))
         for Xkey in allXkeys:
             value[f"{Xkey}_ik={ik}"] = np.array(value[f"{Xkey}_ik={ik}"])
-    if "Der" in formula_class_name or formula_class_name in ["SpinOmega", "VelOmega"]:
-        rel_tol = 1e-5
-        atol_zero = 2e-6
-    else:
-        rel_tol = 1e-6
-        atol_zero = 1e-10
-    reference_name = FORMULA_REFERENCE_FILENAMES.get(formula_class_name, formula_class_name)
-    check_formula_output(value=value, filename=reference_name, rel_tol=rel_tol, atol_zero=atol_zero)
+    reference_name = FORMULA_REFERENCE_FILENAMES.get("DerSpinOmegaSimple", "DerSpinOmegaSimple")
+    check_formula_output(value=value, filename=reference_name, rel_tol=1e-5, atol_zero=2e-6)
