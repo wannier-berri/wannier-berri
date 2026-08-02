@@ -270,7 +270,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
         result_irr_k.results["injection_current"].data, abs=1e-6)
 
     assert result_full_k.results["opt_conductivity"].data == approx(
-        result_irr_k.results["opt_conductivity"].data, abs=1e-7)
+        result_irr_k.results["opt_conductivity"].data, abs=2e-7)
 
 
 

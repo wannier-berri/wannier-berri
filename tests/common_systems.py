@@ -371,6 +371,12 @@ def system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc):
 
 
 @pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle):
+    return system_Fe_gpaw_soc_angle.get_system_R()
+
+
+
+@pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_angle_symmetrized(get_system_Fe_gpaw_soc):
     return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, do_symmetrize=True)
 

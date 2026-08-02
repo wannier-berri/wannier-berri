@@ -266,15 +266,18 @@ class Path(GridAbstract):
                           for x in k) + ((" <--- " + self.labels[i]) if i in self.labels else "") + (
                               ("\n" + "-" * 20) if i in self.breaks else "") for i, k in enumerate(self.K_list)))
 
-    def get_K_list(self, use_symmetry=False):
+    def get_K_list(self, use_symmetry=False, k_batch=None):
         """ returns the list of K-points"""
         if use_symmetry:
             warnings.warn("symmetry is not used for a tabulation along path")
         print("generating K_list")
-        K_list = [
-            KpointBZpath(K=K, pointgroup=self.pointgroup)
-            for K in self.K_list
-        ]
+        K_list = []
+        for ik in range(0, len(self.K_list), k_batch):
+            K = self.K_list[ik:ik + k_batch]
+            if len(K) == 0:
+                break
+            K_list.append(KpointBZpath(K=K, pointgroup=self.pointgroup))
+
         print("Done ")
         return K_list
 

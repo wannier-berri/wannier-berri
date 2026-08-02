@@ -196,12 +196,14 @@ class MMN(W90_file):
 
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
-        if hasattr(bandstructure, "kpoints_paw"):
+        if hasattr(bandstructure, "kpoints_paw") and bandstructure.kpoints_paw is not None:
             use_paw = True
             kpoints_in = bandstructure.kpoints_paw
+            print(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         else:
             use_paw = False
             kpoints_in = bandstructure.kpoints
+            print(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 

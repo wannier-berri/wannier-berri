@@ -137,7 +137,8 @@ def run(
         adpt_fac=1,
         print_progress_step_time=5,
         print_progress_step_percent=1,
-        data_k_class=None
+        data_k_class=None,
+        k_batch=50
 ):
     """
     The function to run a calculation. Substitutes the old (obsolete and removed) `integrate()` and `tabulate()`
@@ -255,7 +256,7 @@ def run(
     remote_parameters = {'_system': system, '_grid': grid, '_calculators': calculators, 'symmetrize': symmetrize}
 
     def paralfunc(Kpoint, _system, _grid, _calculators, symmetrize):
-        data = data_k_class(_system, Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
+        data = data_k_class(_system, dK=Kpoint.Kp_fullBZ, grid=_grid, Kpoint=Kpoint, **parameters_K)
         resultdic = {k: v(data) for k, v in _calculators.items()}
         del data
         result = ResultDict(resultdic)
@@ -286,7 +287,7 @@ def run(
             Kp.set_factor(fac)
         result_all = sum(Kp.get_result_factor()  for Kp in K_list)
     else:
-        K_list = grid.get_K_list(use_symmetry=use_irred_kpt)
+        K_list = grid.get_K_list(use_symmetry=use_irred_kpt, k_batch=k_batch)
         factors = np.array([Kp.factor for Kp in K_list])
         print("Done, sum of weights:{}".format(sum(Kp.factor for Kp in K_list)))
         start_iter = 0

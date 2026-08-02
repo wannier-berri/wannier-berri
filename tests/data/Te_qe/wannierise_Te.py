@@ -4,7 +4,7 @@ import wannierberri as wb
 prefix = "tellurium"
 wandata = wb.wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win", "uhu", "spn"])
 
-bandstructure = BandStructure(code='espresso',
+bandstructure = BandStructure.from_espresso(
                             prefix=prefix,
                             Ecut=100,
                             normalize=False,

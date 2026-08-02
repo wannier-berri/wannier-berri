@@ -13,8 +13,7 @@ from .common import OUTPUT_DIR, ROOT_DIR
 
 def test_find_projections_diamond():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
-    bandstructure = BandStructure(prefix=data_dir + "/di", code="espresso",
-                            Ecut=100, include_TR=False)
+    bandstructure = BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100, include_TR=False)
     spacegroup = bandstructure.spacegroup
     # spacegroup.show()
 

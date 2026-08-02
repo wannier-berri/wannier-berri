@@ -8,7 +8,7 @@ from wannierberri.system import System_R
 ray_init()
 path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
-bandstructure = BandStructure(code='espresso',
+bandstructure = BandStructure.from_espresso(
                             prefix=path_data + "/Fe",
                             magmom=[[0, 0, 1.]],
                             include_TR=True,

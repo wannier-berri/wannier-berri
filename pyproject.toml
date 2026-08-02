@@ -68,7 +68,7 @@ tests = [
     "pytest-cov",
     "pytest-mock",
     "pythtb",
-    "gpaw",
+    "gpaw<=25.7.0",
     "tbmodels",
     "flake8",
     "autopep8",

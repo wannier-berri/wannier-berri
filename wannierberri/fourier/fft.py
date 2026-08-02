@@ -4,6 +4,8 @@ import warnings
 
 import numpy as np
 
+from ..utility import cached_einsum
+
 try:
     import pyfftw
     PYFFTW_IMPORTED = True
@@ -55,16 +57,28 @@ def execute_fft(inp, axes, inverse=False, destroy=True, fftlib='fftw'):
 
 class FFT_R_to_k:
 
-    def __init__(self, iRvec, NKFFT, num_wann, fftlib='fftw', name=None):
+    def __init__(self, iRvec, NKFFT=None, num_wann=1, fftlib='fftw', name=None, k_list=None):
         t0 = time()
-        self.NKFFT = tuple(NKFFT)
-        self.num_wann = num_wann
-        self.name = name
         fftlib = fftlib.lower()
         assert fftlib in ('fftw', 'numpy', 'slow'), f"fftlib '{fftlib}' is unknown/not supported"
+        self.lib = fftlib
+        self.iRvec = np.copy(iRvec)
+        if k_list is not None:
+            assert NKFFT is None, "either NKFFT or k_list must be provided, but not both"
+            self.lib = "slow_path"
+            self.k_list = k_list
+            self.axes_hermitean = (1, 2)
+        else:
+            assert NKFFT is not None, "either NKFFT or k_list must be provided, but not both"
+            self.NKFFT = tuple(NKFFT)
+            self.iRvec = self.iRvec % self.NKFFT
+            self.axes_hermitean = (3, 4)
+        self.num_wann = num_wann
+        self.name = name
+
         if fftlib == 'fftw' and not PYFFTW_IMPORTED:
             fftlib = 'numpy'
-        self.lib = fftlib
+
         if fftlib == 'fftw':
             shape = self.NKFFT + (self.num_wann, self.num_wann)
             fft_in = pyfftw.empty_aligned(shape, dtype='complex128')
@@ -75,7 +89,7 @@ class FFT_R_to_k:
                 axes=(0, 1, 2),
                 flags=('FFTW_ESTIMATE', 'FFTW_DESTROY_INPUT'),
                 direction='FFTW_BACKWARD')
-        self.iRvec = iRvec % self.NKFFT
+
         self.nRvec = iRvec.shape[0]
         self.time_init = time() - t0
         self.time_call = 0
@@ -105,6 +119,14 @@ class FFT_R_to_k:
         exponent for Fourier transform exp(1j*k*R)
         """
         return [np.exp(2j * np.pi / self.NKFFT[i]) ** np.arange(self.NKFFT[i]) for i in range(3)]
+
+    @cached_property
+    def exponent_k_list(self):
+        """
+        exponent for Fourier transform exp(1j*k*R) for a list of k-points
+        """
+        return np.exp(2j * np.pi * (self.k_list @ self.iRvec.T))
+
 
     def __call__(self, AAA_R, hermitian=False, antihermitean=False, reshapeKline=True):
         """
@@ -143,6 +165,8 @@ class FFT_R_to_k:
                         ] for k[1] in range(self.NKFFT[1])
                     ] for k[0] in range(self.NKFFT[0])
                 ])
+        elif self.lib == 'slow_path':
+            AAA_K = cached_einsum('ij,j...->i...', self.exponent_k_list, AAA_R)
         else:
             assert self.nRvec == shapeA[0]
             assert self.num_wann == shapeA[1] == shapeA[2]
@@ -155,11 +179,11 @@ class FFT_R_to_k:
 
         # TODO - think if fftlib transform of half of matrix makes sense
         if hermitian:
-            AAA_K = 0.5 * (AAA_K + AAA_K.swapaxes(3, 4).conj())
+            AAA_K = 0.5 * (AAA_K + AAA_K.swapaxes(*self.axes_hermitean).conj())
         elif antihermitean:
-            AAA_K = 0.5 * (AAA_K - AAA_K.swapaxes(3, 4).conj())
+            AAA_K = 0.5 * (AAA_K - AAA_K.swapaxes(*self.axes_hermitean).conj())
 
-        if reshapeKline:
+        if reshapeKline and self.lib != 'slow_path':
             AAA_K = AAA_K.reshape((np.prod(self.NKFFT),) + shapeA[1:])
         self.time_call += time() - t0
         self.n_call += 1

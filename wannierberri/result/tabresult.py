@@ -22,7 +22,7 @@ class TABresult(Result):
         self.save_mode = save_mode
         self.results = results
         for k, res in results.items():
-            assert len(kpoints) == res.nk
+            assert len(kpoints) == res.nk, f"number of kpoints {len(kpoints)} does not match number of kpoints in result {res.nk} for quantity {k}"
             if hasattr(res, "nband"):
                 assert self.nband == res.nband
 
