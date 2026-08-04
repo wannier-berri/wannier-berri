@@ -210,7 +210,7 @@ class EBRsearcher:
 
         lfixed = np.zeros(self.num_trial_projections, dtype=bool)
         lfixed[np.array(fixed, dtype=int)] = True
-        print(f"{self.irreps_per_projection_vectors=}, \n{self.irreps_outer_vectors=}, \n{lfixed=}, \n{self.proj_max_multiplicity=}")
+        self.debug_msg(f"{self.irreps_per_projection_vectors=}, \n{self.irreps_outer_vectors=}, \n{lfixed=}, \n{self.proj_max_multiplicity=}")
         combinations = find_combinations_max(
             vectors=self.irreps_per_projection_vectors[0],
             vector_max=self.irreps_outer_vectors[0],
