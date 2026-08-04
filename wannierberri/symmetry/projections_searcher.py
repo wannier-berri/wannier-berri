@@ -39,7 +39,7 @@ class EBRsearcher:
       Nothing is lost for a non-magnetic system: TR relates k to -k, and the
       little-group characters at -k are the conjugates of those at k, so the
       constraint at a TR-folded point is the one at its partner, conjugated.
-      Genuinely magnetic groups (type III/IV) are still rejected.
+      Genuinely magnetic groups (type III/IV) are rejected.
 
     * Not tested with spinor wavefunctions. It is recommended to search for
       projections on a scalar calculation (no spin). The projections found this
@@ -75,7 +75,7 @@ class EBRsearcher:
             f"(number_str={spacegroup.number_str})")
 
         self.isym_little = [sorted(set(l) & set(self.isym_unitary))
-                            for l in symmetrizer.isym_little]
+                            for l in symmetrizer.isym_little] #keep only unitary symmetries in the little group
         self.NKirr = symmetrizer.NKirr
         self.nsym_little = [len(l) for l in self.isym_little]
         self.debug = debug
@@ -412,8 +412,7 @@ def get_all_possible_irreps_conj(symmetrizer, spacegroup_unitary=None,
                                  isym_unitary=None, isym_little=None):
     """Characters of every irrep of the unitary little group, per irreducible k.
 
-    spacegroup_unitary / isym_unitary / isym_little default to the full group,
-    which reproduces the previous behaviour for a colourless (type-I) group.
+    spacegroup_unitary / isym_unitary / isym_little default to the full group for a colourless (type-I) group.
     """
     if spacegroup_unitary is None:
         spacegroup_unitary = symmetrizer.spacegroup
@@ -439,9 +438,10 @@ def grey_group_parts(sg):
     Type II is the only magnetic type containing pure 1' (identity rotation,
     zero translation, time-reversal): type III combines TR only with
     non-identity operations, and type IV's antiunitary identity carries a
-    translation. So this separates II from III/IV with no BNS lookup table.
+    translation. So this separates II from III/IV.
     """
-    tr = [bool(getattr(s, "time_reversal", False)) for s in sg.symmetries]
+    assert hasattr(sg.symmetries[0], "time_reversal")
+    tr = [bool(s.time_reversal) for s in sg.symmetries]
     unitary = [i for i, t in enumerate(tr) if not t]
     is_grey = any(
         t and np.allclose(s.rotation, np.eye(3)) and np.allclose(s.translation, 0)
@@ -459,6 +459,4 @@ def unitary_spacegroup(sg, isym_unitary):
         return sg
     sg_u = copy.deepcopy(sg)
     sg_u.symmetries = [sg.symmetries[i] for i in isym_unitary]
-    assert len(sg_u.symmetries) == len(isym_unitary), \
-        "SpaceGroup.symmetries is not assignable in this version of irrep"
     return sg_u
