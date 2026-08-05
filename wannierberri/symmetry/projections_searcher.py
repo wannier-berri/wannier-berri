@@ -75,7 +75,7 @@ class EBRsearcher:
             f"(number_str={spacegroup.number_str})")
 
         self.isym_little = [sorted(set(l) & set(self.isym_unitary))
-                            for l in symmetrizer.isym_little] #keep only unitary symmetries in the little group
+                            for l in symmetrizer.isym_little]  # keep only unitary symmetries in the little group
         self.NKirr = symmetrizer.NKirr
         self.nsym_little = [len(l) for l in self.isym_little]
         self.debug = debug
