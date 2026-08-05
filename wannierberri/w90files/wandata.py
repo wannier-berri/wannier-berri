@@ -461,8 +461,18 @@ class WannierData:
                      formatted=tuple(),
                      files=tuple(),
                      bkvec=None,
-                     readnnkp=True
+                     readnnkp=None
                      ):
+        """Create WannierData from Wannier90 files.
+
+        Parameters
+        ----------
+        readnnkp : bool or None
+            If ``True``, use the ``.nnkp`` file to construct the B-vectors when
+            it is available. If ``False``, construct them from the checkpoint.
+            If ``None`` (default), use the checkpoint when ``chk`` is included
+            in ``files`` and otherwise use the ``.nnkp`` file when available.
+        """
         self = cls()
         self.seedname = copy(seedname)
         formatted = [s.lower() for s in formatted]
@@ -470,6 +480,7 @@ class WannierData:
 
         _read_files_loc = [f.lower() for f in files]
         assert 'win' in _read_files_loc or 'chk' in _read_files_loc, "either 'win' or 'chk' should be in readfiles"
+        chk_was_requested = 'chk' in _read_files_loc
         if 'win' in _read_files_loc:
             win = WIN.from_w90_file(seedname=seedname)
             self.set_file('win', win)
@@ -480,8 +491,9 @@ class WannierData:
         else:
             self.set_chk(read=False)
 
+        use_nnkp = not chk_was_requested if readnnkp is None else readnnkp
         if bkvec is None:
-            if os.path.exists(seedname + ".nnkp") and readnnkp:
+            if os.path.exists(seedname + ".nnkp") and use_nnkp:
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
                                             bk_complete_tol=1e-5)
