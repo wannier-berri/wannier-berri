@@ -1,7 +1,11 @@
+import warnings
+
 import numpy as np
 
+from ..utility import conjugate_basis
 from .utility import get_mp_grid
 from .io import sparselist_to_dict
+from .nnkp import parse_nnkp
 from .w90file import W90_file, check_shape
 
 
@@ -95,6 +99,7 @@ class BKVectors(W90_file):
     def from_nnkp(cls, filename, kmesh_tol=1e-5,
                 bk_complete_tol=1e-5,
                 kptirr=None,
+                real_lattice=None,
                 params=None):
         """Create BKVectors from a NNKP file
 
@@ -102,6 +107,9 @@ class BKVectors(W90_file):
         ----------
         filename : str
             the path to the NNKP file
+        real_lattice : np.ndarray(shape=(3, 3), dtype=float), optional
+            Direct lattice to use for constructing the reciprocal lattice. If
+            omitted, the direct lattice in the NNKP file is used.
 
         Returns
         -------
@@ -109,19 +117,40 @@ class BKVectors(W90_file):
             the BKVectors object
         """
         cls = BKVectors
-        from wannier90io import parse_nnkp_raw
-        nnkp = parse_nnkp_raw(open(filename).read())
+        with open(filename) as f:
+            nnkp = parse_nnkp(f.read(), parse_optional=False)
         nnkpts = np.array([b for b in nnkp["nnkpts"] if b[0] == 1])
 
-        kpoints_red = np.array(nnkp["kpoints"]["kpoints"])
+        kpoints_red = nnkp["kpoints"]
         bk_red = kpoints_red[nnkpts[:, 1] - 1] + nnkpts[:, 2:5] - kpoints_red[0, None, :]
-        if params is not None and "recip_lattice" in params:
-            recip_lattice = params["recip_lattice"]
+        if params is not None:
+            lattice_parameters = {key for key in ("real_lattice", "recip_lattice") if key in params}
+            if real_lattice is not None and lattice_parameters:
+                raise ValueError("lattice was provided both directly and in params")
+            if len(lattice_parameters) > 1:
+                raise ValueError("params should contain only one of real_lattice and recip_lattice")
+            if "real_lattice" in params:
+                real_lattice = params["real_lattice"]
+            elif "recip_lattice" in params:
+                warnings.warn(
+                    "params['recip_lattice'] is deprecated; pass real_lattice directly instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                real_lattice = conjugate_basis(params["recip_lattice"])
+        nnkp_real_lattice = nnkp["real_lattice"]
+        if real_lattice is None:
+            real_lattice = nnkp_real_lattice
         else:
-            recip_lattice = nnkp["reciprocal_lattice"]
-            recip_lattice = np.array([recip_lattice[i] for i in ["b1", "b2", "b3"]])
+            real_lattice = np.array(real_lattice, dtype=float)
+            if real_lattice.shape != (3, 3):
+                raise ValueError(f"real_lattice should have shape (3, 3), got {real_lattice.shape}")
+            if not np.allclose(real_lattice, nnkp_real_lattice, rtol=1e-7, atol=1e-7):
+                raise ValueError("provided real_lattice is inconsistent with the direct lattice in the NNKP file")
+        recip_lattice = conjugate_basis(real_lattice)
         mp_grid = get_mp_grid(kpoints_red)
         bk_grid = np.round(bk_red * np.array(mp_grid)[None, :]).astype(int)
+        bk_grid_nnkp_order = bk_grid.copy()
         bk_red = bk_grid / np.array(mp_grid)[None, :]  # this is done to avoid numerical issues
         # due to limited precision of kpoints in the nnkp file
         bk_cart = bk_red @ recip_lattice
@@ -130,6 +159,13 @@ class BKVectors(W90_file):
         wk, bk_cart, bk_grid = cls.get_shell_weights(shell_kcart=shell_kcart,
                                                     shell_klatt=shell_klatt,
                                                     bk_complete_tol=bk_complete_tol)
+        order = {tuple(vector): i for i, vector in enumerate(bk_grid_nnkp_order)}
+        if len(bk_grid) != len(order) or {tuple(vector) for vector in bk_grid} != set(order):
+            raise RuntimeError("constructed B-vectors do not match the NNKP neighbour list")
+        restore_nnkp_order = np.argsort([order[tuple(vector)] for vector in bk_grid])
+        wk = wk[restore_nnkp_order]
+        bk_cart = bk_cart[restore_nnkp_order]
+        bk_grid = bk_grid[restore_nnkp_order]
         G, neighbours = cls.find_G_and_neighbours(kpoints_red, bk_grid, mp_grid, kptirr=kptirr)
         kpt_grid = np.rint(kpoints_red * np.array(mp_grid)[None, :]).astype(int)
 

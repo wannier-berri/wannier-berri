@@ -7,6 +7,7 @@ from wannierberri.w90files.wandata import BKVectors, CheckPoint, WIN, WannierDat
 
 def _checkpoint():
     return SimpleNamespace(
+        real_lattice=np.eye(3),
         recip_lattice=np.eye(3),
         mp_grid=np.ones(3, dtype=int),
         kpt_red=np.zeros((1, 3)),
@@ -40,11 +41,12 @@ def _patch_w90_readers(monkeypatch, calls):
         "from_kpoints",
         classmethod(lambda cls, **kwargs: calls.append("chk") or from_chk),
     )
-    monkeypatch.setattr(
-        BKVectors,
-        "from_nnkp",
-        classmethod(lambda cls, filename, **kwargs: calls.append("nnkp") or from_nnkp),
-    )
+
+    def read_nnkp(cls, filename, **kwargs):
+        calls.append(("nnkp", kwargs.get("real_lattice")))
+        return from_nnkp
+
+    monkeypatch.setattr(BKVectors, "from_nnkp", classmethod(read_nnkp))
     return from_chk, from_nnkp
 
 
@@ -69,7 +71,9 @@ def test_from_w90_files_auto_uses_nnkp_with_win(monkeypatch, tmp_path):
     wandata = WannierData.from_w90_files(seedname=seedname, files=["win"])
 
     assert wandata.bkvec is from_nnkp
-    assert calls == ["nnkp"]
+    assert len(calls) == 1
+    assert calls[0][0] == "nnkp"
+    assert np.array_equal(calls[0][1], np.eye(3))
 
 
 def test_from_w90_files_explicit_readnnkp_overrides_auto(monkeypatch, tmp_path):
@@ -85,7 +89,9 @@ def test_from_w90_files_explicit_readnnkp_overrides_auto(monkeypatch, tmp_path):
     )
 
     assert wandata.bkvec is from_nnkp
-    assert calls == ["nnkp"]
+    assert len(calls) == 1
+    assert calls[0][0] == "nnkp"
+    assert np.array_equal(calls[0][1], np.eye(3))
 
 
 def test_from_w90_files_explicit_skip_nnkp(monkeypatch, tmp_path):

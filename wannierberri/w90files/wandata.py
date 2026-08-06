@@ -186,7 +186,8 @@ class WannierData:
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
                                             bk_complete_tol=1e-5,
-                                            kptirr=kptirr)
+                                            kptirr=kptirr,
+                                            real_lattice=bandstructure.lattice)
             else:
                 bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
                                             mp_grid=mp_grid,
@@ -469,7 +470,9 @@ class WannierData:
         ----------
         readnnkp : bool or None
             If ``True``, use the ``.nnkp`` file to construct the B-vectors when
-            it is available. If ``False``, construct them from the checkpoint.
+            it is available. The reciprocal lattice is always reconstructed
+            from the direct lattice in the checkpoint or ``.win`` file. If
+            ``False``, construct the B-vectors entirely from the checkpoint.
             If ``None`` (default), use the checkpoint when ``chk`` is included
             in ``files`` and otherwise use the ``.nnkp`` file when available.
         """
@@ -496,7 +499,8 @@ class WannierData:
             if os.path.exists(seedname + ".nnkp") and use_nnkp:
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
-                                            bk_complete_tol=1e-5)
+                                            bk_complete_tol=1e-5,
+                                            real_lattice=self.chk.real_lattice)
             else:
                 assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file does not exist"
                 bkvec = BKVectors.from_kpoints(recip_lattice=self.chk.recip_lattice,
