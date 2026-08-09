@@ -101,7 +101,8 @@ class SystemSOC(System_R):
     def set_soc_R(self, soc,
                   chk_up, chk_down=None,
                   kptirr=None, weights_k=None, ws_dist_tol=1e-5,
-                  altermag_kmap=None, 
+                  altermag_kmap=None, altermag_kmap_isym=None,
+                  symmetrizer_up=None, 
                   theta=0, phi=0, alpha_soc=1.0):
         """
         Set the spin-orbit coupling matrix for a given k-point.
@@ -145,10 +146,11 @@ class SystemSOC(System_R):
                 assert np.allclose(chk_up.kpt_red, chk_down.kpt_red), f"k-point grids should match for up and down systems ({chk_up.kpt_red} != {chk_down.kpt_red})"
                 v_matrix_list_down = chk_down.v_matrix
             else:
-                v_matrix_list_down = [v_matrix_list_up[ik1] for ik1 in altermag_kmap]
-
+                v_matrix_list_down = [symmetrizer_up.rotate_U(v_matrix_list_up[ik1], 
+                                                              ikirr=ik1,
+                                                              isym=isym) 
+                                      for ik1, isym in zip(altermag_kmap, altermag_kmap_isym)]
         v_matrix_list = [v_matrix_list_up, v_matrix_list_down]
-
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
         overlap_q_H = soc.overlap
         dV_soc = soc.data
@@ -410,10 +412,12 @@ class SystemSOC(System_R):
             altermag_rot = cell["altermagnetic_rotation_latt"]
             altermag_trans = cell["altermagnetic_translation_latt"]
             altermag_kmap = cell["altermagnetic_k_mapping"]
+            altermag_kmap_isym = cell["altermagnetic_k_mapping_isym"]
             altermagnetic = True
         else:
             altermagnetic = False
             altermag_kmap = None
+            altermag_kmap_isym = None
 
         if symmetrize:
             symmetrizer_up = wandata.get_file_ud('up', 'symmetrizer')
@@ -437,6 +441,8 @@ class SystemSOC(System_R):
                              chk_up=wandata.get_file_ud("up", "chk"),
                              chk_down=chk_down,
                              altermag_kmap=altermag_kmap,
+                             altermag_kmap_isym=altermag_kmap_isym,
+                             symmetrizer_up=symmetrizer_up,
                              kptirr=kptirr, weights_k=weights_k)
         if wandata.irreducible:
             symmetrize = True

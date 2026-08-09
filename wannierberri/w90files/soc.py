@@ -173,7 +173,7 @@ class SOC(W90_file):
         """
         Create SOC from a GPAW magnetic calculation.
         """
-        if bandstructure_down is None:
+        if (bandstructure_down is None) and (altermagnetic_transformer is None):
             nspin = 1
         else:
             nspin = 2

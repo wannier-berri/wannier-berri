@@ -125,16 +125,8 @@ class WannierDataSOC(WannierData):
         cell["positions"] = calculator.atoms.get_scaled_positions()
         cell["nspin"] = nspin
         if altermagnetic:
-            from irrep.altermagnetic_transformer import AltermagneticTransformer
-            altermagnetic_transformer = AltermagneticTransformer.from_gpaw(calculator)
-            alter_symop = altermagnetic_transformer.alter_symop
-            cell["altermagnetic_rotation_latt"] = alter_symop.rotation
-            cell["altermagnetic_translation_latt"] = alter_symop.translation
-            cell["altermagnetic_k_mapping"] = altermagnetic_transformer.alter_map
-            nspin = 1
-            
-        else:
-            altermagnetic_transformer = None
+            if "symmetrizer" not in files:
+                files.append("symmetrizer")
 
         kwargs_wandata = dict(calculator=calculator,
                               spacegroup=spacegroup,
@@ -166,6 +158,21 @@ class WannierDataSOC(WannierData):
                                         **kwargs_wandata)
         if return_bandstructure_loc:
             data_up, bandstructure_up = data_up
+        if altermagnetic:
+            from irrep.altermagnetic_transformer import AltermagneticTransformer
+            symmetrizer_up = data_up.get_file("symmetrizer")
+            altermagnetic_transformer = AltermagneticTransformer.from_gpaw(calculator,
+                                                                           symmetrizer_up=symmetrizer_up)
+            alter_symop = altermagnetic_transformer.alter_symop
+            cell["altermagnetic_rotation_latt"] = alter_symop.rotation
+            cell["altermagnetic_translation_latt"] = alter_symop.translation
+            cell["altermagnetic_k_mapping"] = altermagnetic_transformer.alter_map
+            cell["altermagnetic_k_mapping_isym"] = altermagnetic_transformer.alter_map_isym 
+            nspin = 1
+        else:
+            altermagnetic_transformer = None
+
+
 
         if nspin == 2 and not altermagnetic:
             bkvec = data_up.get_file('bkvec')
