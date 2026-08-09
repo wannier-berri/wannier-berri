@@ -318,7 +318,7 @@ class Rvectors:
         self.shifts_left_red = self.shifts_left_red @ rotation_latt.T + translation_latt
         self.shifts_right_red = self.shifts_right_red @ rotation_latt.T + translation_latt
         irvec_old = np.copy(self.iRvec)
-        print (f"{rotation_latt=}, {translation_latt=}")
+        print(f"{rotation_latt=}, {translation_latt=}")
         self.iRvec = (self.iRvec @ rotation_latt.T).astype(int)
         print(np.hstack((irvec_old, self.iRvec)))
         self.clear_cached()

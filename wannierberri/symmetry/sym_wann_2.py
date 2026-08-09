@@ -139,9 +139,6 @@ class SymWann:
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
                               'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
 
-
-        # Now the I-odd vectors have "-1" here (in contrast to the old confusing notation)
-
     @property
     def logfile(self):
         if self.silent:

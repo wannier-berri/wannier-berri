@@ -6,8 +6,6 @@ from functools import cached_property
 from collections import defaultdict
 import glob
 
-from build.lib.build.lib.wannierberri.symmetry.sym_wann_2 import _rotate_matrix
-
 
 from ..fourier.rvectors import Rvectors
 from .system import System, num_cart_dim
@@ -928,15 +926,14 @@ class System_R(System):
         for key in self._XX_R:
             XX_R = self.get_R_mat(key)
             XX_R_new = np.copy(XX_R)
-            n_cart = num_cart_dim(XX_R)
+            n_cart = num_cart_dim(key)
             for _ in range(XX_R.ndim - 3):
                 # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
                 # n_cart times puts dimensions on the right place
-                XX_R_new = np.tensordot(XX_L, rotation_cart, axes=((-n_cart,), (1,)))
+                XX_R_new = np.tensordot(XX_R, rotation_cart, axes=((-n_cart,), (1,)))
             if np.linalg.det(rotation_cart) < 0:
                 XX_R_new *= (-1)**n_cart * parity_I[key]  # parity of the operator
             if time_reversal:
                 XX_R_new = XX_R_new.conj() * parity_TR[key]
             self.set_R_mat(key, XX_R_new, reset=True)
         return self
-

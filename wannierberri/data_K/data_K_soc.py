@@ -88,7 +88,7 @@ class Data_K_soc(Data_K_R):
 
     def E_K_corners_parallel(self):
         expdK_up = self.data_K_up.expdK_corners_parallel
-        expdK_down = self.data_K_up.expdK_corners_parallel
+        expdK_down = self.data_K_down.expdK_corners_parallel
         if self.has_soc:
             expdK = self.expdK_corners_parallel
         Ecorners = np.zeros((self.nk, 2, 2, 2, self.nbands), dtype=float)

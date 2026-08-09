@@ -1,3 +1,4 @@
+import copy
 from functools import cached_property
 import os
 import warnings
@@ -90,7 +91,7 @@ class SystemSOC(System_R):
 
 
 
-    def set_cell(self, positions, typat, magmoms_on_axis):
+    def set_cell(self, positions, typat, magmoms_on_axis, **kwargs):
         self.cell = dict(positions=np.array(positions),
                          typat=np.array(typat),
                          magmoms_on_axis=np.array(magmoms_on_axis))
@@ -100,6 +101,7 @@ class SystemSOC(System_R):
     def set_soc_R(self, soc,
                   chk_up, chk_down=None,
                   kptirr=None, weights_k=None, ws_dist_tol=1e-5,
+                  altermag_kmap=None, 
                   theta=0, phi=0, alpha_soc=1.0):
         """
         Set the spin-orbit coupling matrix for a given k-point.
@@ -126,18 +128,26 @@ class SystemSOC(System_R):
         """
         assert isinstance(soc, SOC), "soc must be an instance of wannierberri.w90files.soc.SOC"
 
+
         # chack number of spin channels
         nspin = soc.nspin
+        altermagnetic = altermag_kmap is not None
         assert self.nspin == nspin, f"Number of spin channels in SystemSOC ({self.nspin}) does not match that in SOC ({nspin})"
         print(f"nspin in SOC: {nspin}")
+        v_matrix_list_up = chk_up.v_matrix
         if nspin == 1:
-            chk_list = [chk_up]
+            v_matrix_list_down = v_matrix_list_up
         elif nspin == 2:
-            assert chk_down is not None, "chk_down must be provided for nspin=2 SOC"
-            assert chk_up.num_kpts == chk_down.num_kpts, f"Number of k-points must match for up and down systems ({chk_up.num_kpts} != {chk_down.num_kpts})"
-            assert np.all(chk_up.mp_grid == chk_down.mp_grid)
-            assert np.allclose(chk_up.kpt_red, chk_down.kpt_red), f"k-point grids should match for up and down systems ({chk_up.kpt_red} != {chk_down.kpt_red})"
-            chk_list = [chk_up, chk_down]
+            if not altermagnetic:
+                assert chk_down is not None, "chk_down must be provided for nspin=2 SOC"
+                assert chk_up.num_kpts == chk_down.num_kpts, f"Number of k-points must match for up and down systems ({chk_up.num_kpts} != {chk_down.num_kpts})"
+                assert np.all(chk_up.mp_grid == chk_down.mp_grid)
+                assert np.allclose(chk_up.kpt_red, chk_down.kpt_red), f"k-point grids should match for up and down systems ({chk_up.kpt_red} != {chk_down.kpt_red})"
+                v_matrix_list_down = chk_down.v_matrix
+            else:
+                v_matrix_list_down = [v_matrix_list_up[ik1] for ik1 in altermag_kmap]
+
+        v_matrix_list = [v_matrix_list_up, v_matrix_list_down]
 
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
         overlap_q_H = soc.overlap
@@ -170,8 +180,8 @@ class SystemSOC(System_R):
                 # sel_j = selected_bands_list[j1]
                 dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
                 for ik, w in zip(kptirr, weights_k):
-                    vt = chk_list[i1].v_matrix[ik].T.conj()
-                    v = chk_list[j1].v_matrix[ik]
+                    vt = v_matrix_list[i1][ik].T.conj()
+                    v = v_matrix_list[j1][ik]
                     # dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
                     dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, :, :][:, :, :], v)
                 if i1 == j1:
@@ -183,8 +193,8 @@ class SystemSOC(System_R):
         if nspin == 2:
             overlap_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar), dtype=complex)
             for ik, w in zip(kptirr, weights_k):
-                vt = chk_list[0].v_matrix[ik].T.conj()
-                v = chk_list[1].v_matrix[ik]
+                vt = v_matrix_list[0][ik].T.conj()
+                v = v_matrix_list[1][ik]
                 # overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
                 # overlap_ik[ik] = w * (vt @ overlap_loc @ v)
                 overlap_ik[ik] = w * (vt @ overlap_q_H[ik] @ v)
@@ -395,22 +405,44 @@ class SystemSOC(System_R):
     @classmethod
     def from_wannierdata(cls, wandata, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
         system_up = System_R.from_wannierdata(wandata=wandata.data_up, **kwargs)
+        cell = wandata.cell
+        if "altermagnetic_rotation_latt" in cell:
+            altermag_rot = cell["altermagnetic_rotation_latt"]
+            altermag_trans = cell["altermagnetic_translation_latt"]
+            altermag_kmap = cell["altermagnetic_k_mapping"]
+            altermagnetic = True
+        else:
+            altermagnetic = False
+            altermag_kmap = None
+
+        if symmetrize:
+            symmetrizer_up = wandata.get_file_ud('up', 'symmetrizer')
         if wandata.nspin == 2:
             system_down = System_R.from_wannierdata(wandata=wandata.data_down, **kwargs)
+            chk_down = wandata.data_down.get_file("chk")
+            if symmetrize:
+                symmetrizer_down = wandata.get_file_ud('down', 'symmetrizer')
+        elif altermagnetic:
+            system_down = copy.deepcopy(system_up)
+            system_down.transform(rotation_latt=altermag_rot, translation_latt=altermag_trans)
+            chk_down = None
+            if symmetrize:
+                symmetrizer_down = symmetrizer_up
         else:
             system_down = None
+            chk_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, cell=wandata.cell)
         kptirr, weights_k = wandata.data_up.kptirr_system
         system_soc.set_soc_R(wandata.get_file("soc"),
                              chk_up=wandata.get_file_ud("up", "chk"),
-                             chk_down=wandata.get_file_ud("down", "chk"),
-                             kptirr=kptirr, weights_k=weights_k
-        )
+                             chk_down=chk_down,
+                             altermag_kmap=altermag_kmap,
+                             kptirr=kptirr, weights_k=weights_k)
         if wandata.irreducible:
             symmetrize = True
         if symmetrize:
-            system_soc.symmetrize2(symmetrizer_up=wandata.get_file_ud('up', 'symmetrizer'),
-                           symmetrizer_down=wandata.get_file_ud('down', 'symmetrizer'))
+            system_soc.symmetrize2(symmetrizer_up=symmetrizer_up,
+                           symmetrizer_down=symmetrizer_down)
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
         return system_soc
 

@@ -46,7 +46,8 @@ class SOC(W90_file):
         elif isinstance(overlap, dict):
             self.overlap = overlap
         elif overlap is None:
-            warnings.warn("No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
+            if self.nspin == 2:
+                warnings.warn("nspin=2, but No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
             self.overlap = {i: np.eye(self.NB, dtype=complex) for i in self.data}
         else:
             raise ValueError(f"Invalid overlap input: {overlap} of type {type(overlap)}. Should be a list or array or None")
@@ -54,18 +55,6 @@ class SOC(W90_file):
     @classmethod
     def from_w90_file(cls, seedname='wannier90', formatted=False):
         raise NotImplementedError("SOC.from_w90_file is not implemented - there is no such w90 file")
-
-    @classmethod
-    def from_bandstructure(cls, bandstructure_soc,
-                           bandsctructure_up,
-                           bandsctructure_down=None,
-                           verbose=False,
-                           selected_kpoints_soc=None,
-                           selected_kpoints_scal=None,
-                           kptirr=None,
-                           NK=None
-                           ):
-        raise NotImplementedError("SOC.from_bandstructure is not implemented")
 
 
     @classmethod
@@ -170,6 +159,57 @@ class SOC(W90_file):
                     overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
         else:
             overlap = None
+
+        return cls(data=dV_soc, overlap=overlap, NK=nk)
+
+
+    @classmethod
+    def from_bandstructure(cls, 
+                           bandstructure_up,
+                           bandstructure_down=None,
+                           calc_overlap=True,
+                           altermagnetic_transformer=None,
+                           ):
+        """
+        Create SOC from a GPAW magnetic calculation.
+        """
+        if bandstructure_down is None:
+            nspin = 1
+        else:
+            nspin = 2
+
+        nk = len(bandstructure_up.kpoints_paw)
+
+        NB = bandstructure_up.num_bands
+
+        dV_soc = np.zeros((nk, nspin, nspin, 3, NB, NB), complex)
+
+        overlap_paw = bandstructure_up.overlap_paw  # for down it is assumed to be the same
+
+        calc_overlap_loc = calc_overlap and ((nspin == 2) or (altermagnetic_transformer is not None))
+
+        if calc_overlap_loc:
+            overlap = np.zeros((nk, NB, NB), complex)
+        else:
+            overlap = None
+
+
+        # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
+        for q in range(nk):
+            KPup = bandstructure_up.kpoints_paw[q]
+            if altermagnetic_transformer is None:
+                if nspin == 2:
+                    KPdown = bandstructure_down.kpoints_paw[q]
+                else:
+                    KPdown = None
+            else:
+                KPdown = altermagnetic_transformer.get_kpoint_down(q, bandstructure_up.kpoints_paw)
+            KPlist = [KPup, KPdown]
+            for s1 in range(nspin):
+                for s2 in range(nspin):
+                    dV_soc[q, s1, s2] += overlap_paw.soc(KPlist[s1], KPlist[s2])   
+            if calc_overlap_loc:
+                overlap[q] += overlap_paw.product(KPup, KPdown, include_paw=True, include_pseudo=True, bk=None)
 
         return cls(data=dV_soc, overlap=overlap, NK=nk)
 

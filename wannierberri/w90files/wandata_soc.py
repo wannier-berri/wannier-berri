@@ -11,11 +11,12 @@ class WannierDataSOC(WannierData):
 
     files_proper = ["soc"]
 
-    def __init__(self, data_up, data_down, soc=None, cell=None):
+    def __init__(self, data_up, data_down, soc=None, cell=None, seedname="wannier_soc"):
         self.data_up = data_up
         self.data_down = data_down
         self.bands_were_selected = False
         self._files = {}
+        self.seedname = seedname
         if data_down is None:
             self.nspin = 1
         else:
@@ -43,8 +44,16 @@ class WannierDataSOC(WannierData):
             return [f for f in files if f in cls.files_proper]
 
     @classmethod
-    def from_npz(cls, seedname, nspin, files=None, irreducible=False):
+    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False):
         """Create Wannier90DataSOC from NPZ files."""
+        if os.path.isfile(seedname + ".cell.npz"):
+            cell = np.load(seedname + ".cell.npz", allow_pickle=True)
+            if nspin is None:
+                if 'nspin' in cell:
+                    nspin = cell["nspin"]
+                else:
+                    raise ValueError("nspin must be provided if not stored in .cell.npz file.")
+
         assert nspin in [1, 2], "nspin must be 1 or 2."
 
         files_ud = cls.get_files_ud(files)
@@ -63,13 +72,15 @@ class WannierDataSOC(WannierData):
         except FileNotFoundError:
             soc = None
 
-        data_soc = cls(data_up=data_up, data_down=data_down, soc=soc)
+        data_soc = cls(data_up=data_up, data_down=data_down, soc=soc, seedname=seedname)
         if os.path.isfile(seedname + ".cell.npz"):
             cell = np.load(seedname + ".cell.npz", allow_pickle=True)
             data_soc.cell = {key: val for key, val in cell.items()}
         return data_soc
 
-    def to_npz(self, seedname, files=None):
+    def to_npz(self, seedname=None, files=None):
+        if seedname is None:
+            seedname = self.seedname
         """Save Wannier90DataSOC to NPZ files."""
         super().to_npz(seedname=seedname, files=self.get_files_proper(files))
         if self.cell is not None:
@@ -92,8 +103,13 @@ class WannierDataSOC(WannierData):
                   include_pseudo=True,
                   files=["mmn", "eig", "amn", "symmetrizer", "soc"],
                   return_bandstructure=False,
+                  altermagnetic=False,
                   **kwargs):
-        """Create Wannier90DataSOC from a GPAW calculator with SOC."""
+        """Create Wannier90DataSOC from a GPAW calculator with SOC.
+        
+        altermagnetic_symmetry: tuple (rotation, translation) or None,
+        if provided - it transforms spin-up to spin-down, i.e R @ p_up + translation = spin_down
+        """
         if isinstance(calculator, str):
             from gpaw import GPAW
             calculator = GPAW(calculator, txt=None)
@@ -101,11 +117,24 @@ class WannierDataSOC(WannierData):
             from irrep.spacegroup import SpaceGroup
             spacegroup = SpaceGroup.from_gpaw(calculator)
 
+        nspin = calculator.get_number_of_spins()
         cell = {}
         magmoms_on_axis = calculator.get_magnetic_moments()
         cell["magmoms_on_axis"] = group_numbers(magmoms_on_axis, precision=mag_symprec)
         cell["typat"] = calculator.atoms.get_atomic_numbers()
         cell["positions"] = calculator.atoms.get_scaled_positions()
+        cell["nspin"] = nspin
+        if altermagnetic:
+            from irrep.altermagnetic_transformer import AltermagneticTransformer
+            altermagnetic_transformer = AltermagneticTransformer.from_gpaw(calculator)
+            alter_symop = altermagnetic_transformer.alter_symop
+            cell["altermagnetic_rotation_latt"] = alter_symop.rotation
+            cell["altermagnetic_translation_latt"] = alter_symop.translation
+            cell["altermagnetic_k_mapping"] = altermagnetic_transformer.alter_map
+            nspin = 1
+            
+        else:
+            altermagnetic_transformer = None
 
         kwargs_wandata = dict(calculator=calculator,
                               spacegroup=spacegroup,
@@ -116,8 +145,8 @@ class WannierDataSOC(WannierData):
                               include_pseudo=include_pseudo,
                               files=[f for f in files if f not in ["soc", "mmn_ud"]],
                               )
-        nspin = calculator.get_number_of_spins()
-        return_bandstructure_loc = return_bandstructure or ("mmn_ud" in files and nspin == 2)
+        return_bandstructure_loc = return_bandstructure or ("mmn_ud" in files and nspin == 2) or "soc" in files
+        return_paw = include_paw or ("mmn_ud" in files and nspin == 2) or "soc" in files
         kwargs_wandata.update(kwargs)
         if "amn" in files:
             assert projections is not None or (projections_up is not None), \
@@ -133,17 +162,19 @@ class WannierDataSOC(WannierData):
                                         seedname=seedname + "-spin-0",
                                         projections=projections_up,
                                         return_bandstructure=return_bandstructure_loc,
+                                        return_paw=return_paw,
                                         **kwargs_wandata)
         if return_bandstructure_loc:
             data_up, bandstructure_up = data_up
 
-        if nspin == 2:
+        if nspin == 2 and not altermagnetic:
             bkvec = data_up.get_file('bkvec')
             data_down = WannierData.from_gpaw(spin_channel=1,
                                               seedname=seedname + "-spin-1",
                                               projections=projections_down,
                                               bkvec=bkvec,
                                               return_bandstructure=return_bandstructure_loc,
+                                              return_paw=return_paw,
                                               **kwargs_wandata)
             if return_bandstructure_loc:
                 data_down, bandstructure_down = data_down
@@ -151,16 +182,26 @@ class WannierDataSOC(WannierData):
             data_down = None
             bandstructure_down = None
 
-        data = cls(data_up=data_up, data_down=data_down, cell=cell)
+        data = cls(data_up=data_up, data_down=data_down, cell=cell, seedname=seedname)
 
         if "soc" in files:
             from .soc import SOC
-            soc = SOC.from_gpaw(calculator=calculator, 
-                                IBstart=kwargs.get("IBstart", None),
-                                IBend=kwargs.get("IBend", None),)
+            # check if irrep version is smalle 3.2
+            from packaging import version
+            import irrep
+            if version.parse(irrep.__version__) < version.parse("3.2"):
+                soc = SOC.from_gpaw(calculator=calculator,
+                                    IBstart=kwargs.get("IBstart", None),
+                                    IBend=kwargs.get("IBend", None),)
+            else:
+                soc = SOC.from_bandstructure(bandstructure_up=bandstructure_up,
+                                            bandstructure_down=bandstructure_down,
+                                            altermagnetic_transformer=altermagnetic_transformer)
             data.set_file("soc", soc)
 
         if "mmn_ud" in files and nspin == 2:
+            if altermagnetic:
+                raise NotImplementedError("Altermagnetic symmetry is not yet implemented for mmn_ud generation.")
             from .mmn import MMN
             bkvec = data_up.get_file('bkvec')
             mmn_ud = MMN.from_bandstructure(bandstructure_left=bandstructure_up,
