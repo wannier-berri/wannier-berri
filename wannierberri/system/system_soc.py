@@ -137,7 +137,8 @@ class SystemSOC(System_R):
         print(f"nspin in SOC: {nspin}")
         v_matrix_list_up = chk_up.v_matrix
         if nspin == 1:
-            v_matrix_list_down = v_matrix_list_up
+            assert not altermagnetic, "Altermagnetic systems assume nspin=2, but nspin=1 was found in SOC"
+            v_matrix_list = [v_matrix_list_up]
         elif nspin == 2:
             if not altermagnetic:
                 assert chk_down is not None, "chk_down must be provided for nspin=2 SOC"
@@ -150,7 +151,7 @@ class SystemSOC(System_R):
                                                               ikirr=ik1,
                                                               isym=isym) 
                                       for ik1, isym in zip(altermag_kmap, altermag_kmap_isym)]
-        v_matrix_list = [v_matrix_list_up, v_matrix_list_down]
+            v_matrix_list = [v_matrix_list_up, v_matrix_list_down]
         assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
         overlap_q_H = soc.overlap
         dV_soc = soc.data
@@ -175,11 +176,8 @@ class SystemSOC(System_R):
             weights_k = np.ones(NK, dtype=float)
 
         rng = np.arange(self.num_wann_scalar) * 2
-
         for i1 in range(nspin):
-            # sel_i = selected_bands_list[i1]
             for j1 in range(i1, nspin):
-                # sel_j = selected_bands_list[j1]
                 dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
                 for ik, w in zip(kptirr, weights_k):
                     vt = v_matrix_list[i1][ik].T.conj()
@@ -197,8 +195,6 @@ class SystemSOC(System_R):
             for ik, w in zip(kptirr, weights_k):
                 vt = v_matrix_list[0][ik].T.conj()
                 v = v_matrix_list[1][ik]
-                # overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
-                # overlap_ik[ik] = w * (vt @ overlap_loc @ v)
                 overlap_ik[ik] = w * (vt @ overlap_q_H[ik] @ v)
             overlap_Rud = self.rvec.q_to_R(overlap_ik, select_left=rng, select_right=rng + 1)
             self.set_R_mat('overlap_up_down', overlap_Rud)
