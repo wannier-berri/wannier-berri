@@ -53,14 +53,14 @@ class WannierDataSOC(WannierData):
                     nspin = cell["nspin"]
                 else:
                     raise ValueError("nspin must be provided if not stored in .cell.npz file.")
-
+        altermagnetic = "altermagnetic_rotation_latt" in cell
         assert nspin in [1, 2], "nspin must be 1 or 2."
 
         files_ud = cls.get_files_ud(files)
         data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                        files=files_ud,
                                        irreducible=irreducible)
-        if nspin == 2:
+        if nspin == 2 and not altermagnetic:
             data_down = WannierData.from_npz(seedname=seedname + "-spin-1",
                                              files=files_ud,
                                              irreducible=irreducible)
@@ -255,7 +255,7 @@ class WannierDataSOC(WannierData):
             self.data_down.wannierise(**kwargs)
         elif ispin is None:
             self.wannierise(ispin=0, **kwargs)
-            if self.nspin == 2:
+            if self.data_down is not None:
                 self.wannierise(ispin=1, **kwargs)
         else:
             raise ValueError(f"Invalid ispin value: {ispin}. Must be 0, 1, or None.")

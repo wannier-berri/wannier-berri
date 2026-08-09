@@ -759,7 +759,7 @@ class System_R(System):
             if key in keys_processed:
                 continue
             logfile.write(f"loading {key}")
-            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
+            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=True)
 
             # pointgroup was previouslly named symgroup. This is for backward compatibility
             if key == 'symgroup':
