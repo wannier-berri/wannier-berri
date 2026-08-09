@@ -5,7 +5,11 @@ from pytest import approx
 import pytest
 from wannierberri.formula.covariant import _spin_velocity_einsum_opt
 from wannierberri.symmetry.sym_wann_2 import _rotate_matrix
-from wannierberri.utility import cached_einsum, vectorize, arr_to_string
+from wannierberri.utility import cached_einsum, vectorize, arr_to_string, normalize_type
+from wannierberri.symmetry.sawf import SymmetrizerSAWF
+from .common import ROOT_DIR
+import os
+
 
 
 def test_spin_velocity_einsum_opt():
@@ -68,3 +72,23 @@ def test_rotate_matrix():
             assert Y.shape == X.shape
             Z = cached_einsum("ij,jk...,kl->il...", L, X, R)
             assert np.allclose(Y, Z), f"for num_wann={num_wann}, num_cart={num_cart}, the difference is {np.max(np.abs(Y - Z))} Y.shape={Y.shape} X.shape = {X.shape}\nX={X}\nY={Y}\nZ={Z}"
+
+
+def test_normalize_type():
+    for val, ref in (
+        (np.array(5), 5),
+        (np.array(5.0), 5.0),
+        (np.array("test"), "test"),
+        ({"a": np.array(1), "b": np.array(2)}, {"a": 1, "b": 2}),
+        ({"a": np.array(1), "b": {"c": np.array(2)}}, {"a": 1, "b": {"c": 2}}),
+    ):
+        normalized = normalize_type(val)
+        assert normalized == ref
+        assert type(normalized) == type(ref)
+        if isinstance(normalized, dict):
+            for k in normalized:
+                assert type(normalized[k]) == type(ref[k])
+    sawf_path = os.path.join(ROOT_DIR, "data", "diamond", "diamond.sawf.npz")
+    symm = SymmetrizerSAWF.from_npz(sawf_path)
+    assert isinstance(symm.spacegroup.number, int)
+    assert isinstance(symm.spacegroup.number_str, str)
