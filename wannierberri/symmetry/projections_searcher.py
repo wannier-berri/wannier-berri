@@ -444,7 +444,7 @@ def grey_group_parts(sg):
     tr = [bool(s.time_reversal) for s in sg.symmetries]
     unitary = [i for i, t in enumerate(tr) if not t]
     is_grey = any(
-        t and np.allclose(s.rotation, np.eye(3)) and np.allclose(s.translation, 0)
+        t and np.allclose(s.rotation, np.eye(3)) and np.allclose(s.translation, np.round(s.translation))
         for s, t in zip(sg.symmetries, tr))
     return unitary, is_grey
 
@@ -459,4 +459,5 @@ def unitary_spacegroup(sg, isym_unitary):
         return sg
     sg_u = copy.deepcopy(sg)
     sg_u.symmetries = [sg.symmetries[i] for i in isym_unitary]
+    sg_u.__dict__.pop("translations_cart", None)
     return sg_u

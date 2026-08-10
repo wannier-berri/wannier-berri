@@ -6,7 +6,7 @@ import sympy
 from wannierberri.symmetry.sawf import SymmetrizerSAWF
 import pytest
 from wannierberri.symmetry.projections_searcher import (
-    EBRsearcher, grey_group_parts, unitary_spacegroup)
+    EBRsearcher, grey_group_parts, unitary_spacegroup, get_all_possible_irreps_conj)
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 from .common import OUTPUT_DIR, ROOT_DIR
@@ -135,3 +135,15 @@ def test_grey_group_parts_classification():
     assert grey_group_parts(_SG([_Op(E, ZERO, False), _Op(I, ZERO, True)])) == ([0], False)
     # type IV: antiunitary identity carries a translation
     assert grey_group_parts(_SG([_Op(E, ZERO, False), _Op(E, [.5, 0, 0], True)])) == ([0], False)
+    # integer translation is a lattice vector, i.e. still pure 1'
+    assert grey_group_parts(_SG([_Op(E, ZERO, False),
+                                 _Op(E, [1, 0, 0], True)])) == ([0], True)
+
+
+def test_get_all_possible_irreps_conj_defaults(diamond_setup):
+    """The bare call must reproduce the type-I path."""
+    sym_plain, _ = diamond_setup(False)
+    irreps = get_all_possible_irreps_conj(sym_plain)
+    assert len(irreps) == sym_plain.NKirr
+    for ik, ir in enumerate(irreps):
+        assert ir.shape[1] == len(sym_plain.isym_little[ik])        
