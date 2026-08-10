@@ -46,16 +46,13 @@ class WannierDataSOC(WannierData):
     @classmethod
     def from_npz(cls, seedname, nspin=None, files=None, irreducible=False):
         """Create Wannier90DataSOC from NPZ files."""
-        if os.path.isfile(seedname + ".cell.npz"):
-            cell = np.load(seedname + ".cell.npz", allow_pickle=True)
-            if nspin is None:
-                if 'nspin' in cell:
-                    nspin = cell["nspin"]
-                else:
-                    raise ValueError("nspin must be provided if not stored in .cell.npz file.")
-            altermagnetic = "altermagnetic_rotation_latt" in cell
-        else:
-            altermagnetic = False
+        cell = np.load(seedname + ".cell.npz", allow_pickle=True)
+        if nspin is None:
+            if 'nspin' in cell:
+                nspin = cell["nspin"]
+            else:
+                raise ValueError("nspin must be provided if not stored in .cell.npz file.")
+        altermagnetic = "altermagnetic_rotation_latt" in cell
         assert nspin in [1, 2], f"nspin must be 1 or 2. Got {nspin}."
 
         files_ud = cls.get_files_ud(files)
@@ -108,7 +105,7 @@ class WannierDataSOC(WannierData):
                   altermagnetic=False,
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC.
-        
+
         altermagnetic_symmetry: tuple (rotation, translation) or None,
         if provided - it transforms spin-up to spin-down, i.e R @ p_up + translation = spin_down
         """
@@ -169,7 +166,7 @@ class WannierDataSOC(WannierData):
             cell["altermagnetic_rotation_latt"] = alter_symop.rotation
             cell["altermagnetic_translation_latt"] = alter_symop.translation
             cell["altermagnetic_k_mapping"] = altermagnetic_transformer.alter_map
-            cell["altermagnetic_k_mapping_isym"] = altermagnetic_transformer.alter_map_isym 
+            cell["altermagnetic_k_mapping_isym"] = altermagnetic_transformer.alter_map_isym
             nspin = 1
         else:
             altermagnetic_transformer = None

@@ -19,6 +19,8 @@ def get_system_w90(
     symmetrize=True,
     ws_dist_tol=1e-5,
     silent_symmetrize=True,
+    soc=None,
+    soc_component=None,
     **parameters
 ):
     """
@@ -131,12 +133,20 @@ def get_system_w90(
     # H(R) matrix
 
     HHq = chk.get_HH_q(wandata.eig, kptirr=kptirr, weights_k=weights_k)
-
     system.set_R_mat('Ham', system.rvec.q_to_R(HHq))
+    del HHq
 
     if needed_data.need_any('SS'):
         system.set_R_mat('SS', system.rvec.q_to_R(chk.get_SS_q(wandata.spn, kptirr=kptirr, weights_k=weights_k)))
 
+    if soc is not None:
+        dVsoc = np.zeros((chk.num_kpts, chk.num_wann, chk.num_wann, 3), dtype=complex)
+        for ik, w in zip(kptirr, weights_k):
+            data = soc.data[ik][*soc_component].transpose(1, 2, 0)  # shape (num_wann, num_wann, 3)
+            dVsoc[ik] = chk.wannier_gauge(data, ik, ik) * w  # Hamiltonian gauge
+        dVsoc = 0.5 * (dVsoc + dVsoc.swapaxes(1, 2).conj())
+        system.set_R_mat('dV_soc', system.rvec.q_to_R(dVsoc))
+        del dVsoc
 
 
     # Wannier centers
@@ -331,6 +341,16 @@ def get_system_w90(
             system.set_R_mat('SHA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
             print("setting SHA - OK")
+
+        if soc is not None:
+            dV_soc = soc.data
+            dV_soc_wann_ik = np.zeros((chk.num_kpts, system.num_wann, system.num_wann, 3), dtype=complex)
+            for ik, w in zip(kptirr, weights_k):
+                vt = chk.v_matrix[ik].T.conj()
+                v = chk.v_matrix[ik]
+                dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][0, 0][:, :, :][:, :, :], v)
+            system.set_R_mat('dV_soc', system.rvec.q_to_R(dV_soc_wann_ik), reset=True)
+
 
         del expjphase1, expjphase2
 

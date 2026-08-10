@@ -692,12 +692,14 @@ class System_R(System):
             fullpath = os.path.join(path, key + ".npz")
             print(f"saving {key} to {fullpath}")
             if key == 'iRvec':
-                val = self.rvec.iRvec
+                val = dict(arr_0=self.rvec.iRvec,
+                           shifts_left_red=self.rvec.shifts_left_red,
+                           shifts_right_red=self.rvec.shifts_right_red)
             else:
                 val = getattr(self, key)
             if key in ['pointgroup']:
                 np.savez(fullpath, **val.as_dict())
-            elif key in ['cell']:
+            elif key in ['cell', 'iRvec']:
                 np.savez(fullpath, **val)
             else:
                 np.savez(fullpath, val)
@@ -772,15 +774,16 @@ class System_R(System):
 
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
-            elif key_loc == 'cell':
+            elif key_loc in ['cell', 'iRvec']:
                 val = dict(**a)
             else:
                 val = a['arr_0']
 
             if key == "iRvec":
                 self.rvec = Rvectors(lattice=self.real_lattice,
-                                     iRvec=val,
-                                     shifts_left_red=self.wannier_centers_red
+                                     iRvec=val['arr_0'],
+                                     shifts_left_red=val.get('shifts_left_red', self.wannier_centers_red),
+                                     shifts_right_red=val.get('shifts_right_red', self.wannier_centers_red)
                                      )
             elif "key" == "pointgroup":
                 self.set_pointgroup(pointgroup=val)
@@ -904,26 +907,11 @@ class System_R(System):
         return get_system_sparse(*args, **kwargs)
 
 
-    def transform(self, 
-                  rotation_cart=None, rotation_latt=None, 
-                  translation_cart=None, translation_latt=None,
-                  time_reversal=False):
-        assert (rotation_cart is not None) != (rotation_latt is not None), "either rotation_cart or rotation_latt should be provided, but not both"
-        assert (translation_cart is not None) != (translation_latt is not None), "either translation_cart or translation_latt should be provided, but not both"
-        if rotation_latt is None:
-            rotation_latt = np.linalg.inv(self.real_lattice.T).dot(rotation_cart).dot(self.real_lattice.T)
-        elif rotation_cart is None:
-            rotation_cart = self.real_lattice.T.dot(rotation_latt).dot(np.linalg.inv(self.real_lattice.T))
-        if translation_latt is None:
-            translation_latt = np.linalg.inv(self.real_lattice).dot(translation_cart)
-        rotation_latt_int = np.round(rotation_latt).astype(int)
-        assert np.allclose(rotation_latt, rotation_latt_int), f"rotation_latt is not integer: {rotation_latt}"
-        rotation_latt = rotation_latt_int
-        print(f"{rotation_cart=}, \n{rotation_latt=}, {translation_cart=}, {translation_latt=}")
+    def transform(self, symop):
         wannier_centers_red = self.wannier_centers_red
-        wannier_centers_red_new = (wannier_centers_red @ rotation_latt.T + translation_latt) 
+        wannier_centers_red_new = symop.transform_r(wannier_centers_red)
         self.set_wannier_centers(wannier_centers_red=wannier_centers_red_new)
-        self.rvec.transform(rotation_latt=rotation_latt, translation_latt=translation_latt)
+        self.rvec.transform(symop)
         self.clear_cached_wcc()
         from ..symmetry.sym_wann_2 import parity_I, parity_TR
         for key in self._XX_R:
@@ -933,10 +921,10 @@ class System_R(System):
             for _ in range(XX_R.ndim - 3):
                 # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
                 # n_cart times puts dimensions on the right place
-                XX_R_new = np.tensordot(XX_R, rotation_cart, axes=((-n_cart,), (1,)))
-            if np.linalg.det(rotation_cart) < 0:
+                XX_R_new = np.tensordot(XX_R, symop.rotation_cart, axes=((-n_cart,), (1,)))
+            if symop.inversion:
                 XX_R_new *= (-1)**n_cart * parity_I[key]  # parity of the operator
-            if time_reversal:
+            if symop.time_reversal:
                 XX_R_new = XX_R_new.conj() * parity_TR[key]
             self.set_R_mat(key, XX_R_new, reset=True)
         return self

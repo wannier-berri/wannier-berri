@@ -95,7 +95,7 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_gpaw(cls, calculator, 
+    def from_gpaw(cls, calculator,
                   calc_overlap=True,
                   IBstart=None,
                   IBend=None):
@@ -164,7 +164,7 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_bandstructure(cls, 
+    def from_bandstructure(cls,
                            bandstructure_up,
                            bandstructure_down=None,
                            calc_overlap=True,
@@ -207,7 +207,7 @@ class SOC(W90_file):
             KPlist = [KPup, KPdown]
             for s1 in range(nspin):
                 for s2 in range(nspin):
-                    dV_soc[q, s1, s2] += overlap_paw.soc(KPlist[s1], KPlist[s2])   
+                    dV_soc[q, s1, s2] += overlap_paw.soc(KPlist[s1], KPlist[s2])
             if calc_overlap_loc:
                 overlap[q] += overlap_paw.product(KPup, KPdown, include_paw=True, include_pseudo=True, bk=None)
 

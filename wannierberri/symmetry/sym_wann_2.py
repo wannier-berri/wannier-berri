@@ -20,9 +20,7 @@ def do_rotate_vector(key):
 
 parity_I = {
     'overlap_up_down': 1,
-    'dV_soc_wann_0_0': 1,
-    'dV_soc_wann_0_1': 1,
-    'dV_soc_wann_1_1': 1,
+    'dV_soc': 1,
     'Ham': 1,
     'AA': -1,
     'BB': -1,
@@ -39,9 +37,7 @@ parity_I = {
 }  #
 parity_TR = {
     'overlap_up_down': 1,
-    'dV_soc_wann_0_0': -1,
-    'dV_soc_wann_0_1': -1,
-    'dV_soc_wann_1_1': -1,
+    'dV_soc': -1,
     'Ham': 1,
     'AA': 1,
     'BB': 1,
@@ -55,7 +51,7 @@ parity_TR = {
     'SHA': -1,
     'SR': -1,
     'SHR': -1,
-        }
+}
 
 
 class SymWann:
@@ -135,9 +131,9 @@ class SymWann:
         self.points_index_start_right = points_index_right[:-1]
         self.points_index_end_right = points_index_right[1:]
         self.possible_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC', 'OO', 'GG',
-                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1', 'FF']
+                                'SS', 'SA', 'SHA', 'SR', 'SH', 'SHR', 'overlap_up_down', 'dV_soc', 'FF']
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
-                              'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1']
+                              'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc']
 
     @property
     def logfile(self):

@@ -304,7 +304,7 @@ class Rvectors:
         self.shifts_right_red = shifts_right_red_new
         self.clear_cached()
 
-    def transform(self, rotation_latt, translation_latt):
+    def transform(self, symop):
         """
         Transform the Rvectors according to the given rotation and translation.
 
@@ -315,12 +315,9 @@ class Rvectors:
         translation_latt : np.ndarray
             The translation vector in lattice coordinates.
         """
-        self.shifts_left_red = self.shifts_left_red @ rotation_latt.T + translation_latt
-        self.shifts_right_red = self.shifts_right_red @ rotation_latt.T + translation_latt
-        irvec_old = np.copy(self.iRvec)
-        print(f"{rotation_latt=}, {translation_latt=}")
-        self.iRvec = (self.iRvec @ rotation_latt.T).astype(int)
-        print(np.hstack((irvec_old, self.iRvec)))
+        self.shifts_left_red = symop.transform_r(self.shifts_left_red)
+        self.shifts_right_red = symop.transform_r(self.shifts_right_red)
+        self.iRvec = symop.transform_r(self.iRvec, translation=False)
         self.clear_cached()
 
     def reorder(self, order_left=None, order_right=None):
@@ -420,7 +417,7 @@ class Rvectors:
         for key in XX_R_dict.keys():
             XX_R_dict[key] = np.concatenate((XX_R_dict[key], np.zeros((len(Radd),) + XX_R_dict[key].shape[1:], dtype=XX_R_dict[key].dtype)), axis=0)
         self.clear_cached()
-        
+
     @cached_property
     def reverseR(self):
         """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
@@ -488,7 +485,8 @@ class Rvectors:
             self.fft_R_to_k = FFT_R_to_k(
                 iRvec=self.iRvec,
                 k_list=k_list,
-                num_wann=num_wann,
+                num_wann_left=self.nshifts_left,
+                num_wann_right=self.nshifts_right,
                 fftlib="slow")
         else:
             self.dK = np.array(dK)
@@ -497,7 +495,8 @@ class Rvectors:
             self.fft_R_to_k = FFT_R_to_k(
                 iRvec=self.iRvec,
                 NKFFT=NK,
-                num_wann=num_wann,
+                num_wann_left=self.nshifts_left,
+                num_wann_right=self.nshifts_right,
                 fftlib=fftlib)
         self.fft_R2k_set = True
 
@@ -636,7 +635,7 @@ class WignerSeitz:
         return iRvec, Ndegen, iRvec % self.mp_grid
 
 
-def merge_Rvectors(rvec_list):
+def merge_Rvectors(rvec_list, shifts_left_red=None, shifts_right_red=None):
     """
     Merge several Rvectors objects into a new one.
 
@@ -652,13 +651,19 @@ def merge_Rvectors(rvec_list):
     R_map_list : list of np.ndarray
         A list of mapping arrays, where each array maps the R-vectors of the corresponding input Rvectors object to the R-vectors of the merged Rvectors object.
     """
+    if shifts_right_red is None:
+        shifts_right_red = shifts_left_red
     if len(rvec_list) == 0:
         raise ValueError("rvec_list is empty")
     rvec0 = rvec_list[0]
     lattice = rvec0.lattice
-    shifts_left_red = rvec0.shifts_left_red
-    shifts_right_red = rvec0.shifts_right_red
+    if shifts_left_red is None:
+        shifts_left_red = rvec0.shifts_left_red
+    if shifts_right_red is None:
+        shifts_right_red = rvec0.shifts_right_red
+
     dim = rvec0.dim
+
     iRvec_tuple_set = set(tuple(R) for R in rvec0.iRvec)
     for rvec in rvec_list[1:]:
         assert np.allclose(rvec.lattice, lattice), "lattices are not the same"

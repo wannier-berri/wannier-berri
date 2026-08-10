@@ -502,7 +502,7 @@ class SymmetrizerSAWF:
         #     isym = self.kpt_from_kptirr_isym[ik]
         #     print(f"{ik=}, {isym=}, {ikirr=}")
         #     Ufull[ik] =  self.rotate_U(U[ikirr], ikirr, isym, forward=True)
-        
+
         #
         # for ikirr in range(self.NKirr):
         #     for isym in range(self.Nsym):
@@ -1005,7 +1005,7 @@ class SymmetrizerSAWF:
             new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
             new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])
         return new_sawf
-                
+
 
 
 class VoidSymmetrizer(SymmetrizerSAWF):

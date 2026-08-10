@@ -120,7 +120,7 @@ class Projection:
                                                     free_var_values=free_var_values)
             else:
                 assert position_sym is None, "position_num and position_str should NOT be provided together"
-                position_num = np.array(position_num)
+                position_num = np.array(position_num, dtype=float)
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
