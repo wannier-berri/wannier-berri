@@ -452,6 +452,7 @@ class SystemSOC(System_R):
             system_soc.symmetrize2(symmetrizer_up=symmetrizer_up,
                            symmetrizer_down=symmetrizer_down)
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        system_soc.add_minus_R()
         return system_soc
 
     def get_system_R(self):

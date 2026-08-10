@@ -174,6 +174,9 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def add_minus_R(self):
+        self.rvec.add_minus_R(self._XX_R)
+
     def clear_R_mat(self, keys):
         if not isinstance(keys, (list, tuple)):
             keys = [keys]

@@ -412,6 +412,15 @@ class Rvectors:
         R = np.array(np.round(R), dtype=int).tolist()
         return self.iRvec.tolist().index(R)
 
+    def add_minus_R(self, XX_R_dict):
+        mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        Radd = -self.iRvec[notfound]
+        self.iRvec = np.concatenate((self.iRvec, Radd), axis=0)
+        for key in XX_R_dict.keys():
+            XX_R_dict[key] = np.concatenate((XX_R_dict[key], np.zeros((len(Radd),) + XX_R_dict[key].shape[1:], dtype=XX_R_dict[key].dtype)), axis=0)
+        self.clear_cached()
+        
     @cached_property
     def reverseR(self):
         """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
