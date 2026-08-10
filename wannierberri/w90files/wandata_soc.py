@@ -11,13 +11,14 @@ class WannierDataSOC(WannierData):
 
     files_proper = ["soc"]
 
-    def __init__(self, data_up, data_down, soc=None, cell=None, seedname="wannier_soc"):
+    def __init__(self, data_up, data_down, soc=None, cell=None, seedname="wannier_soc", altermagnetic=False):
         self.data_up = data_up
         self.data_down = data_down
         self.bands_were_selected = False
         self._files = {}
         self.seedname = seedname
-        if data_down is None:
+        self.altermagnetic = altermagnetic
+        if data_down is None and not altermagnetic:
             self.nspin = 1
         else:
             self.nspin = 2
@@ -71,7 +72,7 @@ class WannierDataSOC(WannierData):
         except FileNotFoundError:
             soc = None
 
-        data_soc = cls(data_up=data_up, data_down=data_down, soc=soc, seedname=seedname)
+        data_soc = cls(data_up=data_up, data_down=data_down, soc=soc, seedname=seedname, altermagnetic=altermagnetic)
         if os.path.isfile(seedname + ".cell.npz"):
             cell = np.load(seedname + ".cell.npz", allow_pickle=True)
             data_soc.cell = {key: val for key, val in cell.items()}

@@ -1001,7 +1001,7 @@ class SymmetrizerSAWF:
         new_sawf.D_wann_block_indices = self.D_wann_block_indices
         for T, atom_map, rot_orb in zip(self.T_list, self.atommap_list, self.rot_orb_list):
             print(f"{T.shape=}, {atom_map.shape=}, {rot_orb.shape=} {new_sawf.Nsym=}, {new_sawf.num_wann=}, {new_spacegroup_index=}")
-            new_sawf.T_list.append(T[:, new_spacegroup_index] @ symmetry_operation.rotation.T)
+            new_sawf.T_list.append((T[:, new_spacegroup_index]) @ symmetry_operation.rotation.T)
             new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
             new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])
         return new_sawf

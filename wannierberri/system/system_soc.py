@@ -138,6 +138,7 @@ class SystemSOC(System_R):
 
     @property
     def has_soc(self):
+        print(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
         if self.nspin == 2:
             return self.has_R_mat_all(['dV_soc', 'overlap_up_down'])
         else:
@@ -163,15 +164,17 @@ class SystemSOC(System_R):
 
 
     @classmethod
-    def from_wannierdata(cls, wandata, symmetrize=True,
+    def from_wannierdata(cls, wandata, symmetrize=True, ignore_soc=False,
                          theta=0, phi=0, alpha_soc=1.0, angle_units="radians",
                          **kwargs):
+        # exit()
         if wandata.irreducible:
             symmetrize = True
         if wandata.has_file("soc"):
             soc = wandata.get_file("soc")
         else:
-            warnings.warn("SOC file not found in wandata, creating SystemSOC without SOC")
+            if not ignore_soc:
+                raise FileNotFoundError("SOC file not found in wandata, creating SystemSOC without SOC")
             soc = None
 
         system_up = System_R.from_wannierdata(wandata=wandata.data_up, symmetrize=symmetrize,
@@ -210,7 +213,7 @@ class SystemSOC(System_R):
         kptirr, weights_k = wandata.data_up.kptirr_system
 
         
-
+        print (f"wandata.nspin={wandata.nspin}, soc={soc}, altermagnetic={altermagnetic}, symmetrize={symmetrize}")
         if wandata.nspin == 2 and soc is not None:
             chk_up = wandata.data_up.chk
             v_matrix_list_up = wandata.data_up.chk.v_matrix
@@ -219,7 +222,7 @@ class SystemSOC(System_R):
                                                             ikirr=ik1,
                                                             isym=isym)
                                       for ik1, isym in zip(altermag_kmap, altermag_kmap_isym)]
-                symmetrizer_down = symmetrizer_up.get_transformed(symop)
+                symmetrizer_down = symmetrizer_up.get_transformed_copy(symop)
             else:
                 assert wandata.data_up.chk.num_kpts == wandata.data_down.chk.num_kpts, f"Number of k-points must match for up and down systems ({wandata.data_up.chk.num_kpts} != {wandata.data_down.chk.num_kpts})"
                 assert np.all(wandata.data_up.chk.mp_grid == wandata.data_down.chk.mp_grid)
@@ -253,7 +256,9 @@ class SystemSOC(System_R):
             system_soc.rvec = rvec
             system_soc.set_R_mat('dV_soc', dV_soc_wann_R_01)
             system_soc.set_R_mat('overlap_up_down', overlap_Rud)
+            print("symmetrize=", symmetrize)
             if symmetrize:
+                print (f"Symmetrizing system_soc with symmetrizer_up and symmetrizer_down")
                 from ..symmetry.sym_wann_2 import SymWann
                 symm_wann_up_down = SymWann(
                     symmetrizer_left=symmetrizer_up,
@@ -264,6 +269,7 @@ class SystemSOC(System_R):
                 # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
                 system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
+                print (f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
                 rvec.iRvec = iRvec_new
                 rvec.mp_grid = system_soc.rvec.mp_grid,
                 rvec.clear_cached()
