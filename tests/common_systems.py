@@ -1,5 +1,6 @@
 """Create system objects."""
 
+import copy
 import os
 import tarfile
 from gpaw import GPAW
@@ -287,71 +288,65 @@ PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
 
 
 @pytest.fixture(scope="session")
-def soc_Fe_gpaw():
-    """Create SOC object for Fe from GPAW calculation"""
-    selected_bands_up = np.load(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))['selected_bands']
-    selected_bands_down = np.load(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))['selected_bands']
-    soc = SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
-    soc.select_bands(selected_bands_up=selected_bands_up, selected_bands_down=selected_bands_down)
-    return soc
+def wandata_Fe_gpaw():
+    """Create wandata object for Fe from GPAW calculation"""
+    try:
+        wandata = WannierDataSOC.from_npz(
+            seedname=os.path.join(OUTPUT_DIR, "Fe_gpaw_wandata"),
+            files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
+        )
+    except FileNotFoundError:
+        calc = GPAW(f'{PATH_Fe_GPAW}/Fe-nscf.gpw', txt=None)
+        sg = SpaceGroup.from_gpaw(calc)
+        proj_set = ProjectionsSet([Projection(position_num=[0, 0, 0], orbital=orb, spacegroup=sg) for orb in ['s', 'p','d']])
+        wandata = WannierDataSOC.from_gpaw(
+            calculator=os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"),
+            seedname=os.path.join(OUTPUT_DIR, "wannier_soc"),
+            mp_grid=(2, 2, 2),
+            projections=proj_set,
+            files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
+            return_bandstructure=False,
+            irreducible=True
+        )
+        wandata.wannierise(sitesym=True,
+                        num_iter=30,
+                        froz_min=-np.inf,
+                        froz_max=15)
+        wandata.to_npz(os.path.join(OUTPUT_DIR, "Fe_gpaw_wandata"))
+    return wandata
 
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_up():
+def system_Fe_gpaw_up(wandata_Fe_gpaw):
     """Create system for Fe up channel using GPAW wannierisation data"""
-    system = System_R.from_npz(os.path.join(PATH_Fe_GPAW, "system_up"))
-    spacegroup = SpaceGroup.from_cell(real_lattice=system.real_lattice,
-                                positions=[[0, 0, 0]], typat=[1],
-                            magmom=[[0, 0, 0]])
-    system.set_pointgroup(spacegroup=spacegroup)
-    return system
+    return System_R.from_wannierdata(wandata_Fe_gpaw.data_up)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_dw():
+def system_Fe_gpaw_dw(wandata_Fe_gpaw):
     """Create system for Fe down channel using GPAW wannierisation data"""
-    system = System_R.from_npz(os.path.join(PATH_Fe_GPAW, "system_dw"))
-    spacegroup = SpaceGroup.from_cell(real_lattice=system.real_lattice,
-                                positions=[[0, 0, 0]], typat=[1],
-                            magmom=[[0, 0, 0]])
-    system.set_pointgroup(spacegroup=spacegroup)
+    return System_R.from_wannierdata(wandata_Fe_gpaw.data_down)
+
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc(wandata_Fe_gpaw):
+    """Create system for Fe with SOC using GPAW wannierisation data"""
+    system = SystemSOC.from_wannierdata(wandata_Fe_gpaw, berry=True,symmetrize=True)
+    system.to_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc"))
     return system
 
 
 @pytest.fixture(scope="session")
-def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
-    def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0,
-               do_symmetrize=False):
+def get_system_Fe_gpaw_soc(system_Fe_gpaw_soc):
+    def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0):
         theta = theta_deg / 180 * np.pi
         phi = phi_deg / 180 * np.pi
-
-        sg = SpaceGroup.from_cell(real_lattice=2.87 * np.array([[1, 1, 1], [-1, 1, 1], [-1, -1, 1]]) / 2,
-                                positions=[[0, 0, 0]], typat=[1], include_TR=True, spinor=False)
-        cell = dict(positions=[[0, 0, 0]], typat=[1], magmoms_on_axis=[1])
-
-        system_dw = system_Fe_gpaw_dw
-        system_up = system_Fe_gpaw_up
-
-        soc = soc_Fe_gpaw
-        chk_up = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))
-        chk_dw = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))
-        system_soc = SystemSOC(system_up=system_up, system_down=system_dw, cell=cell)
-        system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw)
-        if do_symmetrize:
-            projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
-            projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
-            proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
-            symmetrizer_up = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
-            symmetrizer_dw = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
-            system_soc.symmetrize2(symmetrizer_up=symmetrizer_up, symmetrizer_down=symmetrizer_dw, silent=False)
-        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
-        # system_soc.set_pointgroup(spacegroup=mg)
-        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}" +
-                                 f"{'_symmetrized' if do_symmetrize else ''}")
-        os.makedirs(os.path.dirname(path_save), exist_ok=True)
-        system_soc.save_npz(path_save)
-        return system_soc
+        system = copy.deepcopy(system_Fe_gpaw_soc)
+        system.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        system.to_npz(os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"))
+        return system
     return _inner
 
 

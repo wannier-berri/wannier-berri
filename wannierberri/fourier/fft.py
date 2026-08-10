@@ -73,8 +73,8 @@ class FFT_R_to_k:
             self.NKFFT = tuple(NKFFT)
             self.iRvec = self.iRvec % self.NKFFT
             self.axes_hermitean = (3, 4)
-        self.num_wann_left = num_wann_left if num_wann_left is not None else self.num_wann
-        self.num_wann_right = num_wann_right if num_wann_right is not None else self.num_wann
+        self.num_wann_left = num_wann_left if num_wann_left is not None else num_wann
+        self.num_wann_right = num_wann_right if num_wann_right is not None else num_wann
         self.name = name
 
         if fftlib == 'fftw' and not PYFFTW_IMPORTED:

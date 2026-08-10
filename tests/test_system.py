@@ -569,46 +569,46 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
 
 def test_system_Fe_gpaw_up(check_system, system_Fe_gpaw_up):
     check_system(
-        system_Fe_gpaw_up, "Fe_gpaw_up",
+        system_Fe_gpaw_up, "Fe_gpaw_soc/system_up",
         matrices=['Ham', 'AA'],
     )
 
 
 def test_system_Fe_gpaw_dw(check_system, system_Fe_gpaw_dw):
     check_system(
-        system_Fe_gpaw_dw, "Fe_gpaw_dw",
+        system_Fe_gpaw_dw, "Fe_gpaw_soc/system_dw",
         matrices=['Ham', 'AA'],
     )
 
 
-def test_system_Fe_gpaw_soc_z(check_system, system_Fe_gpaw_soc_z):
+def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc_z):
     check_system(
-        system_Fe_gpaw_soc_z, "Fe_gpaw_soc_theta0.00_phi0.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        system_Fe_gpaw_soc_z, "Fe_gpaw_soc",
+        matrices=['overlap_up_down', 'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+    )
+    check_system(
+        system_Fe_gpaw_soc_z.system_up, "Fe_gpaw_soc/system_up",
+        matrices=['Ham', 'AA'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+    )
+    check_system(
+        system_Fe_gpaw_soc_z.system_dw, "Fe_gpaw_soc/system_dw",
+        matrices=['Ham', 'AA'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
 
+@pytest.mark.parametrize("theta_deg, phi_deg, alpha_soc", [(0, 0, 1), (54.74, 45.00, 1), (49.00, 33.00, 1)])
+def test_system_Fe_gpaw_soc_angle(check_system, get_system_Fe_gpaw_soc, theta_deg, phi_deg, alpha_soc):
+    name = f"theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
+    system_Fe_gpaw_soc_111 = get_system_Fe_gpaw_soc(phi_deg=phi_deg, theta_deg=theta_deg, alpha_soc=alpha_soc)
+    
+    out_data_file = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
+    ref_data_file = os.path.join(REF_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
+    out_dict = {key: getattr(system_Fe_gpaw_soc_111, key) for key in ['alpha_soc', 'pauli_rotated']}
+    np.savez(out_data_file, **out_dict)
+    ref_data = np.load(ref_data_file)
+    for key in out_dict:
+        assert out_dict[key] == pytest.approx(ref_data[key]), f"Mismatch in {key} for system Fe_gpaw_soc_{name}"
 
-def test_system_Fe_gpaw_soc_111(check_system, system_Fe_gpaw_soc_111):
-    check_system(
-        system_Fe_gpaw_soc_111, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-    )
-
-
-def test_system_Fe_gpaw_soc_111_irred(check_system, system_Fe_gpaw_soc_111_irred):
-    check_system(
-        system_Fe_gpaw_soc_111_irred, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-        precision_matrix_elements=5e-7
-    )
-
-
-def test_system_Fe_gpaw_soc_angle(check_system, system_Fe_gpaw_soc_angle):
-    check_system(
-        system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-    )
+    

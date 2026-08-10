@@ -209,6 +209,8 @@ class SystemSOC(System_R):
 
         kptirr, weights_k = wandata.data_up.kptirr_system
 
+        
+
         if wandata.nspin == 2 and soc is not None:
             chk_up = wandata.data_up.chk
             v_matrix_list_up = wandata.data_up.chk.v_matrix
