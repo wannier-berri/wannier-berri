@@ -379,6 +379,7 @@ class SystemSOC(System_R):
             for k, v in _XX_dict_new.items():
                 XX_new_dict[k] = v
                 iRvec_new_dict[k] = iRvec_new
+                print(f"  {k}: old:{_XX_dict[k].shape} new:{XX_new_dict[k].shape} iRvec_new.shape: {iRvec_new.shape}")
 
         symmetrize_part(symmetrize_wann_up_up, ['dV_soc_wann_0_0'])
         if self.nspin == 2:
@@ -417,7 +418,7 @@ class SystemSOC(System_R):
 
         if symmetrize:
             symmetrizer_up = wandata.get_file_ud('up', 'symmetrizer')
-        if wandata.nspin == 2:
+        if wandata.nspin == 2 and not altermagnetic:
             system_down = System_R.from_wannierdata(wandata=wandata.data_down, **kwargs)
             chk_down = wandata.data_down.get_file("chk")
             if symmetrize:
@@ -427,7 +428,12 @@ class SystemSOC(System_R):
             system_down.transform(rotation_latt=altermag_rot, translation_latt=altermag_trans)
             chk_down = None
             if symmetrize:
-                symmetrizer_down = symmetrizer_up
+                from irrep.symmetry_operation import SymmetryOperation
+                symop = SymmetryOperation(rot=altermag_rot, 
+                                          trans=altermag_trans,
+                                          Lattice=symmetrizer_up.spacegroup.lattice,
+                                          spinor=False, time_reversal=False)
+                symmetrizer_down = symmetrizer_up.get_transformed_copy(symop)
         else:
             system_down = None
             chk_down = None

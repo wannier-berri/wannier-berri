@@ -404,7 +404,6 @@ class SymWann:
 
         iRab_all = defaultdict(lambda: set())
         logfile = self.logfile
-
         for isym in self.use_symmetries_index:
             symop = self.spacegroup.symmetries[isym]
             # T is the translation needed to return to the home unit cell after rotation
@@ -445,7 +444,7 @@ class SymWann:
 
         if mode == "single":
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
-                assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) some R vectors were not set : {iR_new_list}" + ", ".join(
+                assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) {len(iR_new_list)} R vectors were not set : {iR_new_list}" + ", ".join(
                     str(iRvec_origin[ir]) for ir in iR_new_list)
 
         if mode == "sum":

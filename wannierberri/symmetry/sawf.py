@@ -143,7 +143,6 @@ class SymmetrizerSAWF:
         return self
 
 
-
     @cached_property
     def d_band_blocks_inverse(self):
         return get_inverse_block(self.d_band_blocks)
@@ -972,6 +971,41 @@ class SymmetrizerSAWF:
         return selected_bands_bool_new
 
 
+    def get_transformed_copy(self, symmetry_operation):
+        """
+        Get a copy of the symmetrizer with the symmetry operation applied to the spacegroup
+        so far only for non-spinor, non-time-reversal operations
+        only the wannier space transformations are coppied (i.e. all needed for System_R.symmetrize2())
+
+        Parameters
+        ----------
+        symmetry_operation : irrep.symmetry_operation.SymmetryOperation
+            the symmetry operation to be applied to the spacegroup
+            (should be a unitary operation, i.e. no time-reversal)
+
+        Returns
+        -------
+        SymmetrizerSAWF
+            the new symmetrizer with the symmetry operation applied to the spacegroup
+        """
+        new_spacegroup_index, translation_differnce = self.spacegroup.get_transformed_group_index(symmetry_operation)
+        print(f"{translation_differnce=}, {new_spacegroup_index=}")
+        # exit()
+        new_sawf = SymmetrizerSAWF()
+        new_sawf.spacegroup = self.spacegroup
+        new_sawf.num_wann = self.num_wann
+        new_sawf.Nsym = self.Nsym
+        new_sawf.T_list = []
+        new_sawf.atommap_list = []
+        new_sawf.rot_orb_list = []
+        new_sawf.D_wann_block_indices = self.D_wann_block_indices
+        for T, atom_map, rot_orb in zip(self.T_list, self.atommap_list, self.rot_orb_list):
+            print(f"{T.shape=}, {atom_map.shape=}, {rot_orb.shape=} {new_sawf.Nsym=}, {new_sawf.num_wann=}, {new_spacegroup_index=}")
+            new_sawf.T_list.append(T[:, new_spacegroup_index] @ symmetry_operation.rotation.T)
+            new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
+            new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])
+        return new_sawf
+                
 
 
 class VoidSymmetrizer(SymmetrizerSAWF):
