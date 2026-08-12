@@ -160,6 +160,10 @@ class Projection:
 
 
     @property
+    def spacegroup(self):
+        return self.wyckoff_position.spacegroup
+
+    @property
     def positions(self):
         """Positions of the projections in fractional coordinates. Shape (n_points, 3)"""
         return self.wyckoff_position.positions
@@ -427,6 +431,11 @@ class ProjectionsSet:
     def num_free_vars(self):
         return self.map_free_vars[0].shape[2]
 
+    @property
+    def spacegroup(self):
+        if len(self.projections) == 0:
+            return None
+        return self.projections[0].spacegroup
 
     @property
     def num_wann_per_site_list(self):

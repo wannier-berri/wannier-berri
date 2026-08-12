@@ -24,7 +24,7 @@ from wannierberri.w90files.wandata_soc import WannierDataSOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from .common import OUTPUT_DIR, ROOT_DIR
+from .common import OUTPUT_DIR, REF_DIR, ROOT_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
@@ -284,7 +284,7 @@ def system_Fe_W90_proj(create_files_Fe_W90):
     return get_system_Fe_sym_W90()
 
 
-PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
+PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
 
 
 @pytest.fixture(scope="session")
@@ -296,11 +296,11 @@ def wandata_Fe_gpaw():
             files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
         )
     except FileNotFoundError:
-        calc = GPAW(f'{PATH_Fe_GPAW}/Fe-nscf.gpw', txt=None)
+        calc = GPAW(f'{PATH_Fe_GPAW}/Fe-nscf-irred-222.gpw', txt=None)
         sg = SpaceGroup.from_gpaw(calc)
         proj_set = ProjectionsSet([Projection(position_num=[0, 0, 0], orbital=orb, spacegroup=sg) for orb in ['s', 'p','d']])
         wandata = WannierDataSOC.from_gpaw(
-            calculator=os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"),
+            calculator=calc,
             seedname=os.path.join(OUTPUT_DIR, "wannier_soc"),
             mp_grid=(2, 2, 2),
             projections=proj_set,
@@ -320,30 +320,35 @@ def wandata_Fe_gpaw():
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_up(wandata_Fe_gpaw):
     """Create system for Fe up channel using GPAW wannierisation data"""
-    return System_R.from_wannierdata(wandata_Fe_gpaw.data_up)
+    return System_R.from_wannierdata(wandata_Fe_gpaw.data_up, berry=True)
 
 
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_dw(wandata_Fe_gpaw):
     """Create system for Fe down channel using GPAW wannierisation data"""
-    return System_R.from_wannierdata(wandata_Fe_gpaw.data_down)
-
+    return System_R.from_wannierdata(wandata_Fe_gpaw.data_down, berry=True)
 
 
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_soc(wandata_Fe_gpaw):
     """Create system for Fe with SOC using GPAW wannierisation data"""
-    system = SystemSOC.from_wannierdata(wandata_Fe_gpaw, berry=True,symmetrize=True)
+    system = SystemSOC.from_wannierdata(wandata_Fe_gpaw, berry=True)
     system.to_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc"))
     return system
 
 
 @pytest.fixture(scope="session")
-def get_system_Fe_gpaw_soc(system_Fe_gpaw_soc):
+def system_Fe_gpaw_soc_ref():
+    """Create system for Fe with SOC using GPAW wannierisation data"""
+    return SystemSOC.from_npz(os.path.join(REF_DIR, "systems", "Fe_gpaw_soc"))
+
+
+@pytest.fixture(scope="session")
+def get_system_Fe_gpaw_soc(system_Fe_gpaw_soc_ref):
     def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0):
         theta = theta_deg / 180 * np.pi
         phi = phi_deg / 180 * np.pi
-        system = copy.deepcopy(system_Fe_gpaw_soc)
+        system = copy.deepcopy(system_Fe_gpaw_soc_ref)
         system.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
         system.to_npz(os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"))
         return system
@@ -353,11 +358,6 @@ def get_system_Fe_gpaw_soc(system_Fe_gpaw_soc):
 @pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_z(get_system_Fe_gpaw_soc):
     return get_system_Fe_gpaw_soc(phi_deg=0, theta_deg=0)
-
-
-@pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_z_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=0, theta_deg=0, do_symmetrize=True)
 
 
 @pytest.fixture(scope="session")
@@ -372,69 +372,9 @@ def system_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle):
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_angle_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, do_symmetrize=True)
-
-
-@pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_111(get_system_Fe_gpaw_soc):
     return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0)
 
-
-@pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_111_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0, do_symmetrize=True)
-
-
-@pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_111_irred():
-    PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
-
-    gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
-    sg = SpaceGroup.from_gpaw(gpaw_calc)
-    projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
-    projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
-    proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
-
-    seedname_soc = os.path.join(OUTPUT_DIR, "wannier_soc")
-    wandata, (bandstructure_up, bandstructure_down) = WannierDataSOC.from_gpaw(
-        calculator=gpaw_calc,
-        seedname=seedname_soc,
-        mp_grid=(2, 2, 2),
-        files=["mmn", "eig", "symmetrizer", "soc", "mmn_ud"],
-        spacegroup=sg,
-        return_bandstructure=True,
-    )
-    path_npz = os.path.join(OUTPUT_DIR, "Fe_gpaw_soc_irred_NPZ", "Fe")
-    wandata.to_npz(path_npz)
-    del wandata  # to test loading from npz
-
-    wandata = WannierDataSOC.from_npz(path_npz, nspin=2, files=["mmn", "eig", "symmetrizer", "soc", "mmn_ud"])
-
-    wandata.set_projections(projections=proj_set,
-                            bandstructure_up=bandstructure_up,
-                            bandstructure_down=bandstructure_down)
-
-    wandata.select_bands(win_min=-100,
-                         win_max=50)
-
-    wandata.wannierise(
-        froz_min=-np.inf,
-        froz_max=17,
-        num_iter=500,
-        print_progress_every=10,
-        sitesym=True,
-        localise=True,
-    )
-
-    theta = np.arccos(1 / np.sqrt(3))
-    phi = np.pi / 4
-
-    system = SystemSOC.from_wannierdata(wandata=wandata, berry=True, silent=False)
-    system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
-    system.save_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred"))
-
-    return system
 
 
 @pytest.fixture(scope="session")

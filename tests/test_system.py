@@ -571,6 +571,7 @@ def test_system_Fe_gpaw_up(check_system, system_Fe_gpaw_up):
     check_system(
         system_Fe_gpaw_up, "Fe_gpaw_soc/system_up",
         matrices=['Ham', 'AA'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
     )
 
 
@@ -578,23 +579,24 @@ def test_system_Fe_gpaw_dw(check_system, system_Fe_gpaw_dw):
     check_system(
         system_Fe_gpaw_dw, "Fe_gpaw_soc/system_dw",
         matrices=['Ham', 'AA'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
     )
 
 
-def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc_z):
+def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc):
     check_system(
-        system_Fe_gpaw_soc_z, "Fe_gpaw_soc",
+        system_Fe_gpaw_soc, "Fe_gpaw_soc",
         matrices=['overlap_up_down', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
     check_system(
         system_Fe_gpaw_soc_z.system_up, "Fe_gpaw_soc/system_up",
-        matrices=['Ham', 'AA'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        matrices=['Ham', 'AA',  'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
     )
     check_system(
         system_Fe_gpaw_soc_z.system_dw, "Fe_gpaw_soc/system_dw",
-        matrices=['Ham', 'AA'],
+        matrices=['Ham', 'AA', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
 

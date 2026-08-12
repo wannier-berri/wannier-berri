@@ -104,11 +104,10 @@ class WannierDataSOC(WannierData):
                   files=["mmn", "eig", "amn", "symmetrizer", "soc"],
                   return_bandstructure=False,
                   altermagnetic=False,
+                  altermagnetic_nskip_symmetries=0,
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC.
 
-        altermagnetic_symmetry: tuple (rotation, translation) or None,
-        if provided - it transforms spin-up to spin-down, i.e R @ p_up + translation = spin_down
         """
         if isinstance(calculator, str):
             from gpaw import GPAW
@@ -146,7 +145,7 @@ class WannierDataSOC(WannierData):
             if projections_up is None:
                 print("Using 'projections' for both spin up channel.")
                 projections_up = projections
-            if nspin == 2 and projections_down is None:
+            if nspin == 2 and projections_down is None and not altermagnetic:
                 print("No projections_down provided; using projections_up for both spin channels.")
                 projections_down = projections_up
 
@@ -162,7 +161,8 @@ class WannierDataSOC(WannierData):
             from irrep.altermagnetic_transformer import AltermagneticTransformer
             symmetrizer_up = data_up.get_file("symmetrizer")
             altermagnetic_transformer = AltermagneticTransformer.from_gpaw(calculator,
-                                                                           symmetrizer_up=symmetrizer_up)
+                                                                           symmetrizer_up=symmetrizer_up,
+                                                                           nskip_symmetries=altermagnetic_nskip_symmetries)
             alter_symop = altermagnetic_transformer.alter_symop
             cell["altermagnetic_rotation_latt"] = alter_symop.rotation
             cell["altermagnetic_translation_latt"] = alter_symop.translation

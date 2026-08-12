@@ -219,6 +219,11 @@ class SymmetrizerSAWF:
     def from_spacegroup_and_projections(cls, spacegroup, projections):
         return cls().set_spacegroup(spacegroup).set_D_wann_from_projections(projections)
 
+    @classmethod
+    def from_projections(cls, projections_set):
+        return cls().set_spacegroup(projections_set.spacegroup).set_D_wann_from_projections(projections_set)
+    
+
     def set_D_wann_from_projections(self,
                                     projections,
                                     ):
@@ -952,7 +957,7 @@ class SymmetrizerSAWF:
             selected_bands_bool : np.ndarray(bool, shape=(NKirr, NB))
                 the boolean mask of the bands to be used, for each irreducible k-point. if include_partial_blocks is False, the whole block will be included if all bands in the block are selected, otherwise the whole block will be excluded. if include_partial_blocks is True, the whole block will be included if at least one band in the block is selected, otherwise the whole block will be excluded
              include_partial_blocks : bool
-                whether to include the whole block if at least one band in the block is selected, or only if all bands in the block are selected
+                whether to include the whole block if at least one band in the block is , or only if all bands in the block are selected
 
             Returns
             -------
@@ -990,7 +995,6 @@ class SymmetrizerSAWF:
         """
         new_spacegroup_index, translation_differnce = self.spacegroup.get_transformed_group_index(symmetry_operation)
         print(f"{translation_differnce=}, {new_spacegroup_index=}")
-        # exit()
         new_sawf = SymmetrizerSAWF()
         new_sawf.spacegroup = self.spacegroup
         new_sawf.num_wann = self.num_wann
@@ -1001,7 +1005,7 @@ class SymmetrizerSAWF:
         new_sawf.D_wann_block_indices = self.D_wann_block_indices
         for T, atom_map, rot_orb in zip(self.T_list, self.atommap_list, self.rot_orb_list):
             print(f"{T.shape=}, {atom_map.shape=}, {rot_orb.shape=} {new_sawf.Nsym=}, {new_sawf.num_wann=}, {new_spacegroup_index=}")
-            new_sawf.T_list.append((T[:, new_spacegroup_index]) @ symmetry_operation.rotation.T)
+            new_sawf.T_list.append((T[:, new_spacegroup_index]- translation_differnce) @ symmetry_operation.rotation.T )
             new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
             new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])
         return new_sawf
