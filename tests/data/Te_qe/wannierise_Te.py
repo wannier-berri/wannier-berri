@@ -5,11 +5,11 @@ prefix = "tellurium"
 wandata = wb.wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win", "uhu", "spn"])
 
 bandstructure = BandStructure.from_espresso(
-                            prefix=prefix,
-                            Ecut=100,
-                            normalize=False,
-                            magmom=True,
-                            include_TR=True)
+    prefix=prefix,
+    Ecut=100,
+    normalize=False,
+    magmom=True,
+    include_TR=True)
 spacegroup = bandstructure.spacegroup
 symmetrizer = wb.symmetry.sawf.SymmetrizerSAWF.from_irrep(bandstructure)
 
