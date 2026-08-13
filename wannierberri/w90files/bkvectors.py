@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from ..utility import conjugate_basis
+from ..utility import conjugate_basis, real_recip_lattice
 from .utility import get_mp_grid
 from .io import sparselist_to_dict
 from .nnkp import parse_nnkp
@@ -100,7 +100,7 @@ class BKVectors(W90_file):
                 bk_complete_tol=1e-5,
                 kptirr=None,
                 real_lattice=None,
-                params=None):
+                recip_lattice=None):
         """Create BKVectors from a NNKP file
 
         Parameters
@@ -123,31 +123,10 @@ class BKVectors(W90_file):
 
         kpoints_red = nnkp["kpoints"]
         bk_red = kpoints_red[nnkpts[:, 1] - 1] + nnkpts[:, 2:5] - kpoints_red[0, None, :]
-        if params is not None:
-            lattice_parameters = {key for key in ("real_lattice", "recip_lattice") if key in params}
-            if real_lattice is not None and lattice_parameters:
-                raise ValueError("lattice was provided both directly and in params")
-            if len(lattice_parameters) > 1:
-                raise ValueError("params should contain only one of real_lattice and recip_lattice")
-            if "real_lattice" in params:
-                real_lattice = params["real_lattice"]
-            elif "recip_lattice" in params:
-                warnings.warn(
-                    "params['recip_lattice'] is deprecated; pass real_lattice directly instead",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                real_lattice = conjugate_basis(params["recip_lattice"])
-        nnkp_real_lattice = nnkp["real_lattice"]
-        if real_lattice is None:
-            real_lattice = nnkp_real_lattice
+        if real_lattice is not None or recip_lattice is not None:
+            real_lattice, recip_lattice = real_recip_lattice(real_lattice=real_lattice, recip_lattice=recip_lattice)
         else:
-            real_lattice = np.array(real_lattice, dtype=float)
-            if real_lattice.shape != (3, 3):
-                raise ValueError(f"real_lattice should have shape (3, 3), got {real_lattice.shape}")
-            if not np.allclose(real_lattice, nnkp_real_lattice, rtol=1e-7, atol=1e-7):
-                raise ValueError("provided real_lattice is inconsistent with the direct lattice in the NNKP file")
-        recip_lattice = conjugate_basis(real_lattice)
+            real_lattice, recip_lattice = real_recip_lattice(real_lattice=nnkp["real_lattice"])
         mp_grid = get_mp_grid(kpoints_red)
         bk_grid = np.round(bk_red * np.array(mp_grid)[None, :]).astype(int)
         bk_grid_nnkp_order = bk_grid.copy()

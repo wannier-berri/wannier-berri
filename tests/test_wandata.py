@@ -50,32 +50,6 @@ def _patch_w90_readers(monkeypatch, calls):
     return from_chk, from_nnkp
 
 
-def test_from_w90_files_auto_uses_requested_checkpoint(monkeypatch, tmp_path):
-    calls = []
-    from_chk, _ = _patch_w90_readers(monkeypatch, calls)
-    seedname = str(tmp_path / "wannier90")
-    (tmp_path / "wannier90.nnkp").touch()
-
-    wandata = WannierData.from_w90_files(seedname=seedname, files=["chk"])
-
-    assert wandata.bkvec is from_chk
-    assert calls == ["chk"]
-
-
-def test_from_w90_files_auto_uses_nnkp_with_win(monkeypatch, tmp_path):
-    calls = []
-    _, from_nnkp = _patch_w90_readers(monkeypatch, calls)
-    seedname = str(tmp_path / "wannier90")
-    (tmp_path / "wannier90.nnkp").touch()
-
-    wandata = WannierData.from_w90_files(seedname=seedname, files=["win"])
-
-    assert wandata.bkvec is from_nnkp
-    assert len(calls) == 1
-    assert calls[0][0] == "nnkp"
-    assert np.array_equal(calls[0][1], np.eye(3))
-
-
 def test_from_w90_files_explicit_readnnkp_overrides_auto(monkeypatch, tmp_path):
     calls = []
     _, from_nnkp = _patch_w90_readers(monkeypatch, calls)
