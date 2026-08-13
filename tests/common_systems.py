@@ -95,7 +95,10 @@ def create_files_Fe_W90():
     return data_dir
 
 
-def load_wandata(seedname, files, **kwargs):
+def load_wandata(seedname,
+                 files,
+                 readnnkp=False,  # to reproduce the old behavior
+                 **kwargs):
     dir = os.path.dirname(seedname)
     seed = os.path.basename(seedname)
     path_npz = os.path.join(dir, 'NPZ', seed)
@@ -104,7 +107,7 @@ def load_wandata(seedname, files, **kwargs):
         wandata = WannierData.from_npz(seedname=path_npz, files=files, ignore_missing_files=False)
     except FileNotFoundError as e:
         print(f"NPZ files not found for seedname {seedname} and files {files}. \n{e}\nTrying to load from w90 files.")
-        wandata = WannierData.from_w90_files(seedname=seedname, files=files, readnnkp=False, **kwargs)
+        wandata = WannierData.from_w90_files(seedname=seedname, files=files, readnnkp=readnnkp, **kwargs)
         wandata.to_npz(path_npz)
     return wandata
 
@@ -454,7 +457,7 @@ def get_system_GaAs_W90(create_files_GaAs_W90):
         wandata = load_wandata(
             seedname=seedname,
             files=NeededData(**matrices).files,
-            readnnkp=False,  
+            readnnkp=False,
         )
         system = System_R.from_wannierdata(wandata=wandata,
                                     **matrices,

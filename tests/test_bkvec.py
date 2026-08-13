@@ -66,7 +66,7 @@ def test_bkvec_nnkp_accepts_higher_precision_direct_lattice():
     bkvec = BKVectors.from_nnkp(path, real_lattice=real_lattice)
     diff = bkvec.recip_lattice - conjugate_basis(real_lattice)
     assert np.allclose(diff, 0, atol=0, rtol=1e-15), f"reciprocal lattice differs from conjugate basis by {diff}"
-    
+
 
 def check_bkvec_kpoints(mp_grid, recip_lattice):
     kpt_red = np.array([[i / mp_grid[0], j / mp_grid[1], k / mp_grid[2]]
