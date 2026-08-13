@@ -200,9 +200,10 @@ class WannierDataSOC(WannierData):
         if "soc" in files:
             from .soc import SOC
             # check if irrep version is smalle 3.2
-            # from packaging import version
-            # import irrep
-            if False:  # version.parse(irrep.__version__) < version.parse("3.1.2") and not altermagnetic:
+            from packaging import version
+            import irrep
+            if version.parse(irrep.__version__) < version.parse("3.2.0"):
+                assert not altermagnetic, "Altermagnetic symmetry is supported from irrep version 3.2.0 onwards, you have version {irrep.__version__}. Please, upgrade"
                 soc = SOC.from_gpaw(calculator=calculator,
                                     IBstart=kwargs.get("IBstart", None),
                                     IBend=kwargs.get("IBend", None),)
