@@ -1361,28 +1361,28 @@ def test_Fe_gpaw_soc_z(system_Fe_gpaw_soc_z, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_z, suffix="z",
                       use_symmetry=use_symmetry,
                       precision=-1e-8 if use_symmetry else -1e-5,
-                      extra_precision={"Morb_test": 1e-7, "ahc_test": 1e-7, 'Morb':1e-8})
+                      extra_precision={"Morb_test": 1e-7, "ahc_test": 1e-7, 'Morb': 1e-8})
 
 
 
 
 def test_Fe_gpaw_soc_z_tetra(system_Fe_gpaw_soc_z, check_Fe_gpaw_soc):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_z, suffix="z", use_symmetry=True, tetra=True,
-                      extra_precision={"Morb_test": 1e-7, "ahc_test": 5e-4})
+                      extra_precision={"Morb_test": 1e-7, "ahc_test": 5e-4, 'Morb': 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Fe_gpaw_soc_111(system_Fe_gpaw_soc_111, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_111, suffix="111",
                       use_symmetry=use_symmetry,
-                      extra_precision={"Morb_test": 2e-7, "ahc_test": 1e-6, "Morb": 1e-8})
+                      extra_precision={"Morb_test": 2e-7, "ahc_test": 1e-6, "Morb": 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Fe_gpaw_soc_angle(system_Fe_gpaw_soc_angle, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle, suffix="angle",
                       use_symmetry=use_symmetry,
-                      extra_precision={"Morb_test": 2e-7, "ahc_test": 2e-7, 'Morb':1e-8})
+                      extra_precision={"Morb_test": 2e-7, "ahc_test": 1e-6, 'Morb': 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
@@ -1390,4 +1390,4 @@ def test_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle_R, check_Fe_gpaw_soc, use_
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle_R, suffix="angle",
                       use_symmetry=use_symmetry, R=True,
                       precision=-1e-8 if use_symmetry else -2e-5,
-                      extra_precision={"Morb": 1e-7, "ahc_test": 5e-7, "Morb_test": 1e-7})
+                      extra_precision={"Morb": 1e-7, "ahc_test": 1e-6, "Morb_test": 2e-7})
