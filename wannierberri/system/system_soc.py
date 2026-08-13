@@ -73,7 +73,7 @@ class SystemSOC(System_R):
             return self
         self.system_up, self.system_down = self.system_down, self.system_up
         self.wannier_centers_cart[::2], self.wannier_centers_cart[1::2] = self.wannier_centers_cart[1::2], self.wannier_centers_cart[::2].copy()
-        if self.nspin==2:
+        if self.nspin == 2:
             self.rvec = self.rvec.get_reversed()
             for key in ["overlap_up_down", "dV_soc"]:
                 if self.has_R_mat(key):

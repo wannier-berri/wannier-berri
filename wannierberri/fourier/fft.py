@@ -58,6 +58,7 @@ def execute_fft(inp, axes, inverse=False, destroy=True, fftlib='fftw'):
 class FFT_R_to_k:
 
     def __init__(self, iRvec, NKFFT=None, num_wann=1, num_wann_left=None, num_wann_right=None, fftlib='fftw', name=None, k_list=None):
+        print(f"setting up FFT_R_to_k with fftlib={fftlib}, NKFFT={NKFFT}, num_wann={num_wann}, num_wann_left={num_wann_left}, num_wann_right={num_wann_right}, k_list={k_list}")
         t0 = time()
         fftlib = fftlib.lower()
         assert fftlib in ('fftw', 'numpy', 'slow'), f"fftlib '{fftlib}' is unknown/not supported"

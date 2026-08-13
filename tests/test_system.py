@@ -93,7 +93,7 @@ def check_system():
                 req_precision = prec
             if not data == pytest.approx(data_ref, abs=req_precision):
                 diff = abs(data - data_ref).max()
-                if data.ndim==0:
+                if data.ndim == 0:
                     raise ValueError(f"property {key} for system {name} gives an absolute difference of {diff} greater than the required precision {req_precision} \n new data : {data} \n ref data : {data_ref}")
                 missed = np.where(abs(data - data_ref) > req_precision)
                 n_missed = len(missed[0])

@@ -13,7 +13,7 @@ class Data_K_R(Data_K, System_R):
 
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
-            self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
+            self.rvec.set_fft_R_to_k(NK=self.NKFFT,
                                 fftlib=self.fftlib,
                                 dK=self.dK, k_list=self.k_list)
 

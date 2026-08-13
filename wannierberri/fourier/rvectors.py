@@ -29,19 +29,15 @@ class Rvectors:
 
         if shifts_left_red is None:
             self.shifts_left_red = np.zeros((1, 3), dtype=float)
-            self.has_shifts_left = False
         else:
             self.shifts_left_red = np.array(shifts_left_red)
-            self.has_shifts_left = True
 
 
 
         if shifts_right_red is None:
             self.shifts_right_red = self.shifts_left_red
-            self.has_shifts_right = False
         else:
             self.shifts_right_red = np.array(shifts_right_red)
-            self.has_shifts_right = True
 
         self._NKFFTrec = None
         if iRvec is not None:
@@ -51,16 +47,14 @@ class Rvectors:
         self.fft_R2k_set = False
         self.fft_q2R_set = False
 
-        # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
-
 
     def get_reversed(self):
         """
         Return a new Rvectors object with the left and right shifts reversed.
         """
-        return Rvectors(lattice=self.lattice, 
+        return Rvectors(lattice=self.lattice,
                         shifts_left_red=self.shifts_right_red,
-                        shifts_right_red=self.shifts_left_red, 
+                        shifts_right_red=self.shifts_left_red,
                         iRvec=-self.iRvec)
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
@@ -492,7 +486,7 @@ class Rvectors:
         else:
             self.logfile.write(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0), k_list=None):
+    def set_fft_R_to_k(self, NK, fftlib='fftw', dK=(0, 0, 0), k_list=None):
         """
         set the FFT for the R to k conversion
 

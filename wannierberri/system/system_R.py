@@ -756,7 +756,7 @@ class System_R(System):
         logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
-        properties = [x for x in all_names if not x.startswith('_XX_R_') and not x.startswith('theta') and x not in exclude_properties]
+        properties = [x for x in all_names if not x.startswith('_XX_R_') and not x.startswith('theta') and x not in exclude_properties]  # This is very unstable, TODO: write a list of possible properties
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
@@ -782,8 +782,14 @@ class System_R(System):
 
             if key == "iRvec":
                 print(f"{val=}")
+                rvecdict = Rvectors.read_dict(val)
+                ## legacy - to read old systems, where the shifts are not written in the Rvectors file.
+                if "shifts_left_red" not in rvecdict:
+                    rvecdict["shifts_left_red"] = self.wannier_centers_red
+                if "shifts_right_red" not in rvecdict:
+                    rvecdict["shifts_right_red"] = self.wannier_centers_red
                 self.rvec = Rvectors(lattice=self.real_lattice,
-                                     **Rvectors.read_dict(val))
+                                     **rvecdict)
             elif "key" == "pointgroup":
                 self.set_pointgroup(pointgroup=val)
             else:
