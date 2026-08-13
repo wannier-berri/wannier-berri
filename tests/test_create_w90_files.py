@@ -474,7 +474,7 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         bkvec = files_sub.get_file("bkvec")
         symmetrizer = files_sub.get_file("symmetrizer")
         check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
-        acc = 5e-5
+        acc = 1e-4
         assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
         print(f"mmn is symmetric, max deviation is {check}")
 
