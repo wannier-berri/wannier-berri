@@ -185,7 +185,8 @@ class WannierData:
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
                                             bk_complete_tol=1e-5,
-                                            kptirr=kptirr)
+                                            kptirr=kptirr,
+                                            real_lattice=bandstructure.lattice)
             else:
                 bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
                                             mp_grid=mp_grid,
@@ -468,6 +469,16 @@ class WannierData:
                      bkvec=None,
                      readnnkp=True
                      ):
+        """Create WannierData from Wannier90 files.
+
+        Parameters
+        ----------
+        readnnkp : bool or None
+            If ``True``, use the ``.nnkp`` file to construct the B-vectors when
+            it is available. The reciprocal lattice is always reconstructed
+            from the direct lattice in the checkpoint or ``.win`` file. If
+            ``False``, construct the B-vectors entirely from the checkpoint.
+        """
         self = cls()
         self.seedname = copy(seedname)
         formatted = [s.lower() for s in formatted]
@@ -486,12 +497,19 @@ class WannierData:
             self.set_chk(read=False)
 
         if bkvec is None:
-            if os.path.exists(seedname + ".nnkp") and readnnkp:
+            if readnnkp:
+                if self.has_file('chk'):
+                    real_lattice_loc = self.chk.real_lattice
+                elif self.has_file('win'):
+                    real_lattice_loc = self.win.lattice
+                else:
+                    real_lattice_loc = None
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
-                                            bk_complete_tol=1e-5)
+                                            bk_complete_tol=1e-5,
+                                            real_lattice=real_lattice_loc)
             else:
-                assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file does not exist"
+                assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file is not read"
                 bkvec = BKVectors.from_kpoints(recip_lattice=self.chk.recip_lattice,
                                             mp_grid=self.chk.mp_grid,
                                             kpoints_red=self.chk.kpt_red)

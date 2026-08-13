@@ -2,6 +2,8 @@ import os
 import numpy as np
 from pytest import approx
 from wannierberri.w90files.wandata import BKVectors
+from wannierberri.w90files.nnkp import parse_nnkp, parse_spinor_projections
+from wannierberri.utility import conjugate_basis
 from tests.common import ROOT_DIR
 
 
@@ -21,7 +23,49 @@ def test_bkvec_nnkp():
                                 [-1, 0, 1],
                                 [-1, -1, 0]])
     assert np.array_equal(bkvec.bk_grid, expected_bk_grid)
-    assert np.allclose(bkvec.wk[0], 0.23472230182715031)
+    assert bkvec.wk[0] == approx(0.2347222932648349, rel=1e-12)
+
+
+def test_empty_spinor_projections():
+    assert parse_spinor_projections("0\n") == []
+
+
+def test_nonempty_spinor_projections():
+    path = os.path.join(ROOT_DIR, "data", "Fe_Wannier90", "Fe.nnkp")
+    with open(path) as f:
+        parsed = parse_nnkp(f.read())
+    assert len(parsed["spinor_projections"]) == 18
+
+
+def test_bkvec_nnkp_uses_direct_lattice_and_ignores_optional_blocks(tmp_path):
+    source = os.path.join(ROOT_DIR, "data", "Si_Wannier90", "Si.nnkp")
+    with open(source) as f:
+        text = f.read()
+    text = text.replace(
+        "begin nnkpts",
+        "begin spinor_projections\n0\nend spinor_projections\n\nbegin nnkpts",
+    )
+    path = tmp_path / "Si.nnkp"
+    path.write_text(text)
+
+    parsed = parse_nnkp(text)
+    assert parsed["spinor_projections"] == []
+
+    bkvec = BKVectors.from_nnkp(path)
+    assert np.allclose(bkvec.recip_lattice, conjugate_basis(parsed["real_lattice"]), atol=0, rtol=1e-15)
+
+
+def test_bkvec_nnkp_accepts_higher_precision_direct_lattice():
+    path = os.path.join(ROOT_DIR, "data", "Si_Wannier90", "Si.nnkp")
+    real_lattice = np.array([
+        [-2.6988037638089994, 0.0, 2.6988037638089994],
+        [0.0, 2.6988037638089994, 2.6988037638089994],
+        [-2.6988037638089994, 2.6988037638089994, 0.0],
+    ])
+
+    bkvec = BKVectors.from_nnkp(path, real_lattice=real_lattice)
+    diff = bkvec.recip_lattice - conjugate_basis(real_lattice)
+    assert np.allclose(diff, 0, atol=0, rtol=1e-15), f"reciprocal lattice differs from conjugate basis by {diff}"
 
 
 def check_bkvec_kpoints(mp_grid, recip_lattice):
