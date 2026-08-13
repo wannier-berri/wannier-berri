@@ -549,7 +549,7 @@ class ProjectionsSet:
             The list of attributes to clear. If None, all cached properties are cleared
         """
         if attributes is None:
-            attributes = [  # ] "map_free_vars_cached", "_free_vars", "num_wann_per_site",
+            attributes = ["map_free_vars_cached", "_free_vars", "num_wann_per_site",
                 # "num_points", "num_wann",
                 "num_free_vars_wyckoff",]
         for attr in attributes:
