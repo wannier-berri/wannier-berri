@@ -587,7 +587,9 @@ def test_system_Fe_gpaw_soc_angle(check_system, get_system_Fe_gpaw_soc, theta_de
     name = f"theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
     system_Fe_gpaw_soc_111 = get_system_Fe_gpaw_soc(phi_deg=phi_deg, theta_deg=theta_deg, alpha_soc=alpha_soc)
 
-    out_data_file = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
+    out_data_dir = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc")
+    os.makedirs(out_data_dir, exist_ok=True)
+    out_data_file = os.path.join(out_data_dir, f"{name}.npz")
     ref_data_file = os.path.join(REF_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
     out_dict = {key: getattr(system_Fe_gpaw_soc_111, key) for key in ['alpha_soc', 'pauli_rotated']}
     np.savez(out_data_file, **out_dict)
