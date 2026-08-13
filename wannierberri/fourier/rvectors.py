@@ -58,8 +58,10 @@ class Rvectors:
         """
         Return a new Rvectors object with the left and right shifts reversed.
         """
-        return Rvectors(lattice=self.lattice, shifts_left_red=self.shifts_right_red,
-                        shifts_right_red=self.shifts_left_red, iRvec=-self.iRvec)
+        return Rvectors(lattice=self.lattice, 
+                        shifts_left_red=self.shifts_right_red,
+                        shifts_right_red=self.shifts_left_red, 
+                        iRvec=-self.iRvec)
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """

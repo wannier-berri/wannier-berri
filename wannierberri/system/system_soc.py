@@ -73,19 +73,11 @@ class SystemSOC(System_R):
             return self
         self.system_up, self.system_down = self.system_down, self.system_up
         self.wannier_centers_cart[::2], self.wannier_centers_cart[1::2] = self.wannier_centers_cart[1::2], self.wannier_centers_cart[::2].copy()
-        if self.has_R_mat('overlap_up_down'):
-            overlap = self.get_R_mat('overlap_up_down')
-            overlap = self.rvec.conj_XX_R(overlap)
-            self.set_R_mat('overlap_up_down', overlap, reset=True)
-        if self.has_R_mat_any(['dV_soc_wann_0_0', 'dV_soc_wann_1_0', 'dV_soc_wann_1_1']):
-            dV00 = self.get_R_mat('dV_soc_wann_0_0')
-            dV11 = self.get_R_mat('dV_soc_wann_1_1')
-            dV01 = self.get_R_mat('dV_soc_wann_0_1')
-            dV10 = self.rvec.conj_XX_R(dV01)
-            self.set_R_mat('dV_soc_wann_0_0', dV11, reset=True)
-            self.set_R_mat('dV_soc_wann_1_1', dV00, reset=True)
-            self.set_R_mat('dV_soc_wann_0_1', dV10, reset=True)
-        self.clear_R_mat(['Ham_SOC', 'SS'])
+        if self.nspin==2:
+            self.rvec = self.rvec.get_reversed()
+            for key in ["overlap_up_down", "dV_soc"]:
+                if self.has_R_mat(key):
+                    self.set_R_mat(key, self.get_R_mat(key).conj().swapaxes(1, 2), reset=True)
 
 
 

@@ -78,7 +78,7 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
-            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape}", end="")
+            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape} data={data}", end="")
             print("sort = ", sort)
             if sort is not None:
                 data_ref = data_ref[sort]
@@ -93,6 +93,8 @@ def check_system():
                 req_precision = prec
             if not data == pytest.approx(data_ref, abs=req_precision):
                 diff = abs(data - data_ref).max()
+                if data.ndim==0:
+                    raise ValueError(f"property {key} for system {name} gives an absolute difference of {diff} greater than the required precision {req_precision} \n new data : {data} \n ref data : {data_ref}")
                 missed = np.where(abs(data - data_ref) > req_precision)
                 n_missed = len(missed[0])
                 err_msg = (f"matrix elements {key} for system {name} give an "
