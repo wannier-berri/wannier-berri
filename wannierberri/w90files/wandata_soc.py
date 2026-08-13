@@ -9,7 +9,7 @@ from .wandata import WannierData
 class WannierDataSOC(WannierData):
     """Class to handle Wannier90 data with spin-orbit coupling (SOC)."""
 
-    files_proper = ["soc"]
+    files_proper = ["soc", "cell", "mmn_ud", "mmn_du"]
 
     def __init__(self, data_up, data_down, soc=None, cell=None, seedname="wannier_soc", altermagnetic=False):
         self.data_up = data_up
@@ -45,7 +45,7 @@ class WannierDataSOC(WannierData):
             return [f for f in files if f in cls.files_proper]
 
     @classmethod
-    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False):
+    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False, ignore_missing_files=False):
         """Create Wannier90DataSOC from NPZ files."""
         cell = np.load(seedname + ".cell.npz", allow_pickle=True)
         if nspin is None:
@@ -59,18 +59,24 @@ class WannierDataSOC(WannierData):
         files_ud = cls.get_files_ud(files)
         data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                        files=files_ud,
-                                       irreducible=irreducible)
+                                       irreducible=irreducible,
+                                       ignore_missing_files=ignore_missing_files)
         if nspin == 2 and not altermagnetic:
             data_down = WannierData.from_npz(seedname=seedname + "-spin-1",
                                              files=files_ud,
-                                             irreducible=irreducible)
+                                             irreducible=irreducible,
+                                             ignore_missing_files=ignore_missing_files)
         else:
             data_down = None
         try:
             from .soc import SOC
             soc = SOC.from_npz(seedname + ".soc.npz")
         except FileNotFoundError:
-            soc = None
+            if ignore_missing_files:
+                print(f"Warning: SOC file {seedname}.soc.npz not found. SOC will be set to None.")
+                soc = None
+            else:
+                raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")
 
         data_soc = cls(data_up=data_up, data_down=data_down, soc=soc, seedname=seedname, altermagnetic=altermagnetic)
         if os.path.isfile(seedname + ".cell.npz"):

@@ -95,6 +95,10 @@ class System:
         """alias for :func:`~wannierberri.system.System.to_npz`"""
         self.to_npz(*args, **kwargs)
 
+    def to_npz(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
         """

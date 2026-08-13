@@ -3,7 +3,6 @@
 import copy
 import os
 import tarfile
-from gpaw import GPAW
 import pytest
 import numpy as np
 import pickle
@@ -11,20 +10,14 @@ import wannierberri as wberri
 from wannierberri.symmetry import point_symmetry as SYM
 from pathlib import Path
 from wannierberri import models as wb_models
-from irrep.spacegroup import SpaceGroup
-
 from wannierberri.system.needed_data import NeededData
 from wannierberri.system.system_R import System_R
-from wannierberri.w90files.soc import SOC
-from wannierberri.w90files.chk import CheckPoint as CHK
 from wannierberri.w90files.wandata import WannierData
 from wannierberri.w90files.wandata_soc import WannierDataSOC
 
 
 from wannierberri.system.system_soc import SystemSOC
-from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
-from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from .common import OUTPUT_DIR, REF_DIR, ROOT_DIR
+from .common import OUTPUT_DIR, REF_DIR, ROOT_DIR, DATA_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
@@ -89,7 +82,7 @@ def create_files_Fe_W90():
 
     seedname = "Fe"
     tags_needed = ["uHu", "uIu", "sHu", "sIu"]  # Files to calculate if they do not exist
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90")
+    data_dir = os.path.join(DATA_DIR, "Fe_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
 
@@ -284,37 +277,17 @@ def system_Fe_W90_proj(create_files_Fe_W90):
     return get_system_Fe_sym_W90()
 
 
-PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+PATH_Fe_GPAW = os.path.join(DATA_DIR, "Fe-gpaw-irred")
 
 
 @pytest.fixture(scope="session")
 def wandata_Fe_gpaw():
     """Create wandata object for Fe from GPAW calculation"""
-    try:
-        wandata = WannierDataSOC.from_npz(
-            seedname=os.path.join(OUTPUT_DIR, "Fe_gpaw_wandata"),
-            files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
-        )
-    except FileNotFoundError:
-        calc = GPAW(f'{PATH_Fe_GPAW}/Fe-nscf-irred-222.gpw', txt=None)
-        sg = SpaceGroup.from_gpaw(calc)
-        proj_set = ProjectionsSet([Projection(position_num=[0, 0, 0], orbital=orb, spacegroup=sg) for orb in ['s', 'p','d']])
-        wandata = WannierDataSOC.from_gpaw(
-            calculator=calc,
-            seedname=os.path.join(OUTPUT_DIR, "wannier_soc"),
-            mp_grid=(2, 2, 2),
-            projections=proj_set,
-            files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
-            return_bandstructure=False,
-            irreducible=True
-        )
-        wandata.wannierise(sitesym=True,
-                        num_iter=30,
-                        froz_min=-np.inf,
-                        froz_max=15)
-        wandata.to_npz(os.path.join(OUTPUT_DIR, "Fe_gpaw_wandata"))
+    wandata = WannierDataSOC.from_npz(
+        seedname=os.path.join(PATH_Fe_GPAW, "Fe-gpaw-wandata/wannier_soc"),
+        files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
+    )
     return wandata
-
 
 
 @pytest.fixture(scope="session")

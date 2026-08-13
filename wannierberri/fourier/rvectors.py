@@ -54,6 +54,13 @@ class Rvectors:
         # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
 
+    def get_reversed(self):
+        """
+        Return a new Rvectors object with the left and right shifts reversed.
+        """
+        return Rvectors(lattice=self.lattice, shifts_left_red=self.shifts_right_red,
+                        shifts_right_red=self.shifts_left_red, iRvec=-self.iRvec)
+
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """
         set the Rvectors for all the shifts (MDRS method)
@@ -98,6 +105,25 @@ class Rvectors:
         for i, iRvec in enumerate(self.iRvec_list):
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
 
+    def as_dict(self):
+        return dict(iRvec=self.iRvec,
+                    shifts_left_red=self.shifts_left_red,
+                    shifts_right_red=self.shifts_right_red)
+
+    @classmethod
+    def read_dict(cls, dic_in):
+        dic_out = {}
+        if 'iRvec' in dic_in:
+            dic_out['iRvec'] = np.array(dic_in['iRvec'], dtype=int)
+        elif 'arr_0' in dic_in:
+            dic_out['iRvec'] = np.array(dic_in['arr_0'], dtype=int)
+        else:
+            raise ValueError(f"dic must contain 'iRvec' or 'arr_0', but contains {list(dic_in.keys())}")
+        if 'shifts_left_red' in dic_in:
+            dic_out['shifts_left_red'] = np.array(dic_in['shifts_left_red'])
+        if 'shifts_right_red' in dic_in:
+            dic_out['shifts_right_red'] = np.array(dic_in['shifts_right_red'])
+        return dic_out
 
     def copy(self):
         """

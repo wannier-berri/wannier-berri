@@ -675,6 +675,7 @@ class System_R(System):
         overwrite : bool
             if the directory already exiists, it will be overwritten
         """
+        super().to_npz(path)
         logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
@@ -692,14 +693,13 @@ class System_R(System):
             fullpath = os.path.join(path, key + ".npz")
             print(f"saving {key} to {fullpath}")
             if key == 'iRvec':
-                val = dict(arr_0=self.rvec.iRvec,
-                           shifts_left_red=self.rvec.shifts_left_red,
-                           shifts_right_red=self.rvec.shifts_right_red)
+                val = self.rvec
             else:
                 val = getattr(self, key)
-            if key in ['pointgroup']:
+
+            if key in ['pointgroup', 'iRvec']:
                 np.savez(fullpath, **val.as_dict())
-            elif key in ['cell', 'iRvec']:
+            elif key in ['cell']:
                 np.savez(fullpath, **val)
             else:
                 np.savez(fullpath, val)
@@ -756,14 +756,15 @@ class System_R(System):
         logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
-        properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
+        properties = [x for x in all_names if not x.startswith('_XX_R_') and not x.startswith('theta') and x not in exclude_properties]
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
+        print("properties to load: ", properties)
         for key in properties:
             if key in keys_processed:
                 continue
-            logfile.write(f"loading {key}")
+            logfile.write(f"loading {key}\n ")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=True)
 
             # pointgroup was previouslly named symgroup. This is for backward compatibility
@@ -780,11 +781,9 @@ class System_R(System):
                 val = a['arr_0']
 
             if key == "iRvec":
+                print(f"{val=}")
                 self.rvec = Rvectors(lattice=self.real_lattice,
-                                     iRvec=val['arr_0'],
-                                     shifts_left_red=val.get('shifts_left_red', self.wannier_centers_red),
-                                     shifts_right_red=val.get('shifts_right_red', self.wannier_centers_red)
-                                     )
+                                     **Rvectors.read_dict(val))
             elif "key" == "pointgroup":
                 self.set_pointgroup(pointgroup=val)
             else:
@@ -802,7 +801,7 @@ class System_R(System):
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
-            logfile.write(" - Ok!\n")
+            logfile.write(f"loading {key} - Ok!\n")
         return self
 
     @classmethod

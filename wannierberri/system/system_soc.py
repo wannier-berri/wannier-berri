@@ -1,7 +1,6 @@
 import copy
 from functools import cached_property
 import os
-import warnings
 import numpy as np
 
 from ..symmetry.point_symmetry import PointGroup
@@ -212,8 +211,7 @@ class SystemSOC(System_R):
 
         kptirr, weights_k = wandata.data_up.kptirr_system
 
-        
-        print (f"wandata.nspin={wandata.nspin}, soc={soc}, altermagnetic={altermagnetic}, symmetrize={symmetrize}")
+
         if wandata.nspin == 2 and soc is not None:
             chk_up = wandata.data_up.chk
             v_matrix_list_up = wandata.data_up.chk.v_matrix
@@ -256,9 +254,7 @@ class SystemSOC(System_R):
             system_soc.rvec = rvec
             system_soc.set_R_mat('dV_soc', dV_soc_wann_R_01)
             system_soc.set_R_mat('overlap_up_down', overlap_Rud)
-            print("symmetrize=", symmetrize)
             if symmetrize:
-                print (f"Symmetrizing system_soc with symmetrizer_up and symmetrizer_down")
                 from ..symmetry.sym_wann_2 import SymWann
                 symm_wann_up_down = SymWann(
                     symmetrizer_left=symmetrizer_up,
@@ -269,7 +265,7 @@ class SystemSOC(System_R):
                 # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
                 system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
-                print (f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
+                print(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
                 rvec.iRvec = iRvec_new
                 rvec.mp_grid = system_soc.rvec.mp_grid,
                 rvec.clear_cached()
@@ -279,7 +275,13 @@ class SystemSOC(System_R):
 
     def get_system_R(self):
         from ..fourier.rvectors import merge_Rvectors
-        rvectors_merged, rvectors_map_list = merge_Rvectors([self.rvec, self.system_up.rvec, self.system_down.rvec])
+
+        rvectors_merged, rvectors_map_list = merge_Rvectors([self.system_up.rvec, self.system_down.rvec, self.rvec, self.rvec.get_reversed()])
+        shifts_red = np.zeros((self.num_wann, 3))
+        shifts_red[::2] = self.rvec.shifts_left_red
+        shifts_red[1::2] = self.rvec.shifts_right_red
+        rvectors_merged.shifts_left_red = shifts_red
+        rvectors_merged.shifts_right_red = shifts_red
 
         system_R = System_R()
         system_R.rvec = rvectors_merged
@@ -292,15 +294,41 @@ class SystemSOC(System_R):
         system_R.force_internal_terms_only = self.force_internal_terms_only
         system_R.cell = self.cell.copy() if self.cell is not None else None
 
-        for key, value in self.system_up._XX_R.items():
+        for key in list(self.system_up._XX_R.keys()) + ["SS"]:
+            if key != "SS":
+                shape = self.system_up._XX_R[key].shape[3:]
+                # shape = tuple()
+            else:
+                shape = (3,)
             print(f"setting matrix {key} from system_up")
-            matrix = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann) + value.shape[3:], dtype=value.dtype)
+            matrix = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann) + shape, dtype=complex)
             if key == 'Ham':
-                matrix[rvectors_map_list[0]] += self.get_R_mat('Ham_SOC')
-            matrix[rvectors_map_list[1], ::2, ::2] += self.system_up.get_R_mat(key)
-            matrix[rvectors_map_list[2], 1::2, 1::2] += self.system_down.get_R_mat(key)
+                matrix[rvectors_map_list[0], ::2, ::2] = self.system_up.get_R_mat(key)
+                matrix[rvectors_map_list[1], 1::2, 1::2] = self.system_down.get_R_mat(key)
+                dVsoc = np.zeros((rvectors_merged.nRvec, 2, 2, self.num_wann // 2, self.num_wann // 2, 3), dtype=complex)
+                dVsoc[rvectors_map_list[0], 0, 0] = self.system_up.get_R_mat('dV_soc')
+                dVsoc[rvectors_map_list[1], 1, 1] = self.system_down.get_R_mat('dV_soc')
+                dVsoc[rvectors_map_list[2], 0, 1] = self.get_R_mat('dV_soc')
+                dVsoc[rvectors_map_list[3], 1, 0] = self.get_R_mat('dV_soc').conj().swapaxes(1, 2)
+                for i in range(2):
+                    for j in range(2):
+                        matrix[:, i::2, j::2] += cached_einsum("rmnc...,c->rmn...", dVsoc[:, i, j, :, :, :], self.pauli_rotated[i, j, :]) * self.alpha_soc
+            elif key == 'SS':
+                iR0 = rvectors_merged.iR0
+                SSk = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+                rng = np.arange(0, self.num_wann, 2)
+                SSk[iR0, rng, rng, :] = self.pauli_rotated[0, 0, None, None, :]
+                SSk[iR0, rng + 1, rng + 1, :] = self.pauli_rotated[1, 1, None, None, :]
+                if self.nspin == 2:
+                    overlap = self.get_R_mat('overlap_up_down')[:, :, :, None]
+                    SSk[rvectors_map_list[1], 0::2, 1::2, :] = overlap * self.pauli_rotated[None, 0, 1, None, None, :]
+                    SSk[rvectors_map_list[2], 1::2, 0::2, :] = overlap.conj().swapaxes(1, 2) * self.pauli_rotated[None, 1, 0, None, None, :]
+                else:
+                    SSk[iR0, rng, rng + 1, :] = self.pauli_rotated[0, 1, None, None, :]
+                    SSk[iR0, rng + 1, rng, :] = self.pauli_rotated[1, 0, None, None, :]
+                matrix = SSk
+            else:
+                matrix[rvectors_map_list[0], ::2, ::2] += self.system_up.get_R_mat(key)
+                matrix[rvectors_map_list[1], 1::2, 1::2] += self.system_down.get_R_mat(key)
             system_R.set_R_mat(key, matrix)
-        SS_R = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
-        SS_R[rvectors_map_list[0]] = self.get_R_mat('SS')
-        system_R.set_R_mat('SS', SS_R)
         return system_R
