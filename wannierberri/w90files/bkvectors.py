@@ -1,8 +1,6 @@
-import warnings
-
 import numpy as np
 
-from ..utility import conjugate_basis, real_recip_lattice
+from ..utility import real_recip_lattice
 from .utility import get_mp_grid
 from .io import sparselist_to_dict
 from .nnkp import parse_nnkp
