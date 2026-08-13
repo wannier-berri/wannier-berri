@@ -11,7 +11,7 @@ from .common import DATA_DIR, OUTPUT_DIR, REF_DIR
 from wannierberri.symmetry.projections import Projection, ProjectionsSet
 
 
-def test_MnTe():
+def test_wannierise(check_system):
     calc = GPAW(os.path.join(DATA_DIR, "MnTe_gpaw", "MnTe-nscf-irred-332.gpw"), txt=None)
     sg = SpaceGroup.from_gpaw(calc, include_TR=True)
 
@@ -56,7 +56,29 @@ def test_MnTe():
     system_soc = SystemSOC.from_wannierdata(wandata=wandata, berry=True, silent=False)
     system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0, units="degrees")
     system_soc.save_npz(os.path.join(OUTPUT_DIR, "systems", "MnTe_soc_altermagnetic"))
+    check_system(
+        system_soc, "MnTe_soc_altermagnetic",
+        matrices=['overlap_up_down', 'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        precision_matrix_elements=1e-4,
+        precision_wcc=1e-6,
+    )
+    check_system(
+        system_soc.system_up, "MnTe_soc_altermagnetic/system_up",
+        matrices=['Ham', 'AA', 'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
+        precision_matrix_elements=1e-4,
+        precision_wcc=1e-6,
+    )
 
+
+
+
+
+def test_MnTe_bandstructure_altermagnetic():
+    wandata = WannierDataSOC.from_npz(os.path.join(DATA_DIR, "MnTe_gpaw", "wannier_soc_altermagnetic"),
+                                      files=["mmn", "amn", "eig", "soc", "chk", "symmetrizer"])
+    system_soc = SystemSOC.from_wannierdata(wandata=wandata, berry=True, silent=False)
     lattice = system_soc.real_lattice
     c = lattice[2, 2]
 
@@ -103,4 +125,6 @@ def test_MnTe():
 
     ref_data = np.load(ref_file)
     for key in ref_data.keys():
-        assert np.allclose(ref_data[key], np.load(output_file)[key], atol=1e-4), f"Mismatch in {key} between reference and output data"
+        diff = np.abs(ref_data[key] - np.load(output_file)[key])
+        max_diff = np.max(diff)
+        assert max_diff < 1e-4, f"Mismatch in {key} between reference and output data, max difference: {max_diff}"

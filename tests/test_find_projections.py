@@ -108,8 +108,8 @@ def test_isym_little_unitary(diamond_setup):
                zip(searcher.isym_little, sym_TR.isym_little))
     # the grey path must reconstruct the colourless group's little groups exactly
     assert sym_TR.NKirr == sym_plain.NKirr
-    assert ([len(l) for l in searcher.isym_little]
-            == [len(l) for l in sym_plain.isym_little])
+    assert ([len(l) for l in searcher.isym_little] ==
+            [len(l) for l in sym_plain.isym_little])
 
 
 # minimal Irrep-like objects for testing
@@ -146,4 +146,4 @@ def test_get_all_possible_irreps_conj_defaults(diamond_setup):
     irreps = get_all_possible_irreps_conj(sym_plain)
     assert len(irreps) == sym_plain.NKirr
     for ik, ir in enumerate(irreps):
-        assert ir.shape[1] == len(sym_plain.isym_little[ik])        
+        assert ir.shape[1] == len(sym_plain.isym_little[ik])
