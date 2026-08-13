@@ -104,13 +104,13 @@ def load_wandata(seedname, files, **kwargs):
         wandata = WannierData.from_npz(seedname=path_npz, files=files, ignore_missing_files=False)
     except FileNotFoundError as e:
         print(f"NPZ files not found for seedname {seedname} and files {files}. \n{e}\nTrying to load from w90 files.")
-        wandata = WannierData.from_w90_files(seedname=seedname, files=files, **kwargs)
+        wandata = WannierData.from_w90_files(seedname=seedname, files=files, readnnkp=False, **kwargs)
         wandata.to_npz(path_npz)
     return wandata
 
 
 @pytest.fixture(scope="session")
-def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
+def create_files_Fe_W90_npz(create_files_Fe_W90):
     """Create symbolic links to the npz files"""
 
     seedname = "Fe"
@@ -120,9 +120,7 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
 
     load_wandata(seedname=str(data_dir / seedname),
                  files=["amn", "mmn", "eig", "chk", "spn", "win",
-                        "uHu", "uIu", "sHu", "sIu"],
-                 readnnkp=False)
-
+                        "uHu", "uIu", "sHu", "sIu"])
     return data_dir_new
 
 
@@ -456,6 +454,7 @@ def get_system_GaAs_W90(create_files_GaAs_W90):
         wandata = load_wandata(
             seedname=seedname,
             files=NeededData(**matrices).files,
+            readnnkp=False,  
         )
         system = System_R.from_wannierdata(wandata=wandata,
                                     **matrices,
