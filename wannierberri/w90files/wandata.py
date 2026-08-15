@@ -299,6 +299,7 @@ class WannierData:
                                       nbands_upper_skip=8),
                   return_bandstructure=False,
                   return_paw=False,
+                  use_disk=False,
                   IBstart=None,
                   IBend=None,
                   verbosity=0,):
@@ -313,7 +314,8 @@ class WannierData:
                                   verbosity=verbosity,
                                   include_TR=include_TR,
                                   IBstart=IBstart,
-                                  IBend=IBend
+                                  IBend=IBend,
+                                  store_paw=use_disk
                                   )
         try:
             # irrep-3

@@ -144,6 +144,7 @@ class MMN(W90_file):
                            irred_bk_only=True,
                            include_paw=True,
                            include_pseudo=True,
+                           use_disk=False
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -157,6 +158,8 @@ class MMN(W90_file):
             if True, the wavefunctions are normalised
         param_search_bk : dict
             additional parameters for `:func:find_bk_vectors`
+        use_disk : bool
+            use disk space, instead of RAM to store transformed wavefunctions. This is useful for large systems with dense grids.
 
         Returns
         -------
@@ -215,6 +218,26 @@ class MMN(W90_file):
             bk_from_bk_irr_isym = np.zeros((len(kptirr), NNB), dtype=int)
             bk_map = None
 
+        kpoints_dict_keys = set(kptirr)
+        num_times_needed = {ik: 0 for ik in kptirr}
+        for ikirr, kirr in enumerate(kptirr):
+            for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
+                if ib in bkirr[ikirr]:
+                    ik2 = int(ik2)
+                    if ik2 not in kpoints_dict_all:
+                        kpoints_dict_keys.add(ik2)
+                        num_times_needed[ik2] = num_times_needed.get(ik2, 0) + 1
+        n_needed_kpoints = len(kpoints_dict_keys)
+        print(f"Total number of k-points used for mmn calculation: {n_needed_kpoints} out of total {NK} {len(kpt_grid)} k-points in the grid ({len(kptirr)} irreducible k-points)")
+        for i in range(max(num_times_needed.values(), default=0)):
+            print(f"Number of k-points needed {i} times: {[ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))]}")
+        print("excluding irreducible k-points")
+
+        if use_disk:
+            store_kwargs = {"store": True}
+        else:
+            store_kwargs = {}
+
 
         for ikirr, kirr in enumerate(kptirr):
             for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
@@ -229,8 +252,9 @@ class MMN(W90_file):
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
-                                                        k_new=kpt_grid[ik2])
+                                                        k_new=kpt_grid[ik2], **store_kwargs)
                         kpoints_dict_all[ik2] = kp2
+                        print(f"adding k-point {ik2}  (in kpoints_dict_all = {ik2 in kpoints_dict_all}); the length is now {len(kpoints_dict_all)}")
 
 
 
@@ -298,8 +322,12 @@ class Grid_PAW_all:
 
     def get_WF(self, ik, G=0):
         kp = self.kpoints_dict_all[ik]
-        kp = kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
-        return kp
+        if np.all(G == 0):
+            return kp
+        else:
+            print("Transforming k-point with G = ", G)
+            return kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
+
 
 
 class Grid_ig_all:

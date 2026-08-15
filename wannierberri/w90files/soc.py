@@ -196,6 +196,7 @@ class SOC(W90_file):
 
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
+            print(f"Calculating SOC for k-point {q}/{nk}")
             KPup = bandstructure_up.kpoints_paw[q]
             if altermagnetic_transformer is None:
                 if nspin == 2:
@@ -210,7 +211,7 @@ class SOC(W90_file):
                     dV_soc[q, s1, s2] += overlap_paw.soc(KPlist[s1], KPlist[s2])
             if calc_overlap_loc:
                 overlap[q] += overlap_paw.product(KPup, KPdown, include_paw=True, include_pseudo=True, bk=None)
-
+        print("SOC calculation finished")
         return cls(data=dV_soc, overlap=overlap, NK=nk)
 
 

@@ -111,6 +111,7 @@ class WannierDataSOC(WannierData):
                   return_bandstructure=False,
                   altermagnetic=False,
                   altermagnetic_nskip_symmetries=0,
+                  use_disk=False,
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC.
 
@@ -141,7 +142,7 @@ class WannierDataSOC(WannierData):
                               include_paw=include_paw,
                               include_pseudo=include_pseudo,
                               files=[f for f in files if f not in ["soc", "mmn_ud"]],
-                              )
+                              use_disk=use_disk)
         return_bandstructure_loc = return_bandstructure or ("mmn_ud" in files and nspin == 2) or "soc" in files
         return_paw = include_paw or ("mmn_ud" in files and nspin == 2) or "soc" in files
         kwargs_wandata.update(kwargs)
@@ -195,7 +196,7 @@ class WannierDataSOC(WannierData):
             data_down = None
             bandstructure_down = None
 
-        data = cls(data_up=data_up, data_down=data_down, cell=cell, seedname=seedname)
+        data = cls(data_up=data_up, data_down=data_down, cell=cell, seedname=seedname, altermagnetic=altermagnetic)
 
         if "soc" in files:
             from .soc import SOC
@@ -291,7 +292,7 @@ class WannierDataSOC(WannierData):
             if projections_down is not None:
                 print("Warning: 'projections' will override 'projections_down'.")
             projections_down = projections
-        if self.nspin == 2:
+        if self.nspin == 2 and not self.altermagnetic:
             assert bandstructure_up is not None and bandstructure_down is not None, "two bandstructures (up and down) must be provided for nspin=2."
         elif self.nspin == 1:
             if bandstructure is not None:
@@ -301,7 +302,7 @@ class WannierDataSOC(WannierData):
         self.data_up.set_projections(projections=projections_up,
                                      bandstructure=bandstructure_up,
                                      **kwargs)
-        if self.nspin == 2:
+        if self.nspin == 2 and not self.altermagnetic:
             self.data_down.set_projections(projections=projections_down,
                                            bandstructure=bandstructure_down,
                                            **kwargs)

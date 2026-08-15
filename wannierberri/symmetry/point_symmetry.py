@@ -525,3 +525,14 @@ def transform_from_dict(dic, key):
             return None
         else:
             return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")
+
+
+
+
+def get_site_symmetry(spacegroup, point_red):
+    rotations = []
+    for sym in spacegroup.symmetries:
+        shift = sym.transform_r(point_red) - point_red
+        if np.linalg.norm(shift - shift.round()) < 1e-6:
+            rotations.append(PointSymmetry(sym.rotation_cart, sym.time_reversal))
+    return PointGroup(generator_list=rotations, real_lattice=spacegroup.Lattice)
