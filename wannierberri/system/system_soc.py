@@ -194,7 +194,7 @@ class SystemSOC(System_R):
         return self.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
 
 
-    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians"):
+    def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians", torque=False):
         units = units.lower()
         if units.startswith("r"):
             pass
@@ -252,7 +252,50 @@ class SystemSOC(System_R):
                                     magmom=magmoms)
             self.set_pointgroup(spacegroup=mag_group)
 
-        return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
+        ret_val = [self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')]
+        if torque:
+            self.set_torque_operators_R(theta=theta, phi=phi, units="radians")
+            ret_val.append(self.get_R_mat('SOT'))
+        return tuple(ret_val)
+
+    def set_torque_operators_R(self, theta=0, phi=0, units="radians"):
+        units = units.lower()
+        if units.startswith("r"):
+            pass
+        elif units.startswith("d"):
+            theta = np.deg2rad(theta)
+            phi = np.deg2rad(phi)
+        else:
+            raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
+        assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
+
+        # M is shape (2, 2, 3, 3). M[spin_row, spin_col] is a 3x3 matrix mapping L to SOT
+        M = SOC.rotated_pauli_commutators(theta, phi)
+        nRvec = self.rvec.nRvec
+
+        dV00 = self.get_R_mat('dV_soc_wann_0_0')
+        if self.nspin == 2:
+            dV11 = self.get_R_mat('dV_soc_wann_1_1')
+            dV01 = self.get_R_mat('dV_soc_wann_0_1')
+            dV10 = self.rvec.conj_XX_R(dV01)
+
+        # Initialize the (nR, num_wann, num_wann, 3) tensor
+        SOT_R = np.zeros((nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+
+        SOT_R[:, ::2, ::2] = cached_einsum("rmnc,cd->rmnd", dV00, M[0, 0])
+
+        if self.nspin == 2:
+            SOT_R[:, 1::2, 1::2] = cached_einsum("rmnc,cd->rmnd", dV11, M[1, 1])
+            SOT_R[:, ::2, 1::2] = cached_einsum("rmnc,cd->rmnd", dV01, M[0, 1])
+            SOT_R[:, 1::2, ::2] = cached_einsum("rmnc,cd->rmnd", dV10, M[1, 0])
+
+        elif self.nspin == 1:
+            SOT_R[:, 1::2, 1::2] = cached_einsum("rmnc,cd->rmnd", dV00, M[1, 1])
+            SOT_R[:, ::2, 1::2] = cached_einsum("rmnc,cd->rmnd", dV00, M[0, 1])
+            SOT_R[:, 1::2, ::2] = cached_einsum("rmnc,cd->rmnd", dV00, M[1, 0])
+
+        self.set_R_mat('SOT', SOT_R, reset=True)
+        return self.get_R_mat('SOT')
 
     @cached_property
     def essential_properties(self):
@@ -290,6 +333,7 @@ class SystemSOC(System_R):
         system_soc.load_npz(path, exclude_properties=exclude_properties, matrices=matrices)
         if system_soc.has_soc_R:
             system_soc.has_soc = True
+        print(f"SystemSOC loaded successfully from {path}")
         return system_soc
 
     def symmetrize2(self, symmetrizer=None,

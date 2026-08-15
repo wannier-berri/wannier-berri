@@ -788,14 +788,20 @@ class System_R(System):
         if matrices is None:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
+            xxr = True
+            if len(matrices) == 0:
+                for key in ["Ham", "AA", "BB", "CC", "SS", "FF", "SHR", "SHA", "SH", "SA", "GG", "OO"]:
+                    if os.path.exists(os.path.join(path, key + ".npz")):
+                        matrices.append(key)
+                xxr = False
         for key in matrices:
             logfile.write(f"loading R_matrix {key}")
-            a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
-
+            a = np.load(os.path.join(path, self._R_mat_npz_filename(key, xxr=xxr)), allow_pickle=False)['arr_0']
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
             logfile.write(" - Ok!\n")
+        logfile.write(f"system loaded successfully from {path}\n")
         return self
 
     @classmethod

@@ -789,11 +789,48 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+class TorkanceBase(Formula_ln):
+    """ Base class for Torkance components """
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, ndim=2, **parameters)
+        self.T_cov = data_K.covariant('SOT')
+        self.V_cov = data_K.covariant('Ham', commader=1)
+        self.dE_inv = data_K.dEig_inv
+
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError("The ln cross-block is physically undefined for Torkance.")
+
+
+class TorqueEvenOmega(TorkanceBase):
+    """ Even Torkance component """
+
+    def nn(self, ik, inn, out):
+        dE_n_m = self.dE_inv[ik][inn, :][:, out]
+        T_sub = self.T_cov.nl(ik, inn, out) * dE_n_m[:, :, None]
+        V_sub = self.V_cov.ln(ik, inn, out) * dE_n_m.swapaxes(0, 1)[:, :, None]
+        term = cached_einsum('nma, mpb -> npab', T_sub, V_sub)
+        return 2j * term
+
+
+class TorqueOddOmega(TorkanceBase):
+    """ Odd Torkance component """
+
+    def nn(self, ik, inn, out):
+        T = self.T_cov.matrix[ik, inn, :][:, inn]
+        V = self.V_cov.matrix[ik, inn, :][:, inn]
+        return cached_einsum('npa,pmb->nmab', T, V)
+
+
 ####################################
 #                                  #
 #    Some Prooducts                #
 #                                  #
 ####################################
+
 
 class VelOmega(FormulaProduct):
 
