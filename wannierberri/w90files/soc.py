@@ -46,7 +46,8 @@ class SOC(W90_file):
         elif isinstance(overlap, dict):
             self.overlap = overlap
         elif overlap is None:
-            warnings.warn("No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
+            if self.nspin == 2:
+                warnings.warn("nspin=2, but No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
             self.overlap = {i: np.eye(self.NB, dtype=complex) for i in self.data}
         else:
             raise ValueError(f"Invalid overlap input: {overlap} of type {type(overlap)}. Should be a list or array or None")
@@ -54,18 +55,6 @@ class SOC(W90_file):
     @classmethod
     def from_w90_file(cls, seedname='wannier90', formatted=False):
         raise NotImplementedError("SOC.from_w90_file is not implemented - there is no such w90 file")
-
-    @classmethod
-    def from_bandstructure(cls, bandstructure_soc,
-                           bandsctructure_up,
-                           bandsctructure_down=None,
-                           verbose=False,
-                           selected_kpoints_soc=None,
-                           selected_kpoints_scal=None,
-                           kptirr=None,
-                           NK=None
-                           ):
-        raise NotImplementedError("SOC.from_bandstructure is not implemented")
 
 
     @classmethod
@@ -106,13 +95,17 @@ class SOC(W90_file):
 
 
     @classmethod
-    def from_gpaw(cls, calculator, calc_overlap=True):
+    def from_gpaw(cls, calculator,
+                  calc_overlap=True,
+                  IBstart=None,
+                  IBend=None):
         """
         Create SOC from a GPAW magnetic calculation.
         """
         from gpaw.spinorbit import soc
         from ase.units import Hartree
         from gpaw import GPAW
+
         if isinstance(calculator, str):
             calculator = GPAW(calculator, txt=None)
         nspin = calculator.get_number_of_spins()
@@ -123,8 +116,9 @@ class SOC(W90_file):
             for a, D_sp in calculator.density.D_asp.items()
         }
 
-        m = calculator.get_number_of_bands()
-        print(f"number of bands = {m}")
+        NBin = calculator.get_number_of_bands()
+        IBstart, IBend, NBout = default_IBstartend(NBin, IBstart, IBend)
+        print(f"number of bands in = {NBin} , IBstart = {IBstart}, IBend = {IBend}, NBout = {NBout}")
         nk = len(calculator.get_ibz_k_points())
 
         # H_a = {}
@@ -138,34 +132,86 @@ class SOC(W90_file):
         #     H_a[a] = H_ssii
 
 
-        dV_soc = np.zeros((nk, nspin, nspin, 3, m, m), complex)
+        dV_soc = np.zeros((nk, nspin, nspin, 3, NBout, NBout), complex)
 
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
             for a, H_ssii in dVL_avii.items():
                 for s1 in range(nspin):
                     for s2 in range(nspin):
-                        P1_mi = calculator.wfs.kpt_qs[q][s1].P_ani[a].conj()
-                        P2_mi = calculator.wfs.kpt_qs[q][s2].P_ani[a].T
+                        P1_mi = calculator.wfs.kpt_qs[q][s1].P_ani[a][IBstart:IBend].conj()
+                        P2_mi = calculator.wfs.kpt_qs[q][s2].P_ani[a][IBstart:IBend].T
                         for t in range(3):
                             dV_soc[q, s1, s2, t] += P1_mi @ H_ssii[t] @ P2_mi
         dV_soc *= Hartree
 
         if nspin == 2 and calc_overlap:
-            overlap = np.zeros((nk, m, m), complex)
+            overlap = np.zeros((nk, NBout, NBout), complex)
             alpha = calculator.wfs.gd.dv / calculator.wfs.gd.N_c.prod()
             for q in range(nk):
-                psi1 = calculator.wfs.kpt_qs[q][0].psit_nG[:]
-                psi2 = calculator.wfs.kpt_qs[q][1].psit_nG[:]
+                psi1 = calculator.wfs.kpt_qs[q][0].psit_nG[IBstart:IBend]
+                psi2 = calculator.wfs.kpt_qs[q][1].psit_nG[IBstart:IBend]
                 overlap[q] += alpha * psi1.conj() @ psi2.T
                 for a, setup in enumerate(calculator.wfs.setups):
-                    P1_mi = calculator.wfs.kpt_qs[q][0].P_ani[a]
-                    P2_mi = calculator.wfs.kpt_qs[q][1].P_ani[a]
+                    P1_mi = calculator.wfs.kpt_qs[q][0].P_ani[a][IBstart:IBend]
+                    P2_mi = calculator.wfs.kpt_qs[q][1].P_ani[a][IBstart:IBend]
                     overlap_ii = setup.dO_ii
                     overlap[q] += P1_mi.conj() @ overlap_ii @ P2_mi.T
         else:
             overlap = None
 
+        return cls(data=dV_soc, overlap=overlap, NK=nk)
+
+
+    @classmethod
+    def from_bandstructure(cls,
+                           bandstructure_up,
+                           bandstructure_down=None,
+                           calc_overlap=True,
+                           altermagnetic_transformer=None,
+                           ):
+        """
+        Create SOC from a GPAW magnetic calculation.
+        """
+        if (bandstructure_down is None) and (altermagnetic_transformer is None):
+            nspin = 1
+        else:
+            nspin = 2
+
+        nk = len(bandstructure_up.kpoints_paw)
+
+        NB = bandstructure_up.num_bands
+
+        dV_soc = np.zeros((nk, nspin, nspin, 3, NB, NB), complex)
+
+        overlap_paw = bandstructure_up.overlap_paw  # for down it is assumed to be the same
+
+        calc_overlap_loc = calc_overlap and ((nspin == 2) or (altermagnetic_transformer is not None))
+
+        if calc_overlap_loc:
+            overlap = np.zeros((nk, NB, NB), complex)
+        else:
+            overlap = None
+
+
+        # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
+        for q in range(nk):
+            print(f"Calculating SOC for k-point {q}/{nk}")
+            KPup = bandstructure_up.kpoints_paw[q]
+            if altermagnetic_transformer is None:
+                if nspin == 2:
+                    KPdown = bandstructure_down.kpoints_paw[q]
+                else:
+                    KPdown = None
+            else:
+                KPdown = altermagnetic_transformer.get_kpoint_down(q, bandstructure_up.kpoints_paw)
+            KPlist = [KPup, KPdown]
+            for s1 in range(nspin):
+                for s2 in range(nspin):
+                    dV_soc[q, s1, s2] += overlap_paw.soc(KPlist[s1], KPlist[s2])
+            if calc_overlap_loc:
+                overlap[q] += overlap_paw.product(KPup, KPdown, include_paw=True, include_pseudo=True, bk=None)
+        print("SOC calculation finished")
         return cls(data=dV_soc, overlap=overlap, NK=nk)
 
 
@@ -185,3 +231,19 @@ class SOC(W90_file):
                 for t in range(self.nspin):
                     data_new[s, t] = self.data[ik][s, t][:, selected_bands[s]][:, :, selected_bands[t]]
             self.data[ik] = data_new
+
+
+def default_IBstartend(NBin, IBstart=None, IBend=None):
+    # like in irrep. TODO : in irrep separate to a function, and use here
+    if IBstart is None:
+        IBstart = 0
+    elif IBstart < 0:
+        IBstart = NBin + IBstart
+    if IBend is None:
+        IBend = NBin
+    elif IBend <= 0:
+        IBend = NBin + IBend
+    NBout = IBend - IBstart
+    if NBout <= 0:
+        raise RuntimeError("No bands to calculate")
+    return IBstart, IBend, NBout

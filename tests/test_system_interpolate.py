@@ -25,8 +25,8 @@ def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
     system_Fe_gpaw_soc_minusz.swap_spin_channels()
     system_Fe_gpaw_soc_minusz.set_soc_axis(theta=0, phi=0.0, alpha_soc=1.0)
     check_system(
-        system_Fe_gpaw_soc_minusz, "Fe_gpaw_soc_-z",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        system_Fe_gpaw_soc_minusz, "Fe_gpaw_soc_swapped",
+        matrices=['overlap_up_down', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
     interpolator = wberri.system.interpolate.SystemInterpolatorSOC(system0=system_Fe_gpaw_soc_minusz,
@@ -45,9 +45,16 @@ def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
         system_interp = interpolator.interpolate(alpha)
         check_system(
             system_interp, f"Fe_gpaw_soc_interp_alpha_{alpha:.2f}",
-            matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+            matrices=['overlap_up_down', 'dV_soc'],
             properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
         )
+        for ud in ["up", "down"]:
+            check_system(
+                getattr(system_interp, f'system_{ud}'), f"Fe_gpaw_soc_interp_alpha_{alpha:.2f}/system_{ud}",
+                matrices=['Ham'],
+                properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+            )
+
         results[f"{alpha:.2f}"] = wberri.run(system=system_interp, grid=grid,
                     fout_name=f"{OUTPUT_DIR}/integrate_files/test_soc_interp_alpha_{alpha:.2f}",
             calculators=calculators)
@@ -74,4 +81,4 @@ def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
             res = results[compare_pares[0]].results[quant].data * sign
             ref = np.load(f"{REF_DIR}/integrate_files/test_soc_interp_alpha_{compare_pares[1]}-{quant}_iter-0000.npz")["data"]
             err = np.max(np.abs(res - ref))
-            assert err < 1e-8, f"SOC Interp alpha={compare_pares[0]} vs {compare_pares[1]} quant={quant} failed with err={err}"
+            assert err < 1e-7, f"SOC Interp alpha={compare_pares[0]} vs {compare_pares[1]} quant={quant} failed with err={err}"

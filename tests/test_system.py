@@ -4,6 +4,8 @@ import pytest
 import os
 from packaging import version
 
+from wannierberri.fourier.rvectors import Rvectors
+
 from .common import OUTPUT_DIR, REF_DIR
 
 import wannierberri as wberri
@@ -35,7 +37,6 @@ def check_system():
         if len(suffix) > 0:
             suffix = "_" + suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems', name + suffix)
-        os.makedirs(out_dir, exist_ok=True)
 
         print(f"System {name} has the following attriburtes : {sorted(system.__dict__.keys())}")
         print(f"System {name} has the following matrices : {sorted(system._XX_R.keys())}")
@@ -47,26 +48,19 @@ def check_system():
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
-        for key in properties:
-            print(f"saving {key}", end="")
-            if key == 'iRvec':
-                val = system.rvec.iRvec
-            elif key == 'nRvec':
-                val = system.rvec.nRvec
-            else:
-                val = getattr(system, key)
-            np.savez(os.path.join(out_dir, key + ".npz"), val)
-            print(" - Ok!")
-        for key in matrices:
-            print(f"saving {key}", end="")
-            np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
-            print(" - Ok!")
+        system.to_npz(out_dir)
+        # for key in matrices:
+        #     print(f"saving {key}", end="")
+        #     np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
+        #     print(" - Ok!")
 
         def check_property(key, prec, XX=False, sort=None, print_missed=False, legacy=False):
             if key in exclude_properties:
                 return
             print(f"checking {key} prec={prec} XX={XX}", end="")
             try:
+                data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))[key]
+            except KeyError:
                 data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             except FileNotFoundError as err:
                 if XX:
@@ -84,7 +78,7 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
-            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape}", end="")
+            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape} data={data}", end="")
             print("sort = ", sort)
             if sort is not None:
                 data_ref = data_ref[sort]
@@ -99,6 +93,8 @@ def check_system():
                 req_precision = prec
             if not data == pytest.approx(data_ref, abs=req_precision):
                 diff = abs(data - data_ref).max()
+                if data.ndim == 0:
+                    raise ValueError(f"property {key} for system {name} gives an absolute difference of {diff} greater than the required precision {req_precision} \n new data : {data} \n ref data : {data_ref}")
                 missed = np.where(abs(data - data_ref) > req_precision)
                 n_missed = len(missed[0])
                 err_msg = (f"matrix elements {key} for system {name} give an "
@@ -135,7 +131,7 @@ def check_system():
             print(" - Ok!")
 
         if sort_iR:
-            iRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True)['arr_0'].tolist()
+            iRvec_ref = Rvectors.read_dict(np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True))['iRvec'].tolist()
             iRvec_new = system.rvec.iRvec.tolist()
             try:
                 assert len(iRvec_ref) == len(iRvec_new), f"iRvec_ref and iRvec_new have different lengths {len(iRvec_ref)} {len(iRvec_new)}"
@@ -567,48 +563,36 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
     )
 
 
-def test_system_Fe_gpaw_up(check_system, system_Fe_gpaw_up):
+
+def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc):
     check_system(
-        system_Fe_gpaw_up, "Fe_gpaw_up",
-        matrices=['Ham', 'AA'],
+        system_Fe_gpaw_soc, "Fe_gpaw_soc",
+        matrices=['overlap_up_down', 'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
-
-
-def test_system_Fe_gpaw_dw(check_system, system_Fe_gpaw_dw):
     check_system(
-        system_Fe_gpaw_dw, "Fe_gpaw_dw",
-        matrices=['Ham', 'AA'],
+        system_Fe_gpaw_soc.system_up, "Fe_gpaw_soc/system_up",
+        matrices=['Ham', 'AA', 'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
     )
-
-
-def test_system_Fe_gpaw_soc_z(check_system, system_Fe_gpaw_soc_z):
     check_system(
-        system_Fe_gpaw_soc_z, "Fe_gpaw_soc_theta0.00_phi0.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        system_Fe_gpaw_soc.system_down, "Fe_gpaw_soc/system_down",
+        matrices=['Ham', 'AA', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
 
 
-def test_system_Fe_gpaw_soc_111(check_system, system_Fe_gpaw_soc_111):
-    check_system(
-        system_Fe_gpaw_soc_111, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-    )
+@pytest.mark.parametrize("theta_deg, phi_deg, alpha_soc", [(0, 0, 1), (54.74, 45.00, 1), (49.00, 33.00, 1)])
+def test_system_Fe_gpaw_soc_angle(check_system, get_system_Fe_gpaw_soc, theta_deg, phi_deg, alpha_soc):
+    name = f"theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
+    system_Fe_gpaw_soc_111 = get_system_Fe_gpaw_soc(phi_deg=phi_deg, theta_deg=theta_deg, alpha_soc=alpha_soc)
 
-
-def test_system_Fe_gpaw_soc_111_irred(check_system, system_Fe_gpaw_soc_111_irred):
-    check_system(
-        system_Fe_gpaw_soc_111_irred, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-        precision_matrix_elements=5e-7
-    )
-
-
-def test_system_Fe_gpaw_soc_angle(check_system, system_Fe_gpaw_soc_angle):
-    check_system(
-        system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-    )
+    out_data_dir = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc")
+    os.makedirs(out_data_dir, exist_ok=True)
+    out_data_file = os.path.join(out_data_dir, f"{name}.npz")
+    ref_data_file = os.path.join(REF_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
+    out_dict = {key: getattr(system_Fe_gpaw_soc_111, key) for key in ['alpha_soc', 'pauli_rotated']}
+    np.savez(out_data_file, **out_dict)
+    ref_data = np.load(ref_data_file)
+    for key in out_dict:
+        assert out_dict[key] == pytest.approx(ref_data[key]), f"Mismatch in {key} for system Fe_gpaw_soc_{name}"
