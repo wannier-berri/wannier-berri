@@ -22,7 +22,7 @@ class CheckPoint(SavableNPZ):
     """
 
     npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_red"]
-    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands", "frozen_bands"]
     # npz_keys_dict_int = ["v_matrix"]
     npz_keys_dict_int_optional = ["v_matrix"]
     extension = "chk"
@@ -538,3 +538,51 @@ class CheckPoint(SavableNPZ):
             self.num_bands = sum(selected_bands_bool)
             self.selected_bands = selected_bands
         return self
+
+    def set_frozen(self, frozen, kpt2kptirr):
+        frozen_nbands = np.zeros((self.num_kpts, self.num_bands), dtype=bool)
+        for ik, ikirr in enumerate(kpt2kptirr):
+            frozen_nbands[ik] = frozen[ikirr]
+        self.frozen_bands = frozen_nbands
+
+    def write_epw_ukk(self, file):
+        """
+        Returns the string of the EPW `.ukk` file
+        """
+        if isinstance(file, str):
+            io = open(file, 'w')
+        else:
+            io = file
+
+        selected_bands = self.get_selected_bands()
+        io.write(f"{np.min(selected_bands) + 1} {np.max(selected_bands) + 1}\n")
+
+        # the unitary matrices
+        for ik in range(self.num_kpts):
+            for ib in range(self.num_bands):
+                for iw in range(self.num_wann):
+                    u = self.v_matrix[ik][ib, iw]
+                    io.write("(%25.18E,%25.18E)\n" % (u.real, u.imag))
+
+        # needs also lwindow when disentanglement is used
+        for ik in range(self.num_kpts):
+            for ib in range(self.num_bands):
+                if self.frozen_bands[ik][ib]:
+                    io.write("T\n")
+                else:
+                    io.write("F\n")
+
+
+        #  Write T for excluded bands, F for included bands
+        for ex in selected_bands:
+            if not ex:
+                io.write("T\n")
+            else:
+                io.write("F\n")
+
+        # now write the Wannier centers to files
+        for iw in range(self.num_wann):
+            io.write("%22.12E  %22.12E  %22.12E\n" % tuple(self.wannier_centers_cart[iw]))
+
+        if isinstance(file, str):
+            io.close()
