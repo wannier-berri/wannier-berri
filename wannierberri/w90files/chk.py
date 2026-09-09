@@ -1,3 +1,4 @@
+import datetime
 from functools import cached_property
 from time import time
 import warnings
@@ -194,6 +195,55 @@ class CheckPoint(SavableNPZ):
                    kpt_red=kpt_red, mp_grid=mp_grid,
         )
 
+
+    # def to_w90_file(self, seedname):
+    #     seedname = seedname.strip()
+    #     from .fortio import FortranFileW
+    #     FOUT = FortranFileW(seedname + '.chk')
+    #     print('Writing restart information to file ' + seedname + '.chk :')
+    #     def writeint(arr):
+    #         FOUT.write_record('i4', np.array(arr, dtype=int))
+    #     def writefloat(arr):
+    #         FOUT.write_record('f8', np.array(arr, dtype=float))
+    #     def writestr(s):
+    #         FOUT.write_record('a', s)
+    #     def writecomplex(arr):
+    #         arr = np.array(arr, dtype=complex)
+    #         arr = np.column_stack((arr.real, arr.imag)).flatten()
+    #         FOUT.write_record('f8', arr)
+    #     writestr("Written by wannierberri on " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    #     writeint([self.num_bands])
+    #     writeint([0])  # num_exclude_bands
+    #     writeint([])  # exclude_bands
+    #     writefloat(self.real_lattice.flatten(order='F'))
+    #     writefloat(self.recip_lattice.flatten(order='F'))
+    #     writeint([self.num_kpts])
+    #     writeint(self.mp_grid)
+    #     writefloat(self.kpt_red.flatten())
+    #     writeint([0])  # nntot
+    #     writeint([self.num_wann])
+    #     writestr("Written by wannierberri on " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    #     writeint([0])  # have_disentangled
+    #     # print(f"have_disentangled={have_disentangled}")
+    #     have_disentangled = True
+    #     if have_disentangled:
+    #         writefloat([555.555])  # omega_invariant
+    #         writeint(self.lwindow.flatten())
+    #         writeint([self.num_bands]*self.num_kpts)  # ndimwin
+    #         writecomplex(self.u_matrix_opt.swapaxes(1, 2).flatten())
+    #     writecomplex( [np.eye(self.num_wann, dtype=complex)] * self.num_kpts)
+    #     writecomplex([]) # skip m_matrix
+
+    #     # write 
+    #     wannier_centers_cart = readfloat().reshape((num_wann, 3))
+    #     wannier_spreads = readfloat().reshape((num_wann))
+    #     print(f"Time to read .chk : {time() - t0}")
+    #     return cls(real_lattice=real_lattice,
+    #                v_matrix=v_matrix,
+    #                wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
+    #                kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
+    #                kpt_red=kpt_red, mp_grid=mp_grid,
+    #     )
 
     @property
     def wannierised(self):

@@ -112,7 +112,17 @@ class MMN(W90_file):
     def select_bands(self, selected_bands, var_select=False):
         return super().select_bands(selected_bands, dimensions=(1, 2), var_select=var_select)
 
+    def write_epw(self, filename):
+        io = open(filename, "w")
 
+        for ik in range(self.NK):
+            for ib in range(self.NNB):
+                for n in range(self.NB):
+                    for m in range(self.NB):
+                        o = self.data[ik][ib, m, n]
+                        io.write(f"( {o.real:16.12f},  {o.imag:16.12f} )\n")
+        io.close()
+   
 
 
     def equals(self, other, tolerance=1e-8, check_reorder=True):
