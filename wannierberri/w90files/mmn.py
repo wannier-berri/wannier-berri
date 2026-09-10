@@ -68,7 +68,7 @@ class MMN(W90_file):
         if npar > 0:
             pool = multiprocessing.Pool(npar)
         # TODO : do text conversion only for selected kpoints
-        for j in range(0, NNB * NK, npar * mult):
+        for j in range(0, NNB * NK, max(npar * mult, 1)):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
             if len(x) == 0:
                 break
