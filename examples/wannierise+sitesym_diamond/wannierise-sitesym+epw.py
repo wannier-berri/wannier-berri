@@ -41,8 +41,9 @@ wberri.wannierise(
     print_progress_every=20,
     sitesym=True,
     localise=True,
+    savechk=True,
 )
 
 wandata.chk.write_epw_ukk("Ukk.dat")
-wandata.chk.to_npz("diamond-chk.npz")
+# wandata.chk.to_npz("diamond-chk.npz")
 wandata.mmn.write_epw("mmn.dat")

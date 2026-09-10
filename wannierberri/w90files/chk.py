@@ -43,6 +43,7 @@ class CheckPoint(SavableNPZ):
                 mp_grid=None,
                 kmesh_tol=1e-7,
                 bk_complete_tol=1e-5,
+                frozen_bands=None
     ):
         if real_lattice is not None:
             real_lattice = np.array(real_lattice, dtype=float)
@@ -83,6 +84,7 @@ class CheckPoint(SavableNPZ):
 
         self.kmesh_tol = kmesh_tol
         self.bk_complete_tol = bk_complete_tol
+        self.frozen_bands = frozen_bands
 
         if selected_bands is not None:
             self.selected_bands = selected_bands
