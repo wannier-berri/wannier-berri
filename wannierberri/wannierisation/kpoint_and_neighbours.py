@@ -83,7 +83,11 @@ class Kpoint_and_neighbours:
     def get_U_opt_full(self):
         return self.U_opt_full
 
-    def update(self, U_nb, wcc_bk_phase, localise=True, mix_ratio=1.0, mix_ratio_u=1.0):
+    def update(self, U_nb, wcc_bk_phase, 
+               localise=True, 
+               minimize_spread=False,
+               mix_ratio=1.0, 
+               mix_ratio_u=1.0):
         """
         update the Z matrix
 
@@ -112,9 +116,13 @@ class Kpoint_and_neighbours:
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) *
                                 wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
-            Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
-            U = np.linalg.inv(Mmn_loc_sumb)
-            U = U.T.conj()
+            if minimize_spread:
+                U_start = U_opt_full.T.conj() @ self.U_opt_full
+                U = optimize_U(U_start, Mmn_loc, self.wb)
+            else:
+                Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
+                U = np.linalg.inv(Mmn_loc_sumb)
+                U = U.T.conj()
             U = orthogonalize(U)
             U_opt_full = U_opt_full.dot(U)
             U_opt_full = orthogonalize(U_opt_full)
@@ -220,3 +228,29 @@ class Kpoint_and_neighbours:
             self.U_nb = U_nb
             self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self._wcc, self._r2
+
+
+def optimize_U(U_start, Mmn_loc, wb):
+    num_wann = U_start.shape[0]
+    U = U_start.copy()
+    while True:
+        Mmn_loc_U = np.array([U.T.conj() @ mmn for mmn in Mmn_loc])
+        grad = 
+
+
+    def spread(_U):
+        _U = _U.reshape(num_wann, num_wann,2)
+        _U = _U[:, :, 0] + 1j * _U[:, :, 1]
+        UT = _U.reshape(num_wann, num_wann).T.conj()
+        Mmn_loc_U = np.array([ UT @ mmn for mmn in Mmn_loc])
+        Mmn_opt_diag = Mmn_loc_U[:, range(num_wann), range(num_wann)]
+        Mmn_opt_diag_angle = np.angle(Mmn_opt_diag)
+        return np.sum(wb @ (1 - abs(Mmn_opt_diag)**2 + Mmn_opt_diag_angle ** 2))
+    U_start = U_start.flatten()
+    U_start = np.stack((U_start.real, U_start.imag), axis=-1).flatten()
+    from scipy.optimize import minimize
+    res = minimize(fun=spread, x0=U_start, method='BFGS')
+    print(f"minimize spread: {res.success}, {res.message}, {res.nit}, {res.fun}, {spread(res.x)}")
+    U = res.x.reshape(num_wann, num_wann,2)
+    U = U[:, :, 0] + 1j * U[:, :, 1]
+    return U

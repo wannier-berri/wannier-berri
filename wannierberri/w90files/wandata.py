@@ -462,7 +462,8 @@ class WannierData:
                      formatted=tuple(),
                      files=tuple(),
                      bkvec=None,
-                     readnnkp=True
+                     readnnkp=True,
+                     npar=None
                      ):
         """Create WannierData from Wannier90 files.
 
@@ -510,7 +511,7 @@ class WannierData:
                                             kpoints_red=self.chk.kpt_red)
         self.set_file('bkvec', bkvec)
         if 'mmn' in _read_files_loc:
-            mmn = MMN.from_w90_file(seedname=seedname, bkvec=bkvec)
+            mmn = MMN.from_w90_file(seedname=seedname, bkvec=bkvec, npar=npar)
             self.set_file('mmn', mmn)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
@@ -523,6 +524,8 @@ class WannierData:
                 assert self.has_file('bkvec'), "cannot read uHu/uIu/sHu/sIu without bkvec file"
                 assert self.has_file('chk'), "cannot read uHu/uIu/sHu/sIu without chk file"
                 kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
+            if f in ['amn', 'mmn']:
+                kwargs_w90['npar'] = npar
             if f in ["spn", "uhu", "uiu", "shu", "siu", ]:
                 kwargs_w90['formatted'] = f in self.formatted_list
             val = FILES_CLASSES[f].from_w90_file(seedname=seedname, **kwargs_w90)

@@ -24,6 +24,7 @@ def wannierise(wandata,
                check_irreps=True,
                check_irreps_warn=False,
                localise=True,
+               minimize_spread=False,
                init="amn",
                num_wann=None,
                parallel=True,
@@ -265,7 +266,8 @@ def wannierise(wandata,
         tx = time()
         U_opt_full_IR = wannierizer.update_all(U_neigh, mix_ratio=mix_ratio_z,
                                                mix_ratio_u=mix_ratio_u,
-                                               localise=localise)
+                                               localise=localise,
+                                               minimize_spread=minimize_spread)
         t_update += time() - tx
 
         U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k)

@@ -18,7 +18,7 @@ from wannierberri.system import System_R
 systems = {}
 
 # for data_dir in ['diamond', 'diamond-444']:
-for data_dir in ['diamond']:
+for data_dir in ['diamond-444']:
     from irrep.bandstructure import BandStructure
     bandstructure = BandStructure.from_espresso(
                                 prefix=os.path.join("../../tests/data", data_dir, "di"),
@@ -36,7 +36,7 @@ for data_dir in ['diamond']:
     proj_p_bond = Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup)
 
 
-    for projname in ['s_bond', 'p_bond', 'sp_bond', 'sp3']:
+    for projname in ['sp3']: #['s_bond', 'p_bond', 'sp_bond', 'sp3']:
         # for projname in ['sp3']:
         if projname == 's_bond':
             projset = ProjectionsSet([proj_s_bond])
@@ -82,11 +82,12 @@ for data_dir in ['diamond']:
             froz_max=froz_max,
             outer_min=win_min,
             outer_max=win_max,
-            num_iter=100,
+            num_iter=5,
             conv_tol=1e-10,
-            print_progress_every=20,
+            print_progress_every=1,
             sitesym=True,
             localise=True,
+            minimize_spread=True,
         )
 
         systems[data_dir + "-" + projname] = System_R.from_wannierdata(wandata=wandata, symmetrize=False)
@@ -100,7 +101,7 @@ system = list(systems.values())[0]
 # K 0.37500 -0.37500 0.0000 G 0.00000  0.00000 0.0000
 # esite
 
-path = wberri.Path(system=system, nodes=[[1 / 2, 0, 0],
+path = wberri.Path.from_nodes(system=system, nodes=[[1 / 2, 0, 0],
                 [0, 0, 0],
     [1 / 2, 0, 1 / 2],
     [3 / 8, -3 / 8, 0],
