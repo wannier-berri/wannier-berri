@@ -74,6 +74,7 @@ class Wannierizer:
     def update_wcc(self, wcc_k, r2_k):
         wcc = self.symmetrizer.symmetrize_WCC(self.wcc_cart + sum(wcc_k))
         d_wcc = wcc - self.wcc_cart
+        print(f"dwcc.max = {abs(d_wcc).max():.6f}")
         self.spreads = self.symmetrizer.symmetrize_spreads(sum(r2_k) - np.linalg.norm(d_wcc, axis=1)**2)
         self.wcc_cart = wcc
         self.wcc_red = wcc.dot(np.linalg.inv(self.real_lattice))

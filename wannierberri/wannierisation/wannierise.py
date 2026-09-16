@@ -15,10 +15,12 @@ def wannierise(wandata,
                outer_min=-np.inf,
                outer_max=np.inf,
                num_iter=1000,
+               localise_num_iter=-1,
+               localise_alpha=0.5,
+               localise_conv_tol=1e-6,
                conv_tol=1e-9,
                num_iter_converge=3,
                mix_ratio_z=0.5,
-               mix_ratio_u=1,
                print_progress_every=10,
                sitesym=False,
                check_irreps=True,
@@ -60,9 +62,6 @@ def wannierise(wandata,
     mix_ratio_z : float
         Mixing parameter for the disentanglement `Z` matrix. `1` is fastest; smaller
         values are usually more stable.
-    mix_ratio_u : float
-        Mixing parameter for the localization `U` matrix. Values below `1` may help
-        stability but are currently more prone to non-convergence.
     print_progress_every : int
         Frequency of progress printing.
     sitesym : bool
@@ -106,8 +105,6 @@ def wannierise(wandata,
     """
     if wandata.irreducible:
         irreducible = True
-    if not (mix_ratio_u == 1):
-        warnings.warn(f"mix_ratio_u = {mix_ratio_u} != 1 is not tested, use with caution")
 
     t0 = time()
     if froz_min > froz_max:
@@ -264,8 +261,11 @@ def wannierise(wandata,
         U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
         tx = time()
         U_opt_full_IR = wannierizer.update_all(U_neigh, mix_ratio=mix_ratio_z,
-                                               mix_ratio_u=mix_ratio_u,
-                                               localise=localise)
+                                               localise=localise,
+                                               localise_num_iter=localise_num_iter,
+                                               localise_alpha=localise_alpha,
+                                               localise_conv_tol=localise_conv_tol,
+                                               )
         t_update += time() - tx
 
         U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k)

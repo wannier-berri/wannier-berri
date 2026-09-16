@@ -80,7 +80,6 @@ def test_wannierise(outer_window, starting_wcc):
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
         localise=True,

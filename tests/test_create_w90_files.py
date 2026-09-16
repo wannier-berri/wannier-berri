@@ -116,7 +116,6 @@ def test_create_w90files_diamond_irred(select_grid):
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
         localise=True
@@ -604,7 +603,6 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
         localise=True
