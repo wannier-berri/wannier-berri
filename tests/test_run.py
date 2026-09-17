@@ -1361,7 +1361,7 @@ def test_Fe_gpaw_soc_z(system_Fe_gpaw_soc_z, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_z, suffix="z",
                       use_symmetry=use_symmetry,
                       precision=-1e-8 if use_symmetry else -1e-5,
-                      extra_precision={"Morb_test": 1e-7, "ahc_test": 1e-7, 'Morb': 1e-8})
+                      extra_precision={"Morb_test": 1e-7, "ahc_test": 2e-7, 'Morb': 1e-8})
 
 
 

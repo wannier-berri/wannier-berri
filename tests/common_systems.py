@@ -292,23 +292,44 @@ def wandata_Fe_gpaw():
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_up(wandata_Fe_gpaw):
+def wandata_Fe_gpaw_wannierised():
+    """Create wandata object for Fe from GPAW calculation"""
+    wandata = WannierDataSOC.from_npz(
+        seedname=os.path.join(PATH_Fe_GPAW, "Fe-gpaw-wandata-wannierised/wannier_soc"),
+        files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
+    )
+    return wandata
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_up(wandata_Fe_gpaw_wannierised):
     """Create system for Fe up channel using GPAW wannierisation data"""
-    return System_R.from_wannierdata(wandata_Fe_gpaw.data_up, berry=True)
+    return System_R.from_wannierdata(wandata_Fe_gpaw_wannierised.data_up, berry=True)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_dw(wandata_Fe_gpaw):
+def system_Fe_gpaw_dw(wandata_Fe_gpaw_wannierised):
     """Create system for Fe down channel using GPAW wannierisation data"""
-    return System_R.from_wannierdata(wandata_Fe_gpaw.data_down, berry=True)
+    return System_R.from_wannierdata(wandata_Fe_gpaw_wannierised.data_down, berry=True)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc(wandata_Fe_gpaw):
+def system_Fe_gpaw_soc(wandata_Fe_gpaw_wannierised):
     """Create system for Fe with SOC using GPAW wannierisation data"""
-    system = SystemSOC.from_wannierdata(wandata_Fe_gpaw, berry=True)
+    system = SystemSOC.from_wannierdata(wandata_Fe_gpaw_wannierised, berry=True)
     system.to_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc"))
     return system
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_dowannierise(wandata_Fe_gpaw):
+    """Create system for Fe with SOC using GPAW wannierisation data"""
+    wandata = copy.deepcopy(wandata_Fe_gpaw)
+    wandata.wannierise(num_iter=100, sitesym=True,
+                    froz_min=-1000, froz_max=15)
+    system = SystemSOC.from_wannierdata(wandata, berry=True)
+    return system
+
 
 
 @pytest.fixture(scope="session")
