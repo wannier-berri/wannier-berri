@@ -300,12 +300,12 @@ def test_tabulate_fail(system_Haldane_PythTB):
 @pytest.mark.parametrize("system_type", ["Haldane_PythTB", "Fe_gpaw", "SSH"])
 def test_get_bandstructure(system_type,
                       system_Haldane_PythTB,
-                      system_Fe_gpaw_soc_z_symmetrized,
+                      system_Fe_gpaw_soc_z,
                       system_SSH_PythTB,):
     if system_type == "Haldane_PythTB":
         system = system_Haldane_PythTB
     elif system_type == "Fe_gpaw":
-        system = system_Fe_gpaw_soc_z_symmetrized
+        system = system_Fe_gpaw_soc_z
     elif system_type == "SSH":
         system = system_SSH_PythTB
     else:
