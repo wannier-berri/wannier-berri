@@ -435,6 +435,24 @@ def test_create_w90files_Fe_reduce222():
                              select_grid=(2, 2, 2))
 
 
+@pytest.mark.parametrize("spin", [0, 1])
+def test_ref_files_mmn_Fe_gpaw_irred(spin):
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+    path = f"Fe-gpaw-wandata/wannier_soc-spin-{spin}"
+    seedname_ref = os.path.join(path_data, path)
+    w90files_ref = wberri.WannierData.from_npz(f"{seedname_ref}",
+                                               files=["amn", "mmn", "eig", "symmetrizer", "bkvec"],
+                                               ignore_missing_files=False)
+    symmetrizer_ref = w90files_ref.get_file("symmetrizer")
+    mmn_ref = w90files_ref.get_file("mmn")
+    bkvec_ref = w90files_ref.get_file("bkvec")
+    check_ref = symmetrizer_ref.check_mmn(bkvec=bkvec_ref, mmn=mmn_ref,
+                                      warning_precision=-1e-5,
+                                      ignore_upper_bands=10)
+    acc = 1e-4
+    assert check_ref < acc, f"The reference mmn for spin {spin} is not symmetric enough, max deviation is {check_ref} > {acc}"
+    print(f"Reference mmn is symmetric, max deviation is {check_ref}")
+
 
 def test_create_w90files_Fe_gpaw_irred(check_sawf):
     from gpaw import GPAW
@@ -481,9 +499,10 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         assert symmetrizer.spacegroup.equals(sg), "spacegroup changed in symmetrizer"
 
         acc = 1e-4
-        
+
         mmn_ref = files_sub_ref.get_file("mmn")
-        check_ref = symmetrizer_ref.check_mmn(bkvec=bkvec, mmn=mmn_ref, warning_precision=-1e-5, ignore_upper_bands=10) 
+        bkvec_ref = files_sub_ref.get_file("bkvec")
+        check_ref = symmetrizer_ref.check_mmn(bkvec=bkvec_ref, mmn=mmn_ref, warning_precision=-1e-5, ignore_upper_bands=10)
         assert check_ref < acc, f"The reference mmn for {subsystem} is not symmetric enough, max deviation is {check_ref} > {acc}"
         print(f"Reference mmn is symmetric, max deviation is {check_ref}")
 
