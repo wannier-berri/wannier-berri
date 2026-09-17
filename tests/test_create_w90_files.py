@@ -480,9 +480,16 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         assert sg.equals(sg_ref), "Spacegroups differ"
         assert symmetrizer.spacegroup.equals(sg), "spacegroup changed in symmetrizer"
 
+        acc = 1e-4
+        
+        mmn_ref = files_sub_ref.get_file("mmn")
+        check_ref = symmetrizer_ref.check_mmn(bkvec=bkvec, mmn=mmn_ref, warning_precision=-1e-5, ignore_upper_bands=10) 
+        assert check_ref < acc, f"The reference mmn for {subsystem} is not symmetric enough, max deviation is {check_ref} > {acc}"
+        print(f"Reference mmn is symmetric, max deviation is {check_ref}")
+
+
         check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
 
-        acc = 1e-4
         assert check < acc, f"The mmn for {subsystem} is not symmetric enough, max deviation is {check} > {acc}"
         print(f"mmn is symmetric, max deviation is {check}")
 
@@ -495,7 +502,6 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         amn_ref = files_sub_ref.get_file("amn")
         assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
 
-        mmn_ref = files_sub_ref.get_file("mmn")
         bkvec_ref = files_sub_ref.get_file("bkvec")
         bkvec_ref.reorder_mmn(bkvec, mmn)
         assert np.all(bkvec.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec.bk_grid} != {bkvec_ref.bk_grid}"
