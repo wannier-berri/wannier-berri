@@ -85,6 +85,7 @@ def test_wannierise(outer_window, starting_wcc):
         localise=True,
         parallel=PARALLEL,
         wcc_start_red=wcc_start_red if starting_wcc == "arg" else None,
+        localise_num_iter=0
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads
@@ -167,124 +168,137 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
        0.43081535, 0.40815827, 0.39384666])
 
 
+
+
+
 @pytest.mark.parametrize("parallel", [True, False])
 @pytest.mark.parametrize("include_TR", [True, False])
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window, parallel):
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    wandata = wberri.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
-    # win = WIN.from_w90_file(path_data + "/Fe")
-    # chk = CHK.from_win(win)
-    # chk.to_npz(path_data + f"/Fe.chk.npz")
-    # wandata.set_file("chk", chk)
-    symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
-    wandata.set_symmetrizer(symmetrizer)
-    outer_min, outer_max = -np.inf, np.inf
-    if use_window == "select_bands":
-        wandata.select_bands(win_min=-8, win_max=50)
-    elif use_window == "outer":
-        outer_min, outer_max = -8, 50
-    froz_max = 30
-    wandata.wannierise(init="amn",
-                       froz_min=-8,
-                       froz_max=froz_max,
-                       outer_min=outer_min,
-                       outer_max=outer_max,
-                       print_progress_every=20,
-                       num_iter=40,
-                       conv_tol=1e-6,
-                       mix_ratio_z=1.0,
-                       localise=True,
-                       sitesym=True,
-                       parallel=parallel,
-                       savechk=False,
-                       )
-    assert np.allclose(wandata.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(wandata.wannier_centers_cart))} \n{wandata.wannier_centers_cart}"
-    spreads = wandata.chk.wannier_spreads
-    print(f"spreads: {repr(spreads)}")
-    assert np.all(spreads < 2)
-    atol = 1e-8
-    assert spreads[4] == approx(spreads[6], abs=atol)
-    assert spreads[5] == approx(spreads[7], abs=atol)
-    assert spreads[10] == approx(spreads[12], abs=atol)
-    assert spreads[11] == approx(spreads[13], abs=atol)
-    spreads_ref = {"select_bands": spreads_Fe_spd_444_win50,
-                   "outer": spreads_Fe_spd_444_win50_outer,
-                   False: spreads_Fe_spd_444_nowin}[use_window]
-    assert spreads == approx(spreads_ref, abs=0.01)
-    system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
-
-    # all kpoints given in reduced coordinates
-    path = wberri.Path.from_nodes(system,
-                    nodes=[
-                        [0.0000, 0.0000, 0.0000],  # G
-                        [0.500, -0.5000, -0.5000],  # H
-                        [0.7500, 0.2500, -0.2500],  # P
-                        [0.5000, 0.0000, -0.5000],  # N
-                        [0.0000, 0.0000, 0.000]
-                    ],  # G
-        labels=["G", "H", "P", "N", "G"],
-        nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
-
-    result_path = wberri.evaluate_k_path(system,
-                    path=path,
-                    parallel=parallel,
-                    print_Kpoints=False)
-    EF = 12.6
-    A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
-    energies_ref = np.copy(A[:, 1].reshape(-1, 81)[:18].T)
-
-    bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
-    alatt = 5.4235 * bohr_ang
-    A[:, 0] *= 2 * np.pi / alatt
-    A[:, 1] = A[:, 1] - EF
-    plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
-    kpoints = result_path.kpoints
-    print(f"kpoints: \n{kpoints}")
-    kpoints_path = path.get_kpoints()
-    print(f"kpoints_path: \n{kpoints_path}")
-    diff = abs(kpoints - kpoints_path)
-    diff -= np.round(diff)  # account for periodicity
-    assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
-
-    energies = result_path.get_data(quantity="Energy", iband=np.arange(0, 18))
-
-    np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
-    np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
-
-    atol = 0.7
-    nk = energies.shape[0]
-    energies_diff = np.abs(energies - energies_ref)
-    energies_diff[energies_ref > 13] = 0  # ignore the high energy bands
-    for ik in range(nk):
-        if ik % 20 == 0:
-            _atol = 0.01
+    for gradient_method in [False, True]:
+        path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
+        wandata = wberri.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
+        # win = WIN.from_w90_file(path_data + "/Fe")
+        # chk = CHK.from_win(win)
+        # chk.to_npz(path_data + f"/Fe.chk.npz")
+        # wandata.set_file("chk", chk)
+        symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
+        wandata.set_symmetrizer(symmetrizer)
+        outer_min, outer_max = -np.inf, np.inf
+        if use_window == "select_bands":
+            wandata.select_bands(win_min=-8, win_max=50)
+        elif use_window == "outer":
+            outer_min, outer_max = -8, 50
+        froz_max = 30
+        if gradient_method:
+            kwargs_localise=dict(localise_num_iter=100, localise_alpha=0.5, localise_conv_tol=1e-6)
         else:
-            _atol = atol
-        assert np.allclose(energies_diff[ik], 0, atol=_atol), \
-            f"energies at ik={ik} differ by {np.max(abs(energies_diff[ik]))} more than {_atol}" +\
-            f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
+            kwargs_localise=dict(localise_num_iter=0)
+        wandata.wannierise(init="amn",
+                        froz_min=-8,
+                        froz_max=froz_max,
+                        outer_min=outer_min,
+                        outer_max=outer_max,
+                        print_progress_every=20,
+                        num_iter=40,
+                        conv_tol=1e-6,
+                        mix_ratio_z=1.0,
+                        localise=True,
+                        sitesym=True,
+                        parallel=parallel,
+                        savechk=False,
+                            **kwargs_localise
+                        )
+        assert np.allclose(wandata.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(wandata.wannier_centers_cart))} \n{wandata.wannier_centers_cart}"
+        spreads = wandata.chk.wannier_spreads
+        print(f"spreads: {repr(spreads)}")
+        assert np.all(spreads < 2)
+        atol = 1e-8
+        assert spreads[4] == approx(spreads[6], abs=atol)
+        assert spreads[5] == approx(spreads[7], abs=atol)
+        assert spreads[10] == approx(spreads[12], abs=atol)
+        assert spreads[11] == approx(spreads[13], abs=atol)
+        spreads_ref = {"select_bands": spreads_Fe_spd_444_win50,
+                    "outer": spreads_Fe_spd_444_win50_outer,
+                    False: spreads_Fe_spd_444_nowin}[use_window]
+        if gradient_method:
+            assert spreads.sum() < spreads_noloc.sum() + 1e-6, f"spreads {spreads} are larger than reference {spreads_noloc}"
+        else:
+            spreads_noloc = spreads
+            assert spreads == approx(spreads_ref, abs=0.01)
+        system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
 
-    result_path.plot_path_fat(
-        path,
-        quantity=None,
-        Eshift=EF,
-        Emin=-10, Emax=50,
-        iband=None,
-        mode="fatband",
-        fatfactor=20,
-        cut_k=False,
-        linecolor="red",
-        close_fig=False,
-        show_fig=False,
-        label=f"TR={include_TR}",
-    )
+        # all kpoints given in reduced coordinates
+        path = wberri.Path.from_nodes(system,
+                        nodes=[
+                            [0.0000, 0.0000, 0.0000],  # G
+                            [0.500, -0.5000, -0.5000],  # H
+                            [0.7500, 0.2500, -0.2500],  # P
+                            [0.5000, 0.0000, -0.5000],  # N
+                            [0.0000, 0.0000, 0.000]
+                        ],  # G
+            labels=["G", "H", "P", "N", "G"],
+            nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
 
-    plt.ylim(-10, 20)
-    plt.hlines(froz_max - EF, 0, A[-1, 0], linestyles="dashed")
-    plt.legend()
-    plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
-    plt.close()
+        result_path = wberri.evaluate_k_path(system,
+                        path=path,
+                        parallel=parallel,
+                        print_Kpoints=False)
+        EF = 12.6
+        A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
+        energies_ref = np.copy(A[:, 1].reshape(-1, 81)[:18].T)
+
+        bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
+        alatt = 5.4235 * bohr_ang
+        A[:, 0] *= 2 * np.pi / alatt
+        A[:, 1] = A[:, 1] - EF
+        plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
+        kpoints = result_path.kpoints
+        print(f"kpoints: \n{kpoints}")
+        kpoints_path = path.get_kpoints()
+        print(f"kpoints_path: \n{kpoints_path}")
+        diff = abs(kpoints - kpoints_path)
+        diff -= np.round(diff)  # account for periodicity
+        assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
+
+        energies = result_path.get_data(quantity="Energy", iband=np.arange(0, 18))
+
+        np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
+        np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
+
+        atol = 0.7
+        nk = energies.shape[0]
+        energies_diff = np.abs(energies - energies_ref)
+        energies_diff[energies_ref > 13] = 0  # ignore the high energy bands
+        for ik in range(nk):
+            if ik % 20 == 0:
+                _atol = 0.01
+            else:
+                _atol = atol
+            assert np.allclose(energies_diff[ik], 0, atol=_atol), \
+                f"energies at ik={ik} differ by {np.max(abs(energies_diff[ik]))} more than {_atol}" +\
+                f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
+
+        result_path.plot_path_fat(
+            path,
+            quantity=None,
+            Eshift=EF,
+            Emin=-10, Emax=50,
+            iband=None,
+            mode="fatband",
+            fatfactor=20,
+            cut_k=False,
+            linecolor="red",
+            close_fig=False,
+            show_fig=False,
+            label=f"TR={include_TR}",
+        )
+
+        plt.ylim(-10, 20)
+        plt.hlines(froz_max - EF, 0, A[-1, 0], linestyles="dashed")
+        plt.legend()
+        plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
+        plt.close()
 
 
 @pytest.mark.parametrize("z0", [0, 1.5])
@@ -311,6 +325,7 @@ def test_graphene_freeze_bands(outer_window, parallel, z0):
                   localise=True,
                   sitesym=True,
                   parallel=parallel,
+                  localise_num_iter=0
                     )
 
     if outer_window[2] != "-outer-low":

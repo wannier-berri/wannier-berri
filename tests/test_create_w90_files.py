@@ -118,7 +118,8 @@ def test_create_w90files_diamond_irred(select_grid):
         mix_ratio_z=0.8,
         print_progress_every=20,
         sitesym=True,
-        localise=True
+        localise=True,
+        localise_num_iter=0
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads
@@ -232,7 +233,8 @@ def test_irreducible_vs_full_Fe():
         num_iter=101,
         conv_tol=1e-10,
         mix_ratio_z=1.0,
-        sitesym=True)
+        sitesym=True,
+        localise_num_iter=0)
 
     wandata_full.wannierise(**kwargs_wannierise)
     wandata_irr.wannierise(**kwargs_wannierise)
@@ -343,6 +345,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                            mix_ratio_z=1.0,
                            localise=True,
                            sitesym=True,
+                           localise_num_iter=0
                             )
         spreads = wandata.chk.wannier_spreads
         print(f"Wannier spreads: {repr(spreads)}")
@@ -605,7 +608,8 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
         mix_ratio_z=0.8,
         print_progress_every=20,
         sitesym=True,
-        localise=True
+        localise=True,
+        localise_num_iter=0
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads

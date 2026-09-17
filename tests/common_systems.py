@@ -431,6 +431,7 @@ def system_Fe_gpaw_soc_111_irred():
         print_progress_every=10,
         sitesym=True,
         localise=True,
+        localise_num_iter=0
     )
 
     theta = np.arccos(1 / np.sqrt(3))
