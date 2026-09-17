@@ -565,28 +565,32 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
 
 @pytest.mark.parametrize("wannierise", [False, True])
 def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc, system_Fe_gpaw_soc_dowannierise, wannierise):
+    kwargs = dict()
     if wannierise:
         system = system_Fe_gpaw_soc_dowannierise
-        precision_matrix_elements = 1e-6
-        precision_properties = 1e-7
+        kwargs['precision_matrix_elements'] = 1e-6
+        kwargs['precision_properties'] = 1e-7
     else:
         system = system_Fe_gpaw_soc
-        precision_matrix_elements = 1e-7
-        precision_properties = 1e-8
+        kwargs['precision_matrix_elements'] = 1e-7
+        kwargs['precision_properties'] = 1e-8
     check_system(
         system, "Fe_gpaw_soc",
         matrices=['overlap_up_down', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        **kwargs
     )
     check_system(
         system.system_up, "Fe_gpaw_soc/system_up",
         matrices=['Ham', 'AA', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
+        **kwargs
     )
     check_system(
         system.system_down, "Fe_gpaw_soc/system_down",
         matrices=['Ham', 'AA', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        **kwargs
     )
 
 
