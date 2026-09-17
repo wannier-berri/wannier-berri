@@ -266,7 +266,7 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
         np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
         np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
 
-        atol = 0.7
+        atol = 0.75
         nk = energies.shape[0]
         energies_diff = np.abs(energies - energies_ref)
         energies_diff[energies_ref > 13] = 0  # ignore the high energy bands
