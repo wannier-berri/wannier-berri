@@ -595,7 +595,7 @@ def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc, system_Fe_gpaw_soc
 
 
 @pytest.mark.parametrize("theta_deg, phi_deg, alpha_soc", [(0, 0, 1), (54.74, 45.00, 1), (49.00, 33.00, 1)])
-def test_system_Fe_gpaw_soc_angle(check_system, get_system_Fe_gpaw_soc, theta_deg, phi_deg, alpha_soc):
+def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, alpha_soc):
     name = f"theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
     system_Fe_gpaw_soc_111 = get_system_Fe_gpaw_soc(phi_deg=phi_deg, theta_deg=theta_deg, alpha_soc=alpha_soc)
 

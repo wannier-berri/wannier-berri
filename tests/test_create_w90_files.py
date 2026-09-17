@@ -456,7 +456,7 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         projections=proj_set,
         seedname=seedname,
         irreducible=True,
-        include_TR=True,
+        spacegroup=sg,
         files=["amn", "mmn", "eig", "symmetrizer", "soc", "cell"],
         unitary_params=dict(error_threshold=0.1,
                             warning_threshold=0.01,
@@ -473,9 +473,14 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         mmn = files_sub.get_file("mmn")
         bkvec = files_sub.get_file("bkvec")
         symmetrizer = files_sub.get_file("symmetrizer")
+        symmetrizer_ref = files_sub_ref.get_file("symmetrizer")
+        sg_ref = symmetrizer_ref.spacegroup
+        assert sg.equals(sg_ref), f"Spacegroups differ"
+        assert symmetrizer.spacegroup.equals(sg), f"spacegroup changed in symmetrizer"
         check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
+        
         acc = 1e-4
-        assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
+        assert check < acc, f"The mmn for {subsystem} is not symmetric enough, max deviation is {check} > {acc}"
         print(f"mmn is symmetric, max deviation is {check}")
 
 
