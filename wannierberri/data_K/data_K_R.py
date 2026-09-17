@@ -13,7 +13,7 @@ class Data_K_R(Data_K, System_R):
 
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
-            self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
+            self.rvec.set_fft_R_to_k(NK=self.NKFFT,
                                 fftlib=self.fftlib,
                                 dK=self.dK, k_list=self.k_list)
 
@@ -44,6 +44,8 @@ class Data_K_R(Data_K, System_R):
                 self.set_R_mat(key, res)
         return res
 
+    def get_k_mat(self, key, der=0, hermitian=False):
+        return self.rvec.R_to_k(self.get_R_mat(key).copy(), der=der, hermitian=hermitian)
 
     def rotAA(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
@@ -81,14 +83,14 @@ class Data_K_R(Data_K, System_R):
                 res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
                 res = 0.5 * (res + res.swapaxes(1, 2).conj())
             else:
-                res = self._R_to_k_H(
+                res = self.R_to_k_H(
                     self.get_R_mat(name).copy(),
                     der=der,
                     hermitian=(name in ['AA', 'SS', 'OO', 'rotAA', ]))
             self._bar_quantities[key] = res
         return self._bar_quantities[key]
 
-    def _R_to_k_H(self, XX_R, der=0, hermitian=True):
+    def R_to_k_H(self, XX_R, der=0, hermitian=True):
         """ converts from real-space matrix elements in Wannier gauge to
             k-space quantities in k-space.
             der [=0] - defines the order of comma-derivative

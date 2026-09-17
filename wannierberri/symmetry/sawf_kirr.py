@@ -181,7 +181,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         return Uloc
 
 
-    def __call__(self, U, maxiter=10, tol=1e-6):
+    def __call__(self, U, maxiter=10, tol=5e-5):
         Uprev = U.copy()
         for _ in range(maxiter):
             Uloc = Uprev.copy()
