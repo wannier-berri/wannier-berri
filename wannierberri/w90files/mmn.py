@@ -51,8 +51,10 @@ class MMN(W90_file):
         self.bk_reorder = bk_reorder
 
     @classmethod
-    def from_w90_file(cls, seedname, bkvec, npar=multiprocessing.cpu_count(), selected_kpoints=None):
-        f_mmn_in = open(seedname + ".mmn", "r")
+    def from_w90_file(cls, seedname, bkvec, npar=None, selected_kpoints=None):
+        if npar is None:
+            npar = multiprocessing.cpu_count()
+        f_mmn_in = open(seedname + ".mmn", "r") 
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
         if selected_kpoints is None:
@@ -66,7 +68,7 @@ class MMN(W90_file):
         if npar > 0:
             pool = multiprocessing.Pool(npar)
         # TODO : do text conversion only for selected kpoints
-        for j in range(0, NNB * NK, npar * mult):
+        for j in range(0, NNB * NK, max(npar * mult, 1)):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
             if len(x) == 0:
                 break
