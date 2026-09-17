@@ -42,4 +42,4 @@ jobs:
         pip install -e ".[${INSTALL_TYPE}]"
 
     - name: Run tests
-      run: pytest tests/test_create_w90_files.py -k gpaw -s --serial
+      run: pytest tests/test_*.py
