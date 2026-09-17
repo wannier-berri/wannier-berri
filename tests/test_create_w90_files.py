@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from pytest import approx, fixture
 import numpy as np
@@ -365,6 +367,10 @@ def check_create_w90files_Fe(path_data, path_ref=None,
 
         mmn_new = wandata.get_file("mmn")
         mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_ref, f"{prefix}.mmn.npz"))
+        if not np.all(bkvec_new.bk_grid == bkvec_ref.bk_grid):
+            print("ORDER of bk vectors are different between new and reference files, reordering mmn ")
+        else:
+            print("ORDER of bk vectors are the same between new and reference files, no need to reorder mmn ")
         bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
         eql, msg = mmn_new.equals(mmn_ref, tolerance=1e-4, check_reorder=False)
         assert eql, f"MMN files differ: {msg}"
@@ -488,8 +494,6 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
     for subsystem in ["data_up", "data_down"]:
         files_sub = getattr(w90files, subsystem)
         files_sub_ref = getattr(w90files_ref, subsystem)
-        mmn = files_sub.get_file("mmn")
-        bkvec = files_sub.get_file("bkvec")
         symmetrizer = files_sub.get_file("symmetrizer")
         symmetrizer_ref = files_sub_ref.get_file("symmetrizer")
         check_sawf(symmetrizer, symmetrizer_ref)
@@ -506,12 +510,12 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         assert check_ref < acc, f"The reference mmn for {subsystem} is not symmetric enough, max deviation is {check_ref} > {acc}"
         print(f"Reference mmn is symmetric, max deviation is {check_ref}")
 
-
+        mmn = files_sub.get_file("mmn")
+        bkvec = files_sub.get_file("bkvec")
         check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
 
         assert check < acc, f"The mmn for {subsystem} is not symmetric enough, max deviation is {check} > {acc}"
         print(f"mmn is symmetric, max deviation is {check}")
-
 
         eig = files_sub.get_file("eig")
         eig_ref = files_sub_ref.get_file("eig")
@@ -521,9 +525,19 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         amn_ref = files_sub_ref.get_file("amn")
         assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
 
+
+
+        bkvec_new = copy.deepcopy(bkvec)
+        mmn_new = copy.deepcopy(mmn)
         bkvec_ref = files_sub_ref.get_file("bkvec")
-        bkvec_ref.reorder_mmn(bkvec, mmn)
-        assert np.all(bkvec.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec.bk_grid} != {bkvec_ref.bk_grid}"
+        if not np.all(bkvec_new.bk_grid == bkvec_ref.bk_grid):
+            print("ORDER of bk vectors are different between new and reference files, reordering mmn ")
+        else:
+            print("ORDER of bk vectors are the same between new and reference files, no need to reorder mmn ")
+
+
+        bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
+        assert np.all(bkvec_new.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec_new.bk_grid} != {bkvec_ref.bk_grid}"
         bk = bkvec_ref.bk_grid
         NNB = mmn.NNB
         check_tot = 0
