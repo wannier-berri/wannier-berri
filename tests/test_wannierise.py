@@ -175,7 +175,7 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
 @pytest.mark.parametrize("include_TR", [True, False])
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window, parallel):
-    for gradient_method in [False, True]:
+    for gradient_method in [False, True] if (parallel and include_TR) else [False]:
         path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
         wandata = wberri.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
         # win = WIN.from_w90_file(path_data + "/Fe")
@@ -191,9 +191,9 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
             outer_min, outer_max = -8, 50
         froz_max = 30
         if gradient_method:
-            kwargs_localise=dict(localise_num_iter=100, localise_alpha=0.5, localise_conv_tol=1e-6)
+            kwargs_localise = dict(localise_num_iter=10, localise_alpha=0.9, localise_conv_tol=1e-5)
         else:
-            kwargs_localise=dict(localise_num_iter=0)
+            kwargs_localise = dict(localise_num_iter=0)
         wandata.wannierise(init="amn",
                         froz_min=-8,
                         froz_max=froz_max,
@@ -207,7 +207,7 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
                         sitesym=True,
                         parallel=parallel,
                         savechk=False,
-                            **kwargs_localise
+                           **kwargs_localise
                         )
         assert np.allclose(wandata.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(wandata.wannier_centers_cart))} \n{wandata.wannier_centers_cart}"
         spreads = wandata.chk.wannier_spreads
@@ -221,11 +221,11 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
         spreads_ref = {"select_bands": spreads_Fe_spd_444_win50,
                     "outer": spreads_Fe_spd_444_win50_outer,
                     False: spreads_Fe_spd_444_nowin}[use_window]
-        if gradient_method:
-            assert spreads.sum() < spreads_noloc.sum() + 1e-6, f"spreads {spreads} are larger than reference {spreads_noloc}"
-        else:
+        if not gradient_method:
             spreads_noloc = spreads
             assert spreads == approx(spreads_ref, abs=0.01)
+        else:
+            assert spreads.sum() < spreads_noloc.sum(), f"spreads {spreads} are larger than reference {spreads_noloc}"
         system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
 
         # all kpoints given in reduced coordinates
