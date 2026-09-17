@@ -545,7 +545,7 @@ def test_create_w90files_Fe_gpaw_irred(check_sawf):
         for ik in mmn_ref.data.keys():
             G = bkvec_ref.G[ik]
             for ib in range(NNB):
-                data = mmn.data[ik][ib][:ignore_upper, :ignore_upper]
+                data = mmn_new.data[ik][ib][:ignore_upper, :ignore_upper]
                 data_ref = mmn_ref.data[ik][ib][:ignore_upper, :ignore_upper]
                 check = np.max(np.abs(data - data_ref))
                 print(f"subsystem {subsystem}: ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
