@@ -96,6 +96,18 @@ class WannierDataSOC(WannierData):
         if self.data_down is not None:
             self.data_down.to_npz(seedname=seedname + "-spin-1", files=files_ud)
 
+    def check_wannierised(self, msg=""):
+        self.data_up.check_wannierised(msg=msg + " (spin up)")
+        if self.data_down is not None:
+            self.data_down.check_wannierised(msg=msg + " (spin down)")
+
+    @property
+    def wannierised(self):
+        if not self.data_up.wannierised:
+            return False
+        if self.data_down is not None and not self.data_down.wannierised:
+            return False
+        return True
 
     @classmethod
     def from_gpaw(cls, calculator,
