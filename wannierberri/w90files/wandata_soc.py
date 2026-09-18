@@ -47,9 +47,10 @@ class WannierDataSOC(WannierData):
             return [f for f in files if f in cls.files_proper]
 
     @classmethod
-    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False, ignore_missing_files=False):
+    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False, ignore_missing_files=False,
+                 allow_pickle=True):
         """Create Wannier90DataSOC from NPZ files."""
-        cell = np.load(seedname + ".cell.npz", allow_pickle=True)
+        cell = np.load(seedname + ".cell.npz", allow_pickle=allow_pickle)
         if nspin is None:
             if 'nspin' in cell:
                 nspin = cell["nspin"]
@@ -62,12 +63,14 @@ class WannierDataSOC(WannierData):
         data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                        files=files_ud,
                                        irreducible=irreducible,
-                                       ignore_missing_files=ignore_missing_files)
+                                       ignore_missing_files=ignore_missing_files,
+                                       allow_pickle=allow_pickle)
         if nspin == 2 and not altermagnetic:
             data_down = WannierData.from_npz(seedname=seedname + "-spin-1",
                                              files=files_ud,
                                              irreducible=irreducible,
-                                             ignore_missing_files=ignore_missing_files)
+                                             ignore_missing_files=ignore_missing_files,
+                                             allow_pickle=allow_pickle)
         else:
             data_down = None
         try:
