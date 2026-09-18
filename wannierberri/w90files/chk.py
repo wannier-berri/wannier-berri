@@ -1,4 +1,3 @@
-import datetime
 from functools import cached_property
 from time import time
 import warnings
@@ -236,7 +235,7 @@ class CheckPoint(SavableNPZ):
     #     writecomplex( [np.eye(self.num_wann, dtype=complex)] * self.num_kpts)
     #     writecomplex([]) # skip m_matrix
 
-    #     # write 
+    #     # write
     #     wannier_centers_cart = readfloat().reshape((num_wann, 3))
     #     wannier_spreads = readfloat().reshape((num_wann))
     #     print(f"Time to read .chk : {time() - t0}")
@@ -246,6 +245,7 @@ class CheckPoint(SavableNPZ):
     #                kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
     #                kpt_red=kpt_red, mp_grid=mp_grid,
     #     )
+
 
     @property
     def wannierised(self):

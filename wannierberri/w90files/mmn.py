@@ -54,7 +54,7 @@ class MMN(W90_file):
     def from_w90_file(cls, seedname, bkvec, npar=None, selected_kpoints=None):
         if npar is None:
             npar = multiprocessing.cpu_count()
-        f_mmn_in = open(seedname + ".mmn", "r") 
+        f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
         if selected_kpoints is None:
@@ -124,7 +124,7 @@ class MMN(W90_file):
                         o = self.data[ik][ib, m, n]
                         io.write(f"( {o.real:16.12f},  {o.imag:16.12f} )\n")
         io.close()
-   
+
 
 
     def equals(self, other, tolerance=1e-8, check_reorder=True):
