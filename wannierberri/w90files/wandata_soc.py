@@ -4,6 +4,8 @@ import numpy as np
 
 from ..utility import group_numbers
 from .wandata import WannierData
+import logging
+logger = logging.getLogger(__name__)
 
 
 class WannierDataSOC(WannierData):
@@ -73,7 +75,7 @@ class WannierDataSOC(WannierData):
             soc = SOC.from_npz(seedname + ".soc.npz")
         except FileNotFoundError:
             if ignore_missing_files:
-                print(f"Warning: SOC file {seedname}.soc.npz not found. SOC will be set to None.")
+                logger.warning(f"Warning: SOC file {seedname}.soc.npz not found. SOC will be set to None.")
                 soc = None
             else:
                 raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")
@@ -162,10 +164,10 @@ class WannierDataSOC(WannierData):
             assert projections is not None or (projections_up is not None), \
                 "Either projections or projections_up/projections_down must be provided."
             if projections_up is None:
-                print("Using 'projections' for both spin up channel.")
+                logger.info("Using 'projections' for both spin up channel.")
                 projections_up = projections
             if nspin == 2 and projections_down is None and not altermagnetic:
-                print("No projections_down provided; using projections_up for both spin channels.")
+                logger.info("No projections_down provided; using projections_up for both spin channels.")
                 projections_down = projections_up
 
         data_up = WannierData.from_gpaw(spin_channel=0,
@@ -297,12 +299,12 @@ class WannierDataSOC(WannierData):
                         **kwargs
                         ):
         if projections is not None:
-            print("Using 'projections' for both spin channels.")
+            logger.info("Using 'projections' for both spin channels.")
             if projections_up is not None:
-                print("Warning: 'projections' will override 'projections_up'.")
+                logger.info("Warning: 'projections' will override 'projections_up'.")
             projections_up = projections
             if projections_down is not None:
-                print("Warning: 'projections' will override 'projections_down'.")
+                logger.info("Warning: 'projections' will override 'projections_down'.")
             projections_down = projections
         if self.nspin == 2 and not self.altermagnetic:
             assert bandstructure_up is not None and bandstructure_down is not None, "two bandstructures (up and down) must be provided for nspin=2."

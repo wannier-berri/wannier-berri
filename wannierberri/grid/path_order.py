@@ -1,13 +1,16 @@
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def flatten_path(nodes, segments, direction=None):
     """Flattens a path defined by nodes and segments. If direction is given, then the path is flattened along this direction, otherwise the path is flattened along the direction of the first segment"""
     if direction is None:
         return nodes, segments
-    print(f"Flattening path along direction {direction}")
-    print(f"Original nodes: {nodes}")
-    print(f"Original segments: {segments}")
+    logger.info(f"Flattening path along direction {direction}")
+    logger.info(f"Original nodes: {nodes}")
+    logger.info(f"Original segments: {segments}")
     nodes_flat = {k: np.array(v) for k, v in nodes.items() if abs(v[direction]) < 1e-7}
     flatten_map = {}
     for k, v in nodes.items():
@@ -17,11 +20,11 @@ def flatten_path(nodes, segments, direction=None):
             if np.linalg.norm(diff) < 1e-7:
                 flatten_map[k] = kf
                 break
-    print(f"Flatten map: {flatten_map}")
+    logger.info(f"Flatten map: {flatten_map}")
     segments_flat = [(flatten_map[s[0]], flatten_map[s[1]]) for s in segments]
-    print(f"Segments after flattening: {segments_flat}")
+    logger.info(f"Segments after flattening: {segments_flat}")
     segments_flat = [seg for seg in segments_flat if seg[0] != seg[1]]  # remove vertical lines
-    print(f"Segments after removing vertical lines: {segments_flat}")
+    logger.info(f"Segments after removing vertical lines: {segments_flat}")
     repeated = np.zeros(len(segments_flat), dtype=bool)
     for i, seg in enumerate(segments_flat):
         for j in range(i):
@@ -71,32 +74,32 @@ def connect_segments(segments):
                         success = True
                         segments_taken[j] = True
                         if loop[-1] in seg:
-                            print(f"Segment {seg} can be connected to the end of the loop {loop}")
+                            logger.info(f"Segment {seg} can be connected to the end of the loop {loop}")
                             if seg[0] == loop[-1]:
                                 loop.append(seg[1])
                             else:
                                 loop.append(seg[0])  # reverse the segment
                         elif loop[0] in seg:
-                            print(f"Segment {seg} can be connected to the beginning of the loop {loop}")
+                            logger.info(f"Segment {seg} can be connected to the beginning of the loop {loop}")
                             if seg[0] == loop[0]:
                                 loop.insert(0, seg[1])  # reverse the segment
                             else:
                                 loop.insert(0, seg[0])  # reverse the segment
                     else:
-                        print(f"Segment {seg} cannot be connected to the loop {loop}")
+                        logger.info(f"Segment {seg} cannot be connected to the loop {loop}")
                     if loop[0] == loop[-1]:  # check if the loop is closed or cannot be extended
                         loop_closed = True
-                        print(f"Loop closed: {loop}")
+                        logger.info(f"Loop closed: {loop}")
                         break  # loop while
             if not success or loop_closed:
-                print(f"Loop cannot be extended: {loop}, segments left: {[s for i, s in enumerate(segments) if not segments_taken[i]]}")
+                logger.info(f"Loop cannot be extended: {loop}, segments left: {[s for i, s in enumerate(segments) if not segments_taken[i]]}")
                 break
         segment_loops.append(loop)
-    print(f"Segment loops: {segment_loops}")
+    logger.info(f"Segment loops: {segment_loops}")
     segment_loops = insert_all_closed_loops(segment_loops)
-    print(f"Segment loops after inserting closed loops: {segment_loops}")
+    logger.info(f"Segment loops after inserting closed loops: {segment_loops}")
     segment_loops = insert_all_unclosed_to_closed(segment_loops)
-    print(f"Segment loops after inserting unclosed loops into closed loops: {segment_loops}")
+    logger.info(f"Segment loops after inserting unclosed loops into closed loops: {segment_loops}")
     return [(s1, s2) for loop in segment_loops for s1, s2 in zip(loop[:-1], loop[1:])]
 
 

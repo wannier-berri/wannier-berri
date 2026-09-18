@@ -4,6 +4,9 @@ import numpy as np
 from .system import System_k
 from .__finite_differences import find_shells, Derivative3D
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class SystemKP(System_k):
     r"""
@@ -102,7 +105,7 @@ class SystemKP(System_k):
         self.der3Ham_cart = lambda k: self.der3Ham(self.k_cart2red(k))
 
         self.set_pointgroup()
-        print("Number of wannier functions:", self.num_wann)
+        logger.info("Number of wannier functions:", self.num_wann)
 
     @property
     def NKFFT_recommended(self):

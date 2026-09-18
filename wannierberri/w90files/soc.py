@@ -2,6 +2,8 @@ import warnings
 import numpy as np
 from .w90file import W90_file, check_shape
 from ..utility import cached_einsum, pauli_xyz
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SOC(W90_file):
@@ -118,7 +120,7 @@ class SOC(W90_file):
 
         NBin = calculator.get_number_of_bands()
         IBstart, IBend, NBout = default_IBstartend(NBin, IBstart, IBend)
-        print(f"number of bands in = {NBin} , IBstart = {IBstart}, IBend = {IBend}, NBout = {NBout}")
+        logger.info(f"number of bands in = {NBin} , IBstart = {IBstart}, IBend = {IBend}, NBout = {NBout}")
         nk = len(calculator.get_ibz_k_points())
 
         # H_a = {}
@@ -196,7 +198,7 @@ class SOC(W90_file):
 
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
-            print(f"Calculating SOC for k-point {q}/{nk}")
+            logger.debug(f"Calculating SOC for k-point {q}/{nk}")
             KPup = bandstructure_up.kpoints_paw[q]
             if altermagnetic_transformer is None:
                 if nspin == 2:
@@ -211,7 +213,7 @@ class SOC(W90_file):
                     dV_soc[q, s1, s2] += overlap_paw.soc(KPlist[s1], KPlist[s2])
             if calc_overlap_loc:
                 overlap[q] += overlap_paw.product(KPup, KPdown, include_paw=True, include_pseudo=True, bk=None)
-        print("SOC calculation finished")
+        logger.debug("SOC calculation finished")
         return cls(data=dV_soc, overlap=overlap, NK=nk)
 
 

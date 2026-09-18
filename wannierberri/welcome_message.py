@@ -1,3 +1,7 @@
+import logging
+logger = logging.getLogger(__name__)
+
+
 _need_for_symmetry_str = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
 _needed_packages = {
     "irrep": "symmetry related ",
@@ -36,7 +40,7 @@ def welcome():
     cprint(f"Version: {wb_version}\n", 'cyan', attrs=['bold'])
     cprint("""\n   HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
 
-    print("Checking dependencies …")
+    logger.debug("Checking dependencies …")
     versions = {}
     for package in _needed_packages.keys():
         try:
@@ -57,5 +61,5 @@ def welcome():
             else:
                 cprint(f"{package} : not found. {nfor}", 'yellow')
             versions[package] = None
-    print("#")
+    cprint("#" * 60, 'cyan')
     return versions
