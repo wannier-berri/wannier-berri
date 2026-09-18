@@ -120,7 +120,7 @@ class Projection:
                                                     free_var_values=free_var_values)
             else:
                 assert position_sym is None, "position_num and position_str should NOT be provided together"
-                position_num = np.array(position_num)
+                position_num = np.array(position_num, dtype=float)
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
@@ -158,6 +158,10 @@ class Projection:
     def wannier_centers_cart(self):
         return self.wannier_centers_red @ self.wyckoff_position.spacegroup.lattice
 
+
+    @property
+    def spacegroup(self):
+        return self.wyckoff_position.spacegroup
 
     @property
     def positions(self):
@@ -427,6 +431,11 @@ class ProjectionsSet:
     def num_free_vars(self):
         return self.map_free_vars[0].shape[2]
 
+    @property
+    def spacegroup(self):
+        if len(self.projections) == 0:
+            return None
+        return self.projections[0].spacegroup
 
     @property
     def num_wann_per_site_list(self):

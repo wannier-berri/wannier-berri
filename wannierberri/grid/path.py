@@ -144,6 +144,8 @@ class Path(GridAbstract):
                    pointgroup=pointgroup,
                    labels=[],
                    breaks=[])
+        if nodes[-1] is None:
+            nodes.pop(-1)
         if labels is None:
             labels = [str(i + 1) for i, k in enumerate([k for k in nodes if k is not None])]
         labels = (l for l in labels)
@@ -191,6 +193,8 @@ class Path(GridAbstract):
         new_labels[K_list.shape[0] - 1] = labels[-1]
         self.K_list = K_list
         self.labels = new_labels
+        self.input_labels = labels
+        self.input_nodes = nodes
         self.breaks = breaks
         return self
 
