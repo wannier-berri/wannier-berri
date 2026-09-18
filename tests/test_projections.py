@@ -307,7 +307,6 @@ def test_create_amn_diamond_s_bond():
         num_iter=100,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         num_iter_converge=20,
         print_progress_every=20,
         sitesym=True,
@@ -398,7 +397,6 @@ def test_create_amn_diamond_p_bond():
         num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
-        mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
@@ -470,7 +468,6 @@ def test_create_amn_diamond_sp3():
         num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
-        mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
