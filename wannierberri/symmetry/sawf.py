@@ -764,8 +764,8 @@ class SymmetrizerSAWF:
         return self
 
     @classmethod
-    def from_npz(cls, f_npz):
-        dic = np.load(f_npz)
+    def from_npz(cls, f_npz, allow_pickle=False):
+        dic = np.load(f_npz, allow_pickle=allow_pickle)
         self = cls()
         self.from_dict(dic)
         self.sym_product_table, self.translations_diff, self.spinor_factors = self.spacegroup.get_product_table(get_diff=True)
