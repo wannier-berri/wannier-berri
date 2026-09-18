@@ -326,7 +326,8 @@ def system_Fe_gpaw_soc_dowannierise(wandata_Fe_gpaw):
     """Create system for Fe with SOC using GPAW wannierisation data"""
     wandata = copy.deepcopy(wandata_Fe_gpaw)
     wandata.wannierise(num_iter=100, sitesym=True,
-                    froz_min=-1000, froz_max=15)
+                    froz_min=-1000, froz_max=15,
+                    localise_num_iter=0)
     system = SystemSOC.from_wannierdata(wandata, berry=True)
     return system
 
