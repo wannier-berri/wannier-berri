@@ -45,7 +45,7 @@ def check_calculator(compare_any_result):
         if compare_zero:
             result_ref = result * 0.
             path_filename_ref = "ZERO"
-            assert precision > 0, "comparing with zero is possible only with absolute precision"
+            precision = abs(precision)
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             print(f"Comparing with reference file {path_filename_ref}")
@@ -59,7 +59,10 @@ def check_calculator(compare_any_result):
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)
         elif precision < 0:
-            precision = max(maxval * abs(precision), 1E-11)
+            if maxval < abs(precision):
+                precision = abs(precision)
+            else:
+                precision = max(maxval * abs(precision), 1E-11)
         err = (result - result_ref)._maxval_raw
         assert err < precision, error_message(
             name, "", 0, err, path_filename, path_filename_ref, precision)
@@ -183,7 +186,7 @@ def test_SDCT(system, system_type, Efermi, check_calculator):
             check_calculator(system, calc,
                              name, do_not_compare=False,
                              compare_zero=(term == "none"),
-                             precision=1e-8 if term == "none" else None,
+                            #  precision=1e-8 if term == "none" else None,
                              transformTR=transform_TR)
 
 

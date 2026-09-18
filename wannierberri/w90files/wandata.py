@@ -9,7 +9,6 @@ import numpy as np
 from ..utility import cached_einsum
 
 from .bkvectors import BKVectors
-from .soc import SOC
 from .win import WIN
 from .eig import EIG
 from .mmn import MMN
@@ -299,18 +298,25 @@ class WannierData:
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
                   return_bandstructure=False,
+                  return_paw=False,
+                  use_disk=False,
+                  IBstart=None,
+                  IBend=None,
                   verbosity=0,):
         from irrep.bandstructure import BandStructure
         args_bandstructure = dict(calculator_gpaw=calculator,
                                   Ecut=ecut_pw,
                                   select_grid=select_grid,
-                                  read_paw=("mmn" in files),
+                                  read_paw=("mmn" in files) or return_paw,
                                   irreducible=irreducible,
                                   spin_channel=spin_channel,
                                   spacegroup=spacegroup,
                                   verbosity=verbosity,
-                                  include_TR=include_TR
-                                    )
+                                  include_TR=include_TR,
+                                  IBstart=IBstart,
+                                  IBend=IBend,
+                                  store_paw=use_disk
+                                  )
         try:
             # irrep-3
             bandstructure = BandStructure.from_gpaw(**args_bandstructure)
@@ -335,10 +341,9 @@ class WannierData:
                                 include_pseudo=include_pseudo,
                                 bkvec=bkvec
                                 )
-        if "soc" in files:
-            soc = SOC.from_gpaw(calculator)
-            self.set_file('soc', soc)
         if return_bandstructure:
+            if not return_paw:
+                bandstructure.kpoints_paw = None
             return self, bandstructure
         else:
             return self
@@ -415,9 +420,11 @@ class WannierData:
 
 
     def to_npz(self,
-               seedname="wannier90",
+               seedname=None,
                files=None
                ):
+        if seedname is None:
+            seedname = self.seedname
         directory = os.path.dirname(seedname).strip()
         if len(directory) > 0:
             os.makedirs(directory, exist_ok=True)

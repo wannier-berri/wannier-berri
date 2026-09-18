@@ -42,4 +42,4 @@ jobs:
         pip install -e ".[${INSTALL_TYPE}]"
 
     - name: Run tests
-      run: pytest
+      run: pytest tests/test_*.py
