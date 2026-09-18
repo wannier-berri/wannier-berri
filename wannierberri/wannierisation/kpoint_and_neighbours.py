@@ -81,7 +81,6 @@ class Kpoint_and_neighbours:
         amn2 = amn[self.free, :].dot(amn[self.free, :].T.conj())
         self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
-        # self.update_Mmn_opt()
 
     def get_U_opt_full(self):
         return self.U_opt_full
@@ -125,7 +124,6 @@ class Kpoint_and_neighbours:
             U_opt_full = orthogonalize(U_opt_full)
             check = U_opt_full.T.conj().dot(U_opt_full) - np.eye(self.num_wann)
             assert np.allclose(check, 0, atol=1e-6), f"U_opt_full is not unitary : {check}"
-            # print(f"U_opt_full is
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) *
                                 wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
@@ -135,34 +133,22 @@ class Kpoint_and_neighbours:
             U = orthogonalize(U)
             Mmn_loc_rotated = np.einsum('ji, bjl->bil', U.conj(), Mmn_loc)
             r2_old = get_r2(wb=self.wb, Mmn_rotated=Mmn_loc_rotated, weight=self.weight)
-            # print(f"iteration {-1}: spread = {r2_old.sum():.6f}, max spread = {r2_old.max():.6f}, min spread = {r2_old.min():.6f}")
             multiplier = localise_alpha / (2 * self.sumwb)
-            for i_iter_loc in range(localise_num_iter):
+            for _ in range(localise_num_iter):
                 grad = gradOmega(self.wb, Mmn_loc_rotated) * multiplier
-                # check_grad = grad + grad.conj().T
-                # assert np.allclose(check_grad, 0, atol=1e-6), f"grad is not anti-hermitian : {check_grad}"
                 dU = scipy.linalg.expm(grad)
                 Mmn_loc_rotated = np.einsum('ji, bjl->bil', dU.conj(), Mmn_loc_rotated)
                 U = U.dot(dU)
                 check_U = U.T.conj().dot(U) - np.eye(self.num_wann)
                 assert np.allclose(check_U, 0, atol=1e-6), f"U is not unitary : {check_U}"
                 r2 = get_r2(wb=self.wb, Mmn_rotated=Mmn_loc_rotated, weight=self.weight)
-                # print (f"iteration {i_iter_loc}: spread = {r2.sum():.6f}, max spread = {r2.max():.6f}, min spread = {r2.min():.6f}. diff = {r2.sum() - r2_old.sum():.10f}")
                 if abs(r2.sum() - r2_old.sum()) < localise_conv_tol:
-                    # print(f"localization converged after {i_iter_loc+1} iterations")
                     break
                 r2_old = r2
             self.U_opt_full = orthogonalize(U_opt_full.dot(U))
 
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
-
-
-        # Mmn_loc_rotated = np.array([self.U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) *
-        #                     wcc_bk_phase[None, :, ib]
-        #                     for ib in range(self.nnb)])
-        # # r2 = get_r2(wb=self.wb, Mmn_rotated=Mmn_loc_rotated, weight=self.weight)
-        # print (f"iteration last: spread = {r2.sum():.6f}, max spread = {r2.max():.6f}, min spread = {r2.min():.6f}")
 
         self.U_opt_full = self.symmetrizer_Uirr(self.U_opt_full)
         self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)

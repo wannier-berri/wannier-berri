@@ -175,7 +175,8 @@ spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1
 @pytest.mark.parametrize("include_TR", [True, False])
 @pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
 def test_sitesym_Fe(include_TR, use_window, parallel):
-    for gradient_method in [False, True] if (parallel and include_TR) else [False]:
+    for gradient_method in [False, True] if ((not parallel) and include_TR) else [False]:
+        # choosing non-parallel to be seen by codecov
         path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
         wandata = wberri.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
         # win = WIN.from_w90_file(path_data + "/Fe")
@@ -207,7 +208,7 @@ def test_sitesym_Fe(include_TR, use_window, parallel):
                         sitesym=True,
                         parallel=parallel,
                         savechk=False,
-                           **kwargs_localise
+                        **kwargs_localise
                         )
         assert np.allclose(wandata.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(wandata.wannier_centers_cart))} \n{wandata.wannier_centers_cart}"
         spreads = wandata.chk.wannier_spreads
