@@ -83,7 +83,7 @@ class CheckPoint(SavableNPZ):
 
         self.kmesh_tol = kmesh_tol
         self.bk_complete_tol = bk_complete_tol
-        self.frozen_bands = frozen_bands
+
 
         if selected_bands is not None:
             self.selected_bands = selected_bands
@@ -110,6 +110,11 @@ class CheckPoint(SavableNPZ):
         self.num_wann = num_wann
         self.num_bands = num_bands
         self.num_kpts = num_kpts
+
+        if frozen_bands is not None:
+            self.frozen_bands = frozen_bands
+        else:
+            self.frozen_bands = {ik: np.zeros((self.num_bands,), dtype=bool) for ik in range(self.num_kpts)}
 
 
     def get_selected_bands(self):
@@ -598,6 +603,13 @@ class CheckPoint(SavableNPZ):
         self.frozen_bands = frozen_nbands
 
     def write_epw_ukk(self, file):
+        """
+        Returns the string of the EPW `.ukk` file
+        """
+        warnings.warn("write_epw_ukk is deprecated, use write_epw instead", DeprecationWarning)
+        return self.write_epw(file)
+
+    def write_epw(self, file):
         """
         Returns the string of the EPW `.ukk` file
         """
