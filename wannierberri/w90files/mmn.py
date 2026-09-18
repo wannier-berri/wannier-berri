@@ -8,6 +8,8 @@ from .utility import convert
 from .w90file import W90_file, auto_kptirr, check_shape
 from .io import sparselist_to_dict
 from ..utility import cached_einsum
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MMN(W90_file):
@@ -54,7 +56,7 @@ class MMN(W90_file):
     def from_w90_file(cls, seedname, bkvec, npar=None, selected_kpoints=None):
         if npar is None:
             npar = multiprocessing.cpu_count()
-        f_mmn_in = open(seedname + ".mmn", "r") 
+        f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
         if selected_kpoints is None:
@@ -181,7 +183,7 @@ class MMN(W90_file):
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
+        logger.info(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
         identity_operation = bandstructure.spacegroup.get_identity_operation()
 
@@ -189,7 +191,7 @@ class MMN(W90_file):
         nspinor = 2 if spinor else 1
 
         if verbose:
-            print("Creating mmn. ")
+            logger.info("Creating mmn. ")
 
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
@@ -204,11 +206,11 @@ class MMN(W90_file):
         if hasattr(bandstructure, "kpoints_paw") and bandstructure.kpoints_paw is not None:
             use_paw = True
             kpoints_in = bandstructure.kpoints_paw
-            print(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
+            logger.info(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         else:
             use_paw = False
             kpoints_in = bandstructure.kpoints
-            print(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
+            logger.info(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
@@ -230,10 +232,10 @@ class MMN(W90_file):
                         kpoints_dict_keys.add(ik2)
                         num_times_needed[ik2] = num_times_needed.get(ik2, 0) + 1
         n_needed_kpoints = len(kpoints_dict_keys)
-        print(f"Total number of k-points used for mmn calculation: {n_needed_kpoints} out of total {NK} {len(kpt_grid)} k-points in the grid ({len(kptirr)} irreducible k-points)")
+        logger.debug(f"Total number of k-points used for mmn calculation: {n_needed_kpoints} out of total {NK} {len(kpt_grid)} k-points in the grid ({len(kptirr)} irreducible k-points)")
         for i in range(max(num_times_needed.values(), default=0)):
-            print(f"Number of k-points needed {i} times: {[ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))]}")
-        print("excluding irreducible k-points")
+            logger.debug(f"Number of k-points needed {i} times: {[ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))]}")
+        logger.debug("excluding irreducible k-points")
 
         if use_disk:
             store_kwargs = {"store": True}
@@ -249,14 +251,14 @@ class MMN(W90_file):
                         # if use_paw:
                         #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
                         isym = kpt_from_kptirr_isym[ik2]
-                        # print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
+                        # logger.info(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
                         ik_origin = kpt2kptirr[ik2]
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
                                                         k_new=kpt_grid[ik2], **store_kwargs)
                         kpoints_dict_all[ik2] = kp2
-                        print(f"adding k-point {ik2}  (in kpoints_dict_all = {ik2 in kpoints_dict_all}); the length is now {len(kpoints_dict_all)}")
+                        logger.debug(f"adding k-point {ik2}  (in kpoints_dict_all = {ik2 in kpoints_dict_all}); the length is now {len(kpoints_dict_all)}")
 
 
 
@@ -327,7 +329,7 @@ class Grid_PAW_all:
         if np.all(G == 0):
             return kp
         else:
-            print("Transforming k-point with G = ", G)
+            logger.debug("Transforming k-point with G = ", G)
             return kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
 
 
@@ -351,7 +353,7 @@ class Grid_ig_all:
         self.igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         self.ig_grid = self.igmax_glob - self.igmin_glob + 1
-        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        # logger.info(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
         self.normalize = normalize
         if normalize:
             self.norm = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)

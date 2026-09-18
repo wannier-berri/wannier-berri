@@ -10,6 +10,8 @@ from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
 from .system_R import System_R
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SystemSOC(System_R):
@@ -105,7 +107,7 @@ class SystemSOC(System_R):
         if self.cell is not None:
             axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
             magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
-            print(f"using magmoms \n {magmoms}")
+            logger.info(f"using magmoms \n {magmoms}")
             from irrep.spacegroup import SpaceGroup
             mag_group = SpaceGroup.from_cell(real_lattice=self.real_lattice,
                                     positions=self.cell["positions"],
@@ -121,7 +123,7 @@ class SystemSOC(System_R):
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         # if not self.silent:
-        print(f"Saving SystemSOC to {path}")
+        logger.info(f"Saving SystemSOC to {path}")
         super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
         self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
         if self.nspin == 2:
@@ -129,7 +131,7 @@ class SystemSOC(System_R):
 
     @property
     def has_soc(self):
-        print(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
+        logger.debug(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
         if self.nspin == 2:
             return self.has_R_mat_all(['dV_soc', 'overlap_up_down'])
         else:
@@ -139,7 +141,7 @@ class SystemSOC(System_R):
     @classmethod
     def from_npz(cls, path, silent=True, exclude_properties=(), matrices=None):
         if not silent:
-            print(f"Loading SystemSOC from {path}")
+            logger.info(f"Loading SystemSOC from {path}")
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
         system_up = System_R.from_npz(path=os.path.join(path, "system_up"), exclude_properties=exclude_properties, matrices=matrices)
@@ -254,10 +256,8 @@ class SystemSOC(System_R):
                     iRvec=system_soc.rvec.iRvec,
                     silent=True,
                 )
-                # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
-
                 system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
-                print(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
+                logger.debug(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
                 rvec.iRvec = iRvec_new
                 rvec.mp_grid = system_soc.rvec.mp_grid,
                 rvec.clear_cached()
@@ -292,7 +292,7 @@ class SystemSOC(System_R):
                 # shape = tuple()
             else:
                 shape = (3,)
-            print(f"setting matrix {key} from system_up")
+            logger.info(f"setting matrix {key} from system_up")
             matrix = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann) + shape, dtype=complex)
             if key == 'Ham':
                 matrix[rvectors_map_list[0], ::2, ::2] = self.system_up.get_R_mat(key)

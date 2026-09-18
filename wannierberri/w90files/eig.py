@@ -1,6 +1,9 @@
 from .w90file import W90_file, check_shape, auto_kptirr
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class EIG(W90_file):
 
@@ -50,7 +53,7 @@ class EIG(W90_file):
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
         if verbose:
-            print("Creating eig.")
+            logger.info("Creating eig.")
         data = {}
         for ikirr in kptirr:
             data[ikirr] = bandstructure.kpoints[selected_kpoints[ikirr]].Energy_raw

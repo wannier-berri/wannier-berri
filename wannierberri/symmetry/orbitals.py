@@ -1,3 +1,5 @@
+from scipy.linalg import block_diag
+from .unique_list import UniqueList
 from numpy import sqrt as sq
 import numpy as np
 
@@ -7,8 +9,9 @@ from scipy.interpolate import CubicSpline
 from scipy.integrate import trapezoid
 from scipy.constants import physical_constants
 
-from .unique_list import UniqueList
-from scipy.linalg import block_diag
+import logging
+logger = logging.getLogger(__name__)
+
 bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 
 # Note: in the Dwann it is assumed that all orbitals are REAL, so under TR one does not need to take complex conjugate
@@ -285,8 +288,6 @@ class Projector:
         g_costheta = gk[:, 2] / gk_abs
         g_costheta[select] = 0
         g_phi = np.arctan2(gk[:, 1], gk[:, 0])
-        # print("phi", g_phi)
-        # print("costheta", g_costheta)
         self.sph = SphericalHarmonics(costheta=g_costheta, phi=g_phi)
         self.bessel = bessel
         self.bessel_l = {}
@@ -434,7 +435,7 @@ class SphericalHarmonics:
         else:
             ibasis = len(self.calcualted_basices)
             self.calcualted_basices.append(basis)
-            # print(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
+            logger.debug(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
         if (orbital, ibasis) not in self.harmonics:
             self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
         return self.harmonics[(orbital, ibasis)]
@@ -450,17 +451,13 @@ class SphericalHarmonics:
             return sum(self(orb, basis) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
             if not np.allclose(basis, np.eye(3), atol=1e-4):
-                # print(f"evaluating orbital {orbital} in basis \n{basis}")
                 shell = orbital[0]
                 assert shell in basis_shells_list, f"shell {shell} not in basis_shells_list"
                 shell_list = orbitals_sets_dic[shell]
                 assert orbital in shell_list, f"orbital {orbital} not in shell {shell}"
                 shell_pos = shell_list.index(orbital)
-                # print(f"basis = \n{basis}")
                 matrix = self.orbitalrotator(shell, rot_cart=basis)
-                # print(f"matrix = \n{matrix}")
                 vector = matrix[shell_pos, :]
-                # print(f" orbital {orbital} basis = \n{basis}\n,   vector = {vector}, shell_list = {shell_list}")
                 return sum(self(o, basis=None) * k for k, o in zip(vector, shell_list))
             else:
                 match orbital:

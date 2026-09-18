@@ -3,6 +3,8 @@ from termcolor import cprint
 
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
+import logging
+logger = logging.getLogger(__name__)
 
 
 def get_system_hr(seedname, wannier_centers_cart=None, real_lattice=None, **parameters):
@@ -70,7 +72,7 @@ def get_system_hr(seedname, wannier_centers_cart=None, real_lattice=None, **para
     iRvec = np.array(iRvec, dtype=int)
     if wannier_centers_cart is None:
         wannier_centers_cart = read_WCC_WT_format(seedname)
-    print(f"wannier_centers_cart = {wannier_centers_cart}")
+    logger.info(f"wannier_centers_cart = {wannier_centers_cart}")
 
     system.wannier_centers_cart = wannier_centers_cart
     system.clear_cached_wcc()

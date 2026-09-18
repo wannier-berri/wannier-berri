@@ -75,12 +75,9 @@ class Data_K_soc(Data_K_R):
             dVsoc[0][1] = dVsoc[0][0]
             dVsoc[1][0] = dVsoc[0][0]
         soc_k = np.zeros((self.nk, self.num_wann, self.num_wann) + (3,) * der, dtype=complex)
-        # print(f"pauli_rotated shape = {pauli_rotated}, alpha_soc = {self.system.alpha_soc}")
         for i in range(2):
             for j in range(2):
-                # print (f"i={i}, j={j}, dVsoc[{i}][{j}] shape = {dVsoc[i][j].shape}, pauli_rotated[{i},{j}] shape = {pauli_rotated[i,j,:].shape}, soc_k shape = {soc_k.shape}")
                 soc_k[:, i::2, j::2] = cached_einsum("rmnc...,c->rmn...", dVsoc[i][j], pauli_rotated[i, j, :])
-        # print("soc max abs = ", np.max(np.abs(soc_k)))
         return soc_k * self.system.alpha_soc
 
     def SS_W(self, der=0):

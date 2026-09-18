@@ -3,6 +3,8 @@ import numpy as np
 from ..utility import orthogonalize
 from .utility import get_inverse_block, rotate_block_matrix
 from .sawf import SymmetrizerSAWF, VoidSymmetrizer
+import logging
+logger = logging.getLogger(__name__)
 
 
 def get_symmetrizer_Uirr(symmetrizer, ikirr):
@@ -50,75 +52,10 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         self.num_wann = symmetrizer.num_wann
         self.time_reversals = symmetrizer.time_reversals
         self.include_bands = np.ones(self.nb, dtype=bool)
-        # self.symop_product, self.symop_diff, self.spinor_diff = symmetrizer.spacegroup.get_product_table(get_diff=True)
-        # print(f"initializing Symmetrizer_Uirr for ikirr={ikirr}, ikpt={self.ikpt}, {self.kpt_red} with {self.nsym_little} symmetries")
-        # print(f" product table:\n{ "\n".join([ " ".join([f'{self.symop_product[i,j]:3d}' for j in self.isym_little]) for i in self.isym_little]) }")
-        # self.check_products_d()
-        # self.check_products_D()
-        # self.check_products_dD()
         err = self.check(accuracy_threshold=accuracy_threshold)
         if err > 1e-6:
-            print(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_red} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
+            logger.info(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_red} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
                 f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
-
-
-    # def check_products_d(self):
-    #     maxerr = 0.0
-    #     for isym1 in self.isym_little:
-    #         for isym2 in self.isym_little:
-    #             isym3 = self.symop_product[isym1, isym2]
-    #             assert isym3 in self.isym_little, f"Error: product of two little group symmetries {isym1}, {isym2} gives {isym3} which is not in the little group"
-    #             for i, (start, end) in enumerate(self.d_indices[:-1]):
-    #                 d1 = self.d_band_blocks[isym1][i]
-    #                 d2 = self.d_band_blocks[isym2][i]
-    #                 d3 = self.d_band_blocks[isym3][i]
-    #                 prod = d1 @ d2  *np.exp( 2j*np.pi* (self.kpt_red @ self.symop_diff[isym1, isym2])) * self.spinor_diff[isym1, isym2]
-    #                 err = np.linalg.norm(prod - d3)
-    #                 maxerr = max(maxerr, err)
-    #                 if err > 1e-6:
-    #                     print(f"Warning: product of d matrices does not match for isym1={isym1}, isym2={isym2}, isym3={isym3}, block {i} (of {len(self.d_indices)}) [{start}:{end}]: {err}")
-    #                     print(f"d1 = {d1}, d2={d2}, d1@d2={prod} d3={d3},")
-    #     print (f"max error in d products: {maxerr}")
-
-    # def check_products_D(self):
-    #     maxerr = 0.0
-    #     for isym1 in self.isym_little:
-    #         for isym2 in self.isym_little:
-    #             isym3 = self.symop_product[isym1, isym2]
-    #             assert isym3 in self.isym_little, f"Error: product of two little group symmetries {isym1}, {isym2} gives {isym3} which is not in the little group"
-    #             for i, (start, end) in enumerate(self.D_indices[:-1]):
-    #                 D1 = self.D_wann_blocks_inverse[isym1][i]
-    #                 D2 = self.D_wann_blocks_inverse[isym2][i]
-    #                 D3 = self.D_wann_blocks_inverse[isym3][i]
-    #                 prod = D2 @ D1  *np.exp( -2j*np.pi* (self.kpt_red @ self.symop_diff[isym1, isym2])) * self.spinor_diff[isym1, isym2]
-    #                 err = np.linalg.norm(prod - D3)
-    #                 maxerr = max(maxerr, err)
-    #                 if err > 1e-6:
-    #                     print(f"Warning: product of D matrices does not match for isym1={isym1}, isym2={isym2}, isym3={isym3}, block {i} (of {len(self.D_indices)}) [{start}:{end}]: {err}")
-    #                     print(f"D1 = {D1}, D2={D2}, D2@D1={prod} D3={D3},")
-    # #     print (f"max error in D products: {maxerr}")
-
-    # def check_products_dD(self, U=None):
-    #     if U is None:
-    #         U = np.random.rand(self.nb, self.num_wann) + 1j * np.random.rand(self.nb, self.num_wann)
-    #     maxerr = 0.0
-    #     max_index = self.d_indices[-2][1]
-    #     for isym1 in self.isym_little:
-    #         for isym2 in self.isym_little:
-    #             isym3 = self.symop_product[isym1, isym2]
-    #             assert isym3 in self.isym_little, f"Error: product of two little group symmetries {isym1}, {isym2} gives {isym3} which is not in the little group"
-    #             U1 = self.rotate_U(U, isym2)
-    #             U2 = self.rotate_U(U1, isym1)
-    #             U3 = self.rotate_U(U, isym3)
-    #             err = np.linalg.norm(U2[:max_index] - U3[:max_index])
-    #             maxerr = max(maxerr, err)
-    #             if err > 1e-6:
-    #                 print(f"Warning: product of d and D matrices does not match for isym1={isym1}, isym2={isym2}, isym3={isym3}: {err}")
-    #             else:
-    #                 pass
-    #                 # print (f"applying {isym2}, then {isym1} gives the same result as applying {isym3} directly, error {err}")
-    #     return maxerr
-    #     # print (f"max error in dD products: {maxerr}")
 
 
     def check(self, U=None, verbose=False, accuracy_threshold=1e-6, no_exclude_bands=-4):
@@ -147,7 +84,6 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         max_error_in_blocks = np.zeros(len(self.d_indices), dtype=float)
         for isym in self.isym_little:
             U1 = self.rotate_U(U, isym)
-            # print (f"U rotated by symmetry {isym}:\n{arr_to_string(U1, fmt='{:12.5e}')}")
             diff = (U1 - U)
             diff = np.max(abs(diff), axis=1)
             for i, (start, end) in enumerate(self.d_indices):
@@ -158,7 +94,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                 if end > no_exclude_bands:
                     self.include_bands[start:end] = False
                     if verbose:
-                        print(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
+                        logger.info(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
                 else:
                     warnings.warn(f"Warning: max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not among the  upper"
                                 f" bands({no_exclude_bands}:{self.nb}) bands, this may indicate inaccuracy in the input data")
@@ -169,7 +105,6 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
 
 
     def rotate_U(self, U, isym):
-        # forward = not forward
         Uloc = U.copy()
         if self.time_reversals[isym]:
             Uloc = Uloc.conj()
@@ -194,7 +129,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                 return Usym
             Uprev = Usym_ortho
         else:
-            print(f"Warning: symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
+            logger.info(f"Warning: symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
                   "; probably the input data are not perfectly symmetrizable, or the provided projections are not"
                   "compatible with the irreps of the DFT bands."
             )
