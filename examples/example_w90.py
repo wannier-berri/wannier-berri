@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import wannierberri as wberri
+    
 wberri.configure_logging()
 
 

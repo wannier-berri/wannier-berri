@@ -758,7 +758,7 @@ class System_R(System):
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
-        print("properties to load: ", properties)
+        logger.debug("properties to load: ", properties)
         for key in properties:
             if key in keys_processed:
                 continue
@@ -779,7 +779,7 @@ class System_R(System):
                 val = a['arr_0']
 
             if key == "iRvec":
-                print(f"{val=}")
+                logger.debug(f"{val=}")
                 rvecdict = Rvectors.read_dict(val)
                 ## legacy - to read old systems, where the shifts are not written in the Rvectors file.
                 if "shifts_left_red" not in rvecdict:

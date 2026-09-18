@@ -75,7 +75,7 @@ class WannierDataSOC(WannierData):
             soc = SOC.from_npz(seedname + ".soc.npz")
         except FileNotFoundError:
             if ignore_missing_files:
-                print(f"Warning: SOC file {seedname}.soc.npz not found. SOC will be set to None.")
+                logger.warning(f"Warning: SOC file {seedname}.soc.npz not found. SOC will be set to None.")
                 soc = None
             else:
                 raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")

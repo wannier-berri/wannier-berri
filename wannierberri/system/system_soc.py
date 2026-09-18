@@ -131,7 +131,7 @@ class SystemSOC(System_R):
 
     @property
     def has_soc(self):
-        print(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
+        logger.debug(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
         if self.nspin == 2:
             return self.has_R_mat_all(['dV_soc', 'overlap_up_down'])
         else:
@@ -256,10 +256,8 @@ class SystemSOC(System_R):
                     iRvec=system_soc.rvec.iRvec,
                     silent=True,
                 )
-                # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
-
                 system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
-                print(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
+                logger.debug(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
                 rvec.iRvec = iRvec_new
                 rvec.mp_grid = system_soc.rvec.mp_grid,
                 rvec.clear_cached()

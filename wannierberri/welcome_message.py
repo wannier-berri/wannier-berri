@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 
 
 _need_for_symmetry_str = "symmetry-related functionality (SAWF, symmetrization, projections, …)"
@@ -38,7 +40,7 @@ def welcome():
     cprint(f"Version: {wb_version}\n", 'cyan', attrs=['bold'])
     cprint("""\n   HTTP://WANNIER-BERRI.ORG  \n""", 'yellow')
 
-    print("Checking dependencies …")
+    logger.debug("Checking dependencies …")
     versions = {}
     for package in _needed_packages.keys():
         try:

@@ -261,7 +261,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
 
     if NK is not None:
         if not np.all(NK == NKFFT * NKdiv):
-            logger.warning(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
+            logger.info(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
 
     notperiodic = np.logical_not(periodic)
     NKdiv[notperiodic] = 1

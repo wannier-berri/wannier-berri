@@ -40,6 +40,8 @@ def configure_logging(logfile="wannierberri.log",
     if logfile is not None:
         if isinstance(logfile, str):
             log_handler = logging.FileHandler(logfile, mode=logmode)
+        elif hasattr(logfile, "write"):
+            log_handler = logging.StreamHandler(logfile)
         elif isinstance(logfile, logging.Handler):
             log_handler = logfile
         else:
@@ -56,6 +58,8 @@ def configure_logging(logfile="wannierberri.log",
     if outfile is not None:
         if isinstance(outfile, str):
             output_handler = logging.FileHandler(outfile, mode=output_mode)
+        elif hasattr(outfile, "write"):
+            output_handler = logging.StreamHandler(outfile)
         elif isinstance(outfile, logging.Handler):
             output_handler = outfile
         else:
