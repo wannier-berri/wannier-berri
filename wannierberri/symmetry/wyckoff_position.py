@@ -155,7 +155,7 @@ class WyckoffPosition:
 
     def contains_position(self, position):
         if self.num_free_vars == 0:
-            if all_close_mod1(position, self.positions[0]):
+            if any(all_close_mod1(position, p) for p in self.positions):
                 return []
             else:
                 return None

@@ -33,19 +33,15 @@ class Rvectors:
 
         if shifts_left_red is None:
             self.shifts_left_red = np.zeros((1, 3), dtype=float)
-            self.has_shifts_left = False
         else:
             self.shifts_left_red = np.array(shifts_left_red)
-            self.has_shifts_left = True
 
 
 
         if shifts_right_red is None:
             self.shifts_right_red = self.shifts_left_red
-            self.has_shifts_right = False
         else:
             self.shifts_right_red = np.array(shifts_right_red)
-            self.has_shifts_right = True
 
         self._NKFFTrec = None
         if iRvec is not None:
@@ -55,6 +51,15 @@ class Rvectors:
         self.fft_R2k_set = False
         self.fft_q2R_set = False
 
+
+    def get_reversed(self):
+        """
+        Return a new Rvectors object with the left and right shifts reversed.
+        """
+        return Rvectors(lattice=self.lattice,
+                        shifts_left_red=self.shifts_right_red,
+                        shifts_right_red=self.shifts_left_red,
+                        iRvec=-self.iRvec)
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """
@@ -100,6 +105,25 @@ class Rvectors:
         for i, iRvec in enumerate(self.iRvec_list):
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
 
+    def as_dict(self):
+        return dict(iRvec=self.iRvec,
+                    shifts_left_red=self.shifts_left_red,
+                    shifts_right_red=self.shifts_right_red)
+
+    @classmethod
+    def read_dict(cls, dic_in):
+        dic_out = {}
+        if 'iRvec' in dic_in:
+            dic_out['iRvec'] = np.array(dic_in['iRvec'], dtype=int)
+        elif 'arr_0' in dic_in:
+            dic_out['iRvec'] = np.array(dic_in['arr_0'], dtype=int)
+        else:
+            raise ValueError(f"dic must contain 'iRvec' or 'arr_0', but contains {list(dic_in.keys())}")
+        if 'shifts_left_red' in dic_in:
+            dic_out['shifts_left_red'] = np.array(dic_in['shifts_left_red'])
+        if 'shifts_right_red' in dic_in:
+            dic_out['shifts_right_red'] = np.array(dic_in['shifts_right_red'])
+        return dic_out
 
     def copy(self):
         """
@@ -306,6 +330,21 @@ class Rvectors:
         self.shifts_right_red = shifts_right_red_new
         self.clear_cached()
 
+    def transform(self, symop):
+        """
+        Transform the Rvectors according to the given rotation and translation.
+
+        Parameters
+        ----------
+        rotation_latt : np.ndarray
+            The rotation matrix in lattice coordinates.
+        translation_latt : np.ndarray
+            The translation vector in lattice coordinates.
+        """
+        self.shifts_left_red = symop.transform_r(self.shifts_left_red)
+        self.shifts_right_red = symop.transform_r(self.shifts_right_red)
+        self.iRvec = symop.transform_r(self.iRvec, translation=False)
+        self.clear_cached()
 
     def reorder(self, order_left=None, order_right=None):
         """
@@ -396,6 +435,15 @@ class Rvectors:
         R = np.array(np.round(R), dtype=int).tolist()
         return self.iRvec.tolist().index(R)
 
+    def add_minus_R(self, XX_R_dict):
+        mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        Radd = -self.iRvec[notfound]
+        self.iRvec = np.concatenate((self.iRvec, Radd), axis=0)
+        for key in XX_R_dict.keys():
+            XX_R_dict[key] = np.concatenate((XX_R_dict[key], np.zeros((len(Radd),) + XX_R_dict[key].shape[1:], dtype=XX_R_dict[key].dtype)), axis=0)
+        self.clear_cached()
+
     @cached_property
     def reverseR(self):
         """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
@@ -442,7 +490,7 @@ class Rvectors:
         else:
             logger.info(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0), k_list=None):
+    def set_fft_R_to_k(self, NK, fftlib='fftw', dK=(0, 0, 0), k_list=None):
         """
         set the FFT for the R to k conversion
 
@@ -463,7 +511,8 @@ class Rvectors:
             self.fft_R_to_k = FFT_R_to_k(
                 iRvec=self.iRvec,
                 k_list=k_list,
-                num_wann=num_wann,
+                num_wann_left=self.nshifts_left,
+                num_wann_right=self.nshifts_right,
                 fftlib="slow")
         else:
             self.dK = np.array(dK)
@@ -472,7 +521,8 @@ class Rvectors:
             self.fft_R_to_k = FFT_R_to_k(
                 iRvec=self.iRvec,
                 NKFFT=NK,
-                num_wann=num_wann,
+                num_wann_left=self.nshifts_left,
+                num_wann_right=self.nshifts_right,
                 fftlib=fftlib)
         self.fft_R2k_set = True
 
@@ -610,7 +660,7 @@ class WignerSeitz:
         return iRvec, Ndegen, iRvec % self.mp_grid
 
 
-def merge_Rvectors(rvec_list):
+def merge_Rvectors(rvec_list, shifts_left_red=None, shifts_right_red=None):
     """
     Merge several Rvectors objects into a new one.
 
@@ -626,13 +676,19 @@ def merge_Rvectors(rvec_list):
     R_map_list : list of np.ndarray
         A list of mapping arrays, where each array maps the R-vectors of the corresponding input Rvectors object to the R-vectors of the merged Rvectors object.
     """
+    if shifts_right_red is None:
+        shifts_right_red = shifts_left_red
     if len(rvec_list) == 0:
         raise ValueError("rvec_list is empty")
     rvec0 = rvec_list[0]
     lattice = rvec0.lattice
-    shifts_left_red = rvec0.shifts_left_red
-    shifts_right_red = rvec0.shifts_right_red
+    if shifts_left_red is None:
+        shifts_left_red = rvec0.shifts_left_red
+    if shifts_right_red is None:
+        shifts_right_red = rvec0.shifts_right_red
+
     dim = rvec0.dim
+
     iRvec_tuple_set = set(tuple(R) for R in rvec0.iRvec)
     for rvec in rvec_list[1:]:
         assert np.allclose(rvec.lattice, lattice), "lattices are not the same"

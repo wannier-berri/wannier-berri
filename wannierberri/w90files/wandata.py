@@ -7,7 +7,6 @@ from .amn import AMN
 from .mmn import MMN
 from .eig import EIG
 from .win import WIN
-from .soc import SOC
 from .bkvectors import BKVectors
 from ..utility import cached_einsum
 import datetime
@@ -188,7 +187,8 @@ class WannierData:
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
                                             bk_complete_tol=1e-5,
-                                            kptirr=kptirr)
+                                            kptirr=kptirr,
+                                            real_lattice=bandstructure.lattice)
             else:
                 bkvec = BKVectors.from_kpoints(recip_lattice=bandstructure.RecLattice,
                                             mp_grid=mp_grid,
@@ -300,18 +300,25 @@ class WannierData:
                                       warning_threshold=0.01,
                                       nbands_upper_skip=8),
                   return_bandstructure=False,
+                  return_paw=False,
+                  use_disk=False,
+                  IBstart=None,
+                  IBend=None,
                   verbosity=0,):
         from irrep.bandstructure import BandStructure
         args_bandstructure = dict(calculator_gpaw=calculator,
                                   Ecut=ecut_pw,
                                   select_grid=select_grid,
-                                  read_paw=("mmn" in files),
+                                  read_paw=("mmn" in files) or return_paw,
                                   irreducible=irreducible,
                                   spin_channel=spin_channel,
                                   spacegroup=spacegroup,
                                   verbosity=verbosity,
-                                  include_TR=include_TR
-                                    )
+                                  include_TR=include_TR,
+                                  IBstart=IBstart,
+                                  IBend=IBend,
+                                  store_paw=use_disk
+                                  )
         try:
             # irrep-3
             bandstructure = BandStructure.from_gpaw(**args_bandstructure)
@@ -336,10 +343,9 @@ class WannierData:
                                 include_pseudo=include_pseudo,
                                 bkvec=bkvec
                                 )
-        if "soc" in files:
-            soc = SOC.from_gpaw(calculator)
-            self.set_file('soc', soc)
         if return_bandstructure:
+            if not return_paw:
+                bandstructure.kpoints_paw = None
             return self, bandstructure
         else:
             return self
@@ -416,9 +422,11 @@ class WannierData:
 
 
     def to_npz(self,
-               seedname="wannier90",
+               seedname=None,
                files=None
                ):
+        if seedname is None:
+            seedname = self.seedname
         directory = os.path.dirname(seedname).strip()
         if len(directory) > 0:
             os.makedirs(directory, exist_ok=True)
@@ -463,8 +471,19 @@ class WannierData:
                      formatted=tuple(),
                      files=tuple(),
                      bkvec=None,
+                     npar=None,
                      readnnkp=True
                      ):
+        """Create WannierData from Wannier90 files.
+
+        Parameters
+        ----------
+        readnnkp : bool or None
+            If ``True``, use the ``.nnkp`` file to construct the B-vectors when
+            it is available. The reciprocal lattice is always reconstructed
+            from the direct lattice in the checkpoint or ``.win`` file. If
+            ``False``, construct the B-vectors entirely from the checkpoint.
+        """
         self = cls()
         self.seedname = copy(seedname)
         formatted = [s.lower() for s in formatted]
@@ -483,18 +502,25 @@ class WannierData:
             self.set_chk(read=False)
 
         if bkvec is None:
-            if os.path.exists(seedname + ".nnkp") and readnnkp:
+            if readnnkp:
+                if self.has_file('chk'):
+                    real_lattice_loc = self.chk.real_lattice
+                elif self.has_file('win'):
+                    real_lattice_loc = self.win.lattice
+                else:
+                    real_lattice_loc = None
                 bkvec = BKVectors.from_nnkp(seedname + ".nnkp",
                                             kmesh_tol=1e-5,
-                                            bk_complete_tol=1e-5)
+                                            bk_complete_tol=1e-5,
+                                            real_lattice=real_lattice_loc)
             else:
-                assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file does not exist"
+                assert self.has_file('chk'), "chk file should be read before to generate bkvec, if nnkp file is not read"
                 bkvec = BKVectors.from_kpoints(recip_lattice=self.chk.recip_lattice,
                                             mp_grid=self.chk.mp_grid,
                                             kpoints_red=self.chk.kpt_red)
         self.set_file('bkvec', bkvec)
         if 'mmn' in _read_files_loc:
-            mmn = MMN.from_w90_file(seedname=seedname, bkvec=bkvec)
+            mmn = MMN.from_w90_file(seedname=seedname, bkvec=bkvec, npar=npar)
             self.set_file('mmn', mmn)
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
@@ -509,6 +535,8 @@ class WannierData:
                 kwargs_w90['bk_reorder'] = self.get_file('mmn').bk_reorder
             if f in ["spn", "uhu", "uiu", "shu", "siu", ]:
                 kwargs_w90['formatted'] = f in self.formatted_list
+            if f in ["mmn", "amn"]:
+                kwargs_w90['npar'] = npar
             val = FILES_CLASSES[f].from_w90_file(seedname=seedname, **kwargs_w90)
             self.set_file(f, val=val)
         return self

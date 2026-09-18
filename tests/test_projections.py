@@ -279,7 +279,7 @@ def test_create_amn_diamond_s_bond():
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"], readnnkp=False)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     wandata.set_projections(projections=[projection],
                             bandstructure=bandstructure,
@@ -372,7 +372,8 @@ def test_create_amn_diamond_p_bond():
 
     wandata = wberri.WannierData.from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
-        files=["mmn", "eig", "win", "unk"])
+        files=["mmn", "eig", "win", "unk"],
+        readnnkp=False)
 
     amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                             normalize=True)
@@ -456,7 +457,7 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"], readnnkp=False)
     wandata.set_file("amn", amn)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)

@@ -55,7 +55,7 @@ def test_wannierise(outer_window, starting_wcc):
     symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"], readnnkp=False)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     wcc_start_red = np.array([[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]])
     if starting_wcc == "chk":

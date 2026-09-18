@@ -29,10 +29,11 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+wannierberri/_version.py
 tags
 
 # temporary test files
 tests/_output
+tests/prof
 
 .DS_Store
