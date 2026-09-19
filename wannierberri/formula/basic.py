@@ -21,27 +21,24 @@ class tildeFab(Formula_ln):
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
         self.D = data_K.Dcov
-
-        #        print (f"tildeFab evaluating: internal({self.internal_terms}) and external({self.external_terms})")
         if self.external_terms:
             self.A = data_K.covariant('AA')
-            self.V = data_K.covariant('Ham', gender=1)
             self.F = data_K.covariant(self.key_FF)
-
         self.ndim = 2
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3), dtype=complex)
         Dnl = self.D.nl(ik, inn, out)
-        Dln = self.D.ln(ik, inn, out)
+        Dln = -Dnl.swapaxes(0, 1).conj()
         if self.internal_terms:
             summ += -cached_einsum("mla,lnb->mnab", Dnl, Dln)
 
         if self.external_terms:
+            Ann = self.A.nn(ik, inn, out)
             summ += self.F.nn(ik, inn, out)
             summ += 2j * cached_einsum("mla,lnb->mnab", Dnl, self.A.ln(ik, inn, out))
             #            summ += 1j * cached_einsum("mla,lnb->mnab", self.A.nl (ik,inn,out),Dln   )
-            summ += -1 * cached_einsum("mla,lnb->mnab", self.A.nn(ik, inn, out), self.A.nn(ik, inn, out))
+            summ += -1 * cached_einsum("mla,lnb->mnab", Ann, Ann)
 
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2)).conj())
         return summ
@@ -62,9 +59,6 @@ class tildeFab_d(Formula_ln):
         super().__init__(data_K, **parameters)
         self.dD = DerDcov(data_K)
         self.D = data_K.Dcov
-
-        #        print (f"derOmega evaluating: internal({self.internal_terms}) and external({self.external_terms})")
-
         if self.external_terms:
             self.A = data_K.covariant('AA')
             self.dA = data_K.covariant('AA', gender=1)
@@ -121,15 +115,15 @@ class tildeHab(Formula_ln):
 
         if self.internal_terms:
             summ += -cached_einsum(
-                "mla,lnb->mnab",
-                self.D.nl(ik, inn, out) * self.E[ik][out][None, :, None], self.D.ln(ik, inn, out))
+                "mla,l,lnb->mnab",
+                self.D.nl(ik, inn, out), self.E[ik][out], self.D.ln(ik, inn, out))
 
         if self.external_terms:
             summ += self.H.nn(ik, inn, out)
             summ += 2j * cached_einsum("mla,lnb->mnab", self.D.nl(ik, inn, out), self.B.ln(ik, inn, out))
             summ += -cached_einsum(
-                "mla,lnb->mnab",
-                self.A.nn(ik, inn, out) * self.E[ik][inn][None, :, None], self.A.nn(ik, inn, out))
+                "mla,l,lnb->mnab",
+                self.A.nn(ik, inn, out), self.E[ik][inn], self.A.nn(ik, inn, out))
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2)).conj())
         return summ
 
@@ -182,23 +176,21 @@ class tildeHab_d(Formula_ln):
 
     def nn(self, ik, inn, out):
         summ = np.zeros((len(inn), len(inn), 3, 3, 3), dtype=complex)
+        Dnl = self.D.nl(ik, inn, out)
         if self.internal_terms:
             summ += -1 * cached_einsum(
-                "mpa,pld,lnb->mnabd", self.D.nl(ik, inn, out), self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
+                "mpa,pld,lnb->mnabd", Dnl, self.V.ll(ik, inn, out), self.D.ln(ik, inn, out))
             summ += -2 * cached_einsum(
-                "mla,lnbd->mnabd",
-                self.D.nl(ik, inn, out) * self.E[ik][out][None, :, None], self.dD.ln(ik, inn, out))
+                "mla,l,lnbd->mnabd",
+                Dnl, self.E[ik][out], self.dD.ln(ik, inn, out))
 
         if self.external_terms:
             summ += self.dH.nn(ik, inn, out)
-            summ += -cached_einsum(
-                "mpa,pld,lnb->mnabd", self.A.nn(ik, inn, out), self.V.nn(ik, inn, out), self.A.nn(ik, inn, out))
-            summ += -2 * cached_einsum(
-                "mla,lnbd->mnabd",
-                self.A.nn(ik, inn, out) * self.E[ik][inn][None, :, None], self.dA.nn(ik, inn, out))
-            summ += 2j * cached_einsum("mla,lnbd->mnabd", self.D.nl(ik, inn, out), self.dB.ln(ik, inn, out))
+            Ann = self.A.nn(ik, inn, out)
+            summ += -cached_einsum("mpa,pld,lnb->mnabd", Ann, self.V.nn(ik, inn, out), Ann)
+            summ += -2 * cached_einsum("mla,l,lnbd->mnabd", Ann, self.E[ik][inn], self.dA.nn(ik, inn, out))
+            summ += 2j * cached_einsum("mla,lnbd->mnabd", Dnl, self.dB.ln(ik, inn, out))
             summ += 2j * cached_einsum("lma,lnbd->mnabd", (self.B.ln(ik, inn, out)).conj(), self.dD.ln(ik, inn, out))
-
         summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2, 4)).conj())
         return summ
 
