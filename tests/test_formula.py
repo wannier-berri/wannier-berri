@@ -121,7 +121,7 @@ def test_Hermitean(datak_Fe, terms):
 
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def check_formula_output():
     def __inner(value, filename, rel_tol=1e-6, atol_zero=1e-10):
         path_out = os.path.join(OUTPUT_DIR, "formula")
