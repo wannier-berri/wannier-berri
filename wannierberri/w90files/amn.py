@@ -126,38 +126,15 @@ class AMN(W90_file):
         normalize : bool
             if True, the wavefunctions are normalised
         """
-
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
-
-        positions = []
-        orbitals = []
-        radial_nodes_list = []
-        basis_list = []
-        spread_list = []
-        logger.info(f"Creating amn. Using projections_set \n{projections}")
-        for proj in projections.projections:
-            pos, orb = proj.get_positions_and_orbitals()
-            positions += pos
-            orbitals += orb
-            radial_nodes_list += [proj.radial_nodes] * proj.num_wann_scalar
-            spread_list += [proj.spread_factor] * proj.num_wann_scalar
-            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site_scalar)]
-            if verbose:
-                logger.info(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
-        spinor = projections.spinor
-        positions = np.array(positions)
-        orbitals = np.array(orbitals)
-        radial_nodes_list = np.array(radial_nodes_list)
-        basis_list = np.array(basis_list)
-
-
+        positions, orbitals, radial_nodes_list,  spread_list,basis_list, spinor = projections.get_orbitals_info()
 
         if verbose:
             logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
-        pos = np.array(positions)
+        # pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
         unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
         bessel = Bessel_j_radial_int()
@@ -165,7 +142,7 @@ class AMN(W90_file):
         for ikirr in kptirr:
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             igk = kp.ig[:, :3] + kp.k[None, :]
-            expgk = np.exp(-2j * np.pi * (pos @ igk.T))
+            expgk = np.exp(-2j * np.pi * (positions @ igk.T))
             wf = kp.WF
             wf = wf.conj()
             if normalize:

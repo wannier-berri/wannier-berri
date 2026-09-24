@@ -283,6 +283,16 @@ class Projection:
                     positions.append(pos)
         return positions, orbitals
 
+    def get_orbitals_info(self, to_array=True):
+        pos_list, orb_list = self.get_positions_and_orbitals()
+        radial_nodes_list = [self.radial_nodes] * self.num_wann_scalar
+        spread_list = [self.spread_factor] * self.num_wann_scalar
+        basis_list = [bas  for bas in self.basis_list for _ in range(self.num_wann_per_site_scalar)]
+        if to_array:
+            return np.array(pos_list), np.array(orb_list), np.array(radial_nodes_list), np.array(spread_list), np.array(basis_list)
+        else:
+            return pos_list, orb_list, radial_nodes_list, spread_list, basis_list
+
     @property
     def num_free_vars(self):
         return self.wyckoff_position.num_free_vars
@@ -740,6 +750,23 @@ class ProjectionsSet:
             start = end
 
 
+    def get_orbitals_info(self, to_array=True):
+        pos_list = []
+        orb_list = []
+        radial_nodes_list = []
+        spread_list = []
+        basis_list = []
+        for p in self.projections:
+            pos, orb, radial_nodes, spread, basis = p.get_orbitals_info(to_array=False)
+            pos_list += pos
+            orb_list += orb
+            radial_nodes_list += radial_nodes
+            spread_list += spread
+            basis_list += basis
+        if to_array:
+            return np.array(pos_list), np.array(orb_list), np.array(radial_nodes_list), np.array(spread_list), np.array(basis_list), self.spinor
+        else:
+            return pos_list, orb_list, radial_nodes_list, spread_list, basis_list, self.spinor  
 
 class RepulsivePotential:
 
