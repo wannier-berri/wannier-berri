@@ -1,3 +1,3 @@
 
 
-def get_basis_pw(system, projections, k, ig):
+# def get_basis_pw(system, projections, k, ig):

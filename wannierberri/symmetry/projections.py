@@ -1,12 +1,14 @@
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
 from .unique_list import UniqueListMod1
-from ..symmetry.orbitals import num_orbitals, orbitals_sets_dic
+from ..symmetry.orbitals import num_orbitals, orbitals_sets_dic, OrbitalsInfo
 from ..utility import cached_einsum
 import copy
 from functools import cached_property
 import itertools
 import numpy as np
 import logging
+from ..symmetry.orbitals import Bessel_j_radial_int, Projector
+
 logger = logging.getLogger(__name__)
 
 
@@ -151,6 +153,18 @@ class Projection:
             else:
                 self.basis_list = [basis0] * self.num_points
 
+    @cached_property
+    def real_lattice(self):
+        return self.wyckoff_position.spacegroup.lattice
+
+    @cached_property
+    def unit_cell_volume(self):
+        return np.abs(np.linalg.det(self.real_lattice))
+
+    @cached_property
+    def reciprocal_lattice(self):
+        return self.wyckoff_position.spacegroup.recip_lattice
+
     @property
     def wannier_centers_red(self):
         """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
@@ -283,15 +297,13 @@ class Projection:
                     positions.append(pos)
         return positions, orbitals
 
-    def get_orbitals_info(self, to_array=True):
+    def get_orbitals_info(self):
         pos_list, orb_list = self.get_positions_and_orbitals()
-        radial_nodes_list = [self.radial_nodes] * self.num_wann_scalar
-        spread_list = [self.spread_factor] * self.num_wann_scalar
-        basis_list = [bas  for bas in self.basis_list for _ in range(self.num_wann_per_site_scalar)]
-        if to_array:
-            return np.array(pos_list), np.array(orb_list), np.array(radial_nodes_list), np.array(spread_list), np.array(basis_list)
-        else:
-            return pos_list, orb_list, radial_nodes_list, spread_list, basis_list
+        return OrbitalsInfo(positions=pos_list, orbitals=orb_list,
+                            radial_nodes=[self.radial_nodes] * self.num_wann_scalar,
+                            spread_factors=[self.spread_factor] * self.num_wann_scalar,
+                            basises=[bas  for bas in self.basis_list for _ in range(self.num_wann_per_site_scalar)],
+                            spinor=self.spinor)
 
     @property
     def num_free_vars(self):
@@ -390,6 +402,18 @@ class ProjectionsSet:
         if len(self.projections) == 0:
             return np.eye(3)
         return self.projections[0].wyckoff_position.spacegroup.lattice
+
+    @property
+    def reciprocal_lattice(self):
+        if len(self.projections) == 0:
+            return np.eye(3)
+        return self.projections[0].wyckoff_position.spacegroup.reciprocal_lattice
+
+    @property
+    def unit_cell_volume(self):
+        if len(self.projections) == 0:
+            raise ValueError("ProjectionsSet is empty, cannot get unit cell volume")
+        return self.projections[0].unit_cell_volume
 
     @property
     def wannier_centers_cart(self):
@@ -750,23 +774,19 @@ class ProjectionsSet:
             start = end
 
 
-    def get_orbitals_info(self, to_array=True):
-        pos_list = []
-        orb_list = []
-        radial_nodes_list = []
-        spread_list = []
-        basis_list = []
+    def get_orbitals_info(self):
+        orb_info = OrbitalsInfo(spinor=self.spinor)
         for p in self.projections:
-            pos, orb, radial_nodes, spread, basis = p.get_orbitals_info(to_array=False)
-            pos_list += pos
-            orb_list += orb
-            radial_nodes_list += radial_nodes
-            spread_list += spread
-            basis_list += basis
-        if to_array:
-            return np.array(pos_list), np.array(orb_list), np.array(radial_nodes_list), np.array(spread_list), np.array(basis_list), self.spinor
-        else:
-            return pos_list, orb_list, radial_nodes_list, spread_list, basis_list, self.spinor  
+            orb_info += p.get_orbitals_info()
+        return orb_info
+
+    def get_proj_gk(self, igk, bessel=None):
+        return get_proj_gk(igk=igk,
+                           orb_info=self.get_orbitals_info(),
+                           rec_latt=self.reciprocal_lattice,
+                           unit_cell_volume=self.unit_cell_volume,
+                           bessel=bessel)
+
 
 class RepulsivePotential:
 
@@ -986,3 +1006,18 @@ def find_distance_periodic(positions, real_lattice, max_shift=2):
 
     distances2 = np.min(prod, axis=2)
     return np.sqrt(distances2)
+
+
+def get_proj_gk(igk, orb_info, rec_latt, unit_cell_volume, bessel=None):
+    if bessel is None:
+        bessel = Bessel_j_radial_int()
+    expgk = np.exp(-2j * np.pi * (orb_info.positions @ igk.T))
+    gk = igk @ rec_latt
+    prj = []
+    projector_dict = {}
+    for orb, basis, radial_nodes, spread_factor in zip(orb_info.orbitals, orb_info.basises, orb_info.radial_nodes, orb_info.spread_factors):
+        if spread_factor not in projector_dict:
+            projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
+        projector = projector_dict[spread_factor]
+        prj.append(projector(orb, basis, radial_nodes))
+    return np.array(prj) * expgk / np.sqrt(unit_cell_volume)
