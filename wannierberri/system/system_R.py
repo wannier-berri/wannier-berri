@@ -914,10 +914,10 @@ class System_R(System):
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
 
-    def build_supercell(self, M, **kwargs):
-        """Fold this primitive System_R into a supercell System_R.
-
-        See :func:`~wannierberri.system.system_supercell.fold_system`.
+    def make_supercell(self, supercell_matrix, **parameters):
         """
-        from .system_supercell import fold_system
-        return fold_system(self, M, **kwargs)
+        Create a supercell of the system.
+        see :func:`~wannierberri.system.system_supercell.get_system_supercell` for input data and details
+        """
+        from .system_supercell import get_system_supercell
+        return get_system_supercell(self, supercell_matrix, **parameters)
