@@ -335,6 +335,14 @@ class Spin(Matrix_ln):
         self.__dict__.update(s.__dict__)
 
 
+class Torque(Matrix_ln):
+    """spin-orbit torque :math:`T = -i[S, H_{soc}]`, see :meth:`~wannierberri.w90files.soc.SOC.get_torque_rotated`"""
+
+    def __init__(self, data_K):
+        t = data_K.covariant('SOT')
+        self.__dict__.update(t.__dict__)
+
+
 class DerSpin(Matrix_GenDer_ln):
 
     def __init__(self, data_K):
@@ -789,6 +797,34 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+class TorqueOmega(Formula_ln):
+    r"""Berry-curvature-like interband term of the spin-orbit torkance,
+    :math:`-2 {\rm Im} \sum_l T^a_{nl} v^b_{ln} / (E_n - E_l)^2` (torque index first)"""
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        if self.external_terms:
+            self.A = data_K.covariant('AA')
+        self.D = data_K.Dcov
+        self.T = Torque(data_K)
+        self.dEinv = DEinv_ln(data_K)
+        self.ndim = 2
+        self.transformTR = transform_ident
+        self.transformInv = transform_odd
+
+    def nn(self, ik, inn, out):
+        # v_over_de[l,n,b] = v[l,n,b] / (e[n] - e[l]) = D[l,n,b] - 1j * A[l,n,b]
+        v_over_de = self.D.ln(ik, inn, out)
+        if self.external_terms:
+            v_over_de = v_over_de - 1j * self.A.ln(ik, inn, out)
+        # t_over_de[m,l,a] = T[m,l,a] / (e[m] - e[l])
+        t_over_de = self.T.nl(ik, inn, out) * self.dEinv.nl(ik, inn, out)[:, :, None]
+        return -2 * cached_einsum("mla,lnb->mnab", t_over_de, v_over_de).imag
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
 ####################################
 #                                  #
 #    Some Prooducts                #
@@ -812,6 +848,13 @@ class VelSpin(FormulaProduct):
 
     def __init__(self, data_K, **kwargs_formula):
         super().__init__([data_K.covariant('Ham', commader=1), Spin(data_K)], name='VelSpin')
+
+
+class TorqueVel(FormulaProduct):
+    """product of the spin-orbit torque and the velocity (torque index first)"""
+
+    def __init__(self, data_K, **kwargs_formula):
+        super().__init__([Torque(data_K), data_K.covariant('Ham', commader=1)], name='TorqueVel')
 
 
 class VelVel(FormulaProduct):
