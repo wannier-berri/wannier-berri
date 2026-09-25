@@ -14,6 +14,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_torque_rotated(pauli_rotated):
+    r"""
+    Coefficients of the spin-orbit torque :math:`T = -i[S, H_{soc}]`, :math:`S = \sigma/2`,
+    in the rotated spin basis of ``pauli_rotated`` (see :meth:`~wannierberri.w90files.soc.SOC.get_pauli_rotated`).
+    With :math:`H_{soc} = \sum_c V_c \sigma_c` the torque is :math:`T_b = \sum_c V_c M_{cb}`,
+    :math:`M_{cb} = -\frac{i}{2}[\sigma_b, \sigma_c]` (Cartesian components).
+    :math:`-\langle T_b \rangle` is the derivative of the energy with respect to rotating the
+    magnetization about the axis :math:`b`.
+
+    Returns
+    -------
+    np.ndarray(shape=(2, 2, 3, 3), dtype=complex)
+        indices [spin, spin, c, b]
+    """
+    sigma_bc = cached_einsum('ikb,kjc->ijcb', pauli_rotated, pauli_rotated)
+    return -0.5j * (sigma_bc - sigma_bc.transpose(0, 1, 3, 2))
+
+
 class SystemSOC(System_R):
 
     """
@@ -102,6 +120,7 @@ class SystemSOC(System_R):
             raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
         assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
         self.pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
+        self.torque_rotated = get_torque_rotated(self.pauli_rotated)
         self.alpha_soc = alpha_soc
 
         if self.cell is not None:
@@ -286,8 +305,14 @@ class SystemSOC(System_R):
         system_R.force_internal_terms_only = self.force_internal_terms_only
         system_R.cell = self.cell.copy() if self.cell is not None else None
 
-        for key in list(self.system_up._XX_R.keys()) + ["SS"]:
-            if key != "SS":
+        dVsoc = np.zeros((rvectors_merged.nRvec, 2, 2, self.num_wann // 2, self.num_wann // 2, 3), dtype=complex)
+        dVsoc[rvectors_map_list[0], 0, 0] = self.system_up.get_R_mat('dV_soc')
+        dVsoc[rvectors_map_list[1], 1, 1] = self.system_down.get_R_mat('dV_soc')
+        dVsoc[rvectors_map_list[2], 0, 1] = self.get_R_mat('dV_soc')
+        dVsoc[rvectors_map_list[3], 1, 0] = self.get_R_mat('dV_soc').conj().swapaxes(1, 2)
+
+        for key in list(self.system_up._XX_R.keys()) + ["SS", "SOT"]:
+            if key not in ["SS", "SOT"]:
                 shape = self.system_up._XX_R[key].shape[3:]
                 # shape = tuple()
             else:
@@ -297,14 +322,13 @@ class SystemSOC(System_R):
             if key == 'Ham':
                 matrix[rvectors_map_list[0], ::2, ::2] = self.system_up.get_R_mat(key)
                 matrix[rvectors_map_list[1], 1::2, 1::2] = self.system_down.get_R_mat(key)
-                dVsoc = np.zeros((rvectors_merged.nRvec, 2, 2, self.num_wann // 2, self.num_wann // 2, 3), dtype=complex)
-                dVsoc[rvectors_map_list[0], 0, 0] = self.system_up.get_R_mat('dV_soc')
-                dVsoc[rvectors_map_list[1], 1, 1] = self.system_down.get_R_mat('dV_soc')
-                dVsoc[rvectors_map_list[2], 0, 1] = self.get_R_mat('dV_soc')
-                dVsoc[rvectors_map_list[3], 1, 0] = self.get_R_mat('dV_soc').conj().swapaxes(1, 2)
                 for i in range(2):
                     for j in range(2):
                         matrix[:, i::2, j::2] += cached_einsum("rmnc...,c->rmn...", dVsoc[:, i, j, :, :, :], self.pauli_rotated[i, j, :]) * self.alpha_soc
+            elif key == 'SOT':
+                for i in range(2):
+                    for j in range(2):
+                        matrix[:, i::2, j::2] = cached_einsum("rmnc,cb->rmnb", dVsoc[:, i, j], self.torque_rotated[i, j]) * self.alpha_soc
             elif key == 'SS':
                 iR0 = rvectors_merged.iR0
                 SSk = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann, 3), dtype=complex)

@@ -349,6 +349,41 @@ class GME_spin_FermiSurf(StaticCalculator):
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 
+class TorkanceEven(StaticCalculator):
+    r"""Spin-orbit torkance, even in magnetization (:math:`e \cdot Å` per unit cell)
+
+        | With Fermi sea integral. Needs the torque: a SystemSOC or its get_system_R()
+        | Output: :math:`t_{ab} = e \int [dk] \sum_n f_n \Omega^T_{n,ab}`,
+          :math:`\Omega^T_{n,ab} = -2 {\rm Im} \sum_{l} T^a_{nl} v^b_{ln} / (E_n - E_l)^2`,
+          where :math:`T = -i[S, H_{soc}]` is the torque (eV) on the magnetization
+        | Instruction: :math:`T_a = t_{ab} E_b` (E in V/Å)"""
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.TorqueOmega
+        self.fder = 0
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        return super().__call__(data_K) * data_K.cell_volume
+
+
+class TorkanceOdd(StaticCalculator):
+    r"""Spin-orbit torkance, odd in magnetization (:math:`e \cdot Å` per unit cell, :math:`\tau` in fs)
+
+        | With Fermi surface integral. Needs the torque: a SystemSOC or its get_system_R()
+        | Output: :math:`t_{ab} = e \tau/\hbar \int [dk] \sum_n T^a_n v^b_n f'`,
+          where :math:`T = -i[S, H_{soc}]` is the torque (eV) on the magnetization
+        | Instruction: :math:`T_a = t_{ab} E_b` (E in V/Å)"""
+
+    def __init__(self, constant_factor=factors.factor_torkance_odd, **kwargs):
+        self.Formula = frml.TorqueVel
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+    def __call__(self, data_K):
+        return super().__call__(data_K) * data_K.cell_volume
+
+
 # E^1 B^0
 class AHC(StaticCalculator):
     r"""Anomalous Hall conductivity (:math:`s^3 \cdot A^2 / (kg \cdot m^3) = S/m`)
