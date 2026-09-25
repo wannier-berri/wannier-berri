@@ -88,7 +88,7 @@ class Data_K_soc(Data_K_R):
         return soc_k * self.system.alpha_soc
 
     def SOT_W(self, der=0):
-        """spin-orbit torque T = -i[S, H_soc] in the Wannier gauge, see :meth:`~wannierberri.w90files.soc.SOC.get_torque_rotated`"""
+        """spin-orbit torque T = -i[S, H_soc] in the Wannier gauge, see :func:`~wannierberri.system.system_soc.get_torque_rotated`"""
         torque_rotated = self.system.torque_rotated
         dVsoc = self.dVsoc_blocks(der=der)
         sot_k = np.zeros((self.nk, self.num_wann, self.num_wann, 3) + (3,) * der, dtype=complex)

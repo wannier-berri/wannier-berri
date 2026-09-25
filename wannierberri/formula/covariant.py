@@ -336,7 +336,7 @@ class Spin(Matrix_ln):
 
 
 class Torque(Matrix_ln):
-    """spin-orbit torque :math:`T = -i[S, H_{soc}]`, see :meth:`~wannierberri.w90files.soc.SOC.get_torque_rotated`"""
+    """spin-orbit torque :math:`T = -i[S, H_{soc}]`, see :func:`~wannierberri.system.system_soc.get_torque_rotated`"""
 
     def __init__(self, data_K):
         t = data_K.covariant('SOT')

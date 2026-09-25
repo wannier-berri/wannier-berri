@@ -14,6 +14,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_torque_rotated(pauli_rotated):
+    r"""
+    Coefficients of the spin-orbit torque :math:`T = -i[S, H_{soc}]`, :math:`S = \sigma/2`,
+    in the rotated spin basis of ``pauli_rotated`` (see :meth:`~wannierberri.w90files.soc.SOC.get_pauli_rotated`).
+    With :math:`H_{soc} = \sum_c V_c \sigma_c` the torque is :math:`T_b = \sum_c V_c M_{cb}`,
+    :math:`M_{cb} = -\frac{i}{2}[\sigma_b, \sigma_c]` (Cartesian components).
+    :math:`-\langle T_b \rangle` is the derivative of the energy with respect to rotating the
+    magnetization about the axis :math:`b`.
+
+    Returns
+    -------
+    np.ndarray(shape=(2, 2, 3, 3), dtype=complex)
+        indices [spin, spin, c, b]
+    """
+    sigma_bc = cached_einsum('ikb,kjc->ijcb', pauli_rotated, pauli_rotated)
+    return -0.5j * (sigma_bc - sigma_bc.transpose(0, 1, 3, 2))
+
+
 class SystemSOC(System_R):
 
     """
@@ -102,7 +120,7 @@ class SystemSOC(System_R):
             raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
         assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
         self.pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
-        self.torque_rotated = SOC.get_torque_rotated(theta=theta, phi=phi)
+        self.torque_rotated = get_torque_rotated(self.pauli_rotated)
         self.alpha_soc = alpha_soc
 
         if self.cell is not None:
