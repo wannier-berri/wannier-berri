@@ -13,6 +13,11 @@ from wannierberri.grid.Kpoint import KpointBZparallel
 
 from .common import OUTPUT_DIR_RUN
 
+calculators_torkance = {
+    "TorkanceEven": TorkanceEven,
+    "TorkanceOdd": TorkanceOdd
+}
+
 
 def get_datak(system, dK, NKFFT=1):
     """Data_K on the k-points n / NKFFT + dK (reduced coordinates)"""
@@ -101,3 +106,15 @@ def test_torkance_routes(system_Fe_gpaw_soc_angle, system_Fe_gpaw_soc_angle_R):
                             calculators={"t": Calculator(Efermi=Efermi)}, parallel=False, print_progress_step_time=1000,
                             fout_name=os.path.join(OUTPUT_DIR_RUN, "Fe_gpaw_soc_torkance"))
         assert abs(result.results["t"].data).max() < 1e-10
+
+
+
+
+def test_torkance_calculator(system_Fe_gpaw_soc_angle, check_calculator):
+    # data_k = get_datak(system_Fe_gpaw_soc_angle, dK=[0.13, 0.27, 0.41], NKFFT=2)
+    for cal_name, cal_class in calculators_torkance.items():
+        calc = cal_class(Efermi=np.linspace(8, 10, 5), print_comment=False)
+        check_calculator(calc=calc,
+                         system=system_Fe_gpaw_soc_angle,
+                         name="Fe_gpaw_soc_angle_" + cal_name,
+                         dK=[0.13, 0.27, 0.41], NKFFT=2)
