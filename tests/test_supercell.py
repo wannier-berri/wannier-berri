@@ -1,14 +1,19 @@
 """Tests for supercells of a System_R: graphene sqrt3 x sqrt3 and 2x2."""
 
 import itertools
-
+import os
 import numpy as np
 import pytest
 
+from .common import REF_DIR, OUTPUT_DIR_RUN
 from wannierberri.evaluate_k import evaluate_k
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.system.system_R import System_R
+from wannierberri.system.system_soc import SystemSOC
+
 from wannierberri.system.system_supercell import add_proximity_potential
+from wannierberri.calculators.static import CumDOS, AHC
+from wannierberri import run, Grid
 
 SQRT3 = [[2, -1, 0], [1, 1, 0], [0, 0, 1]]
 TWO_BY_TWO = [[2, 0, 0], [0, 2, 0], [0, 0, 1]]
@@ -50,7 +55,6 @@ def test_graphene_supercell(supercell_matrix, length_sc, E_gamma):
     bonds = sc.rvec.cRvec[iR] + sc.wannier_centers_cart[j] - sc.wannier_centers_cart[i]
     assert len(bonds) == 3 * sc.num_wann
     np.testing.assert_allclose(np.linalg.norm(bonds, axis=1), 1 / np.sqrt(3))
-
     np.testing.assert_allclose(np.linalg.eigvalsh(Ham_k(sc, np.zeros(3))), E_gamma, atol=1e-12)
 
 
@@ -92,45 +96,50 @@ def test_graphene_proximity_potential(supercell_matrix):
     np.testing.assert_allclose(np.linalg.eigvalsh(Ham_k(sc, k_sc)), np.linalg.eigvalsh(Ham_unfolded), atol=1e-10)
 
 
-@pytest.fixture(scope="module")
-def graphene_gpaw(tmp_path_factory):
-    """pz Wannier functions of graphene from GPAW: LDA, PW(400), Gamma-centred 6x6x1 (a1, a2 at 120°)."""
-    pytest.importorskip("gpaw")
-    from ase import Atoms
-    from gpaw import GPAW, PW
-    from irrep.spacegroup import SpaceGroup
-    from wannierberri.symmetry.projections import Projection, ProjectionsSet
-    from wannierberri.w90files import WannierData
+# @pytest.fixture(scope="module")
+# def graphene_gpaw(tmp_path_factory):
+#     """pz Wannier functions of graphene from GPAW: LDA, PW(400), Gamma-centred 6x6x1 (a1, a2 at 120°)."""
+#     pytest.importorskip("gpaw")
+#     from ase import Atoms
+#     from gpaw import GPAW, PW
+#     from irrep.spacegroup import SpaceGroup
+#     from wannierberri.symmetry.projections import Projection, ProjectionsSet
+#     from wannierberri.w90files import WannierData
 
-    a = 2.46
-    atoms = Atoms("C2", cell=a * np.array([[np.sqrt(3) / 2, 1 / 2, 0], [-np.sqrt(3) / 2, 1 / 2, 0], [0, 0, 10]]),
-                  scaled_positions=[[1 / 3, 2 / 3, 0], [2 / 3, 1 / 3, 0]], pbc=True)
-    atoms.calc = GPAW(mode=PW(400), xc="LDA", kpts={"size": (6, 6, 1), "gamma": True}, symmetry="off",
-                      nbands=12, convergence={"bands": 8}, txt=None)
-    atoms.get_potential_energy()
-    calc = atoms.calc
-    E_F = calc.get_fermi_level()
-    iK = next(i for i, k in enumerate(calc.get_ibz_k_points()) if np.allclose(k, [1 / 3, 1 / 3, 0]))
-    E_K = calc.get_eigenvalues(kpt=iK)
-    E_dirac_dft = np.sort(E_K[np.argsort(abs(E_K - E_F))[:2]])
+#     a = 2.46
+#     atoms = Atoms("C2", cell=a * np.array([[np.sqrt(3) / 2, 1 / 2, 0], [-np.sqrt(3) / 2, 1 / 2, 0], [0, 0, 10]]),
+#                   scaled_positions=[[1 / 3, 2 / 3, 0], [2 / 3, 1 / 3, 0]], pbc=True)
+#     atoms.calc = GPAW(mode=PW(400), xc="LDA", kpts={"size": (6, 6, 1), "gamma": True}, symmetry="off",
+#                       nbands=12, convergence={"bands": 8}, txt=None)
+#     atoms.get_potential_energy()
+#     calc = atoms.calc
+#     E_F = calc.get_fermi_level()
+#     iK = next(i for i, k in enumerate(calc.get_ibz_k_points()) if np.allclose(k, [1 / 3, 1 / 3, 0]))
+#     E_K = calc.get_eigenvalues(kpt=iK)
+#     E_dirac_dft = np.sort(E_K[np.argsort(abs(E_K - E_F))[:2]])
 
-    sg = SpaceGroup.from_gpaw(calc)
-    projections = ProjectionsSet(projections=[Projection(position_num=sg.positions, orbital="pz", spacegroup=sg)])
-    wandata = WannierData.from_gpaw(calculator=calc, projections=projections, irreducible=False,
-                                    files=["amn", "mmn", "eig"],
-                                    seedname=str(tmp_path_factory.mktemp("graphene_gpaw") / "graphene"))
-    wandata.wannierise(froz_min=E_F - 2, froz_max=E_F + 1, num_iter=100, conv_tol=1e-10, sitesym=False,
-                       parallel=False)
-    system = System_R.from_wannierdata(wandata=wandata, berry=True, periodic=(True, True, False))
-    return system, E_dirac_dft
+#     sg = SpaceGroup.from_gpaw(calc)
+#     projections = ProjectionsSet(projections=[Projection(position_num=sg.positions, orbital="pz", spacegroup=sg)])
+#     wandata = WannierData.from_gpaw(calculator=calc, projections=projections, irreducible=False,
+#                                     files=["amn", "mmn", "eig"],
+#                                     seedname=str(tmp_path_factory.mktemp("graphene_gpaw") / "graphene"))
+#     wandata.wannierise(froz_min=E_F - 2, froz_max=E_F + 1, num_iter=100, conv_tol=1e-10, sitesym=False,
+#                        parallel=False)
+#     system = System_R.from_wannierdata(wandata=wandata, berry=True, periodic=(True, True, False))
+#     system.to_npz(os.path.join(OUTPUT_DIR, "systems", "graphene_gpaw"))
+#     np.savez(os.path.join(OUTPUT_DIR, "systems", "graphene_gpaw", "dirac_dft.npz") , E_dirac_dft)
+#     return system, E_dirac_dft
 
 
 @pytest.mark.parametrize("supercell_matrix, length_sc, n_dirac_gamma", [
     ([[2, 1, 0], [-1, 1, 0], [0, 0, 1]], np.sqrt(3), 4),  # K and K' fold onto Gamma
     ([[2, 0, 0], [0, 2, 0], [0, 0, 1]], 2, 0),
 ], ids=["sqrt3xsqrt3", "2x2"])
-def test_graphene_gpaw_supercell(graphene_gpaw, supercell_matrix, length_sc, n_dirac_gamma):
-    prim, E_dirac_dft = graphene_gpaw
+def test_graphene_gpaw_supercell(supercell_matrix, length_sc, n_dirac_gamma):
+    E_dirac_dft = np.load(os.path.join(REF_DIR, "systems", "graphene_gpaw", "dirac_dft.npz"))["arr_0"]
+    prim = System_R.from_npz(os.path.join(REF_DIR, "systems", "graphene_gpaw"))
+    # prim, E_dirac_dft = graphene_gpaw
+
     E_dirac = evaluate_k(prim, k=[1 / 3, 1 / 3, 0], quantities=["energy"])
     np.testing.assert_allclose(E_dirac, E_dirac_dft, atol=1e-4)  # the Wannier model has the DFT Dirac point
 
@@ -156,3 +165,47 @@ def test_graphene_gpaw_supercell(graphene_gpaw, supercell_matrix, length_sc, n_d
     for q in quantities:
         np.testing.assert_allclose(res_sc[q][order_sc], np.concatenate([r[q] for r in res_prim])[order_prim],
                                    atol=1e-8)
+
+    if length_sc == 2:
+        Efermi = np.linspace(-6, 0, 10)
+        calc_cumdos = CumDOS(Efermi=Efermi, tetra=False)
+        grid_pc = Grid(system=prim, length=100, NKFFT=3)
+        grid_sc = Grid(system=sc, length=100, NKFFT=3)
+        cumdos_pc = run(system=prim, grid=grid_pc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data
+        cumdos_sc = run(system=sc, grid=grid_sc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data
+        assert np.allclose(cumdos_pc * length_sc**2, cumdos_sc)
+
+
+def test_Fe_supercell():
+    """Test that a supercell of a system with spin-orbit coupling is still hermitian."""
+    system_soc = SystemSOC.from_npz(os.path.join(REF_DIR, "systems", "Fe_gpaw_soc"))
+    system_soc.set_soc_axis(theta=0, phi=0)
+    system_pc = system_soc.get_system_R()
+    supercell = [[2, 0, 0], [0, 3, 0], [0, 0, 1]]
+    system_sc = system_pc.make_supercell(supercell)
+    grid_pc = Grid(system=system_pc, NK=(6, 6, 6), NKFFT=1)
+    grid_sc = Grid(system=system_sc, NK=(3, 2, 6), NKFFT=1)
+    Efermi = np.linspace(8.5, 10, 16)
+    kwargs_calc = dict(Efermi=Efermi, tetra=False)
+    calculators = {"cumdos": CumDOS(**kwargs_calc),
+                 "ahc_int": AHC(kwargs_formula={"external_terms": False}, **kwargs_calc),
+                  "ahc_ext": AHC(kwargs_formula={"internal_terms": False}, **kwargs_calc)
+                                               }
+    kwargs = dict(calculators=calculators, use_irred_kpt=False, symmetrize=True)
+    results_pc = run(system=system_pc, grid=grid_pc, fout_name=os.path.join(OUTPUT_DIR_RUN, "Fe_gpaw_soc_pc"), **kwargs)
+    results_sc = run(system=system_sc, grid=grid_sc, fout_name=os.path.join(OUTPUT_DIR_RUN, "Fe_gpaw_soc_sc"), **kwargs)
+
+    cumdos_pc = results_pc.results["cumdos"].data
+    cumdos_sc = results_sc.results["cumdos"].data / np.linalg.det(supercell)  # scale by number of primitive cells in supercell
+    diff = abs(cumdos_pc - cumdos_sc)
+    assert np.allclose(cumdos_pc, cumdos_sc, atol=1e-6), f"cumdos_pc and cumdos_sc differ by {diff.max()}, \n cumdos_pc={cumdos_pc}\\n cumdos_sc={cumdos_sc}\\n diff={diff}"
+
+    ahc_pc_int = results_pc.results["ahc_int"].data
+    ahc_sc_int = results_sc.results["ahc_int"].data
+    diff = abs(ahc_pc_int - ahc_sc_int)
+    assert np.allclose(ahc_pc_int, ahc_sc_int, atol=1e-6), f"ahc_pc_int and ahc_sc_int differ by {diff.max()}, \n ahc_pc_int={ahc_pc_int}\\n ahc_sc_int={ahc_sc_int}\\n diff={diff}"
+
+    ahc_pc_ext = results_pc.results["ahc_ext"].data
+    ahc_sc_ext = results_sc.results["ahc_ext"].data
+    diff = abs(ahc_pc_ext - ahc_sc_ext)
+    assert np.allclose(ahc_pc_ext, ahc_sc_ext, atol=1e-8), f"ahc_pc_ext and ahc_sc_ext differ by {diff.max()}, \n ahc_pc_ext={ahc_pc_ext}\\n ahc_sc_ext={ahc_sc_ext}\\n diff={diff}"
