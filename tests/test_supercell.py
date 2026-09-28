@@ -171,8 +171,8 @@ def test_graphene_gpaw_supercell(supercell_matrix, length_sc, n_dirac_gamma):
         calc_cumdos = CumDOS(Efermi=Efermi, tetra=False)
         grid_pc = Grid(system=prim, NK=18, NKFFT=3, use_symmetry=False)
         grid_sc = Grid(system=sc, NK=9, NKFFT=3, use_symmetry=False)
-        print (f"grid_pc={grid_pc.str_short}")
-        print (f"grid_sc={grid_sc.str_short}")
+        print(f"grid_pc={grid_pc.str_short}")
+        print(f"grid_sc={grid_sc.str_short}")
         cumdos_pc = run(system=prim, grid=grid_pc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data
         cumdos_sc = run(system=sc, grid=grid_sc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data / abs(np.linalg.det(supercell_matrix))  # scale by number of primitive cells in supercell
         diff = abs(cumdos_pc - cumdos_sc)
@@ -188,8 +188,8 @@ def test_Fe_supercell():
     system_sc = system_pc.make_supercell(supercell)
     grid_pc = Grid(system=system_pc, NK=(6, 6, 6), NKFFT=1, use_symmetry=False)
     grid_sc = Grid(system=system_sc, NK=(3, 2, 6), NKFFT=1, use_symmetry=False)
-    print (f"grid_pc={grid_pc.str_short}")
-    print (f"grid_sc={grid_sc.str_short}")
+    print(f"grid_pc={grid_pc.str_short}")
+    print(f"grid_sc={grid_sc.str_short}")
     Efermi = np.linspace(8.5, 10, 16)
     kwargs_calc = dict(Efermi=Efermi, tetra=False)
     calculators = {"cumdos": CumDOS(**kwargs_calc),
