@@ -169,11 +169,12 @@ def test_graphene_gpaw_supercell(supercell_matrix, length_sc, n_dirac_gamma):
     if length_sc == 2:
         Efermi = np.linspace(-6, 0, 10)
         calc_cumdos = CumDOS(Efermi=Efermi, tetra=False)
-        grid_pc = Grid(system=prim, length=100, NKFFT=3)
-        grid_sc = Grid(system=sc, length=100, NKFFT=3)
+        grid_pc = Grid(system=prim, NK=18, NKFFT=3)
+        grid_sc = Grid(system=sc, NK=9, NKFFT=3)
         cumdos_pc = run(system=prim, grid=grid_pc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data
-        cumdos_sc = run(system=sc, grid=grid_sc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data
-        assert np.allclose(cumdos_pc * length_sc**2, cumdos_sc)
+        cumdos_sc = run(system=sc, grid=grid_sc, calculators={"cumdos": calc_cumdos}).results["cumdos"].data / abs(np.linalg.det(supercell_matrix))  # scale by number of primitive cells in supercell
+        diff = abs(cumdos_pc - cumdos_sc)
+        assert np.allclose(diff, 0, atol=1e-6), f"cumdos_pc and cumdos_sc differ by {diff.max()}, \n cumdos_pc={cumdos_pc}\\n cumdos_sc={cumdos_sc}\\n diff={diff}"
 
 
 def test_Fe_supercell():
