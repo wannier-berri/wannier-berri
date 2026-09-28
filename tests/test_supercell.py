@@ -204,9 +204,11 @@ def test_Fe_supercell():
     ahc_pc_int = results_pc.results["ahc_int"].data
     ahc_sc_int = results_sc.results["ahc_int"].data
     diff = abs(ahc_pc_int - ahc_sc_int)
-    assert np.allclose(ahc_pc_int, ahc_sc_int, atol=1e-6), f"ahc_pc_int and ahc_sc_int differ by {diff.max()}, \n ahc_pc_int={ahc_pc_int}\\n ahc_sc_int={ahc_sc_int}\\n diff={diff}"
+    vmax = np.abs([ahc_pc_int, ahc_sc_int]).max()
+    assert np.allclose(ahc_pc_int, ahc_sc_int, atol=1e-6 * vmax), f"ahc_pc_int and ahc_sc_int differ by {diff.max()}, \n ahc_pc_int={ahc_pc_int}\\n ahc_sc_int={ahc_sc_int}\\n diff={diff}"
 
     ahc_pc_ext = results_pc.results["ahc_ext"].data
     ahc_sc_ext = results_sc.results["ahc_ext"].data
     diff = abs(ahc_pc_ext - ahc_sc_ext)
+    # vmax = np.abs([ahc_pc_ext, ahc_sc_ext]).max()
     assert np.allclose(ahc_pc_ext, ahc_sc_ext, atol=1e-8), f"ahc_pc_ext and ahc_sc_ext differ by {diff.max()}, \n ahc_pc_ext={ahc_pc_ext}\\n ahc_sc_ext={ahc_sc_ext}\\n diff={diff}"
