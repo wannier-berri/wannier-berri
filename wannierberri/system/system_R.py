@@ -216,6 +216,23 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
+    def make_slab(self, M, nslab=1, reorder=True):
+        M = np.array(M, dtype=int, copy=True)
+        M[2, :] *= nslab
+        slab = self.make_supercell(M)
+        normal_vector = get_nonperiodic_normal(slab.real_lattice)
+        shifts = np.zeros((slab.num_wann, 3), dtype=float)
+        shifts[:, 2] = -np.floor(np.dot(slab.wannier_centers_cart, normal_vector) / np.dot(normal_vector, normal_vector))
+        slab.shift_wannier_centers(shifts)
+        slab.set_periodic([True, True, False])
+        print(f"slab lattice vectors: {slab.real_lattice}")
+        slab.real_lattice[2, :] = normal_vector
+        print(f"slab lattice vectors after set_nonperiodic_normal: {slab.real_lattice}")
+        slab.shift_wannier_centers_to_unit_cell()
+        if reorder:
+            slab.reorder(np.argsort(slab.wannier_centers_red[:, 2]))
+        return slab
+
     def symmetrize2(self, symmetrizer, silent=None, use_symmetries_index=None,
                     cutoff=-1, cutoff_dict=None):
         """
@@ -402,7 +419,7 @@ class System_R(System):
         else:
             return symmetrizer
 
-    def reorder(self, new_wann_indices):
+    def reorder(self, new_wann_indices, complete=True):
         """
         Reorder the wannier functions according to the new indices
 
@@ -410,8 +427,13 @@ class System_R(System):
         ----------
         new_wann_indices : list
             list of new indices for the wannier functions. The length should be equal to the number of wannier functions.
+        complete : bool
+            if True, the reordering will be complete, i.e., all the matrices will be reordered. If False, only the wannier centers will be reordered.
         """
-        assert len(new_wann_indices) == self.num_wann, f"new_wann_indices should have length {self.num_wann}, found {len(new_wann_indices)}"
+        if complete:
+            assert len(new_wann_indices) == self.num_wann, f"new_wann_indices should have length {self.num_wann}, found {len(new_wann_indices)}"
+        else:
+            self.num_wann = len(new_wann_indices)
         self.wannier_centers_cart = self.wannier_centers_cart[new_wann_indices]
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, :, new_wann_indices][:, new_wann_indices, :]
@@ -420,6 +442,7 @@ class System_R(System):
             self.wannier_names = self.wannier_names[new_wann_indices]
         self.clear_cached_wcc()
         self.clear_cached_R()
+        return self
 
     def double_spin(self):
         """
@@ -482,6 +505,7 @@ class System_R(System):
     def set_periodic(self, periodic):
         self.periodic = np.array(periodic, dtype=bool)
         self.check_periodic(warn=False)
+        return self
 
     def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
         """
@@ -639,8 +663,9 @@ class System_R(System):
 
     def remove_zero_Rvec(self):
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
+        return self
 
-    def exclude_WF(self, wf_indices):
+    def exclude_WF_indices(self, wf_indices):
         """
         Exclude Wannier functions from the system. Useful for slabs
 
@@ -649,16 +674,29 @@ class System_R(System):
         wf_indices : list of int
             The indices of the Wannier functions to exclude.
         """
-        wf_indices = np.array(wf_indices)
-        keep_bool = np.ones(self.num_wann, dtype=bool)
-        keep_bool[wf_indices] = False
-        self.wannier_centers_cart = self.wannier_centers_cart[keep_bool]
-        for key, val in self._XX_R.items():
-            self._XX_R[key] = val[:, keep_bool][:, :, keep_bool]
-        self.rvec.exclude_wannier_functions(wf_indices)
-        self.num_wann = self.wannier_centers_cart.shape[0]
-        self.clear_cached_wcc()
-        self.clear_cached_R()
+        keep_wf = np.array([i for i in range(self.num_wann) if i not in wf_indices], dtype=int)
+        return self.reorder(keep_wf, complete=False)
+
+    def exclude_WF_mask(self, name_masks):
+        """
+        Exclude Wannier functions from the system. Useful for slabs
+
+        Parameters
+        ----------
+        wf_masks : str
+            the mask for the Wannier functions to exclude. For example '*-1-*'
+        """
+        from fnmatch import fnmatch
+
+        if not isinstance(name_masks, list) and not isinstance(name_masks, tuple):
+            name_masks = [name_masks]
+        indices_to_exclude = []
+        for iname, name in enumerate(self.wannier_names):
+            for mask in name_masks:
+                if fnmatch(name, mask):
+                    indices_to_exclude.append(iname)
+                    break
+        return self.exclude_WF_indices(indices_to_exclude)
 
 
 
@@ -751,6 +789,8 @@ class System_R(System):
         logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
+        if hasattr(self, 'wannier_names') and self.wannier_names is not None and 'wannier_names' not in exclude_properties:
+            properties.append('wannier_names')
         logger.info(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
@@ -760,7 +800,7 @@ class System_R(System):
         except FileExistsError:
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
 
-        for key in properties:
+        for key in set(properties):
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
             logger.info(f"saving {key} to {fullpath}")
@@ -1013,3 +1053,13 @@ class System_R(System):
                 XX_R_new = XX_R_new.conj() * parity_TR[key]
             self.set_R_mat(key, XX_R_new, reset=True)
         return self
+
+
+def get_nonperiodic_normal(real_lattice):
+    surface_vectors = real_lattice[[0, 1], :]
+    normal_vector = np.cross(surface_vectors[0], surface_vectors[1])
+    old_vector = real_lattice[2, :]
+    if np.dot(normal_vector, old_vector) < 0:
+        normal_vector = -normal_vector
+    normal_vector = normal_vector * np.dot(normal_vector, old_vector) / np.linalg.norm(normal_vector)**2
+    return normal_vector

@@ -97,6 +97,8 @@ def get_system_w90(
         symmetrize = True
     logger.info(f"irreducible : {wandata.irreducible}, symmetrize set to {symmetrize}")
     chk = wandata.chk
+    if hasattr(chk, 'wannier_names'):
+        system.wannier_names = chk.wannier_names
     system.real_lattice, system.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
     system.set_pointgroup(spacegroup=wandata.get_spacegroup())
     kptirr, weights_k = wandata.kptirr_system
