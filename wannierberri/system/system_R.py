@@ -460,13 +460,14 @@ class System_R(System):
             if set_zero:
                 self.get_R_mat('AA')[self.rvec.iR0, self.range_wann, self.range_wann, :] = 0
 
-    def check_periodic(self):
+    def check_periodic(self, warn=True):
         exclude = np.zeros(self.rvec.nRvec, dtype=bool)
         for i, per in enumerate(self.periodic):
             if not per:
                 sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
-                    warnings.warn(f"you declared your system as non-periodic along direction {i},"
+                    if warn:
+                        warnings.warn(f"you declared your system as non-periodic along direction {i},"
                                   f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
                                   "They will be excluded, please make sure you know what you are doing")
                     exclude[sel] = True
@@ -475,8 +476,12 @@ class System_R(System):
             self.rvec.iRvec = self.rvec.iRvec[notexclude]
             for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
                 if X in self._XX_R:
-                    self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
+                    self.set_R_mat(X, self.get_R_mat(X)[notexclude, :, :], reset=True)
             self.rvec.clear_cached()
+
+    def set_periodic(self, periodic):
+        self.periodic = np.array(periodic, dtype=bool)
+        self.check_periodic(warn=False)
 
     def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
         """
@@ -589,6 +594,74 @@ class System_R(System):
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
+    def shift_wannier_centers(self, shifts):
+        """
+        Shift the Wannier centers by a given vector. This is useful for changing the origin of the system.
+
+        Parameters
+        ----------
+        shift : array-like
+            The vector by which to shift the Wannier centers. Should be of shape (3,).
+        """
+        shifts_int = np.round(shifts).astype(int)
+        assert np.allclose(shifts, shifts_int), f"shifts should be integer, found {shifts}"
+        assert shifts_int.shape == (self.num_wann, 3), f"shifts should have shape (num_wann, 3), found {shifts.shape}"
+        dshifts = (shifts_int[:, None, :] - shifts_int[None, :, :])
+        dshifts_unique = np.unique(dshifts.reshape(self.num_wann**2, 3), axis=0)
+        iRvec_old = self.rvec.iRvec.copy()
+        iRvec_new = set(tuple(iRvec) for iRvec in self.rvec.iRvec)
+        for dshift in dshifts_unique:
+            for iRold in self.rvec.iRvec:
+                iRnew = tuple(np.array(iRold) + dshift)
+                iRvec_new.add(iRnew)
+        iRvec_new = np.array(sorted(list(iRvec_new), key=lambda x: (x[0], x[1], x[2])))
+
+        self.set_wannier_centers(wannier_centers_red=self.wannier_centers_red + shifts)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec_new, shifts_left_red=self.wannier_centers_red)
+        _XX_R_new = {key: np.zeros((len(iRvec_new), ) + val.shape[1:], dtype=val.dtype) for key, val in self._XX_R.items()}
+        for i, iRold in enumerate(iRvec_old):
+            for w1 in range(self.num_wann):
+                for w2 in range(self.num_wann):
+                    dshift = shifts_int[w1] - shifts_int[w2]
+                    iRnew = tuple(np.array(iRold) + dshift)
+                    j = self.rvec.iR(iRnew)
+                    for key, val in self._XX_R.items():
+                        _XX_R_new[key][j, w1, w2] += val[i, w1, w2]
+        self._XX_R = _XX_R_new
+        self.remove_zero_Rvec()
+
+    def shift_wannier_centers_to_unit_cell(self):
+        """
+        Shift the Wannier centers to the unit cell. This is useful for changing the origin of the system.
+        """
+        shifts = np.floor(self.wannier_centers_red).astype(int)
+        self.shift_wannier_centers(-shifts)
+
+    def remove_zero_Rvec(self):
+        self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
+
+    def exclude_WF(self, wf_indices):
+        """
+        Exclude Wannier functions from the system. Useful for slabs
+
+        Parameters
+        ----------
+        wf_indices : list of int
+            The indices of the Wannier functions to exclude.
+        """
+        wf_indices = np.array(wf_indices)
+        keep_bool = np.ones(self.num_wann, dtype=bool)
+        keep_bool[wf_indices] = False
+        self.wannier_centers_cart = self.wannier_centers_cart[keep_bool]
+        for key, val in self._XX_R.items():
+            self._XX_R[key] = val[:, keep_bool][:, :, keep_bool]
+        self.rvec.exclude_wannier_functions(wf_indices)
+        self.num_wann = self.wannier_centers_cart.shape[0]
+        self.clear_cached_wcc()
+        self.clear_cached_R()
+
+
+
 
     @property
     def NKFFT_recommended(self):
@@ -610,6 +683,7 @@ class System_R(System):
     @cached_property
     def wannier_centers_red(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
+
 
     def get_sparse(self, min_values={'Ham': 1e-3}):
         min_values = copy.copy(min_values)
