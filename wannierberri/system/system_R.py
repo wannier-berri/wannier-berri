@@ -909,6 +909,14 @@ class System_R(System):
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
 
+    def make_supercell(self, supercell_matrix, **parameters):
+        """
+        Create a supercell of the system.
+        see :func:`~wannierberri.system.system_supercell.get_system_supercell` for input data and details
+        """
+        from .system_supercell import get_system_supercell
+        return get_system_supercell(self, supercell_matrix, **parameters)
+
 
     def transform(self, symop):
         wannier_centers_red = self.wannier_centers_red
