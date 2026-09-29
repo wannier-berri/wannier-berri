@@ -35,5 +35,6 @@ tags
 # temporary test files
 tests/_output
 tests/prof
+.claude/
 
 .DS_Store
