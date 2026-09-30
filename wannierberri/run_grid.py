@@ -92,7 +92,10 @@ def process(paralfunc,
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
         num_remotes = len(remotes)
         num_remotes_calculated = 0
-        remotes_calculated_old = np.zeros(num_remotes, dtype=bool)
+        # ray.wait() returns at most `num_returns` ready refs, which need not include
+        # the ones returned in the previous call. Keep a persistent mask of the
+        # collected results, so that every K-point is added exactly once.
+        remotes_collected = np.zeros(num_remotes, dtype=bool)
         while True:
 
             # the progress will be printed every minute
@@ -101,16 +104,16 @@ def process(paralfunc,
                 remotes, num_returns=min(num_remotes_calculated + nstep_print, num_remotes),
                 timeout=60)
 
-            num_remotes_calculated = len(remotes_calculated)
-            remotes_calculated_bool = np.array([r in remotes_calculated for r in remotes])
-            remotes_calculated_diff = remotes_calculated_bool & ~remotes_calculated_old
-            for ir in np.where(remotes_calculated_diff)[0]:
-                res = ray.get(remotes[ir])
-                Kp = dK_list[ir]
-                result_sum += set_result(Kp, res)
+            remotes_calculated = set(remotes_calculated)
+            for ir in range(num_remotes):
+                if not remotes_collected[ir] and remotes[ir] in remotes_calculated:
+                    res = ray.get(remotes[ir])
+                    Kp = dK_list[ir]
+                    result_sum += set_result(Kp, res)
+                    remotes_collected[ir] = True
+            num_remotes_calculated = int(remotes_collected.sum())
             if num_remotes_calculated >= num_remotes:
                 break
-            remotes_calculated_old = remotes_calculated_bool
 
             t_print_prev = print_progress(count=num_remotes_calculated,
                                           total=numK,

@@ -63,7 +63,9 @@ class SystemSOC(System_R):
         self.pointgroup = PointGroup()
         self.force_internal_terms_only = any(
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
-        self.rvec = None
+        # for nspin=2 the up-down block gets its own R-vectors (set in from_wannierdata),
+        # for nspin=1 there is no such block, and the R-vectors of system_up are used
+        self.rvec = system_up.rvec if self.nspin == 1 else None
         self._XX_R = dict()
         if cell is not None:
             self.set_cell(**cell)
@@ -135,7 +137,8 @@ class SystemSOC(System_R):
         if self.nspin == 2:
             return self.has_R_mat_all(['dV_soc', 'overlap_up_down'])
         else:
-            return self.has_R_mat_all(['dV_soc'])
+            # for nspin=1 the SOC matrix is stored only in system_up (see Data_K_soc.Hsoc)
+            return self.system_up.has_R_mat('dV_soc')
 
 
     @classmethod

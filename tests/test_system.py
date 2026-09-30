@@ -594,6 +594,16 @@ def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc, system_Fe_gpaw_soc
     )
 
 
+def test_system_soc_nspin1(system_Fe_gpaw_soc, tmp_path):
+    """SystemSOC from a single spin channel (nspin=1, as for a non-magnetic material):
+    the SOC matrix is in system_up, and so are the R-vectors"""
+    system = wberri.SystemSOC(system_up=system_Fe_gpaw_soc.system_up, cell=system_Fe_gpaw_soc.cell)
+    assert system.nspin == 1
+    assert system.has_soc
+    system.set_soc_axis(theta=np.pi / 4, phi=0)
+    system.to_npz(os.path.join(tmp_path, "system_soc_nspin1"))
+
+
 @pytest.mark.parametrize("theta_deg, phi_deg, alpha_soc", [(0, 0, 1), (54.74, 45.00, 1), (49.00, 33.00, 1)])
 def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, alpha_soc):
     name = f"theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
