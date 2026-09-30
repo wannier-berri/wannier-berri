@@ -253,10 +253,7 @@ def test_orbital_rotator_random():
 def test_create_amn_diamond_s_bond():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso",
-                                                    include_TR=False,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100, include_TR=False)
 
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]], orbital='s', spacegroup=bandstructure.spacegroup)
 
@@ -282,7 +279,7 @@ def test_create_amn_diamond_s_bond():
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"], readnnkp=False)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     wandata.set_projections(projections=[projection],
                             bandstructure=bandstructure,
@@ -310,7 +307,6 @@ def test_create_amn_diamond_s_bond():
         num_iter=100,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         num_iter_converge=20,
         print_progress_every=20,
         sitesym=True,
@@ -323,15 +319,14 @@ def test_create_amn_diamond_s_bond():
     wannier_spreads = wandata.chk.wannier_spreads
     print("wannier_spreads = ", wannier_spreads)
     assert wannier_spreads == approx(.398647548, abs=1e-5)
+    os.chdir(ROOT_DIR)
 
 
 def test_create_amn_diamond_p_bond():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso",
-                                                    include_TR=True,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100,
+                                                                    include_TR=True)
     lattice = bandstructure.lattice
     positions = np.array([[1, 1, 1], [-1, -1, -1]])
     zaxis = (positions[0] - positions[1]) @ lattice
@@ -376,7 +371,8 @@ def test_create_amn_diamond_p_bond():
 
     wandata = wberri.WannierData.from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
-        files=["mmn", "eig", "win", "unk"])
+        files=["mmn", "eig", "win", "unk"],
+        readnnkp=False)
 
     amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                             normalize=True)
@@ -401,7 +397,6 @@ def test_create_amn_diamond_p_bond():
         num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
-        mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
@@ -423,15 +418,13 @@ def test_create_amn_diamond_p_bond():
 
     expected_spread = 0.73
     assert wannier_spreads == approx(expected_spread, abs=0.05)
+    os.chdir(ROOT_DIR)
 
 
 def test_create_amn_diamond_sp3():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso",
-                                                    include_TR=True,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100, include_TR=True)
     lattice = bandstructure.lattice
     positions = np.array([[1, 1, 1], [-1, -1, -1]]) / 8
     projection_sp3 = Projection(position_num=positions, orbital='sp3',
@@ -462,7 +455,7 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"], readnnkp=False)
     wandata.set_file("amn", amn)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
@@ -475,7 +468,6 @@ def test_create_amn_diamond_sp3():
         num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
-        mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
@@ -514,14 +506,14 @@ def test_create_amn_diamond_sp3():
 
     expected_spread = 0.5
     assert wannier_spreads == approx(expected_spread, abs=0.1)
+    os.chdir(ROOT_DIR)
 
 
 
 def test_create_eig_diamond():
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso")
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100)
     eig_new = EIG.from_bandstructure(bandstructure=bandstructure, verbose=True)
     eig_ref = EIG.from_w90_file(os.path.join(data_dir, "diamond"))
     eql, msg = eig_new.equals(eig_ref)

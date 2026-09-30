@@ -8,6 +8,8 @@ from .utility import convert
 from .w90file import W90_file, auto_kptirr, check_shape
 from .io import sparselist_to_dict
 from ..utility import cached_einsum
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MMN(W90_file):
@@ -51,7 +53,9 @@ class MMN(W90_file):
         self.bk_reorder = bk_reorder
 
     @classmethod
-    def from_w90_file(cls, seedname, bkvec, npar=multiprocessing.cpu_count(), selected_kpoints=None):
+    def from_w90_file(cls, seedname, bkvec, npar=None, selected_kpoints=None):
+        if npar is None:
+            npar = multiprocessing.cpu_count()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
@@ -66,7 +70,7 @@ class MMN(W90_file):
         if npar > 0:
             pool = multiprocessing.Pool(npar)
         # TODO : do text conversion only for selected kpoints
-        for j in range(0, NNB * NK, npar * mult):
+        for j in range(0, NNB * NK, max(npar * mult, 1)):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
             if len(x) == 0:
                 break
@@ -144,6 +148,7 @@ class MMN(W90_file):
                            irred_bk_only=True,
                            include_paw=True,
                            include_pseudo=True,
+                           use_disk=False
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -157,6 +162,8 @@ class MMN(W90_file):
             if True, the wavefunctions are normalised
         param_search_bk : dict
             additional parameters for `:func:find_bk_vectors`
+        use_disk : bool
+            use disk space, instead of RAM to store transformed wavefunctions. This is useful for large systems with dense grids.
 
         Returns
         -------
@@ -176,7 +183,7 @@ class MMN(W90_file):
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
+        logger.info(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
         identity_operation = bandstructure.spacegroup.get_identity_operation()
 
@@ -184,7 +191,7 @@ class MMN(W90_file):
         nspinor = 2 if spinor else 1
 
         if verbose:
-            print("Creating mmn. ")
+            logger.info("Creating mmn. ")
 
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
@@ -196,12 +203,14 @@ class MMN(W90_file):
 
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
-        if hasattr(bandstructure, "kpoints_paw"):
+        if hasattr(bandstructure, "kpoints_paw") and bandstructure.kpoints_paw is not None:
             use_paw = True
             kpoints_in = bandstructure.kpoints_paw
+            logger.info(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         else:
             use_paw = False
             kpoints_in = bandstructure.kpoints
+            logger.info(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
@@ -213,6 +222,26 @@ class MMN(W90_file):
             bk_from_bk_irr_isym = np.zeros((len(kptirr), NNB), dtype=int)
             bk_map = None
 
+        kpoints_dict_keys = set(kptirr)
+        num_times_needed = {ik: 0 for ik in kptirr}
+        for ikirr, kirr in enumerate(kptirr):
+            for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
+                if ib in bkirr[ikirr]:
+                    ik2 = int(ik2)
+                    if ik2 not in kpoints_dict_all:
+                        kpoints_dict_keys.add(ik2)
+                        num_times_needed[ik2] = num_times_needed.get(ik2, 0) + 1
+        n_needed_kpoints = len(kpoints_dict_keys)
+        logger.debug(f"Total number of k-points used for mmn calculation: {n_needed_kpoints} out of total {NK} {len(kpt_grid)} k-points in the grid ({len(kptirr)} irreducible k-points)")
+        for i in range(max(num_times_needed.values(), default=0)):
+            logger.debug(f"Number of k-points needed {i} times: {[ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))]}")
+        logger.debug("excluding irreducible k-points")
+
+        if use_disk:
+            store_kwargs = {"store": True}
+        else:
+            store_kwargs = {}
+
 
         for ikirr, kirr in enumerate(kptirr):
             for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
@@ -222,13 +251,14 @@ class MMN(W90_file):
                         # if use_paw:
                         #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
                         isym = kpt_from_kptirr_isym[ik2]
-                        # print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
+                        # logger.info(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
                         ik_origin = kpt2kptirr[ik2]
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
-                                                        k_new=kpt_grid[ik2])
+                                                        k_new=kpt_grid[ik2], **store_kwargs)
                         kpoints_dict_all[ik2] = kp2
+                        logger.debug(f"adding k-point {ik2}  (in kpoints_dict_all = {ik2 in kpoints_dict_all}); the length is now {len(kpoints_dict_all)}")
 
 
 
@@ -256,19 +286,14 @@ class MMN(W90_file):
         else:
             wavefunc_all_left = wavefunc_all
 
-
         # but are needed for the finite-difference scheme (obtained by symmetry)
         for ikirr, kirr in enumerate(kptirr):
-            bra = wavefunc_all_left.get_WF(kirr, conj=True)
-            # overlaps = wavefunc_all.product(bra, bra)
-            # overlaps_err = np.max(abs((overlaps - np.eye(NB))))
-            # print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
-            # print(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
+            bra = wavefunc_all_left.get_WF(kirr, G=0)
             ib_is_set = np.zeros(NNB, dtype=bool)
             for ib in bkirr[ikirr]:  # only calculate for irreducible bk points
                 assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
                 ik2 = int(bkvec.neighbours[kirr][ib])
-                ket = wavefunc_all.get_WF(ik2, conj=False, G=bkvec.G[kirr][ib])
+                ket = wavefunc_all.get_WF(ik2, G=bkvec.G[kirr][ib])
                 data[kirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bkvec.bk_red[ib])
                 ib_is_set[ib] = True
 
@@ -279,8 +304,6 @@ class MMN(W90_file):
                     ikb_origin = int(bkvec.neighbours[kirr][ib_origin])
                     isym = bk_from_bk_irr_isym[ikirr][ib]
                     assert symmetrizer.kptirr2kpt[ikirr, isym] == kirr
-                    # print(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
-                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikikirr}, ib={ib_origin}, ikb={ikb_origin}")
                     data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin],
                                                                         isym=isym, ikirr=ikirr, ib=ib_origin,
                                                                         ikb=ikb_origin,
@@ -301,10 +324,14 @@ class Grid_PAW_all:
         self.identity_operation = identity_operation
         self.product = product
 
-    def get_WF(self, ik, G=0, conj=False):
+    def get_WF(self, ik, G=0):
         kp = self.kpoints_dict_all[ik]
-        kp = kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
-        return kp
+        if np.all(G == 0):
+            return kp
+        else:
+            logger.debug("Transforming k-point with G = ", G)
+            return kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
+
 
 
 class Grid_ig_all:
@@ -326,13 +353,13 @@ class Grid_ig_all:
         self.igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         self.ig_grid = self.igmax_glob - self.igmin_glob + 1
-        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        # logger.info(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
         self.normalize = normalize
         if normalize:
             self.norm = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)
                          for ik2, kp in kpoints_dict_all.items()}
 
-    def get_WF(self, ik, conj=False, G=0):
+    def get_WF(self, ik, G=0):
         kp1 = self.kpoints_dict_all[ik]
         bra = np.zeros((self.NB, self.nspinor) + tuple(self.ig_grid), dtype=complex)
         for ig, g in enumerate(kp1.ig):
@@ -341,8 +368,6 @@ class Grid_ig_all:
                 f"g {_g} out of bounds for ig_grid {self.ig_grid} at ik1={ik}, ig={ig}"
             for ispinor in range(self.nspinor):
                 bra[:, ispinor, _g[0], _g[1], _g[2]] = kp1.WF[:, ig, ispinor]
-        if conj:
-            bra = bra.conj()
         if self.normalize:
             bra[:] = bra / self.norm[ik][:, None, None, None, None]
         return bra
@@ -352,4 +377,4 @@ class Grid_ig_all:
         Calculate the product <bra|ket> 
         bk is not used for the grid representation, but is kept for compatibility with the PAW representation
         """
-        return cached_einsum('asijk,bsijk->ab', bra, ket)
+        return cached_einsum('asijk,bsijk->ab', bra.conj(), ket)

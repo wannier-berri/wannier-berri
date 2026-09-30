@@ -4,6 +4,8 @@ import numpy as np
 
 from .w90file import W90_file, auto_kptirr, check_shape
 from glob import glob
+import logging
+logger = logging.getLogger(__name__)
 
 
 class UNK(W90_file):
@@ -80,7 +82,7 @@ class UNK(W90_file):
         for ik in selected_kpoints:
             filename = os.path.join(path, f"UNK{ik + 1:05d}.{spin_channel}")
             assert os.path.exists(filename), f"UNK file {filename} does not exist"
-            # print(f"reading {filename}")
+            # logger.info(f"reading {filename}")
             from .fortio import FortranFileR
             f = FortranFileR(filename)
             nr1, nr2, nr3, ikr, NB = f.read_record(dtype=np.int32)
@@ -95,8 +97,8 @@ class UNK(W90_file):
                 for js in range(nspinor):
                     U[ib, :, :, :, js] = f.read_record(dtype=np.complex128).reshape(
                         nr1, nr2, nr3, order='F')[::reduce_grid[0], ::reduce_grid[1], ::reduce_grid[2]]
-                #     print(f"norm of band {ib} (spinor {js}) = {np.linalg.norm(U[ib, :, :, :, js])}")
-                # print(f"norm of band {ib} = {np.linalg.norm(U[ib, :, :, :, :])}")
+                #     logger.info(f"norm of band {ib} (spinor {js}) = {np.linalg.norm(U[ib, :, :, :, js])}")
+                # logger.info(f"norm of band {ib} = {np.linalg.norm(U[ib, :, :, :, :])}")
             data[ik] = U
         return UNK(data=data, NK=NK)
 
@@ -128,11 +130,11 @@ class UNK(W90_file):
             igmax_glob = igmax_k.max(axis=0)
             ig_grid = igmax_glob - igmin_glob + 1
             grid_size = tuple(ig_grid)
-            print(f"grid_size is not provided, using {grid_size} from bandstructure g-vectors")
+            logger.info(f"grid_size is not provided, using {grid_size} from bandstructure g-vectors")
         else:
             assert len(grid_size) == 3, "grid_size should be a tuple of 3 integers"
             grid_size = tuple(grid_size)
-            print(f"using provided grid_size {grid_size}")
+            logger.info(f"using provided grid_size {grid_size}")
 
         data = {}
 

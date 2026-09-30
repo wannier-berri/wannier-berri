@@ -8,7 +8,7 @@ from irrep.spacegroup import SpaceGroup
 from irrep.bandstructure import BandStructure
 
 
-bandstructure = BandStructure(code="gpaw",
+bandstructure = BandStructure.from_gpaw(
                               calculator_gpaw="Fe-gs.gpw",
                               onlysym=True,)
 sg = bandstructure.spacegroup

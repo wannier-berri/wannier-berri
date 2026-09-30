@@ -7,6 +7,9 @@ from ..utility import vectorize, select_window_degen
 from ..symmetry.sawf import IrrepsIncompatibleError, VoidSymmetrizer
 from .wannierizer import Wannierizer
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def wannierise(wandata,
                froz_min=np.inf,
@@ -15,10 +18,12 @@ def wannierise(wandata,
                outer_min=-np.inf,
                outer_max=np.inf,
                num_iter=1000,
+               localise_num_iter=0,
+               localise_alpha=0.5,
+               localise_conv_tol=1e-6,
                conv_tol=1e-9,
                num_iter_converge=3,
                mix_ratio_z=0.5,
-               mix_ratio_u=1,
                print_progress_every=10,
                sitesym=False,
                check_irreps=True,
@@ -60,9 +65,6 @@ def wannierise(wandata,
     mix_ratio_z : float
         Mixing parameter for the disentanglement `Z` matrix. `1` is fastest; smaller
         values are usually more stable.
-    mix_ratio_u : float
-        Mixing parameter for the localization `U` matrix. Values below `1` may help
-        stability but are currently more prone to non-convergence.
     print_progress_every : int
         Frequency of progress printing.
     sitesym : bool
@@ -106,12 +108,10 @@ def wannierise(wandata,
     """
     if wandata.irreducible:
         irreducible = True
-    if not (mix_ratio_u == 1):
-        warnings.warn(f"mix_ratio_u = {mix_ratio_u} != 1 is not tested, use with caution")
 
     t0 = time()
     if froz_min > froz_max:
-        print("froz_min > froz_max, nothing will be frozen")
+        logger.info("froz_min > froz_max, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
     NK = wandata.mmn.NK
     if sitesym:
@@ -141,7 +141,7 @@ def wannierise(wandata,
     elif isinstance(frozen_states, dict):
         for ik, frozen_ik in frozen_states.items():
             if ik in kptirr:
-                print(f"{kptirr=}, {ik=}, {frozen_ik=}")
+                logger.debug(f"{kptirr=}, {ik=}, {frozen_ik=}")
                 iki = np.where(kptirr == ik)[0][0]
                 for ib in frozen_ik:
                     frozen[iki, ib] = True
@@ -152,7 +152,7 @@ def wannierise(wandata,
     deselected = vectorize(np.logical_and, np.logical_not(selected_bands), free, to_array=True)
     assert np.all(selected_bands[frozen]), "Frozen bands should be included in the selected bands"
     free[deselected] = False
-    # print(f"selected_bands: \n{selected_bands} ")
+    # logger.info(f"selected_bands: \n{selected_bands} ")
 
     if sitesym:
         if check_irreps or check_irreps_warn:
@@ -201,10 +201,16 @@ def wannierise(wandata,
     else:
         raise ValueError("init should be 'amn' or 'random'")
 
-    if hasattr(wandata.chk, "wannier_centers_cart") and wcc_start_red is None:
-        wcc_cart = wandata.chk.wannier_centers_cart
-        if wcc_cart is not None:
-            wcc_start_red = wcc_cart.dot(np.linalg.inv(wandata.bkvec.real_lattice))
+    if wcc_start_red is None:
+        if hasattr(wandata.chk, "wannier_centers_cart") and wandata.chk.wannier_centers_cart is not None:
+            logger.info("Using the Wannier centers from the chk file as initial guess")
+            wcc_start_red = wandata.chk.wannier_centers_cart.dot(np.linalg.inv(wandata.bkvec.real_lattice))
+        elif init == "amn" and hasattr(wandata.amn, "positions") and wandata.amn.positions is not None:
+            logger.info("Using the Wannier centers from the projections as initial guess")
+            wcc_start_red = wandata.amn.positions
+    else:
+        logger.info("wcc_start_red is provided, using it as initial guess")
+        logger.info(f"Starting Wannier centers (in reduced coordinates) = \n {wcc_start_red}")
     if wcc_start_red is not None:
         wcc_start_red = np.array(wcc_start_red, dtype=float)
     if wcc_start_red is None or wcc_start_red.shape != (wandata.chk.num_wann, 3):
@@ -258,8 +264,11 @@ def wannierise(wandata,
         U_neigh = [[U_opt_full_BZ[ib] for ib in neighbours_all[kpt]] for kpt in kptirr]
         tx = time()
         U_opt_full_IR = wannierizer.update_all(U_neigh, mix_ratio=mix_ratio_z,
-                                               mix_ratio_u=mix_ratio_u,
-                                               localise=localise)
+                                               localise=localise,
+                                               localise_num_iter=localise_num_iter,
+                                               localise_alpha=localise_alpha,
+                                               localise_conv_tol=localise_conv_tol,
+                                               )
         t_update += time() - tx
 
         U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k)
@@ -273,7 +282,7 @@ def wannierise(wandata,
             print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)", std=delta_std)
 
         if i_iter > num_iter_converge and delta_std < conv_tol:
-            print(f"Converged after {i_iter} iterations")
+            logger.info(f"Converged after {i_iter} iterations")
             break
 
     t02 = time()
@@ -296,10 +305,10 @@ def wannierise(wandata,
 
 
     wandata.wannierised = True
-    print(f"time for creating wannierizer {t2 - t1}")
-    print(f"time for iterations {t02 - t01}")
-    print(f"time for updating {t_update}")
-    print(f"total time for wannierization {time() - t0}")
+    logger.info(f"time for creating wannierizer {t2 - t1}")
+    logger.info(f"time for iterations {t02 - t01}")
+    logger.info(f"time for updating {t_update}")
+    logger.info(f"total time for wannierization {time() - t0}")
     if savechk:
         chk = wandata.get_file('chk')
         chk.to_npz(wandata.seedname + ".chk")
@@ -324,7 +333,7 @@ def update_chk(wandata, U_opt_full_BZ,
 
     wandata.chk.v_matrix = {ik: U for ik, U in enumerate(U_opt_full_BZ) if U is not None}
     if (wcc is None) or (spreads is None) or print_wcc:
-        wcc_new, spreads_new = wandata.chk.get_wannier_centers(wandata.mmn, spreads=True)
+        wcc_new, spreads_new = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
         if wcc is None:
             wcc = wcc_new
         if spreads is None:
@@ -355,23 +364,23 @@ def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
     breakline = "-" * 100
     startline = "#" * 100
     endline = startline
-    print(startline)
+    logger.info(startline)
     if comment is not None:
-        print(comment)
-        print(breakline)
-    print("wannier centers and spreads")
-    print(breakline)
+        logger.info(comment)
+        logger.info(breakline)
+    logger.info("wannier centers and spreads")
+    logger.info(breakline)
     for w, s in zip(wcc, spreads):
         w = np.round(w, 12)
-        print(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
-    print(breakline)
+        logger.info(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
+    logger.info(breakline)
     w = wcc.sum(axis=0)
     s = np.sum(spreads)
-    print((f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f} <- sum"))
-    print(f"  {' ' * 38}  maximal spread = {np.max(spreads):16.12f}")
+    logger.info((f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f} <- sum"))
+    logger.info(f"  {' ' * 38}  maximal spread = {np.max(spreads):16.12f}")
     if std is not None:
-        print(f"standard deviation = {std}")
-    print(endline)
+        logger.info(f"standard deviation = {std}")
+    logger.info(endline)
 
 
 # def print_progress(i_iter, Omega_list, num_iter_converge,

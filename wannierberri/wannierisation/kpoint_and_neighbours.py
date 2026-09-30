@@ -1,4 +1,7 @@
 from copy import deepcopy
+from functools import cached_property
+
+import scipy
 from ..utility import get_max_eig, orthogonalize
 import numpy as np
 
@@ -78,12 +81,19 @@ class Kpoint_and_neighbours:
         amn2 = amn[self.free, :].dot(amn[self.free, :].T.conj())
         self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
-        # self.update_Mmn_opt()
 
     def get_U_opt_full(self):
         return self.U_opt_full
 
-    def update(self, U_nb, wcc_bk_phase, localise=True, mix_ratio=1.0, mix_ratio_u=1.0):
+    @cached_property
+    def sumwb(self):
+        return sum(self.wb)
+
+    def update(self, U_nb, wcc_bk_phase, localise=True, mix_ratio=1.0,
+               localise_num_iter=10,
+               localise_alpha=0.5,
+               localise_conv_tol=1e-6,
+               ):
         """
         update the Z matrix
 
@@ -98,6 +108,8 @@ class Kpoint_and_neighbours:
             the updated U matrix
         """
         assert 0 <= mix_ratio <= 1
+        if not hasattr(self, 'U_localize'):
+            self.U_localize = np.eye(self.num_wann, dtype=complex)
         self.U_nb = deepcopy(U_nb)
         U_nb_free = [self.U_nb[ib][f] for ib, f in enumerate(self.free_nb)]
         Z = self.calc_Z(U_nb_free) + self.Zfrozen
@@ -109,6 +121,9 @@ class Kpoint_and_neighbours:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
             U_opt_full[self.frozen, range(self.nfrozen)] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
+            U_opt_full = orthogonalize(U_opt_full)
+            check = U_opt_full.T.conj().dot(U_opt_full) - np.eye(self.num_wann)
+            assert np.allclose(check, 0, atol=1e-6), f"U_opt_full is not unitary : {check}"
             Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) *
                                 wcc_bk_phase[None, :, ib]
                                 for ib in range(self.nnb)])
@@ -116,21 +131,25 @@ class Kpoint_and_neighbours:
             U = np.linalg.inv(Mmn_loc_sumb)
             U = U.T.conj()
             U = orthogonalize(U)
-            U_opt_full = U_opt_full.dot(U)
-            U_opt_full = orthogonalize(U_opt_full)
-            if mix_ratio_u != 1:
-                U_old = self.U_opt_full
-                U_change = U_old.T.conj() @ U_opt_full
-                U_change = orthogonalize(U_change)
-                eigvals, eigvecs = np.linalg.eig(U_change)
-                assert np.allclose(np.abs(eigvals), 1, atol=1e-3), f"U_change is not unitary : {abs(eigvals)}, {np.angle(eigvals)}"
-                eigvals = np.exp(1j * np.angle(eigvals) * mix_ratio)
-                U_change = eigvecs @ np.diag(eigvals) @ eigvecs.T.conj()
-                U_opt_full = U_old @ U_change
-                U_opt_full = orthogonalize(U_opt_full)
-            self.U_opt_full = U_opt_full
+            Mmn_loc_rotated = np.einsum('ji, bjl->bil', U.conj(), Mmn_loc)
+            r2_old = get_r2(wb=self.wb, Mmn_rotated=Mmn_loc_rotated, weight=self.weight)
+            multiplier = localise_alpha / (2 * self.sumwb)
+            for _ in range(localise_num_iter):
+                grad = gradOmega(self.wb, Mmn_loc_rotated) * multiplier
+                dU = scipy.linalg.expm(grad)
+                Mmn_loc_rotated = np.einsum('ji, bjl->bil', dU.conj(), Mmn_loc_rotated)
+                U = U.dot(dU)
+                check_U = U.T.conj().dot(U) - np.eye(self.num_wann)
+                assert np.allclose(check_U, 0, atol=1e-6), f"U is not unitary : {check_U}"
+                r2 = get_r2(wb=self.wb, Mmn_rotated=Mmn_loc_rotated, weight=self.weight)
+                if abs(r2.sum() - r2_old.sum()) < localise_conv_tol:
+                    break
+                r2_old = r2
+            self.U_opt_full = orthogonalize(U_opt_full.dot(U))
+
         else:
             self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
+
         self.U_opt_full = self.symmetrizer_Uirr(self.U_opt_full)
         self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self.U_opt_full, self._wcc, self._r2
@@ -194,11 +213,10 @@ class Kpoint_and_neighbours:
             return
         UT = self.U_opt_full.T.conj()
         self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
-        Mmn_opt_diag = self.Mmn_opt[:, range(self.num_wann), range(self.num_wann)] \
-            * wcc_bk_phase.T
-        Mmn_opt_diag_angle = np.angle(Mmn_opt_diag)
-        self._wcc = -Mmn_opt_diag_angle.T @ self.wbk * self.weight
-        self._r2 = self.wb @ (1 - abs(Mmn_opt_diag)**2 + Mmn_opt_diag_angle ** 2) * self.weight
+        self._r2, self._wcc = get_r2(wb=self.wb,
+                                     Mmn_rotated=self.Mmn_opt,
+                                     wcc_bk_phase=wcc_bk_phase,
+                                     weight=self.weight, wbk=self.wbk)
 
     def update_Unb(self, U_nb=None, wcc_bk_phase=None):
         """
@@ -220,3 +238,39 @@ class Kpoint_and_neighbours:
             self.U_nb = U_nb
             self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self._wcc, self._r2
+
+
+def calA(B):
+    """ (B^dagger - B)/2 from MV97"""
+    return (B.T.conj() - B) / 2
+
+
+def calS(B):
+    """ (B^dagger + B)/(2i) from MV97"""
+    return (B.T.conj() + B) / (2j)
+
+
+def gradOmega(wb, Mbmn):
+    num_wann = Mbmn.shape[1]
+    rng = np.arange(num_wann)
+    Mbnn = Mbmn[:, rng, rng]
+    q_bn = np.angle(Mbnn)
+    R = Mbmn * Mbnn[:, None, :].conj()
+    Rtilde = Mbmn / Mbnn[:, None, :]
+    Tbmn = Rtilde * q_bn[:, None, :]
+    return 2 * sum(w * (-calA(R) - calS(T))  for w, T, R in zip(wb, Tbmn, R))
+
+
+def get_r2(wb, Mmn_rotated, weight, wcc_bk_phase=None, wbk=None):
+    num_wann = Mmn_rotated.shape[1]
+    rng = np.arange(num_wann)
+    Mmn_diag = Mmn_rotated[:, rng, rng]
+    if wcc_bk_phase is not None:
+        Mmn_diag = Mmn_diag * wcc_bk_phase.T[:, :]
+    Mmn_diag_angle = np.angle(Mmn_diag)
+    r2 = wb @ (1 - abs(Mmn_diag)**2 + Mmn_diag_angle ** 2) * weight
+    if wbk is not None:
+        wcc = -Mmn_diag_angle.T @ wbk * weight
+        return r2, wcc
+    else:
+        return r2

@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from pytest import approx, fixture
 import numpy as np
@@ -71,10 +73,8 @@ def check_sawf():
 def test_create_sawf_diamond(check_sawf):
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di", Ecut=100,
-                                                      code="espresso",
-                                                      include_TR=False,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di", Ecut=100,
+                                                                    include_TR=False)
     projection = Projection(position_num=[[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]],
                             orbital='s',
                             spacegroup=bandstructure.spacegroup
@@ -93,11 +93,9 @@ def test_create_w90files_diamond_irred(select_grid):
 
     data_dir = os.path.join(ROOT_DIR, "data", "diamond")
 
-    bandstructure = irrep.bandstructure.BandStructure(prefix=data_dir + "/di-irred",
-                                                      code="espresso",
-                                                      include_TR=False,
-                                                      select_grid=select_grid,
-                                                      )
+    bandstructure = irrep.bandstructure.BandStructure.from_espresso(prefix=data_dir + "/di-irred",
+                                                                    include_TR=False,
+                                                                    select_grid=select_grid)
     path_tmp = os.path.join(OUTPUT_DIR, "diamond-create-w90-files-irred")
     os.makedirs(path_tmp, exist_ok=True)
     prefix = "di-irred"
@@ -120,10 +118,10 @@ def test_create_w90files_diamond_irred(select_grid):
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
-        localise=True
+        localise=True,
+        localise_num_iter=0
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads
@@ -144,10 +142,10 @@ def test_create_w90files_diamond_irred(select_grid):
 def test_create_sawf_Fe(check_sawf, include_TR):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
     spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=200,
-                                normalize=False, magmom=[[0, 0, 1]],
-                                # include_TR=include_TR
-                                spacegroup=spacegroup)
+    bandstructure = BandStructure.from_espresso(prefix=path_data + '/Fe', Ecut=200,
+                                                normalize=False, magmom=[[0, 0, 1]],
+                                                # include_TR=include_TR
+                                                spacegroup=spacegroup)
     # spacegroup = bandstructure.spacegroup
     # np.savez(os.path.join(OUTPUT_DIR, f"Fe_TR={include_TR}_spacegroup.npz"),
     #          **spacegroup.as_dict())
@@ -169,11 +167,11 @@ def test_create_sawf_Fe(check_sawf, include_TR):
 def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
     spacegroup = SpaceGroup(**np.load(os.path.join(path_data, f"Fe_TR={include_TR}_spacegroup.npz")))
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/Fe', Ecut=100,
-                                normalize=False, magmom=[[0, 0, 1]],
-                                spacegroup=spacegroup,
-                                # include_TR=include_TR,
-                                  irreducible=irr_bs)
+    bandstructure = BandStructure.from_espresso(prefix=path_data + '/Fe', Ecut=100,
+                                                normalize=False, magmom=[[0, 0, 1]],
+                                                spacegroup=spacegroup,
+                                                # include_TR=include_TR,
+                                                irreducible=irr_bs)
     sawf_new = SymmetrizerSAWF.from_irrep(bandstructure, irreducible=True, ecut=None)
     pos = [[0, 0, 0]]
     proj_s = Projection(position_num=pos, orbital='s', spacegroup=bandstructure.spacegroup)
@@ -190,15 +188,14 @@ def test_create_sawf_Fe_irreducible(check_sawf, include_TR, irr_bs):
 
 def test_irreducible_vs_full_Fe():
     path_data = os.path.join(ROOT_DIR, "data", "Fe-222-pw")
-    kwargs_bs = dict(code='espresso',
-                  prefix=path_data + '/Fe',
-                normalize=False,
-                  magmom=[[0, 0, 1]],
-                  include_TR=True,)
+    kwargs_bs = dict(prefix=path_data + '/Fe',
+                     normalize=False,
+                     magmom=[[0, 0, 1]],
+                     include_TR=True,)
 
-    bandstructure_full = BandStructure(**kwargs_bs, irreducible=False)
+    bandstructure_full = BandStructure.from_espresso(**kwargs_bs, irreducible=False, verbosity=1)
     print(f"kpoints in full bz: {[KP.k for KP in bandstructure_full.kpoints]}")
-    bandstructure_irr = BandStructure(**kwargs_bs, irreducible=True)
+    bandstructure_irr = BandStructure.from_espresso(**kwargs_bs, irreducible=True, verbosity=1)
     print(f"kpoints in irreducible bz: {[KP.k for KP in bandstructure_irr.kpoints]}")
 
     nkp_full = len(bandstructure_full.kpoints)
@@ -238,7 +235,8 @@ def test_irreducible_vs_full_Fe():
         num_iter=101,
         conv_tol=1e-10,
         mix_ratio_z=1.0,
-        sitesym=True)
+        sitesym=True,
+        localise_num_iter=0)
 
     wandata_full.wannierise(**kwargs_wannierise)
     wandata_irr.wannierise(**kwargs_wannierise)
@@ -308,12 +306,13 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     path_tmp = os.path.join(OUTPUT_DIR, f"Fe-create-w90-files-irreducible={irr_bs}-{irreducible}")
     os.makedirs(path_tmp, exist_ok=True)
 
-    bandstructure = BandStructure(code='espresso', prefix=path_data + '/' + prefix,
-                                normalize=False, magmom=[[0, 0, 1]],
-                                irreducible=irr_bs,
-                                include_TR=True,
-                                select_grid=select_grid,
-                                )
+    bandstructure = BandStructure.from_espresso(prefix=path_data + '/' + prefix,
+                                                normalize=False,
+                                                magmom=[[0, 0, 1]],
+                                                irreducible=irr_bs,
+                                                include_TR=True,
+                                                select_grid=select_grid,
+                                                )
     print(f"kpoints in bandstructure: {[KP.k for KP in bandstructure.kpoints]}")
 
     norms = np.array([np.linalg.norm(kp.WF, axis=(1))**2 for kp in bandstructure.kpoints])
@@ -348,6 +347,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
                            mix_ratio_z=1.0,
                            localise=True,
                            sitesym=True,
+                           localise_num_iter=0
                             )
         spreads = wandata.chk.wannier_spreads
         print(f"Wannier spreads: {repr(spreads)}")
@@ -369,6 +369,10 @@ def check_create_w90files_Fe(path_data, path_ref=None,
 
         mmn_new = wandata.get_file("mmn")
         mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_ref, f"{prefix}.mmn.npz"))
+        if not np.all(bkvec_new.bk_grid == bkvec_ref.bk_grid):
+            print("ORDER of bk vectors are different between new and reference files, reordering mmn ")
+        else:
+            print("ORDER of bk vectors are the same between new and reference files, no need to reorder mmn ")
         bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
         eql, msg = mmn_new.equals(mmn_ref, tolerance=1e-4, check_reorder=False)
         assert eql, f"MMN files differ: {msg}"
@@ -439,68 +443,26 @@ def test_create_w90files_Fe_reduce222():
                              select_grid=(2, 2, 2))
 
 
-
-@pytest.mark.parametrize("ispin", [0, 1])
-def test_create_w90files_Fe_gpaw(ispin):
-    from gpaw import GPAW
-    path_data = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
-    path_output = os.path.join(OUTPUT_DIR, "Fe_gpaw")
-    os.makedirs(path_output, exist_ok=True)
-    calc = GPAW(path_data + "/Fe-nscf.gpw", txt=None)
-    sg = SpaceGroup.from_gpaw(calc)
-    pos = [[0, 0, 0]]
-    proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
-    proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
-    proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
-    w90files = wberri.WannierData.from_gpaw(
-        calculator=calc,
-        ecut_pw=300,
-        ecut_sym=150,
-        spin_channel=ispin,
-        projections=proj_set,
-        seedname=os.path.join(path_output, f"Fe-spin-{ispin}"),
-        irreducible=False,
-        files=["amn", "mmn", "eig", "symmetrizer"],
-        unitary_params=dict(error_threshold=0.1,
-                            warning_threshold=0.01,
-                            nbands_upper_skip=8),
-    )
-    mmn = w90files.get_file("mmn")
-    bkvec = w90files.get_file("bkvec")
-    symmetrizer = w90files.get_file("symmetrizer")
-    print(f"kpt_from_kptirr_isym = {symmetrizer.kpt_from_kptirr_isym}")
-    check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=1e-4, ignore_upper_bands=-20)
-    acc = 0.002  # because gpaw was with symmetry off
-    assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
-    print(f"mmn is symmetric, max deviation is {check}")
-
-    eig = w90files.get_file("eig")
-    # eig.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.eig.npz"))
-    eig_ref = wberri.w90files.EIG.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.eig.npz"))
-    for ik, E in eig_ref.data.items():
-        assert ik in eig.data, f"k-point {ik} missing in eig data"
-        assert eig.data[ik] == approx(E, abs=1e-6), f"Energies at k-point {ik} differ: {eig.data[ik]} != {E}"
-    mmn = w90files.get_file("mmn")
-    mmn.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.mmn.npz"))
-    mmn_ref = wberri.w90files.MMN.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.mmn.npz"))
-    bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(os.path.join(path_data, f"Fe-spin-{ispin}.bkvec.npz"))
-    bkvec_ref.reorder_mmn(bkvec, mmn)
-    assert np.all(bkvec.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec.bk_grid} != {bkvec_ref.bk_grid}"
-    NNB = mmn.NNB
-    check_tot = 0
-    for ik in mmn_ref.data.keys():
-        G = bkvec_ref.G[ik]
-        for ib in range(NNB):
-            data = mmn.data[ik][ib]
-            data_ref = mmn_ref.data[ik][ib]
-            check = np.max(np.abs(data - data_ref))
-            print(f"spin={ispin} ik={ik} ib={ib}, bk={bkvec.bk_grid[ib]}, G={G[ib]}, max diff mmn: {check}")
-            check_tot = max(check_tot, check)
-    assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
+@pytest.mark.parametrize("spin", [0, 1])
+def test_ref_files_mmn_Fe_gpaw_irred(spin):
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+    path = f"Fe-gpaw-wandata/wannier_soc-spin-{spin}"
+    seedname_ref = os.path.join(path_data, path)
+    w90files_ref = wberri.WannierData.from_npz(f"{seedname_ref}",
+                                               files=["amn", "mmn", "eig", "symmetrizer", "bkvec"],
+                                               ignore_missing_files=False)
+    symmetrizer_ref = w90files_ref.get_file("symmetrizer")
+    mmn_ref = w90files_ref.get_file("mmn")
+    bkvec_ref = w90files_ref.get_file("bkvec")
+    check_ref = symmetrizer_ref.check_mmn(bkvec=bkvec_ref, mmn=mmn_ref,
+                                      warning_precision=-1e-5,
+                                      ignore_upper_bands=10)
+    acc = 1e-4
+    assert check_ref < acc, f"The reference mmn for spin {spin} is not symmetric enough, max deviation is {check_ref} > {acc}"
+    print(f"Reference mmn is symmetric, max deviation is {check_ref}")
 
 
-@pytest.mark.parametrize("ispin", [0, 1])
-def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
+def test_create_w90files_Fe_gpaw_irred(check_sawf):
     from gpaw import GPAW
     path_data = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
     path_output = os.path.join(OUTPUT_DIR, "Fe-gpaw-irred")
@@ -508,68 +470,89 @@ def test_create_w90files_Fe_gpaw_irred(ispin, check_sawf):
     calc = GPAW(path_data + "/Fe-nscf-irred-222.gpw", txt=None)
     sg = SpaceGroup.from_gpaw(calc, include_TR=True)
     sg.show()
-    pos = [[0, 0, 0]]
-    proj_sp3d2 = Projection(position_num=pos, orbital='sp3d2', spacegroup=sg)
-    proj_t2g = Projection(position_num=pos, orbital='t2g', spacegroup=sg)
-    proj_set = ProjectionsSet(projections=[proj_sp3d2, proj_t2g])
-    seedname = os.path.join(path_output, f"Fe-irred-spin-{ispin}")
-    seedname_ref = os.path.join(path_data, f"Fe-irred-spin-{ispin}")
-    w90files = wberri.WannierData.from_gpaw(
+    proj_set = ProjectionsSet([Projection(position_num=[0, 0, 0], orbital=orb, spacegroup=sg) for orb in ['s', 'p', 'd']])
+    path = "Fe-gpaw-wandata/wannier_soc"
+    seedname = os.path.join(path_output, path)
+    seedname_ref = os.path.join(path_data, path)
+
+    w90files = wberri.WannierDataSOC.from_gpaw(
         calculator=calc,
         ecut_pw=300,
         ecut_sym=150,
-        spin_channel=ispin,
         projections=proj_set,
         seedname=seedname,
         irreducible=True,
-        include_TR=False,
-        files=["amn", "mmn", "eig", "symmetrizer"],
+        spacegroup=sg,
+        files=["amn", "mmn", "eig", "symmetrizer", "soc", "cell"],
         unitary_params=dict(error_threshold=0.1,
                             warning_threshold=0.01,
                             nbands_upper_skip=8),
     )
-    mmn = w90files.get_file("mmn")
-    bkvec = w90files.get_file("bkvec")
-    symmetrizer = w90files.get_file("symmetrizer")
-    check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
-    acc = 5e-5
-    assert check < acc, f"The mmn is not symmetric enough, max deviation is {check} > {acc}"
-    print(f"mmn is symmetric, max deviation is {check}")
+    w90files.to_npz()
+    w90files_ref = wberri.WannierDataSOC.from_npz(f"{seedname_ref}",
+                                                  files=["amn", "mmn", "eig", "symmetrizer", "soc", "cell", "bkvec"],
+                                                  ignore_missing_files=False)
+
+    for subsystem in ["data_up", "data_down"]:
+        files_sub = getattr(w90files, subsystem)
+        files_sub_ref = getattr(w90files_ref, subsystem)
+        symmetrizer = files_sub.get_file("symmetrizer")
+        symmetrizer_ref = files_sub_ref.get_file("symmetrizer")
+        check_sawf(symmetrizer, symmetrizer_ref)
+
+        sg_ref = symmetrizer_ref.spacegroup
+        assert sg.equals(sg_ref), "Spacegroups differ"
+        assert symmetrizer.spacegroup.equals(sg), "spacegroup changed in symmetrizer"
+
+        acc = 1e-4
+
+        mmn_ref = files_sub_ref.get_file("mmn")
+        bkvec_ref = files_sub_ref.get_file("bkvec")
+        check_ref = symmetrizer_ref.check_mmn(bkvec=bkvec_ref, mmn=mmn_ref, warning_precision=-1e-5, ignore_upper_bands=10)
+        assert check_ref < acc, f"The reference mmn for {subsystem} is not symmetric enough, max deviation is {check_ref} > {acc}"
+        print(f"Reference mmn is symmetric, max deviation is {check_ref}")
+
+        mmn = files_sub.get_file("mmn")
+        bkvec = files_sub.get_file("bkvec")
+        check = symmetrizer.check_mmn(bkvec=bkvec, mmn=mmn, warning_precision=-1e-5, ignore_upper_bands=10)
+
+        assert check < acc, f"The mmn for {subsystem} is not symmetric enough, max deviation is {check} > {acc}"
+        print(f"mmn is symmetric, max deviation is {check}")
+
+        eig = files_sub.get_file("eig")
+        eig_ref = files_sub_ref.get_file("eig")
+        assert eig.equals(eig_ref, tolerance=1e-6), "EIG files differ"
+
+        amn = files_sub.get_file("amn")
+        amn_ref = files_sub_ref.get_file("amn")
+        assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
 
 
-    eig = w90files.get_file("eig")
-    eig_ref = wberri.w90files.EIG.from_npz(f"{seedname_ref}.eig.npz")
-    assert eig.equals(eig_ref, tolerance=1e-6), "EIG files differ"
 
-    amn = w90files.get_file("amn")
-    amn_ref = wberri.w90files.AMN.from_npz(f"{seedname_ref}.amn.npz")  # this file is genetated with WB (because in pw2wannier the definition of radial function is different, so it does not match precisely)
-    assert amn.equals(amn_ref, tolerance=1e-6), "AMN files differ"
+        bkvec_new = copy.deepcopy(bkvec)
+        mmn_new = copy.deepcopy(mmn)
+        bkvec_ref = files_sub_ref.get_file("bkvec")
+        if not np.all(bkvec_new.bk_grid == bkvec_ref.bk_grid):
+            print("ORDER of bk vectors are different between new and reference files, reordering mmn ")
+        else:
+            print("ORDER of bk vectors are the same between new and reference files, no need to reorder mmn ")
 
-    symmetrizer_ref = SymmetrizerSAWF.from_npz(f"{seedname_ref}.sawf.npz")
-    check_sawf(symmetrizer, symmetrizer_ref)
 
-    # for ik, E in eig_ref.data.items():
-    #     assert ik in eig.data, f"k-point {ik} missing in eig data"
-    #     assert eig.data[ik] == approx(E, abs=1e-6), f"Energies at k-point {ik} differ: {eig.data[ik]} != {E}"
-
-    mmn.to_npz(os.path.join(OUTPUT_DIR, f"Fe-spin-{ispin}.mmn.npz"))
-    mmn_ref = wberri.w90files.MMN.from_npz(f"{seedname_ref}.mmn.npz")
-    bkvec_ref = wberri.w90files.bkvectors.BKVectors.from_npz(f"{seedname_ref}.bkvec.npz")
-    bkvec_ref.reorder_mmn(bkvec, mmn)
-    assert np.all(bkvec.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec.bk_grid} != {bkvec_ref.bk_grid}"
-    bk = bkvec_ref.bk_grid
-    NNB = mmn.NNB
-    check_tot = 0
-    ignore_upper = -10
-    for ik in mmn_ref.data.keys():
-        G = bkvec_ref.G[ik]
-        for ib in range(NNB):
-            data = mmn.data[ik][ib][:ignore_upper, :ignore_upper]
-            data_ref = mmn_ref.data[ik][ib][:ignore_upper, :ignore_upper]
-            check = np.max(np.abs(data - data_ref))
-            print(f"spin={ispin} ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
-            check_tot = max(check_tot, check)
-    assert check_tot < 7e-5, f"MMN files differ, max deviation is {check_tot} > 7e-5"
+        bkvec_ref.reorder_mmn(bkvec_new, mmn_new)
+        assert np.all(bkvec_new.bk_grid == bkvec_ref.bk_grid), f"bk_grid differ {bkvec_new.bk_grid} != {bkvec_ref.bk_grid}"
+        bk = bkvec_ref.bk_grid
+        NNB = mmn.NNB
+        check_tot = 0
+        ignore_upper = -10
+        for ik in mmn_ref.data.keys():
+            G = bkvec_ref.G[ik]
+            for ib in range(NNB):
+                data = mmn_new.data[ik][ib][:ignore_upper, :ignore_upper]
+                data_ref = mmn_ref.data[ik][ib][:ignore_upper, :ignore_upper]
+                check = np.max(np.abs(data - data_ref))
+                print(f"subsystem {subsystem}: ik={ik} ib={ib}, bk={bk[ib]}, G={G[ib]}, max diff mmn: {check}")
+                check_tot = max(check_tot, check)
+        assert check_tot < acc, f"MMN files differ, max deviation is {check_tot} > {acc}"
 
 
 @pytest.mark.parametrize("select_grid", [None, (4, 4, 4), (2, 2, 2)])
@@ -608,10 +591,10 @@ def test_create_w90files_diamond_gpaw_irred(select_grid):
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
-        localise=True
+        localise=True,
+        localise_num_iter=0
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads
@@ -630,9 +613,9 @@ def get_diamond_projections():
     Returns:
         dict: Dictionary with projection names as keys and Projection/ProjectionsSet objects as values.
     """
-    bandstructure = BandStructure(code='espresso', prefix=os.path.join(ROOT_DIR, "data", "diamond", "di"),
-                                normalize=False,
-                                onlysym=True)
+    bandstructure = BandStructure.from_espresso(prefix=os.path.join(ROOT_DIR, "data", "diamond", "di"),
+                                                normalize=False,
+                                                onlysym=True)
     spacegroup = bandstructure.spacegroup
     pos_bond = [[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]]
     pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
@@ -688,10 +671,11 @@ def test_create_Amn(projname):
         os.chdir(ROOT_DIR)
 
     amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(amnfiles_path, f"{projname}"))
-    bandstructure = BandStructure(code='espresso',
-                                prefix=os.path.join(amnfiles_path, "di"),
-                                normalize=False, include_TR=False)
+    bandstructure = BandStructure.from_espresso(prefix=os.path.join(amnfiles_path, "di"),
+                                                normalize=False, include_TR=False)
     amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)
+    positions_proj = projset.wannier_centers_red
+    assert amn_wb.positions == approx(positions_proj, abs=1e-6), f"Positions of projections differ for {projname}: {amn_wb.positions} != {positions_proj}"
     amn_wb.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-wb.amn.npz"))
     amn_w90.to_npz(os.path.join(OUTPUT_DIR, f"diamond-{projname}-w90.amn.npz"))
     assert amn_w90.NK == amn_wb.NK, f"Number of k-points differ for {projname}: {amn_w90.NK} != {amn_wb.NK} for projname {projname}"

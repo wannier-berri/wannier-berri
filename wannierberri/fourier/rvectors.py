@@ -1,11 +1,15 @@
 
 from functools import cached_property
+import logging
 from typing import Iterable
 import warnings
 
 import numpy as np
 from ..utility import clear_cached, iterate3dpm, iterate_nd
 from .fft import FFT_R_to_k, execute_fft
+
+
+logger = logging.getLogger(__name__)
 
 
 class Rvectors:
@@ -29,19 +33,15 @@ class Rvectors:
 
         if shifts_left_red is None:
             self.shifts_left_red = np.zeros((1, 3), dtype=float)
-            self.has_shifts_left = False
         else:
             self.shifts_left_red = np.array(shifts_left_red)
-            self.has_shifts_left = True
 
 
 
         if shifts_right_red is None:
             self.shifts_right_red = self.shifts_left_red
-            self.has_shifts_right = False
         else:
             self.shifts_right_red = np.array(shifts_right_red)
-            self.has_shifts_right = True
 
         self._NKFFTrec = None
         if iRvec is not None:
@@ -51,8 +51,15 @@ class Rvectors:
         self.fft_R2k_set = False
         self.fft_q2R_set = False
 
-        # print(f"created {self.nRvec} Rvectors with shilts left \n reduced coordinates {self.shifts_left_red} \n and right shifts \n reduced coordinates \n{self.shifts_right_red}\n cartesian coordinates \n{self.shifts_left_cart} \n and \n{self.shifts_right_cart}\n")
 
+    def get_reversed(self):
+        """
+        Return a new Rvectors object with the left and right shifts reversed.
+        """
+        return Rvectors(lattice=self.lattice,
+                        shifts_left_red=self.shifts_right_red,
+                        shifts_right_red=self.shifts_left_red,
+                        iRvec=-self.iRvec)
 
     def set_Rvec(self, mp_grid, ws_tolerance=1e-3):
         """
@@ -69,7 +76,7 @@ class Rvectors:
             if ws_toleranece is negative, the absolute value is used and all shifts are considered different with tolerance 1e-8 (This is mainly to comply with legacy tests)
             TODO: this should be removed in the future, and test data should be updated
         """
-        print("setting Rvec")
+        logger.debug("setting Rvec")
         assert len(mp_grid) == 3, "NK should be a list of 3 integers"
         self.mp_grid = mp_grid
         self._NKFFTrec = mp_grid
@@ -98,6 +105,25 @@ class Rvectors:
         for i, iRvec in enumerate(self.iRvec_list):
             self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
 
+    def as_dict(self):
+        return dict(iRvec=self.iRvec,
+                    shifts_left_red=self.shifts_left_red,
+                    shifts_right_red=self.shifts_right_red)
+
+    @classmethod
+    def read_dict(cls, dic_in):
+        dic_out = {}
+        if 'iRvec' in dic_in:
+            dic_out['iRvec'] = np.array(dic_in['iRvec'], dtype=int)
+        elif 'arr_0' in dic_in:
+            dic_out['iRvec'] = np.array(dic_in['arr_0'], dtype=int)
+        else:
+            raise ValueError(f"dic must contain 'iRvec' or 'arr_0', but contains {list(dic_in.keys())}")
+        if 'shifts_left_red' in dic_in:
+            dic_out['shifts_left_red'] = np.array(dic_in['shifts_left_red'])
+        if 'shifts_right_red' in dic_in:
+            dic_out['shifts_right_red'] = np.array(dic_in['shifts_right_red'])
+        return dic_out
 
     def copy(self):
         """
@@ -129,7 +155,7 @@ class Rvectors:
 
         XX_R should have dimensions (num_wann, num_wann, len(iRvec_old), ....)
         """
-        print(f"remapping {XX_R.shape} ")
+        logger.info(f"remapping {XX_R.shape} ")
         assert (XX_R.shape[1] == self.nshifts_left) or (self.nshifts_left == 1)
         assert (XX_R.shape[2] == self.nshifts_right) or (self.nshifts_right == 1)
         XX_R_sum_old = XX_R.sum(axis=0)
@@ -246,7 +272,7 @@ class Rvectors:
         XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2, 3, 4, 5))
         num_wann_r = XX_RR_grid.shape[6]
         num_wann_l = XX_RR_grid.shape[8]
-        print(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
+        logger.debug(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
         nl = self.nshifts_left
         nr = self.nshifts_right
         assert (nr == 1) or (XX_RR_grid.shape[6] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
@@ -254,7 +280,7 @@ class Rvectors:
         assert (nl == 1) or (XX_RR_grid.shape[8] == nl), f"XX_RR_grid {XX_RR_grid.shape} should have {nl} right shifts"
 
         shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,) * 2 + XX_RR_grid.shape[9:]
-        print(f"shape_new {shape_new}")
+        logger.debug(f"shape_new {shape_new}")
         XX_RR_new = np.zeros(shape_new, dtype=XX_RR_grid.dtype)
         for a in range(num_wann_r):
             ia = 0 if self.nshifts_right == 1 else a
@@ -264,7 +290,7 @@ class Rvectors:
                     ic = 0 if self.nshifts_left == 1 else c
                     ishift1 = self.shift_index[ic, ia]
                     ishift2 = self.shift_index[ic, ib]
-                    print(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
+                    logger.debug(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
                     for iRi1, iRm1, nd1 in zip(self.iRvec_index_list[ishift1],
                                             self.iRvec_mod_list[ishift1],
                                             self.Ndegen_list[ishift1]):
@@ -304,6 +330,21 @@ class Rvectors:
         self.shifts_right_red = shifts_right_red_new
         self.clear_cached()
 
+    def transform(self, symop):
+        """
+        Transform the Rvectors according to the given rotation and translation.
+
+        Parameters
+        ----------
+        rotation_latt : np.ndarray
+            The rotation matrix in lattice coordinates.
+        translation_latt : np.ndarray
+            The translation vector in lattice coordinates.
+        """
+        self.shifts_left_red = symop.transform_r(self.shifts_left_red)
+        self.shifts_right_red = symop.transform_r(self.shifts_right_red)
+        self.iRvec = symop.transform_r(self.iRvec, translation=False)
+        self.clear_cached()
 
     def reorder(self, order_left=None, order_right=None):
         """
@@ -394,6 +435,15 @@ class Rvectors:
         R = np.array(np.round(R), dtype=int).tolist()
         return self.iRvec.tolist().index(R)
 
+    def add_minus_R(self, XX_R_dict):
+        mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
+        notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
+        Radd = -self.iRvec[notfound]
+        self.iRvec = np.concatenate((self.iRvec, Radd), axis=0)
+        for key in XX_R_dict.keys():
+            XX_R_dict[key] = np.concatenate((XX_R_dict[key], np.zeros((len(Radd),) + XX_R_dict[key].shape[1:], dtype=XX_R_dict[key].dtype)), axis=0)
+        self.clear_cached()
+
     @cached_property
     def reverseR(self):
         """indices of R vectors that has -R in irvec, and the indices of the corresponding -R vectors."""
@@ -438,37 +488,50 @@ class Rvectors:
             _X = self.get_R_mat(key).copy()
             assert (np.max(abs(_X - self.conj_XX_R(key=key))) < 1e-8), f"{key} should obey X(-R) = X(R)^+"
         else:
-            self.logfile.write(f"{key} is missing, nothing to check\n")
+            logger.info(f"{key} is missing, nothing to check\n")
 
-    def set_fft_R_to_k(self, NK, num_wann, fftlib='fftw', dK=(0, 0, 0)):
+    def set_fft_R_to_k(self, NK, fftlib='fftw', dK=(0, 0, 0), k_list=None):
         """
         set the FFT for the R to k conversion
 
         Parameters
         ----------
         NK : tuple of 3 integers
-            The number of k-points in the Monkhorst-Pack grid
+            The number of k-points in the FFT grid
         num_wann : int
             The number of Wannier functions
         fftlib : str
             The FFT library to use ('fftw' or 'numpy' or 'slow')
         dK : tuple of 3 floats in range [0,1)
             the shift of the grid in coordinates of the reciprocal lattice divided by the grid
+        k_list : array of shape (nk, 3)
+            the list of k-points in reduced coordinates, overrides dK and NK if provided. 
         """
-        self.dK = np.array(dK)
-        self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
+        if k_list is not None:
+            self.fft_R_to_k = FFT_R_to_k(
+                iRvec=self.iRvec,
+                k_list=k_list,
+                num_wann_left=self.nshifts_left,
+                num_wann_right=self.nshifts_right,
+                fftlib="slow")
+        else:
+            self.dK = np.array(dK)
+            self.expdK = np.exp(2j * np.pi * self.iRvec.dot(self.dK))
 
-        self.fft_R_to_k = FFT_R_to_k(
-            iRvec=self.iRvec,
-            NKFFT=NK,
-            num_wann=num_wann,
-            fftlib=fftlib)
+            self.fft_R_to_k = FFT_R_to_k(
+                iRvec=self.iRvec,
+                NKFFT=NK,
+                num_wann_left=self.nshifts_left,
+                num_wann_right=self.nshifts_right,
+                fftlib=fftlib)
         self.fft_R2k_set = True
 
     def apply_expdK(self, XX_R):
         """ apply the exp(2 pi i dK R) to the matrix elements in real space
             XX_R should be of shape (num_wann, num_wann, nRvec, ...)
             """
+        if self.fft_R_to_k.lib == "slow_path":
+            return XX_R
         assert XX_R.shape[0] == self.nRvec, f"XX_R {XX_R.shape} should have {self.nRvec} R-vectors"
         shape = [self.expdK.shape[0]] + [1] * (XX_R.ndim - 1)
         return XX_R * self.expdK.reshape(shape)
@@ -512,7 +575,6 @@ class Rvectors:
             kpt_red = np.array(kpt_red)
             kpt_red_mp = kpt_red * self.mp_grid[None, :]
             kpt_red_mp_int = np.round(kpt_red_mp).astype(int)
-            # print(f"{kpt_red=} \n {kpt_red_mp_int=} \n {kpt_red_mp=}")
             assert kpt_red.shape == (np.prod(self.mp_grid), 3), f"kpt_red {kpt_red} should be an array of shape NK_mp x 3 (NK_mp={np.prod(self.mp_grid)})"
             assert np.allclose(kpt_red_mp_int, kpt_red_mp), f"kpt_red {kpt_red} should be a uniform grid of  {self.mp_grid} kpoints"
         else:
@@ -596,3 +658,47 @@ class WignerSeitz:
         iRvec = np.array(iRvec)
         Ndegen = np.array(Ndegen)
         return iRvec, Ndegen, iRvec % self.mp_grid
+
+
+def merge_Rvectors(rvec_list, shifts_left_red=None, shifts_right_red=None):
+    """
+    Merge several Rvectors objects into a new one.
+
+    Parameters
+    ----------
+    rvec_list : list of Rvectors
+        The list of Rvectors objects to merge.
+
+    Returns
+    -------
+    Rvectors
+        A new Rvectors object containing the merged data from the input list.
+    R_map_list : list of np.ndarray
+        A list of mapping arrays, where each array maps the R-vectors of the corresponding input Rvectors object to the R-vectors of the merged Rvectors object.
+    """
+    if shifts_right_red is None:
+        shifts_right_red = shifts_left_red
+    if len(rvec_list) == 0:
+        raise ValueError("rvec_list is empty")
+    rvec0 = rvec_list[0]
+    lattice = rvec0.lattice
+    if shifts_left_red is None:
+        shifts_left_red = rvec0.shifts_left_red
+    if shifts_right_red is None:
+        shifts_right_red = rvec0.shifts_right_red
+
+    dim = rvec0.dim
+
+    iRvec_tuple_set = set(tuple(R) for R in rvec0.iRvec)
+    for rvec in rvec_list[1:]:
+        assert np.allclose(rvec.lattice, lattice), "lattices are not the same"
+        assert rvec.dim == dim, "dimensions are not the same"
+        iRvec_tuple_set.update(tuple(R) for R in rvec.iRvec)
+    iRvec_merged = list(iRvec_tuple_set)
+    iRvec_map_list = []
+    for rvec in rvec_list:
+        iRvec_map = np.array([iRvec_merged.index(tuple(R)) for R in rvec.iRvec])
+        iRvec_map_list.append(iRvec_map)
+    rvec_merged = Rvectors(lattice=lattice, shifts_left_red=shifts_left_red,
+                          shifts_right_red=shifts_right_red, iRvec=iRvec_merged, dim=dim)
+    return rvec_merged, iRvec_map_list

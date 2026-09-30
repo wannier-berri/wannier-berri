@@ -5,6 +5,8 @@ from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 from .w90file import W90_file, auto_kptirr, check_shape
+import logging
+logger = logging.getLogger(__name__)
 
 
 class AMN(W90_file):
@@ -36,10 +38,25 @@ class AMN(W90_file):
     """
 
     extension = "amn"
+    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor"]
 
-    def __init__(self, data, NK=None):
+    def __init__(self,
+                 data,
+                 NK=None,
+                 positions=None,
+                 orbitals=None,
+                 radial_nodes_list=None,
+                 basis_list=None,
+                 spread_list=None,
+                 spinor=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
+        self.positions = positions
+        self.orbitals = orbitals
+        self.radial_nodes_list = radial_nodes_list
+        self.basis_list = basis_list
+        self.spread_list = spread_list
+        self.spinor = spinor
 
     @property
     def num_wann(self):
@@ -51,7 +68,7 @@ class AMN(W90_file):
         if npar is None:
             npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
-        print(f"reading {seedname}.amn: " + f_amn_in[0].strip())
+        logger.debug(f"reading {seedname}.amn: " + f_amn_in[0].strip())
         s = f_amn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
         block = NW * NB
@@ -64,7 +81,7 @@ class AMN(W90_file):
     def to_w90_file(self, seedname):
         f_amn_out = open(seedname + ".amn", "w")
         f_amn_out.write(f"created by WannierBerri on {datetime.now()} \n")
-        print(f"writing {seedname}.amn: ")
+        logger.debug(f"writing {seedname}.amn: ")
         f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
             for iw in range(self.NW):
@@ -119,7 +136,7 @@ class AMN(W90_file):
         radial_nodes_list = []
         basis_list = []
         spread_list = []
-        print(f"Creating amn. Using projections_set \n{projections}")
+        logger.info(f"Creating amn. Using projections_set \n{projections}")
         for proj in projections.projections:
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
@@ -128,13 +145,17 @@ class AMN(W90_file):
             spread_list += [proj.spread_factor] * proj.num_wann_scalar
             basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site_scalar)]
             if verbose:
-                print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+                logger.info(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
         spinor = projections.spinor
+        positions = np.array(positions)
+        orbitals = np.array(orbitals)
+        radial_nodes_list = np.array(radial_nodes_list)
+        basis_list = np.array(basis_list)
 
 
 
         if verbose:
-            print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
+            logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
@@ -173,7 +194,7 @@ class AMN(W90_file):
                 data[ikirr] = np.array(datak).T
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
-        return AMN(data=data, NK=NK)
+        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list, spread_list=spread_list, spinor=spinor)
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)
@@ -192,6 +213,6 @@ class AMN(W90_file):
         result = {}
         for ik, data in self.data.items():
             proj = (np.abs(data[:, select_WF])**2).sum(axis=1)
-            print(f"ik={ik} proj = {proj}")
+            logger.info(f"ik={ik} proj = {proj}")
             result[ik] = (proj >= threshold)
         return result
