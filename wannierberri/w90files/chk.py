@@ -24,7 +24,7 @@ class CheckPoint(SavableNPZ):
     """
 
     npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_red"]
-    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands", "frozen_bands"]
     # npz_keys_dict_int = ["v_matrix"]
     npz_keys_dict_int_optional = ["v_matrix"]
     extension = "chk"
@@ -44,6 +44,7 @@ class CheckPoint(SavableNPZ):
                 mp_grid=None,
                 kmesh_tol=1e-7,
                 bk_complete_tol=1e-5,
+                frozen_bands=None
     ):
         if real_lattice is not None:
             real_lattice = np.array(real_lattice, dtype=float)
@@ -85,6 +86,7 @@ class CheckPoint(SavableNPZ):
         self.kmesh_tol = kmesh_tol
         self.bk_complete_tol = bk_complete_tol
 
+
         if selected_bands is not None:
             self.selected_bands = selected_bands
 
@@ -110,6 +112,11 @@ class CheckPoint(SavableNPZ):
         self.num_wann = num_wann
         self.num_bands = num_bands
         self.num_kpts = num_kpts
+
+        if frozen_bands is not None:
+            self.frozen_bands = frozen_bands
+        else:
+            self.frozen_bands = {ik: np.zeros((self.num_bands,), dtype=bool) for ik in range(self.num_kpts)}
 
 
     def get_selected_bands(self):
@@ -195,6 +202,56 @@ class CheckPoint(SavableNPZ):
                    kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
                    kpt_red=kpt_red, mp_grid=mp_grid,
         )
+
+
+    # def to_w90_file(self, seedname):
+    #     seedname = seedname.strip()
+    #     from .fortio import FortranFileW
+    #     FOUT = FortranFileW(seedname + '.chk')
+    #     print('Writing restart information to file ' + seedname + '.chk :')
+    #     def writeint(arr):
+    #         FOUT.write_record('i4', np.array(arr, dtype=int))
+    #     def writefloat(arr):
+    #         FOUT.write_record('f8', np.array(arr, dtype=float))
+    #     def writestr(s):
+    #         FOUT.write_record('a', s)
+    #     def writecomplex(arr):
+    #         arr = np.array(arr, dtype=complex)
+    #         arr = np.column_stack((arr.real, arr.imag)).flatten()
+    #         FOUT.write_record('f8', arr)
+    #     writestr("Written by wannierberri on " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    #     writeint([self.num_bands])
+    #     writeint([0])  # num_exclude_bands
+    #     writeint([])  # exclude_bands
+    #     writefloat(self.real_lattice.flatten(order='F'))
+    #     writefloat(self.recip_lattice.flatten(order='F'))
+    #     writeint([self.num_kpts])
+    #     writeint(self.mp_grid)
+    #     writefloat(self.kpt_red.flatten())
+    #     writeint([0])  # nntot
+    #     writeint([self.num_wann])
+    #     writestr("Written by wannierberri on " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    #     writeint([0])  # have_disentangled
+    #     # print(f"have_disentangled={have_disentangled}")
+    #     have_disentangled = True
+    #     if have_disentangled:
+    #         writefloat([555.555])  # omega_invariant
+    #         writeint(self.lwindow.flatten())
+    #         writeint([self.num_bands]*self.num_kpts)  # ndimwin
+    #         writecomplex(self.u_matrix_opt.swapaxes(1, 2).flatten())
+    #     writecomplex( [np.eye(self.num_wann, dtype=complex)] * self.num_kpts)
+    #     writecomplex([]) # skip m_matrix
+
+    #     # write
+    #     wannier_centers_cart = readfloat().reshape((num_wann, 3))
+    #     wannier_spreads = readfloat().reshape((num_wann))
+    #     print(f"Time to read .chk : {time() - t0}")
+    #     return cls(real_lattice=real_lattice,
+    #                v_matrix=v_matrix,
+    #                wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
+    #                kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
+    #                kpt_red=kpt_red, mp_grid=mp_grid,
+    #     )
 
 
     @property
@@ -540,3 +597,58 @@ class CheckPoint(SavableNPZ):
             self.num_bands = sum(selected_bands_bool)
             self.selected_bands = selected_bands
         return self
+
+    def set_frozen(self, frozen, kpt2kptirr):
+        frozen_nbands = np.zeros((self.num_kpts, self.num_bands), dtype=bool)
+        for ik, ikirr in enumerate(kpt2kptirr):
+            frozen_nbands[ik] = frozen[ikirr]
+        self.frozen_bands = frozen_nbands
+
+    def write_epw_ukk(self, file):
+        """
+        Returns the string of the EPW `.ukk` file
+        """
+        warnings.warn("write_epw_ukk is deprecated, use write_epw instead", DeprecationWarning)
+        return self.write_epw(file)
+
+    def write_epw(self, file):
+        """
+        Returns the string of the EPW `.ukk` file
+        """
+        if isinstance(file, str):
+            io = open(file, 'w')
+        else:
+            io = file
+
+        selected_bands = self.get_selected_bands()
+        io.write(f"{np.min(selected_bands) + 1} {np.max(selected_bands) + 1}\n")
+
+        # the unitary matrices
+        for ik in range(self.num_kpts):
+            for ib in range(self.num_bands):
+                for iw in range(self.num_wann):
+                    u = self.v_matrix[ik][ib, iw]
+                    io.write("(%25.18E,%25.18E)\n" % (u.real, u.imag))
+
+        # needs also lwindow when disentanglement is used
+        for ik in range(self.num_kpts):
+            for ib in range(self.num_bands):
+                if self.frozen_bands[ik][ib]:
+                    io.write("T\n")
+                else:
+                    io.write("F\n")
+
+
+        #  Write T for excluded bands, F for included bands
+        for ex in selected_bands:
+            if not ex:
+                io.write("T\n")
+            else:
+                io.write("F\n")
+
+        # now write the Wannier centers to files
+        for iw in range(self.num_wann):
+            io.write("%22.12E  %22.12E  %22.12E\n" % tuple(self.wannier_centers_cart[iw]))
+
+        if isinstance(file, str):
+            io.close()

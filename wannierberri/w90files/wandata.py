@@ -355,7 +355,8 @@ class WannierData:
                 seedname="wannier90",
                 files=None,
                 ignore_missing_files=True,
-                irreducible=False):
+                irreducible=False,
+                allow_pickle=True):
         self = cls()
         self.seedname = copy(seedname)
         if files is None:
@@ -374,15 +375,15 @@ class WannierData:
                 if f == "symmetrizer":
                     from ..symmetry.sawf import SymmetrizerSAWF
                     filepath = seedname + ".sawf.npz"
-                    val = SymmetrizerSAWF.from_npz(filepath)
+                    val = SymmetrizerSAWF.from_npz(filepath, allow_pickle=allow_pickle)
                 elif f in ["mmn_ud", "mmn_du"]:
                     from .mmn import MMN
                     filepath = seedname + "." + f + ".npz"
-                    val = MMN.from_npz(filepath)
+                    val = MMN.from_npz(filepath, allow_pickle=allow_pickle)
                 elif f in FILES_CLASSES:
                     cls = FILES_CLASSES[f]
                     filepath = seedname + "." + cls.extension + ".npz"
-                    val = cls.from_npz(filepath)
+                    val = cls.from_npz(filepath, allow_pickle=allow_pickle)
                 else:
                     raise ValueError(f"file {f} is not a valid w90 file")
                 logger.info(f"setting file {f} from npz {filepath} as {val}")

@@ -170,7 +170,6 @@ def wannierise(wandata,
                         warnings.warn(str(e))
 
 
-
     if not wandata.has_file("chk"):
         from ..w90files.chk import CheckPoint
         wandata.set_file("chk", CheckPoint(num_kpts=NK,
@@ -182,6 +181,7 @@ def wannierise(wandata,
                          allow_selected_bands=True
                                            )  # num_wann will be set later from amn
 
+    wandata.chk.set_frozen(frozen=frozen, kpt2kptirr=symmetrizer.kpt2kptirr)
 
     if init == "amn":
         amn = {kpt: wandata.amn.data[kpt] for kpt in kptirr}
