@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 from collections.abc import Iterable
@@ -95,7 +94,7 @@ def process(paralfunc,
         # ray.wait() returns at most `num_returns` ready refs, which need not include
         # the ones returned in the previous call. Keep a persistent mask of the
         # collected results, so that every K-point is added exactly once.
-        remotes_collected = np.zeros(num_remotes, dtype=bool)
+        remotes_collected_bool = np.zeros(num_remotes, dtype=bool)
         while True:
 
             # the progress will be printed every minute
@@ -105,13 +104,14 @@ def process(paralfunc,
                 timeout=60)
 
             remotes_calculated = set(remotes_calculated)
-            for ir in range(num_remotes):
-                if not remotes_collected[ir] and remotes[ir] in remotes_calculated:
-                    res = ray.get(remotes[ir])
-                    Kp = dK_list[ir]
-                    result_sum += set_result(Kp, res)
-                    remotes_collected[ir] = True
-            num_remotes_calculated = int(remotes_collected.sum())
+            remotes_calculated_bool = np.array([r in remotes_calculated for r in remotes])
+            remotes_calculated_diff = remotes_calculated_bool & ~remotes_collected_bool
+            for ir in np.where(remotes_calculated_diff)[0]:
+                res = ray.get(remotes[ir])
+                Kp = dK_list[ir]
+                result_sum += set_result(Kp, res)
+            remotes_collected_bool[remotes_calculated_diff] = True
+            num_remotes_calculated = int(remotes_collected_bool.sum())
             if num_remotes_calculated >= num_remotes:
                 break
 
