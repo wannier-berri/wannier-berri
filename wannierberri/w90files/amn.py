@@ -5,6 +5,8 @@ from ..symmetry.projections import ProjectionsSet
 
 from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 from .w90file import W90_file, auto_kptirr, check_shape
+import logging
+logger = logging.getLogger(__name__)
 
 
 class AMN(W90_file):
@@ -66,7 +68,7 @@ class AMN(W90_file):
         if npar is None:
             npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
-        print(f"reading {seedname}.amn: " + f_amn_in[0].strip())
+        logger.debug(f"reading {seedname}.amn: " + f_amn_in[0].strip())
         s = f_amn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
         block = NW * NB
@@ -79,7 +81,7 @@ class AMN(W90_file):
     def to_w90_file(self, seedname):
         f_amn_out = open(seedname + ".amn", "w")
         f_amn_out.write(f"created by WannierBerri on {datetime.now()} \n")
-        print(f"writing {seedname}.amn: ")
+        logger.debug(f"writing {seedname}.amn: ")
         f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
             for iw in range(self.NW):
@@ -134,7 +136,7 @@ class AMN(W90_file):
         radial_nodes_list = []
         basis_list = []
         spread_list = []
-        print(f"Creating amn. Using projections_set \n{projections}")
+        logger.info(f"Creating amn. Using projections_set \n{projections}")
         for proj in projections.projections:
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
@@ -143,7 +145,7 @@ class AMN(W90_file):
             spread_list += [proj.spread_factor] * proj.num_wann_scalar
             basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site_scalar)]
             if verbose:
-                print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+                logger.info(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
         spinor = projections.spinor
         positions = np.array(positions)
         orbitals = np.array(orbitals)
@@ -153,7 +155,7 @@ class AMN(W90_file):
 
 
         if verbose:
-            print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
+            logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
@@ -211,6 +213,6 @@ class AMN(W90_file):
         result = {}
         for ik, data in self.data.items():
             proj = (np.abs(data[:, select_WF])**2).sum(axis=1)
-            print(f"ik={ik} proj = {proj}")
+            logger.info(f"ik={ik} proj = {proj}")
             result[ik] = (proj >= threshold)
         return result

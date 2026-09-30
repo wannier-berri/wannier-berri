@@ -13,7 +13,7 @@ import pytest
     "system_Chiral_left_TR",
     "system_Fe_WB_irreducible",
     "system_Fe_sym_W90",
-    "system_Fe_gpaw_soc_z_symmetrized"
+    "system_Fe_gpaw_soc_z"
 ], indirect=True)
 def test_symmetry(system):
 

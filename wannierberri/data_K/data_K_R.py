@@ -13,7 +13,7 @@ class Data_K_R(Data_K, System_R):
 
         if system.rvec is not None:
             self.rvec = system.rvec.copy()
-            self.rvec.set_fft_R_to_k(NK=self.NKFFT, num_wann=self.num_wann,
+            self.rvec.set_fft_R_to_k(NK=self.NKFFT,
                                 fftlib=self.fftlib,
                                 dK=self.dK, k_list=self.k_list)
 
@@ -26,7 +26,6 @@ class Data_K_R(Data_K, System_R):
         return self.rvec.R_to_k(self.Ham_R, hermitian=True)
 
     def get_R_mat(self, key):
-        # print(f"data_k : get_R_mat({key})")
         memoize_R = ['Ham', 'AA', 'OO', 'BB', 'CC', 'CCab', 'GG', 'soc', 'rotAA', 'FF']
         if self.has_R_mat(key):
             return self._XX_R[key]
@@ -44,6 +43,8 @@ class Data_K_R(Data_K, System_R):
                 self.set_R_mat(key, res)
         return res
 
+    def get_k_mat(self, key, der=0, hermitian=False):
+        return self.rvec.R_to_k(self.get_R_mat(key).copy(), der=der, hermitian=hermitian)
 
     def rotAA(self):
         # We do not multiply by expdK, because it is already accounted in AA_R
@@ -69,26 +70,23 @@ class Data_K_R(Data_K, System_R):
     def Xbar(self, name, der=0):
         key = (name, der)
         if key not in self._bar_quantities:
-            # print(f"data_k : Xbar({name}, der={der}) has OO : {self.system.has_R_mat('OO')} has_GG : {self.system.has_R_mat('GG')}")
             if name == 'GG' and not self.system.has_R_mat('GG'):
-                print("data_k : using FF to get GG")
                 res = self.Xbar('FF', der=der)
                 res = 0.5 * (res + res.swapaxes(3, 4))
                 res = 0.5 * (res + res.swapaxes(1, 2).conj())
             elif name == 'OO' and not self.system.has_R_mat('OO'):
-                # print("data_k : using FF to get OO")
                 res = self.Xbar('FF', der=der)
                 res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
                 res = 0.5 * (res + res.swapaxes(1, 2).conj())
             else:
-                res = self._R_to_k_H(
+                res = self.R_to_k_H(
                     self.get_R_mat(name).copy(),
                     der=der,
                     hermitian=(name in ['AA', 'SS', 'OO', 'rotAA', ]))
             self._bar_quantities[key] = res
         return self._bar_quantities[key]
 
-    def _R_to_k_H(self, XX_R, der=0, hermitian=True):
+    def R_to_k_H(self, XX_R, der=0, hermitian=True):
         """ converts from real-space matrix elements in Wannier gauge to
             k-space quantities in k-space.
             der [=0] - defines the order of comma-derivative

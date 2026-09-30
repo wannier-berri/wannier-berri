@@ -21,14 +21,6 @@ comments = {
 }
 
 
-def hlp():
-    _hlp = "Available named quantities:\n"
-    for q, c in available_quantities.items():
-        _hlp += f" '{q}' : {c.comment} \n"
-        if q in comments:
-            _hlp += f"       Note : {comments[q]}\n"
-    return _hlp
-
 
 def evaluate_k(system=None,
                k=(0., 0., 0.),
@@ -82,12 +74,6 @@ def evaluate_k(system=None,
         param_formula = {}
     if parameters_K is None:
         parameters_K = {}
-
-    # without parameters - just print the available options
-    if system is None:
-        print(__doc__)
-        print(hlp())
-        return
 
     if data_k_class is None:
         data_k_class = get_data_k_class_from_system(system)

@@ -1,3 +1,9 @@
+from packaging import version
+from ..symmetry.wyckoff_position import split_into_orbits
+from ..symmetry.point_symmetry import PointGroup
+from ..utility import clear_cached, one2three, pauli_xyz
+from .system import System, num_cart_dim
+from ..fourier.rvectors import Rvectors
 import copy
 import warnings
 import numpy as np
@@ -5,14 +11,8 @@ import os
 from functools import cached_property
 from collections import defaultdict
 import glob
-
-
-from ..fourier.rvectors import Rvectors
-from .system import System
-from ..utility import clear_cached, one2three, pauli_xyz
-from ..symmetry.point_symmetry import PointGroup
-from ..symmetry.wyckoff_position import split_into_orbits
-from packaging import version
+import logging
+logger = logging.getLogger(__name__)
 
 
 class System_R(System):
@@ -174,6 +174,9 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def add_minus_R(self):
+        self.rvec.add_minus_R(self._XX_R)
+
     def clear_R_mat(self, keys):
         if not isinstance(keys, (list, tuple)):
             keys = [keys]
@@ -244,10 +247,10 @@ class System_R(System):
         if not silent:
             logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
             logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
-        print(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
+        logger.info(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
         self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
-        print(f"number o R-vectors after symmetrization: {len(iRvec)}")
+        logger.info(f"number o R-vectors after symmetrization: {len(iRvec)}")
         self.clear_cached_wcc()
         rvec_new = Rvectors(
             lattice=self.real_lattice,
@@ -369,7 +372,7 @@ class System_R(System):
                          "it is recommentded to name atoms at different wyckoff positions differently:\n"
                          "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
-            print(f"pos_list: {suborbit_list}")
+            logger.info(f"pos_list: {suborbit_list}")
             if ";" in orbital:
                 warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
                               "But you need to do it consistently in wannier90 ")
@@ -378,15 +381,15 @@ class System_R(System):
                 proj = Projection(position_num=pos_loc, orbital=orbital, spacegroup=spacegroup,
                                   do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
-                print(f"proj: {proj}")
+                logger.info(f"proj: {proj}")
                 num_wann_per_position = proj.num_wann_per_site
-                print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
+                logger.info(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:
                     for j in range(num_wann_per_position):
                         new_wann_indices.append(num_wann_loc + i * num_wann_per_position + j)
             num_wann_loc = len(new_wann_indices)
 
-        print(f"new_wann_indices: {new_wann_indices}")
+        logger.info(f"new_wann_indices: {new_wann_indices}")
         self.reorder(new_wann_indices)
         symmetrizer = SymmetrizerSAWF.from_spacegroup_and_projections(spacegroup=spacegroup, projections=proj_list)
         self.symmetrize2(symmetrizer, silent=silent)
@@ -469,10 +472,11 @@ class System_R(System):
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
-            self.iRvec = self.iRvec[notexclude]
+            self.rvec.iRvec = self.rvec.iRvec[notexclude]
             for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
                 if X in self._XX_R:
                     self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
+            self.rvec.clear_cached()
 
     def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
         """
@@ -562,15 +566,13 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_pointgroup()
         self.check_periodic()
-        logfile = self.logfile
-        logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
-        logfile.write(f"Number of wannier functions: {self.num_wann}\n")
-        logfile.write(f"Number of R points: {self.rvec.nRvec}\n")
-        logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
+        logger.debug(f"Real-space lattice:\n {self.real_lattice}")
+        logger.debug(f"Number of wannier functions: {self.num_wann}")
+        logger.debug(f"Number of R points: {self.rvec.nRvec}")
+        logger.debug(f"Recommended size of FFT grid {self.NKFFT_recommended}")
 
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None, ws_dist_tol=1e-5):
-        logfile = self.logfile
         try:
             mp_grid = one2three(mp_grid)
             assert mp_grid is not None
@@ -583,7 +585,7 @@ class System_R(System):
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)
         for key, val in self._XX_R.items():
-            logfile.write(f"using new ws_dist for {key}\n")
+            logger.debug(f"using new ws_dist for {key}\n")
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
@@ -671,10 +673,11 @@ class System_R(System):
         overwrite : bool
             if the directory already exiists, it will be overwritten
         """
+        super().to_npz(path)
         logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
-        print(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
+        logger.info(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 
@@ -686,12 +689,13 @@ class System_R(System):
         for key in properties:
             logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
-            print(f"saving {key} to {fullpath}")
+            logger.info(f"saving {key} to {fullpath}")
             if key == 'iRvec':
-                val = self.rvec.iRvec
+                val = self.rvec
             else:
                 val = getattr(self, key)
-            if key in ['pointgroup']:
+
+            if key in ['pointgroup', 'iRvec']:
                 np.savez(fullpath, **val.as_dict())
             elif key in ['cell']:
                 np.savez(fullpath, **val)
@@ -750,15 +754,16 @@ class System_R(System):
         logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
-        properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
+        properties = [x for x in all_names if not x.startswith('_XX_R_') and not x.startswith('theta') and x not in exclude_properties]  # This is very unstable, TODO: write a list of possible properties
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
+        logger.debug("properties to load: ", properties)
         for key in properties:
             if key in keys_processed:
                 continue
-            logfile.write(f"loading {key}")
-            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
+            logfile.write(f"loading {key}\n ")
+            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=True)
 
             # pointgroup was previouslly named symgroup. This is for backward compatibility
             if key == 'symgroup':
@@ -768,16 +773,21 @@ class System_R(System):
 
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
-            elif key_loc == 'cell':
+            elif key_loc in ['cell', 'iRvec']:
                 val = dict(**a)
             else:
                 val = a['arr_0']
 
             if key == "iRvec":
+                logger.debug(f"{val=}")
+                rvecdict = Rvectors.read_dict(val)
+                ## legacy - to read old systems, where the shifts are not written in the Rvectors file.
+                if "shifts_left_red" not in rvecdict:
+                    rvecdict["shifts_left_red"] = self.wannier_centers_red
+                if "shifts_right_red" not in rvecdict:
+                    rvecdict["shifts_right_red"] = self.wannier_centers_red
                 self.rvec = Rvectors(lattice=self.real_lattice,
-                                     iRvec=val,
-                                     shifts_left_red=self.wannier_centers_red
-                                     )
+                                     **rvecdict)
             elif "key" == "pointgroup":
                 self.set_pointgroup(pointgroup=val)
             else:
@@ -795,7 +805,7 @@ class System_R(System):
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
-            logfile.write(" - Ok!\n")
+            logfile.write(f"loading {key} - Ok!\n")
         return self
 
     @classmethod
@@ -898,3 +908,34 @@ class System_R(System):
         """
         from .system_sparse import get_system_sparse
         return get_system_sparse(*args, **kwargs)
+
+    def make_supercell(self, supercell_matrix, **parameters):
+        """
+        Create a supercell of the system.
+        see :func:`~wannierberri.system.system_supercell.get_system_supercell` for input data and details
+        """
+        from .system_supercell import get_system_supercell
+        return get_system_supercell(self, supercell_matrix, **parameters)
+
+
+    def transform(self, symop):
+        wannier_centers_red = self.wannier_centers_red
+        wannier_centers_red_new = symop.transform_r(wannier_centers_red)
+        self.set_wannier_centers(wannier_centers_red=wannier_centers_red_new)
+        self.rvec.transform(symop)
+        self.clear_cached_wcc()
+        from ..symmetry.sym_wann_2 import parity_I, parity_TR
+        for key in self._XX_R:
+            XX_R = self.get_R_mat(key)
+            XX_R_new = np.copy(XX_R)
+            n_cart = num_cart_dim(key)
+            for _ in range(XX_R.ndim - 3):
+                # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
+                # n_cart times puts dimensions on the right place
+                XX_R_new = np.tensordot(XX_R, symop.rotation_cart, axes=((-n_cart,), (1,)))
+            if symop.inversion:
+                XX_R_new *= (-1)**n_cart * parity_I[key]  # parity of the operator
+            if symop.time_reversal:
+                XX_R_new = XX_R_new.conj() * parity_TR[key]
+            self.set_R_mat(key, XX_R_new, reset=True)
+        return self

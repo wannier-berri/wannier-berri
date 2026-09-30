@@ -16,13 +16,13 @@ ray.init()
 
 def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
     bandstructure = BandStructure.from_gpaw(
-                                calculator_gpaw="Fe-nscf.gpw",
-                                Ecut=150,
-                                normalize=True,
-                                spinor=spinor,
-                                spin_channel=spin_channel,
-                                magmom=[[0, 0, 1]] if spinor else None
-                                )
+        calculator_gpaw="Fe-nscf.gpw",
+        Ecut=150,
+        normalize=True,
+        spinor=spinor,
+        spin_channel=spin_channel,
+        magmom=[[0, 0, 1]] if spinor else None
+    )
     sg = bandstructure.spacegroup
     # proj_s = Projection(position_num=[[0, 0, 0]], orbital='s', spacegroup=sg)
     # proj_p = Projection(position_num=[[0, 0, 0]], orbital='p', spacegroup=sg)
@@ -54,7 +54,7 @@ def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
         print_progress_every=10,
         sitesym=True,
         localise=True,
-
+        localise_num_iter=0
     )
     System_w90(wandata=wandata, symmetrize=True, berry=True).save_npz(save_name)
     wandata.get_file('chk').to_npz(save_name + ".chk.npz")

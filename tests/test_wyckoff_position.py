@@ -24,11 +24,11 @@ def test_contains_position():
     lattice = (cell, atomic_positions, numbers)
     spacegroup = SpaceGroup.from_cell(cell=lattice)
     atoms_wpos = WyckoffPosition(
-                position_str="0.5,0.5,0.5",
-                spacegroup=spacegroup,
-            )
+        position_str="0.5,0.5,0.5",
+        spacegroup=spacegroup,
+    )
     _, std_positions, _ = spglib.standardize_cell(
-        lattice,         
+        lattice,
         to_primitive=True,
     )
     assert atoms_wpos.num_points == 2

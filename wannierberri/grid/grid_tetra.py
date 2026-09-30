@@ -5,6 +5,9 @@ from .Kpoint_tetra import KpointBZtetra
 from .grid import GridAbstract, determineNK
 from ..utility import angle_vectors_deg
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class GridTetra(GridAbstract):
     """ A class containing information about the k-grid.konsisting of tetrahedra
@@ -40,7 +43,6 @@ class GridTetra(GridAbstract):
                                   pointgroup=system.pointgroup, length=None, length_FFT=length_FFT)
 
         self.recip_lattice_reduced = system.recip_lattice / self.FFT[:, None]
-        print("reduced reciprocal lattice : \n", self.recip_lattice_reduced)
         if IBZ_tetra is None:  # divide the full reciprocal unit cell into 5 tetrahedra -
             warnings.warn("irreducible wedge not provided, no use of symmetries")
             tetrahedra = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -51,43 +53,42 @@ class GridTetra(GridAbstract):
                                    ]) - np.array([0.5, 0.5, 0.5])[None, None, :]
         else:
             tetrahedra = np.array(IBZ_tetra)
-        print("using starting tetrahedra with vertices \n", tetrahedra)
+        logger.info("using starting tetrahedra with vertices \n", tetrahedra)
         _weights = np.array([tetra_volume(t) for t in tetrahedra])
-        print(f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
+        logger.info(f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
         if weights is None:
             weights = _weights / sum(_weights)
         else:
             weights = np.array(weights) * _weights
-        print(f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
+        logger.debug(f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
         self.K_list = []
-        print("generating starting K_list")
+        logger.info("generating starting K_list")
         for tetr, w in zip(tetrahedra, weights):
             K = KpointBZtetra(vertices=tetr, K=0, NKFFT=self.FFT, factor=w, basis=self.recip_lattice_reduced,
                               refinement_level=0, split_level=0)
-            print(K)
-            print(K.size)
+            logger.info(f"generated Kpoint: {K}")
             self.K_list.append(K)
 
         if refine_by_volume:
             dkmax = 2 * np.pi / length
             vmax = dkmax ** 3 / np.linalg.det(self.recip_lattice_reduced)
             self.split_tetra_volume(vmax)
-            print("refinement by volume done")
+            logger.info("refinement by volume done")
         if refine_by_size:
             if length_size is None:
                 length_size = 0.5 * length
             dkmax = (2 * np.pi / length_size) * np.sqrt(2)
             self.split_tetra_size(dkmax)
-            print("refinement by size done")
+            logger.info("refinement by size done")
 
     def split_tetra_size(self, dkmax):
         """split tetrahedra that have at lkeast one edge larger than dkmax"""
         while True:
-            print(
+            logger.debug(
                 f"maximal tetrahedron size for now is {self.size_max} ({len(self.K_list)}), we need to refine down to size {dkmax}")
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
-            print("the volume is ", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
-            # print ("sizes now are ",self.sizes)
+            logger.debug(f"the volume is {sum(volumes)}, min: {min(volumes)}, max: {max(volumes)}, mean: {np.mean(volumes)}")
+            # logger.debug(f"sizes now are {self.sizes}" )
             if self.size_max < dkmax:
                 break
             klist = []
@@ -102,9 +103,9 @@ class GridTetra(GridAbstract):
         """split tetrahedra that have at least one edge larger than dkmax"""
         while True:
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
-            print(
+            logger.debug(
                 f"maximal tetrahedron size for now is {max(volumes)} ({len(self.K_list)}), we need to refine down to size {vmax}")
-            print("the volume is ", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
+            logger.debug(f"the volume is {sum(volumes)}, min: {min(volumes)}, max: {max(volumes)}, mean: {np.mean(volumes)}")
             if max(volumes) < vmax:
                 break
             klist = []

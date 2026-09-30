@@ -110,7 +110,7 @@ proj_1 = Projection(position_num=[x, x, 0], orbital='s;p', spacegroup=spacegroup
 workflow.wannierise_wberri(enforce=True,
                            froz_min=-10, froz_max=12, num_iter=100,
                            kwargs_window=dict(win_min=-10, win_max=100),
-                           conv_tol=1e-4, mix_ratio_z=1.0, mix_ratio_u=1.0,
+                           conv_tol=1e-4, mix_ratio_z=1.0,
                            print_progress_every=20, sitesym=True, localise=True,
                            kwargs_sitesym={'epsilon': 1e-6},)
 

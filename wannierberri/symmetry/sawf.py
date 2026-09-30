@@ -10,6 +10,8 @@ from .projections_searcher import EBRsearcher
 
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SymmetrizerSAWF:
@@ -143,7 +145,6 @@ class SymmetrizerSAWF:
         return self
 
 
-
     @cached_property
     def d_band_blocks_inverse(self):
         return get_inverse_block(self.d_band_blocks)
@@ -220,6 +221,11 @@ class SymmetrizerSAWF:
     def from_spacegroup_and_projections(cls, spacegroup, projections):
         return cls().set_spacegroup(spacegroup).set_D_wann_from_projections(projections)
 
+    @classmethod
+    def from_projections(cls, projections_set):
+        return cls().set_spacegroup(projections_set.spacegroup).set_D_wann_from_projections(projections_set)
+
+
     def set_D_wann_from_projections(self,
                                     projections,
                                     ):
@@ -243,7 +249,7 @@ class SymmetrizerSAWF:
         for proj in projections:
             orbitals = proj.orbitals
             basis_list = proj.basis_list
-            # print(f"orbitals = {orbitals}")
+            # logger.info(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
                 warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
             for orb in orbitals:
@@ -254,7 +260,7 @@ class SymmetrizerSAWF:
         self.atommap_list = []
         self.rot_orb_list = []
         for positions, proj, basis_list in projections_list:
-            # print(f"calculating Wannier functions for {proj} at {positions}")
+            # logger.info(f"calculating Wannier functions for {proj} at {positions}")
             _Dwann = Dwann(spacegroup=self.spacegroup, positions=positions, orbital=proj, orbitalrotator=self.orbitalrotator,
                            spinor=self.spacegroup.spinor,
                            basis_list=basis_list)
@@ -292,7 +298,7 @@ class SymmetrizerSAWF:
         self.clear_inverse(d=False, D=True)
         if not isinstance(D_wann, list):
             D_wann = [D_wann]
-        # print("D.shape", [D.shape for D in D_wann])
+        # logger.info("D.shape", [D.shape for D in D_wann])
         self.D_wann_block_indices = []
         num_wann = 0
         self.D_wann_blocks = [[[] for s in range(self.Nsym)] for ik in range(self.NKirr)]
@@ -307,8 +313,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        # print("num_wann", num_wann)
-        # print("D_wann_block_indices", self.D_wann_block_indices)
+        # logger.info("num_wann", num_wann)
+        # logger.info("D_wann_block_indices", self.D_wann_block_indices)
 
 
     def symmetrize_wannier_property(self, wannier_property):
@@ -497,17 +503,26 @@ class SymmetrizerSAWF:
         #     include_k = np.arange(self.NK)
         # else:
         #     include_k = np.where(include_k)[0]
-        # print(f"{self.kpt_from_kptirr_isym=}, {self.NK=}, {self.NKirr=}, {self.Nsym=}")
+        # logger.info(f"{self.kpt_from_kptirr_isym=}, {self.NK=}, {self.NKirr=}, {self.Nsym=}")
         # for ik in include_k:
         #     ikirr = self.kpt2kptirr[ik]
         #     isym = self.kpt_from_kptirr_isym[ik]
-        #     print(f"{ik=}, {isym=}, {ikirr=}")
+        #     logger.info(f"{ik=}, {isym=}, {ikirr=}")
         #     Ufull[ik] =  self.rotate_U(U[ikirr], ikirr, isym, forward=True)
-        for ikirr in range(self.NKirr):
-            for isym in range(self.Nsym):
-                iRk = self.kptirr2kpt[ikirr, isym]
-                if Ufull[iRk] is None and include_k[iRk]:
-                    Ufull[iRk] = self.rotate_U(U[ikirr], ikirr, isym, forward=True)
+
+        #
+        # for ikirr in range(self.NKirr):
+        #     for isym in range(self.Nsym):
+        #         iRk = self.kptirr2kpt[ikirr, isym]
+        #         if Ufull[iRk] is None and include_k[iRk]:
+        #             Ufull[iRk] = self.rotate_U(U[ikirr], ikirr, isym, forward=True)
+        for ik in range(self.NK):
+            if include_k[ik]:
+                ikirr = self.kpt2kptirr[ik]
+                isym = self.kpt_from_kptirr_isym[ik]
+                Ufull[ik] = self.rotate_U(U[ikirr], ikirr, isym, forward=True)
+
+
         for ik in range(self.NK):
             if Ufull[ik] is None and include_k[ik]:
                 raise ValueError(f"U_to_full_BZ: the U matrix at k-point {ik} (k={arr_to_string(self.kpoints_all[ik])}) was not set, please check the symmetry")
@@ -570,7 +585,7 @@ class SymmetrizerSAWF:
             return
         selected_bands_bool = np.zeros(self.NB, dtype=bool)
         selected_bands_bool[selected_bands] = True
-        # print(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
+        # logger.info(f"applying window to select {sum(selected_bands_bool)} bands from {self.NB}\n", selected_bands_bool)
         for ikirr in range(self.NKirr):
             self.d_band_block_indices[ikirr], self.d_band_blocks[ikirr] = self.select_bands_in_blocks(self.d_band_blocks[ikirr], self.d_band_block_indices[ikirr], selected_bands_bool)
         self.clear_inverse(d=True, D=False)
@@ -580,7 +595,7 @@ class SymmetrizerSAWF:
             assert block_ind[0, 0] == 0
             assert np.all(block_ind[1:, 0] == block_ind[:-1, 1])
             assert block_ind[-1, -1] == self.NB
-        # print(f"new NB = {self.NB}")
+        # logger.info(f"new NB = {self.NB}")
 
 
 
@@ -630,7 +645,7 @@ class SymmetrizerSAWF:
                 e2 = eig.data[self.kptirr2kpt[ikirr, isym]][:ignore_upper_bands]
                 maxerr_loc = np.linalg.norm(e1 - e2)
                 if maxerr_loc > warning_precision:
-                    print(f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, isym={isym}, iksym={self.kptirr2kpt[ikirr, isym]} : \n "
+                    logger.info(f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, isym={isym}, iksym={self.kptirr2kpt[ikirr, isym]} : \n "
                           f"   eirr = {e1}\n"
                           f"   esym = {e2}\n"
                           f"   diff = {e1 - e2}\n")
@@ -688,11 +703,11 @@ class SymmetrizerSAWF:
                 diff = np.max(abs(diff))
                 maxerr = max(maxerr, np.linalg.norm(diff))
                 if diff > warning_precision:
-                    print(f"ikirr={ikirr}, isym={isym} kpt  {ik_origin} -> {ik_rotated}: {diff}")
+                    logger.info(f"ikirr={ikirr}, isym={isym} kpt  {ik_origin} -> {ik_rotated}: {diff}")
                     if verbose:
-                        print(f"   a1  = \n{arr_to_string(a1)}")
-                        print(f"   a1' = \n{arr_to_string(a1p)}")
-                        print(f"   a2  = \n{arr_to_string(a2)}")
+                        logger.info(f"   a1  = \n{arr_to_string(a1)}")
+                        logger.info(f"   a1' = \n{arr_to_string(a1p)}")
+                        logger.info(f"   a2  = \n{arr_to_string(a2)}")
 
         return maxerr
 
@@ -744,7 +759,7 @@ class SymmetrizerSAWF:
         if f_npz is None:
             return self
         dic = self.as_dict()
-        print(f"saving to {f_npz} : ")
+        logger.info(f"saving to {f_npz} : ")
         np.savez_compressed(f_npz, **dic)
         return self
 
@@ -776,9 +791,9 @@ class SymmetrizerSAWF:
         assert mmn.NB == self.NB
         b1 = ignore_lower_bands
         b2 = ignore_upper_bands
-        print(f"irreducible k-points : {self.kptirr}")
-        print(f"kpt2kptirr : {self.kpt2kptirr}")
-        print(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
+        logger.info(f"irreducible k-points : {self.kptirr}")
+        logger.info(f"kpt2kptirr : {self.kpt2kptirr}")
+        logger.info(f"kpt2kptirr_sym : {self.kpt2kptirr_sym}")
 
 
         nnb = len(bkvec.bk_grid)
@@ -800,7 +815,7 @@ class SymmetrizerSAWF:
 
                     if ik_sym not in mmn.data:
                         continue
-                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
+                    # logger.info(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikirr}, ib={ib}, ikb={ikb}")
                     M_loc = self.transform_Mmn_kb(M=M, isym=isym, ikirr=ikirr, ib=ib, ikb=ikb, bk_grid_map=bk_grid_map, bk_cart=bkvec.bk_cart)
                     M_ref = mmn.data[ik_sym][ib_sym][b1:b2, b1:b2]
 
@@ -811,7 +826,7 @@ class SymmetrizerSAWF:
                     err = np.max(diff)
 
                     if err > warning_precision or verbose:
-                        print(("CORRECT :" if err < warning_precision else "ERROR   :") +
+                        logger.info(("CORRECT :" if err < warning_precision else "ERROR   :") +
                               f"ikirr={ikirr}, ik={self.kptirr[ikirr]}, ib={ib}, ikb={ikb}, isym={isym}, iksym={ik_sym}, ibsym={ib_sym} ikbsym = {bkvec.neighbours[ik_sym][ib_sym]}: err = {err}"
                             #   "\n M_ref   = \n" + arr_to_string(M_ref) +
                             #     "\n M'  = \n" + arr_to_string(M_loc) +
@@ -944,7 +959,7 @@ class SymmetrizerSAWF:
             selected_bands_bool : np.ndarray(bool, shape=(NKirr, NB))
                 the boolean mask of the bands to be used, for each irreducible k-point. if include_partial_blocks is False, the whole block will be included if all bands in the block are selected, otherwise the whole block will be excluded. if include_partial_blocks is True, the whole block will be included if at least one band in the block is selected, otherwise the whole block will be excluded
              include_partial_blocks : bool
-                whether to include the whole block if at least one band in the block is selected, or only if all bands in the block are selected
+                whether to include the whole block if at least one band in the block is , or only if all bands in the block are selected
 
             Returns
             -------
@@ -962,6 +977,40 @@ class SymmetrizerSAWF:
                         selected_bands_bool_new[ikirr, start:end] = False
         return selected_bands_bool_new
 
+
+    def get_transformed_copy(self, symmetry_operation):
+        """
+        Get a copy of the symmetrizer with the symmetry operation applied to the spacegroup
+        so far only for non-spinor, non-time-reversal operations
+        only the wannier space transformations are coppied (i.e. all needed for System_R.symmetrize2())
+
+        Parameters
+        ----------
+        symmetry_operation : irrep.symmetry_operation.SymmetryOperation
+            the symmetry operation to be applied to the spacegroup
+            (should be a unitary operation, i.e. no time-reversal)
+
+        Returns
+        -------
+        SymmetrizerSAWF
+            the new symmetrizer with the symmetry operation applied to the spacegroup
+        """
+        new_spacegroup_index, translation_differnce = self.spacegroup.get_transformed_group_index(symmetry_operation)
+        logger.debug(f"{translation_differnce=}, {new_spacegroup_index=}")
+        new_sawf = SymmetrizerSAWF()
+        new_sawf.spacegroup = self.spacegroup
+        new_sawf.num_wann = self.num_wann
+        new_sawf.Nsym = self.Nsym
+        new_sawf.T_list = []
+        new_sawf.atommap_list = []
+        new_sawf.rot_orb_list = []
+        new_sawf.D_wann_block_indices = self.D_wann_block_indices
+        for T, atom_map, rot_orb in zip(self.T_list, self.atommap_list, self.rot_orb_list):
+            logger.debug(f"{T.shape=}, {atom_map.shape=}, {rot_orb.shape=} {new_sawf.Nsym=}, {new_sawf.num_wann=}, {new_spacegroup_index=}")
+            new_sawf.T_list.append((T[:, new_spacegroup_index] - translation_differnce) @ symmetry_operation.rotation.T)
+            new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
+            new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])
+        return new_sawf
 
 
 

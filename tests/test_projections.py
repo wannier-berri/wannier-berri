@@ -279,7 +279,7 @@ def test_create_amn_diamond_s_bond():
     # symmetrizer.spacegroup.show()
     # except AttributeError as err:
     #     print("Error: ", err, " spacegroup could not be shown")
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"], readnnkp=False)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     wandata.set_projections(projections=[projection],
                             bandstructure=bandstructure,
@@ -307,7 +307,6 @@ def test_create_amn_diamond_s_bond():
         num_iter=100,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         num_iter_converge=20,
         print_progress_every=20,
         sitesym=True,
@@ -372,7 +371,8 @@ def test_create_amn_diamond_p_bond():
 
     wandata = wberri.WannierData.from_w90_files(
         seedname=os.path.join(tmp_dir, prefix),
-        files=["mmn", "eig", "win", "unk"])
+        files=["mmn", "eig", "win", "unk"],
+        readnnkp=False)
 
     amn = wberri.w90files.AMN.from_bandstructure(bandstructure=bandstructure, projections=ProjectionsSet([projection]),
                             normalize=True)
@@ -397,7 +397,6 @@ def test_create_amn_diamond_p_bond():
         num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
-        mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
@@ -456,7 +455,7 @@ def test_create_amn_diamond_sp3():
                     os.path.join(tmp_dir, prefix + "." + ext))
     symmetrizer.spacegroup.show()
 
-    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"])
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["mmn", "eig", "win"], readnnkp=False)
     wandata.set_file("amn", amn)
     wandata.set_symmetrizer(symmetrizer=symmetrizer)
     amn_symm_prec = symmetrizer.check_amn(amn, ignore_upper_bands=2)
@@ -469,7 +468,6 @@ def test_create_amn_diamond_sp3():
         num_iter=20,
         conv_tol=1e-10,
         mix_ratio_z=1,
-        mix_ratio_u=1,
         print_progress_every=1,
         sitesym=True,
         localise=True
