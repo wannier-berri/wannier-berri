@@ -125,6 +125,8 @@ class SystemSOC(System_R):
         # if not self.silent:
         logger.info(f"Saving SystemSOC to {path}")
         super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        if R_matrices is not None:
+            R_matrices = set(R_matrices) - set(["overlap_up_down"])
         self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
         if self.nspin == 2:
             self.system_down.to_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
