@@ -603,7 +603,7 @@ def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, al
     os.makedirs(out_data_dir, exist_ok=True)
     out_data_file = os.path.join(out_data_dir, f"{name}.npz")
     ref_data_file = os.path.join(REF_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
-    out_dict = {key: getattr(system_Fe_gpaw_soc_111, key) for key in ['alpha_soc', 'pauli_rotated']}
+    out_dict = {key: getattr(system_Fe_gpaw_soc_111, key) for key in ['alpha_soc', 'pauli_rotated', 'torque_rotated']}
     np.savez(out_data_file, **out_dict)
     ref_data = np.load(ref_data_file)
     for key in out_dict:

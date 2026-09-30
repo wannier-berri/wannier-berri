@@ -46,6 +46,8 @@ class Data_K_soc(Data_K_R):
         if key not in self._bar_quantities:
             if name == "SS":
                 Xbar = self.SS_W(der=der)
+            elif name == "SOT":
+                Xbar = self.SOT_W(der=der)
             elif name.startswith("S"):
                 raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
                                           "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
@@ -62,8 +64,8 @@ class Data_K_soc(Data_K_R):
         return self._bar_quantities[key]
 
 
-    def Hsoc(self, der=0):
-        pauli_rotated = self.system.pauli_rotated
+    def dVsoc_blocks(self, der=0):
+        """the spin blocks [[up-up, up-down], [down-up, down-down]] of the SOC operator in k-space"""
         dVsoc = [[None, None], [None, None]]
         dVsoc[0][0] = self.data_K_up.get_k_mat('dV_soc', der=der, hermitian=True)
         if self.system.nspin == 2:
@@ -74,11 +76,26 @@ class Data_K_soc(Data_K_R):
             dVsoc[1][1] = dVsoc[0][0]
             dVsoc[0][1] = dVsoc[0][0]
             dVsoc[1][0] = dVsoc[0][0]
+        return dVsoc
+
+    def Hsoc(self, der=0):
+        pauli_rotated = self.system.pauli_rotated
+        dVsoc = self.dVsoc_blocks(der=der)
         soc_k = np.zeros((self.nk, self.num_wann, self.num_wann) + (3,) * der, dtype=complex)
         for i in range(2):
             for j in range(2):
                 soc_k[:, i::2, j::2] = cached_einsum("rmnc...,c->rmn...", dVsoc[i][j], pauli_rotated[i, j, :])
         return soc_k * self.system.alpha_soc
+
+    def SOT_W(self, der=0):
+        """spin-orbit torque T = -i[S, H_soc] in the Wannier gauge, see :func:`~wannierberri.system.system_soc.get_torque_rotated`"""
+        torque_rotated = self.system.torque_rotated
+        dVsoc = self.dVsoc_blocks(der=der)
+        sot_k = np.zeros((self.nk, self.num_wann, self.num_wann, 3) + (3,) * der, dtype=complex)
+        for i in range(2):
+            for j in range(2):
+                sot_k[:, i::2, j::2] = cached_einsum("rmnc...,cb->rmnb...", dVsoc[i][j], torque_rotated[i, j])
+        return sot_k * self.system.alpha_soc
 
     def SS_W(self, der=0):
         # Spin operator
