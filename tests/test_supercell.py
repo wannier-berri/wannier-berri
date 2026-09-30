@@ -2,6 +2,7 @@
 
 import itertools
 import os
+import copy
 import numpy as np
 import pytest
 
@@ -216,3 +217,36 @@ def test_Fe_supercell():
     diff = abs(ahc_pc_ext - ahc_sc_ext)
     # vmax = np.abs([ahc_pc_ext, ahc_sc_ext]).max()
     assert np.allclose(ahc_pc_ext, ahc_sc_ext, atol=1e-8), f"ahc_pc_ext and ahc_sc_ext differ by {diff.max()}, \n ahc_pc_ext={ahc_pc_ext}\\n ahc_sc_ext={ahc_sc_ext}\\n diff={diff}"
+
+
+@pytest.mark.parametrize("change", ["nothing", "remove_zeros", "shift_uc", "shift_random", "reorder_random", "reorder_reverse", ])
+def test_shift(system_Si_W90_JM_sym, change):
+    """Test that reordering of Wannier functions works correctly."""
+    system = system_Si_W90_JM_sym
+    system_modified = copy.deepcopy(system)
+    if change == "shift_uc":
+        system_modified.shift_wannier_centers_to_unit_cell()
+    elif change == "shift_random":
+        shifts = np.random.randint(-3, 3, size=(system.num_wann, 3))
+        system_modified.shift_wannier_centers(shifts)
+    elif change == "reorder_random":
+        new_order = np.random.permutation(system.num_wann)
+        system_modified.reorder(new_order)
+    elif change == "reorder_reverse":
+        new_order = np.arange(system.num_wann)[::-1]
+        system_modified.reorder(new_order)
+    elif change == "remove_zeros":
+        system_modified.remove_zero_Rvec()
+    elif change == "nothing":
+        pass
+
+    # for iR, R in enumerate(system_modified.rvec.iRvec):
+    #     print (f"{change}: Rvec {iR}: {R}, norm(H[iR])={np.linalg.norm(system_modified.get_R_mat('Ham')[iR])}")
+
+
+    system_modified.shift_wannier_centers_to_unit_cell()
+    print(f"difference in wannier centers: {system_modified.wannier_centers_red - system.wannier_centers_red}")
+    print(f"number of Rvecotrs: {system.rvec.nRvec} vs {system_modified.rvec.nRvec}")
+    path, bands = system.get_bandstructure(dk=0.05)
+    bands_shifted = system_modified.get_bandstructure(path=path, return_path=False)
+    assert np.allclose(bands_shifted.results["Energy"].data, bands.results["Energy"].data, atol=1e-12)

@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 import os
 from packaging import version
+import copy
 
 from wannierberri.fourier.rvectors import Rvectors
 
@@ -48,7 +49,7 @@ def check_system():
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
-        system.to_npz(out_dir)
+        system.to_npz(out_dir, extra_properties=properties, R_matrices=matrices)
         # for key in matrices:
         #     print(f"saving {key}", end="")
         #     np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
@@ -65,6 +66,8 @@ def check_system():
             except FileNotFoundError as err:
                 if XX:
                     data_ref = np.load(os.path.join(REF_DIR, "systems", name, "_XX_R_" + key + ".npz"))['arr_0']
+                elif key == 'nRvec':
+                    data_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"))['arr_0'].shape[0]
                 else:
                     raise err
             if XX:
@@ -608,3 +611,33 @@ def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, al
     ref_data = np.load(ref_data_file)
     for key in out_dict:
         assert out_dict[key] == pytest.approx(ref_data[key]), f"Mismatch in {key} for system Fe_gpaw_soc_{name}"
+
+
+
+
+@pytest.mark.parametrize("exclude_WF_mask", ["Ga:*_cell-0", ["Ga:*_cell-0", "As:*_cell-3"], None])
+def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask):
+    matrices = ['Ham', 'AA', 'SS']
+    system_bulk = copy.deepcopy(system_GaAs_W90)
+    system_bulk._XX_R = {key: system_bulk.get_R_mat(key) for key in matrices}
+    system_bulk.wannier_names = ["As:sp3"] * 8 + ["Ga:sp3"] * 8
+    nslab = 2
+    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], [1, 1, -1]], nslab=nslab)
+    print("wannier names in bulk system: ", system_bulk.wannier_names)
+    print("real lattice vectors in bulk system: ", system_bulk.real_lattice)
+    system_slab.exclude_WF_mask(exclude_WF_mask)
+    exclude_WF_mask_list = exclude_WF_mask if isinstance(exclude_WF_mask, list) else [] if exclude_WF_mask is None else [exclude_WF_mask]
+    nat_exclude = len(exclude_WF_mask_list)
+    num_wann_expected = nslab * 16 * 2 - 8 * nat_exclude
+    assert system_slab.num_wann == num_wann_expected, f"num_wann in slab system {system_slab.num_wann} does not match expected {num_wann_expected} for exclude_WF_mask {exclude_WF_mask}"
+    print("wannier names in slab system: ", system_slab.wannier_names)
+    print("real lattice vectors in slab system: ", system_slab.real_lattice)
+    print("wannier centers in slab system: ", system_slab.wannier_centers_red)
+    ham = system_slab.get_R_mat('Ham')
+    print(f"Ham in slab system exclude_WF_mask {exclude_WF_mask} has shape {ham.shape} ")
+
+    check_system(
+        system_slab, f"GaAs_W90_JM-slab-nslab{nslab}-exclude:{','.join(exclude_WF_mask_list) if exclude_WF_mask_list else 'None'}",
+        matrices=matrices,
+        legacy=False,
+    )

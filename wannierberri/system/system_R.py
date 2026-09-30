@@ -686,6 +686,8 @@ class System_R(System):
         wf_masks : str
             the mask for the Wannier functions to exclude. For example '*-1-*'
         """
+        if name_masks is None or len(name_masks) == 0:
+            return self
         from fnmatch import fnmatch
 
         if not isinstance(name_masks, list) and not isinstance(name_masks, tuple):
@@ -768,6 +770,10 @@ class System_R(System):
     def to_hr_file(self, *args, **kwargs):
         from .system_hr import write_hr_file
         write_hr_file(self, *args, **kwargs)
+
+    @property
+    def nRvec(self):
+        return self.rvec.nRvec
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
         """
