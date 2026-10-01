@@ -2,6 +2,7 @@
 import os
 import numpy as np
 from collections.abc import Iterable
+import copy
 from time import time
 import pickle
 import glob
@@ -68,7 +69,7 @@ def process(paralfunc,
     nstep_print = max(1, nproc_loc, int(round(numK * progress_step_percent / 100)))
 
     def set_result(Kp, res):
-        Kp.set_result(res)
+        Kp.set_result(copy.deepcopy(res))
         res_fac = Kp.get_result_factor()
         if dump_results:
             Kp.dump_result()
@@ -91,28 +92,28 @@ def process(paralfunc,
         import ray
         remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
         num_remotes = len(remotes)
-        num_remotes_calculated = 0
-        remotes_calculated_old = np.zeros(num_remotes, dtype=bool)
+        num_remotes_collected = 0
+        remotes_collected = np.zeros(num_remotes, dtype=bool)
         while True:
 
             # the progress will be printed every minute
             # even, if the required number of remotes had not finished,
             remotes_calculated, _ = ray.wait(
-                remotes, num_returns=min(num_remotes_calculated + nstep_print, num_remotes),
+                remotes, num_returns=min(num_remotes_collected + nstep_print, num_remotes),
                 timeout=60)
 
-            num_remotes_calculated = len(remotes_calculated)
             remotes_calculated_bool = np.array([r in remotes_calculated for r in remotes])
-            remotes_calculated_diff = remotes_calculated_bool & ~remotes_calculated_old
-            for ir in np.where(remotes_calculated_diff)[0]:
+            remotes_calculated_new = np.where(remotes_calculated_bool & ~remotes_collected)[0]
+            for ir in remotes_calculated_new:
                 res = ray.get(remotes[ir])
                 Kp = dK_list[ir]
                 result_sum += set_result(Kp, res)
-            if num_remotes_calculated >= num_remotes:
+            remotes_collected[remotes_calculated_new] = True
+            num_remotes_collected = np.sum(remotes_collected)
+            if num_remotes_collected >= num_remotes:
                 break
-            remotes_calculated_old = remotes_calculated_bool
-
-            t_print_prev = print_progress(count=num_remotes_calculated,
+            
+            t_print_prev = print_progress(count=num_remotes_collected,
                                           total=numK,
                                           t0=t0,
                                           tprev=t_print_prev,
