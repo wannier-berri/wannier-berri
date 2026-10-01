@@ -2,6 +2,7 @@
 import os
 import numpy as np
 from collections.abc import Iterable
+import copy
 from time import time
 import pickle
 import glob
@@ -89,36 +90,34 @@ def process(paralfunc,
                                               progress_step_time=progress_step_time)
     else:
         import ray
-        remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
-        num_remotes = len(remotes)
-        num_remotes_calculated = 0
-        remotes_calculated_old = np.zeros(num_remotes, dtype=bool)
+        ref_to_idx = {paralfunc.remote(dK, **remote_parameters): ir
+              for ir, dK in enumerate(dK_list)}
+        remotes_pending = list(ref_to_idx)
+        num_remotes_collected = 0
         while True:
-
             # the progress will be printed every minute
             # even, if the required number of remotes had not finished,
-            remotes_calculated, _ = ray.wait(
-                remotes, num_returns=min(num_remotes_calculated + nstep_print, num_remotes),
+            remotes_calculated, remotes_pending = ray.wait(
+                remotes_pending, num_returns=min(nstep_print, len(remotes_pending)),
                 timeout=60)
 
-            num_remotes_calculated = len(remotes_calculated)
-            remotes_calculated_bool = np.array([r in remotes_calculated for r in remotes])
-            remotes_calculated_diff = remotes_calculated_bool & ~remotes_calculated_old
-            for ir in np.where(remotes_calculated_diff)[0]:
-                res = ray.get(remotes[ir])
-                Kp = dK_list[ir]
-                result_sum += set_result(Kp, res)
-            if num_remotes_calculated >= num_remotes:
-                break
-            remotes_calculated_old = remotes_calculated_bool
+            for ref in remotes_calculated:
+                ir = ref_to_idx.pop(ref)
+                res = ray.get(ref)
+                result_sum += set_result(dK_list[ir], copy.deepcopy(res))
+            num_remotes_collected += len(remotes_calculated)
+            if remotes_calculated:
+                del ref, res
+            del remotes_calculated
 
-            t_print_prev = print_progress(count=num_remotes_calculated,
+            if len(remotes_pending) == 0:
+                break
+
+            t_print_prev = print_progress(count=num_remotes_collected,
                                           total=numK,
                                           t0=t0,
                                           tprev=t_print_prev,
                                           progress_step_time=progress_step_time)
-        ray.get(remotes)
-
     t = time() - t0
 
     logger.info(f"time for processing {numK:6d} K-points on {nproc_loc:3d} processes: {t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_loc / numK:15.4f}")
