@@ -106,7 +106,9 @@ def process(paralfunc,
                 res = ray.get(ref)
                 result_sum += set_result(dK_list[ir], copy.deepcopy(res))
             num_remotes_collected += len(remotes_calculated)
-            del remotes_calculated, ref, res
+            if remotes_calculated:
+                del ref, res
+            del remotes_calculated
 
             if len(remotes_pending) == 0:
                 break
