@@ -219,7 +219,7 @@ def from_string_prod(string):
         raise ValueError(f"The symmetry {string} could not be recognized:  {e}")
 
 
-class PointGroup():
+class PointGroup:
     r"""Class to store a symmetry point group.
 
     Parameters
