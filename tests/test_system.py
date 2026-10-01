@@ -624,3 +624,5 @@ def test_system_soc_nspin_1(system_Fe_gpaw_soc):
     system_nospin_loaded = SystemSOC.from_npz(path_tmp)
     assert system_nospin_loaded.nspin == 1, "Loaded system without spin should have nspin=1"
     assert system_nospin_loaded.rvec is None, "Loaded system without spin should not have rvec"
+    assert system_nospin_loaded.has_soc, "Loaded system without spin should retain SOC"
+    system_nospin_loaded.set_soc_axis()
