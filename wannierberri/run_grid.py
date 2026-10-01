@@ -90,26 +90,27 @@ def process(paralfunc,
                                               progress_step_time=progress_step_time)
     else:
         import ray
-        remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
-        num_remotes = len(remotes)
+        ref_to_idx = {paralfunc.remote(dK, **remote_parameters): ir
+              for ir, dK in enumerate(dK_list)}
+        num_remotes = len(ref_to_idx)
+        remotes_pending = list(ref_to_idx)
+        # remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
+        # num_remotes = len(remotes)
         num_remotes_collected = 0
-        remotes_collected = np.zeros(num_remotes, dtype=bool)
-        while True:
-
+        while num_remotes_collected < num_remotes:
             # the progress will be printed every minute
             # even, if the required number of remotes had not finished,
-            remotes_calculated, _ = ray.wait(
-                remotes, num_returns=min(num_remotes_collected + nstep_print, num_remotes),
+            remotes_calculated, remotes_pending = ray.wait(
+                remotes_pending, num_returns=min(nstep_print, len(remotes_pending)),
                 timeout=60)
 
-            remotes_calculated_bool = np.array([r in remotes_calculated for r in remotes])
-            remotes_calculated_new = np.where(remotes_calculated_bool & ~remotes_collected)[0]
-            for ir in remotes_calculated_new:
-                res = ray.get(remotes[ir])
-                Kp = dK_list[ir]
-                result_sum += set_result(Kp, res)
-            remotes_collected[remotes_calculated_new] = True
-            num_remotes_collected = np.sum(remotes_collected)
+            for ref in remotes_calculated:
+                ir = ref_to_idx.pop(ref)
+                res = ray.get(ref)
+                result_sum += set_result(dK_list[ir], res)
+            num_remotes_collected += len(remotes_calculated)
+            del remotes_calculated, ref, res
+
             if num_remotes_collected >= num_remotes:
                 break
             
@@ -118,7 +119,6 @@ def process(paralfunc,
                                           t0=t0,
                                           tprev=t_print_prev,
                                           progress_step_time=progress_step_time)
-        ray.get(remotes)
 
     t = time() - t0
 
