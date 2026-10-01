@@ -113,11 +113,6 @@ class System_R(System):
     def has_R_mat(self, key):
         return key in self._XX_R
 
-    @property
-    def has_soc(self):
-        return self.has_R_mat('dV_soc')
-
-
     def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """
         Set real-space matrix specified by `key`. Either diagonal, specific R or full matrix.  Useful for model calculations
