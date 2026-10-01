@@ -15,3 +15,4 @@ from .deprecated_constructors import (
     System_Phonon_QE,
 )
 from .interpolate import SystemInterpolator
+from .system_supercell import get_system_supercell, add_proximity_potential
