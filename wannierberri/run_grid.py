@@ -69,7 +69,7 @@ def process(paralfunc,
     nstep_print = max(1, nproc_loc, int(round(numK * progress_step_percent / 100)))
 
     def set_result(Kp, res):
-        Kp.set_result(copy.deepcopy(res))
+        Kp.set_result(res)
         res_fac = Kp.get_result_factor()
         if dump_results:
             Kp.dump_result()
@@ -92,12 +92,9 @@ def process(paralfunc,
         import ray
         ref_to_idx = {paralfunc.remote(dK, **remote_parameters): ir
               for ir, dK in enumerate(dK_list)}
-        num_remotes = len(ref_to_idx)
         remotes_pending = list(ref_to_idx)
-        # remotes = [paralfunc.remote(dK, **remote_parameters) for dK in dK_list]
-        # num_remotes = len(remotes)
         num_remotes_collected = 0
-        while num_remotes_collected < num_remotes:
+        while True:
             # the progress will be printed every minute
             # even, if the required number of remotes had not finished,
             remotes_calculated, remotes_pending = ray.wait(
@@ -107,19 +104,18 @@ def process(paralfunc,
             for ref in remotes_calculated:
                 ir = ref_to_idx.pop(ref)
                 res = ray.get(ref)
-                result_sum += set_result(dK_list[ir], res)
+                result_sum += set_result(dK_list[ir], copy.deepcopy(res))
             num_remotes_collected += len(remotes_calculated)
             del remotes_calculated, ref, res
 
-            if num_remotes_collected >= num_remotes:
+            if len(remotes_pending) == 0:
                 break
-            
+
             t_print_prev = print_progress(count=num_remotes_collected,
                                           total=numK,
                                           t0=t0,
                                           tprev=t_print_prev,
                                           progress_step_time=progress_step_time)
-
     t = time() - t0
 
     logger.info(f"time for processing {numK:6d} K-points on {nproc_loc:3d} processes: {t:10.4f} ; per K-point {t / numK:15.4f} ; proc-sec per K-point {t * nproc_loc / numK:15.4f}")
