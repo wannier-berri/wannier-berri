@@ -697,6 +697,8 @@ class System_R(System):
             if key in ['pointgroup', 'iRvec']:
                 if val is not None:
                     np.savez(fullpath, **val.as_dict())
+                elif overwrite and os.path.exists(fullpath):
+                    os.remove(fullpath)
             elif key in ['cell']:
                 np.savez(fullpath, **val)
             else:
