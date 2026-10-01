@@ -133,9 +133,11 @@ class SystemSOC(System_R):
     def has_soc(self):
         logger.debug(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
         if self.nspin == 2:
-            return self.has_R_mat_all(['dV_soc', 'overlap_up_down']) and self.system_up.has_soc and self.system_down.has_soc
+            return (self.has_R_mat_all(['dV_soc', 'overlap_up_down']) and 
+                    self.system_up.has_R_mat('dV_soc') and 
+                    self.system_down.has_R_mat('dV_soc') )
         else:
-            return self.system_up.has_soc
+            return self.system_up.has_R_mat('dV_soc')
 
 
     @classmethod
