@@ -31,12 +31,12 @@ def get_wannierised(prefix, spin_channel, save_name=None):
         bandstructure = pickle.load(open(f"bandstructure-spin-{spin_channel}.pkl", "rb"))
     except FileNotFoundError:
         bandstructure = BandStructure.from_gpaw(
-                                calculator_gpaw=calc_gpaw,
-                                Ecut=200,
-                                normalize=True,
-                                spinor=False,
-                                spin_channel=spin_channel,
-                                )
+            calculator_gpaw=calc_gpaw,
+            Ecut=200,
+            normalize=True,
+            spinor=False,
+            spin_channel=spin_channel,
+        )
         pickle.dump(bandstructure, open(f"bandstructure-spin-{spin_channel}.pkl", "wb"))
     sg = bandstructure.spacegroup
     sg = SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions, spinor=False,

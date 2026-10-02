@@ -1,6 +1,5 @@
 
 import os
-import sys
 import warnings
 import numpy as np
 from functools import cached_property
@@ -84,12 +83,6 @@ class System:
         self.is_phonon = False
         self.force_internal_terms_only = force_internal_terms_only
 
-    @property
-    def logfile(self):
-        if self.silent:
-            return open(os.devnull, 'w')
-        else:
-            return sys.stdout
 
     def save_npz(self, *args, **kwargs):
         """alias for :func:`~wannierberri.system.System.to_npz`"""

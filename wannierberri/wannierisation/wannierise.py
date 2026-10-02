@@ -186,6 +186,8 @@ def wannierise(wandata,
     if init == "amn":
         amn = {kpt: wandata.amn.data[kpt] for kpt in kptirr}
         wandata.chk.num_wann = wandata.amn.NW
+        if hasattr(wandata.amn, "wannier_names"):
+            wandata.chk.wannier_names = wandata.amn.wannier_names
     elif init == "random":
         if sitesym:
             num_wann = symmetrizer.num_wann

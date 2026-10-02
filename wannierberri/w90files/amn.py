@@ -38,7 +38,7 @@ class AMN(W90_file):
     """
 
     extension = "amn"
-    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor"]
+    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor", "wannier_names"]
 
     def __init__(self,
                  data,
@@ -48,6 +48,7 @@ class AMN(W90_file):
                  radial_nodes_list=None,
                  basis_list=None,
                  spread_list=None,
+                 wannier_names=None,
                  spinor=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
@@ -57,6 +58,7 @@ class AMN(W90_file):
         self.basis_list = basis_list
         self.spread_list = spread_list
         self.spinor = spinor
+        self.wannier_names = wannier_names
 
     @property
     def num_wann(self):
@@ -194,7 +196,8 @@ class AMN(W90_file):
                 data[ikirr] = np.array(datak).T
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
-        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list, spread_list=spread_list, spinor=spinor)
+        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list,
+                   spread_list=spread_list, spinor=spinor, wannier_names=projections.get_wannier_names())
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)

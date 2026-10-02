@@ -178,8 +178,12 @@ def get_system_supercell(system, supercell_matrix, **parameters):
     system_sc.is_phonon = system.is_phonon
     system_sc.real_lattice = M @ system.real_lattice
     system_sc.num_wann = num_cells * system.num_wann
-    system_sc.wannier_centers_cart = ((iRvec_cells @ system.real_lattice)[:, None, :]
-                                      + system.wannier_centers_cart[None, :, :]).reshape(-1, 3)
+    system_sc.wannier_centers_cart = ((iRvec_cells @ system.real_lattice)[:, None, :] +
+                                      system.wannier_centers_cart[None, :, :]).reshape(-1, 3)
+    if hasattr(system, 'wannier_names') and system.wannier_names is not None:
+        system_sc.wannier_names = np.array([f"{name}_cell-{i}" for i in range(num_cells) for name in system.wannier_names])
+    else:
+        system_sc.wannier_names = None
     system_sc.rvec = Rvectors(lattice=system_sc.real_lattice, shifts_left_red=system_sc.wannier_centers_red,
                               iRvec=iRvec_sc)
     for key, XX_R in system._XX_R.items():
@@ -249,8 +253,8 @@ def add_proximity_potential(system, VV_qq, mp_grid, supercell_matrix, ws_dist_to
 
     # primitive lattice and Wannier centers, recovered from the supercell
     real_lattice = np.linalg.inv(M) @ system.real_lattice
-    wannier_centers_cart = (system.wannier_centers_cart.reshape(num_cells, num_wann, 3)
-                            - (iRvec_cells @ real_lattice)[:, None, :])
+    wannier_centers_cart = (system.wannier_centers_cart.reshape(num_cells, num_wann, 3) -
+                            (iRvec_cells @ real_lattice)[:, None, :])
     if not np.allclose(wannier_centers_cart, wannier_centers_cart[0], atol=1e-6):
         raise ValueError("the Wannier centers of the system do not correspond to a supercell with "
                          f"supercell_matrix\n{M}")

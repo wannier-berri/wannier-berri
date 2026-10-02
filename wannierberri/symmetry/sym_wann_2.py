@@ -1,5 +1,3 @@
-import os
-import sys
 import warnings
 import numpy as np
 
@@ -10,15 +8,6 @@ import copy
 
 import logging
 logger = logging.getLogger(__name__)
-
-
-def do_rotate_vector(key):
-    return True
-    # if key.startswith('dV_soc_wann_'):
-    #     return True
-    # if key == 'overlap_up_down':
-    #     return False
-    # return True
 
 
 parity_I = {
@@ -138,13 +127,6 @@ class SymWann:
         self.tested_matrix_list = ['Ham', 'AA', 'SS', 'BB', 'CC', 'AA', 'BB', 'CC',
                               'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc']
 
-    @property
-    def logfile(self):
-        if self.silent:
-            return open(os.devnull, 'w')
-        else:
-            return sys.stdout
-
 
     def index_R(self, R):
         try:
@@ -191,18 +173,17 @@ class SymWann:
         dict
          { (a,b):set([index of Rvecotr, if it is irreducible])}
         """
-        logfile = self.logfile
-        logfile.write("searching irreducible Rvectors for pairs of a,b\n")
+        logger.info("searching irreducible Rvectors for pairs of a,b\n")
 
         np1 = self.num_points_list_left[block1]
         np2 = self.num_points_list_right[block2]
         map1 = self.symmetrizer_left.atommap_list[block1]
         map2 = self.symmetrizer_right.atommap_list[block2]
         irreducible = np.ones((self.nRvec, np1, np2), dtype=bool)
-        logfile.write(f"np1 = {np1}, np2 = {np2}\n")
+        logger.debug(f"np1 = {np1}, np2 = {np2}\n")
 
         R_list = np.array(self.iRvec, dtype=int)
-        logfile.write(f"R_list = {R_list}\n")
+        logger.debug(f"R_list = {R_list}\n")
 
         for isym in self.use_symmetries_index:
             # T : np.ndarray(shape=(num_points, nsym, 3), dtype=int)
@@ -216,8 +197,7 @@ class SymWann:
                                 iR1 = self.index_R(atom_R_map[iR, a, b])
                                 if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
                                     irreducible[iR1, a1, b1] = False
-
-        logfile.write(
+        logger.debug(
             f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec * np1 * np2} ({self.nRvec}*{np1}*{np2})")
         dic = {(a, b): set([iR for iR in range(self.nRvec) if irreducible[iR, a, b]])
                for a in range(np1) for b in range(np2)}
@@ -470,22 +450,20 @@ class SymWann:
         np.ndarray
             Rotated matrix
         """
-        if do_rotate_vector(X):
-            n_cart = num_cart_dim(X)  # number of cartesian indices
-            symop = self.spacegroup.symmetries[isym]
-            rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
-            for _ in range(n_cart):
-                # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
-                # n_cart times puts dimensions on the right place
-                XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
-            if symop.inversion:
-                XX_L *= parity_I[X] * (-1)**n_cart
+        n_cart = num_cart_dim(X)  # number of cartesian indices
+        symop = self.spacegroup.symmetries[isym]
+        rot_mat_loc = symop.rotation_cart  # (this is the inverse rotation, but we rotate row-vectors, not column-vectors, therefore double transpose cancels out)
+        for _ in range(n_cart):
+            # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
+            # n_cart times puts dimensions on the right place
+            XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
+        if symop.inversion:
+            XX_L *= parity_I[X] * (-1)**n_cart
         result = _rotate_matrix(X=XX_L,
                                 L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
                                 R=self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
-        if do_rotate_vector(X):
-            if symop.time_reversal:
-                result = result.conj() * parity_TR[X]
+        if symop.time_reversal:
+            result = result.conj() * parity_TR[X]
         return result
 
 
