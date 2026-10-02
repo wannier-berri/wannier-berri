@@ -43,6 +43,7 @@ class CheckPoint(SavableNPZ):
                 selected_bands=None,
                 mp_grid=None,
                 kmesh_tol=1e-7,
+                wannier_names=None,
                 bk_complete_tol=1e-5,
     ):
         if real_lattice is not None:
@@ -87,6 +88,8 @@ class CheckPoint(SavableNPZ):
 
         if selected_bands is not None:
             self.selected_bands = selected_bands
+
+        self.wannier_names = wannier_names
 
         if v_matrix is not None:
             if isinstance(v_matrix, list) or isinstance(v_matrix, np.ndarray):

@@ -9,11 +9,11 @@ wandata = wb.wberri.WannierData.from_w90_files(
 
 
 bandstructure = BandStructure.from_espresso(
-                            prefix=path_data + "/Fe",
-                            Ecut=200,
-                            normalize=True,
-                            magmom=[[0, 0, 1.]],
-                            include_TR=False)
+    prefix=path_data + "/Fe",
+    Ecut=200,
+    normalize=True,
+    magmom=[[0, 0, 1.]],
+    include_TR=False)
 spacegroup = bandstructure.spacegroup
 spacegroup.show()
 # exit()

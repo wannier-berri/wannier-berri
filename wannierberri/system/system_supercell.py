@@ -180,8 +180,10 @@ def get_system_supercell(system, supercell_matrix, **parameters):
     system_sc.num_wann = num_cells * system.num_wann
     system_sc.wannier_centers_cart = ((iRvec_cells @ system.real_lattice)[:, None, :] +
                                       system.wannier_centers_cart[None, :, :]).reshape(-1, 3)
-    if hasattr(system, 'wannier_names'):
+    if hasattr(system, 'wannier_names') and system.wannier_names is not None:
         system_sc.wannier_names = np.array([f"{name}_cell-{i}" for i in range(num_cells) for name in system.wannier_names])
+    else:
+        system_sc.wannier_names = None
     system_sc.rvec = Rvectors(lattice=system_sc.real_lattice, shifts_left_red=system_sc.wannier_centers_red,
                               iRvec=iRvec_sc)
     for key, XX_R in system._XX_R.items():

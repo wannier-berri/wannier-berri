@@ -8,7 +8,7 @@ import copy
 import warnings
 import numpy as np
 import os
-from functools import cached_property
+from functools import cached_property, lru_cache
 from collections import defaultdict
 import glob
 import logging
@@ -259,11 +259,9 @@ class System_R(System):
         )
 
         # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
-        logfile = self.logfile
 
-        if not silent:
-            logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-            logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
+        logger.debug(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
+        logger.debug(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
         logger.info(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
         self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
@@ -282,9 +280,8 @@ class System_R(System):
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup, use_symmetries_index=use_symmetries_index)
         self.set_structure_from_sg(symmetrizer.spacegroup)
 
-        if not silent:
-            logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
-            logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
+        logger.debug(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
+        logger.debug(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
 
         self.clear_cached_R()
         self.clear_cached_wcc()
@@ -630,28 +627,60 @@ class System_R(System):
         shifts_int = np.round(shifts).astype(int)
         assert np.allclose(shifts, shifts_int), f"shifts should be integer, found {shifts}"
         assert shifts_int.shape == (self.num_wann, 3), f"shifts should have shape (num_wann, 3), found {shifts.shape}"
-        dshifts = (shifts_int[:, None, :] - shifts_int[None, :, :])
-        dshifts_unique = np.unique(dshifts.reshape(self.num_wann**2, 3), axis=0)
+        shifts_int_list = [tuple(shift) for shift in shifts_int]
+
+        shifts_set = set(shifts_int_list)
+        dshifts_set = set(tuple(np.array(s1) - np.array(s2)) for s1 in shifts_set for s2 in shifts_set)
+        shifts_set_full = shifts_set.union(dshifts_set)
+
         iRvec_old = self.rvec.iRvec.copy()
-        iRvec_new = set(tuple(iRvec) for iRvec in self.rvec.iRvec)
-        for dshift in dshifts_unique:
+        nRvec_old = self.rvec.nRvec
+        iRvec_old_set = set(tuple(iRvec) for iRvec in iRvec_old)
+        iRvec_new = iRvec_old_set.copy()
+        for shift in shifts_set_full:
             for iRold in self.rvec.iRvec:
-                iRnew = tuple(np.array(iRold) + dshift)
+                iRnew = tuple(np.array(iRold) + np.array(shift))
                 iRvec_new.add(iRnew)
-        iRvec_new = np.array(sorted(list(iRvec_new), key=lambda x: (x[0], x[1], x[2])))
+        iRvec_add = iRvec_new - iRvec_old_set
+        iRvec_add_array = np.array(sorted(list(iRvec_add), key=lambda x: (x[0], x[1], x[2])))
+        iRvec_new = np.vstack([iRvec_old, iRvec_add_array])
+        nRvec_new = len(iRvec_new)
+        logger.info(f"shifting Wannier centers number of R-vectors changed from {nRvec_old} to {len(iRvec_new)}")
+
 
         self.set_wannier_centers(wannier_centers_red=self.wannier_centers_red + shifts)
         self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec_new, shifts_left_red=self.wannier_centers_red)
-        _XX_R_new = {key: np.zeros((len(iRvec_new), ) + val.shape[1:], dtype=val.dtype) for key, val in self._XX_R.items()}
-        for i, iRold in enumerate(iRvec_old):
-            for w1 in range(self.num_wann):
-                for w2 in range(self.num_wann):
-                    dshift = shifts_int[w1] - shifts_int[w2]
-                    iRnew = tuple(np.array(iRold) + dshift)
-                    j = self.rvec.iR(iRnew)
+        for k in self._XX_R:
+            val = self._XX_R[k]
+            tmp = np.zeros((nRvec_new, ) + val.shape[1:], dtype=val.dtype)
+            tmp[:nRvec_old] = val
+            self._XX_R[k] = tmp
+
+        @lru_cache(maxsize=None)
+        def find_remapping_indices(shift):
+            R_shifted = self.rvec.iRvec + np.array(shift)[None, :]
+            list_old, list_new = [], []
+            for i, R in enumerate(R_shifted):
+                j = self.rvec.iR(R, allow_none=True)
+                if j is not None:
+                    list_old.append(i)
+                    list_new.append(j)
+            return np.array(list_old), np.array(list_new)
+
+        for i, shift in enumerate(shifts_set):
+            if shift == (0, 0, 0):
+                continue
+            idx_old, idx_new = find_remapping_indices(shift)
+            for iw in range(self.num_wann):
+                if shifts_int_list[iw] == shift:
                     for key, val in self._XX_R.items():
-                        _XX_R_new[key][j, w1, w2] += val[i, w1, w2]
-        self._XX_R = _XX_R_new
+                        val[idx_new, iw, :] = val[idx_old, iw, :]
+            shift_neg = tuple(-np.array(shift))
+            idx_old_neg, idx_new_neg = find_remapping_indices(shift_neg)
+            for jw in range(self.num_wann):
+                if shifts_int_list[jw] == shift:
+                    for key, val in self._XX_R.items():
+                        val[idx_new_neg, :, jw] = val[idx_old_neg, :, jw]
         self.remove_zero_Rvec()
 
     def shift_wannier_centers_to_unit_cell(self):
@@ -792,7 +821,6 @@ class System_R(System):
             if the directory already exiists, it will be overwritten
         """
         super().to_npz(path)
-        logfile = self.logfile
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
         if hasattr(self, 'wannier_names') and self.wannier_names is not None and 'wannier_names' not in exclude_properties:
@@ -807,9 +835,8 @@ class System_R(System):
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
 
         for key in set(properties):
-            logfile.write(f"saving {key}\n")
             fullpath = os.path.join(path, key + ".npz")
-            logger.info(f"saving {key} to {fullpath}")
+            logger.debug(f"saving {key} to {fullpath}")
             if key == 'iRvec':
                 val = self.rvec
             else:
@@ -821,7 +848,7 @@ class System_R(System):
                 np.savez(fullpath, **val)
             else:
                 np.savez(fullpath, val)
-            logfile.write(" - Ok!\n")
+            logger.debug(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
@@ -829,9 +856,9 @@ class System_R(System):
                     val = getattr(self, key)
                     np.savez(fullpath, val)
         for key in R_matrices:
-            logfile.write(f"saving {key}")
+            logger.debug(f"saving {key}")
             np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
-            logfile.write(" - Ok!\n")
+            logger.debug(" - Ok!\n")
 
 
     @classmethod
@@ -871,18 +898,17 @@ class System_R(System):
         """
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
-        logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
         properties = [x for x in all_names if not x.startswith('_XX_R_') and not x.startswith('theta') and x not in exclude_properties]  # This is very unstable, TODO: write a list of possible properties
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
-        logger.debug("properties to load: ", properties)
+        logger.debug(f"properties to load: {properties}")
         for key in properties:
             if key in keys_processed:
                 continue
-            logfile.write(f"loading {key}\n ")
+            logger.debug(f"loading {key}\n ")
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=True)
 
             # pointgroup was previouslly named symgroup. This is for backward compatibility
@@ -912,20 +938,20 @@ class System_R(System):
                 self.set_pointgroup(pointgroup=val)
             else:
                 setattr(self, key_loc, val)
-            logfile.write(" - Ok!\n")
+            logger.debug(" - Ok!\n")
             keys_processed.add(key)
 
         if matrices is None:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
         for key in matrices:
-            logfile.write(f"loading R_matrix {key}")
+            logger.debug(f"loading R_matrix {key}")
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
 
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
-            logfile.write(f"loading {key} - Ok!\n")
+            logger.debug(f"loading {key} - Ok!\n")
         return self
 
     @classmethod

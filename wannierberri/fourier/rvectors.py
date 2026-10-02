@@ -431,9 +431,15 @@ class Rvectors:
     def index_R(self):
         return {tuple(R): i for i, R in enumerate(self.iRvec)}
 
-    def iR(self, R):
-        R = np.array(np.round(R), dtype=int).tolist()
-        return self.iRvec.tolist().index(R)
+    def iR(self, R, allow_none=False):
+        R = tuple(np.array(np.round(R), dtype=int).tolist())
+        try:
+            return self.index_R[R]
+        except KeyError:
+            if allow_none:
+                return None
+            else:
+                raise KeyError(f"R={R} is not in the list of R-vectors")
 
     def add_minus_R(self, XX_R_dict):
         mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)

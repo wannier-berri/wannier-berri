@@ -277,7 +277,19 @@ class SystemSOC(System_R):
         rvectors_merged.shifts_left_red = shifts_red
         rvectors_merged.shifts_right_red = shifts_red
 
+        try:
+            wannier_names_up = self.system_up.wannier_names
+            wannier_names_down = self.system_down.wannier_names
+            wannier_names_merged = []
+            for name_up, name_down in zip(wannier_names_up, wannier_names_down):
+                wannier_names_merged.append(name_up + "_up")
+                wannier_names_merged.append(name_down + "_down")
+        except AttributeError:
+            wannier_names_merged = None
+
+
         system_R = System_R()
+        system_R.wannier_names = wannier_names_merged
         system_R.rvec = rvectors_merged
         system_R.is_phonon = self.is_phonon
         system_R.num_wann = self.num_wann
@@ -289,6 +301,8 @@ class SystemSOC(System_R):
         system_R.cell = self.cell.copy() if self.cell is not None else None
 
         for key in list(self.system_up._XX_R.keys()) + ["SS"]:
+            if key == "dV_soc":
+                continue
             if key != "SS":
                 shape = self.system_up._XX_R[key].shape[3:]
                 # shape = tuple()
@@ -315,8 +329,8 @@ class SystemSOC(System_R):
                 SSk[iR0, rng + 1, rng + 1, :] = self.pauli_rotated[1, 1, None, None, :]
                 if self.nspin == 2:
                     overlap = self.get_R_mat('overlap_up_down')[:, :, :, None]
-                    SSk[rvectors_map_list[1], 0::2, 1::2, :] = overlap * self.pauli_rotated[None, 0, 1, None, None, :]
-                    SSk[rvectors_map_list[2], 1::2, 0::2, :] = overlap.conj().swapaxes(1, 2) * self.pauli_rotated[None, 1, 0, None, None, :]
+                    SSk[rvectors_map_list[2], 0::2, 1::2, :] = overlap * self.pauli_rotated[None, 0, 1, None, None, :]
+                    SSk[rvectors_map_list[3], 1::2, 0::2, :] = overlap.conj().swapaxes(1, 2) * self.pauli_rotated[None, 1, 0, None, None, :]
                 else:
                     SSk[iR0, rng, rng + 1, :] = self.pauli_rotated[0, 1, None, None, :]
                     SSk[iR0, rng + 1, rng, :] = self.pauli_rotated[1, 0, None, None, :]
