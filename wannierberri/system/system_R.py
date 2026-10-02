@@ -8,7 +8,7 @@ import copy
 import warnings
 import numpy as np
 import os
-from functools import cached_property, lru_cache
+from functools import cached_property
 from collections import defaultdict
 import glob
 import logging
@@ -435,7 +435,7 @@ class System_R(System):
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, :, new_wann_indices][:, new_wann_indices, :]
         self.rvec.reorder(new_wann_indices)
-        if hasattr(self, 'wannier_names'):
+        if hasattr(self, 'wannier_names') and self.wannier_names is not None:
             self.wannier_names = self.wannier_names[new_wann_indices]
         self.clear_cached_wcc()
         self.clear_cached_R()
@@ -630,22 +630,26 @@ class System_R(System):
         shifts_int_list = [tuple(shift) for shift in shifts_int]
 
         shifts_set = set(shifts_int_list)
+        shift_set_neg = set(tuple(-np.array(shift)) for shift in shifts_set)
         dshifts_set = set(tuple(np.array(s1) - np.array(s2)) for s1 in shifts_set for s2 in shifts_set)
-        shifts_set_full = shifts_set.union(dshifts_set)
+        shifts_set_full = shifts_set.union(dshifts_set).union(shift_set_neg)
 
         iRvec_old = self.rvec.iRvec.copy()
         nRvec_old = self.rvec.nRvec
         iRvec_old_set = set(tuple(iRvec) for iRvec in iRvec_old)
-        iRvec_new = iRvec_old_set.copy()
+        iRvec_new_set = iRvec_old_set.copy()
         for shift in shifts_set_full:
             for iRold in self.rvec.iRvec:
                 iRnew = tuple(np.array(iRold) + np.array(shift))
-                iRvec_new.add(iRnew)
-        iRvec_add = iRvec_new - iRvec_old_set
-        iRvec_add_array = np.array(sorted(list(iRvec_add), key=lambda x: (x[0], x[1], x[2])))
+                iRvec_new_set.add(iRnew)
+        iRvec_add_set = iRvec_new_set - iRvec_old_set
+        iRvec_add_array = np.array(sorted(list(iRvec_add_set), key=lambda x: (x[0], x[1], x[2])))
         iRvec_new = np.vstack([iRvec_old, iRvec_add_array])
         nRvec_new = len(iRvec_new)
         logger.info(f"shifting Wannier centers number of R-vectors changed from {nRvec_old} to {len(iRvec_new)}")
+
+        sum_abs = {key: np.sum(np.abs(val)) for key, val in self._XX_R.items()}
+        sums = {key: np.sum(val) for key, val in self._XX_R.items()}
 
 
         self.set_wannier_centers(wannier_centers_red=self.wannier_centers_red + shifts)
@@ -655,33 +659,43 @@ class System_R(System):
             tmp = np.zeros((nRvec_new, ) + val.shape[1:], dtype=val.dtype)
             tmp[:nRvec_old] = val
             self._XX_R[k] = tmp
+            assert abs(self._XX_R[k].sum() - sums[k]) < 1e-10, f"the sum of the matrix {k} changed after shifting Wannier centers, from {sums[k]} to {self._XX_R[k].sum()}"
+            assert abs(np.sum(np.abs(self._XX_R[k])) - sum_abs[k]) < 1e-10, f"the sum of the absolute values of the matrix {k} changed after shifting Wannier centers, from {sum_abs[k]} to {np.sum(np.abs(self._XX_R[k]))}"
 
-        @lru_cache(maxsize=None)
+    
         def find_remapping_indices(shift):
             R_shifted = self.rvec.iRvec + np.array(shift)[None, :]
-            list_old, list_new = [], []
+            list_old, list_new, list_missing = [], [], []
             for i, R in enumerate(R_shifted):
                 j = self.rvec.iR(R, allow_none=True)
                 if j is not None:
                     list_old.append(i)
                     list_new.append(j)
-            return np.array(list_old), np.array(list_new)
+                else:
+                    list_missing.append(i)
+            assert len(set(list_new)) == len(list_new), f"some of the new indices are not unique for shift {shift}"
+            idx_new_missing = set(np.arange(self.rvec.nRvec)) - set(list_new)
+            return np.array(list_old), np.array(list_new), np.array(list_missing), np.array(sorted(list(idx_new_missing)))
 
-        for i, shift in enumerate(shifts_set):
-            if shift == (0, 0, 0):
-                continue
-            idx_old, idx_new = find_remapping_indices(shift)
-            for iw in range(self.num_wann):
-                if shifts_int_list[iw] == shift:
+
+        for shift in shifts_set - {(0, 0, 0)}:
+            idx_old, idx_new, idx_missing, idx_new_missing = find_remapping_indices(shift)
+            for iw, shift_w in enumerate(shifts_int_list):
+                if shift_w == shift:
                     for key, val in self._XX_R.items():
                         val[idx_new, iw, :] = val[idx_old, iw, :]
-            shift_neg = tuple(-np.array(shift))
-            idx_old_neg, idx_new_neg = find_remapping_indices(shift_neg)
-            for jw in range(self.num_wann):
-                if shifts_int_list[jw] == shift:
-                    for key, val in self._XX_R.items():
-                        val[idx_new_neg, :, jw] = val[idx_old_neg, :, jw]
+                        val[idx_new_missing, iw, :] = 0
+                        val[idx_old, :, iw] = val[idx_new, :, iw]
+                        val[idx_missing, :, iw] = 0
+
+
+        for k in self._XX_R:
+            assert abs(self._XX_R[k].sum() - sums[k]) < 1e-10, f"the sum of the matrix {k} changed after shifting Wannier centers, from {sums[k]} to {self._XX_R[k].sum()}"
+            assert abs(np.sum(np.abs(self._XX_R[k])) - sum_abs[k]) < 1e-10, f"the sum of the absolute values of the matrix {k} changed after shifting Wannier centers, from {sum_abs[k]} to {np.sum(np.abs(self._XX_R[k]))}"
+
+
         self.remove_zero_Rvec()
+
 
     def shift_wannier_centers_to_unit_cell(self):
         """

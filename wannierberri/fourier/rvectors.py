@@ -425,7 +425,7 @@ class Rvectors:
 
     @cached_property
     def iR0(self):
-        return self.iRvec.tolist().index([0, 0, 0])
+        return self.iR((0, 0, 0))
 
     @cached_property
     def index_R(self):

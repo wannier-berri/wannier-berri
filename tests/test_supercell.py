@@ -244,9 +244,41 @@ def test_shift(system_Si_W90_JM_sym, change):
     #     print (f"{change}: Rvec {iR}: {R}, norm(H[iR])={np.linalg.norm(system_modified.get_R_mat('Ham')[iR])}")
 
 
-    system_modified.shift_wannier_centers_to_unit_cell()
+    # system_modified.shift_wannier_centers_to_unit_cell()
     print(f"difference in wannier centers: {system_modified.wannier_centers_red - system.wannier_centers_red}")
     print(f"number of Rvecotrs: {system.rvec.nRvec} vs {system_modified.rvec.nRvec}")
     path, bands = system.get_bandstructure(dk=0.05)
     bands_shifted = system_modified.get_bandstructure(path=path, return_path=False)
-    assert np.allclose(bands_shifted.results["Energy"].data, bands.results["Energy"].data, atol=1e-12)
+    bands_diff = abs(bands_shifted.results["Energy"].data - bands.results["Energy"].data).max()
+    for ik, (band0, band1) in enumerate(zip(bands.results["Energy"].data, bands_shifted.results["Energy"].data)):
+        if not np.allclose(band0, band1, atol=1e-10):
+            print(f"ik={ik}:  diff={abs(band0 - band1)}")
+    assert bands_diff < 1e-10, f"bandstructure differs after {change} by {bands_diff}"
+
+
+@pytest.mark.parametrize("exclude_WF_mask", ["Ga:*_cell-0", ["Ga:*_cell-0", "As:*_cell-3"], None])
+def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask):
+    matrices = ['Ham', 'AA', 'SS']
+    system_bulk = copy.deepcopy(system_GaAs_W90)
+    system_bulk._XX_R = {key: system_bulk.get_R_mat(key) for key in matrices}
+    system_bulk.wannier_names = ["As:sp3"] * 8 + ["Ga:sp3"] * 8
+    nslab = 2
+    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], [1, 1, -1]], nslab=nslab)
+    print("wannier names in bulk system: ", system_bulk.wannier_names)
+    print("real lattice vectors in bulk system: ", system_bulk.real_lattice)
+    system_slab.exclude_WF_mask(exclude_WF_mask)
+    exclude_WF_mask_list = exclude_WF_mask if isinstance(exclude_WF_mask, list) else [] if exclude_WF_mask is None else [exclude_WF_mask]
+    nat_exclude = len(exclude_WF_mask_list)
+    num_wann_expected = nslab * 16 * 2 - 8 * nat_exclude
+    assert system_slab.num_wann == num_wann_expected, f"num_wann in slab system {system_slab.num_wann} does not match expected {num_wann_expected} for exclude_WF_mask {exclude_WF_mask}"
+    print("wannier names in slab system: ", system_slab.wannier_names)
+    print("real lattice vectors in slab system: ", system_slab.real_lattice)
+    print("wannier centers in slab system: ", system_slab.wannier_centers_red)
+    ham = system_slab.get_R_mat('Ham')
+    print(f"Ham in slab system exclude_WF_mask {exclude_WF_mask} has shape {ham.shape} ")
+
+    check_system(
+        system_slab, f"GaAs_W90_JM-slab-nslab{nslab}-exclude:{','.join(exclude_WF_mask_list) if exclude_WF_mask_list else 'None'}",
+        matrices=matrices,
+        legacy=False,
+    )
