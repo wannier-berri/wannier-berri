@@ -295,6 +295,8 @@ class SystemSOC(System_R):
                 map_wan_to_atoms_merged.append(map_down_to_merged[at_dw])
                 shifts_wan_merged.append(shifts_atom_up[at_up])
                 shifts_wan_merged.append(shifts_atom_down[at_dw])
+            map_wan_to_atoms_merged = np.array(map_wan_to_atoms_merged, dtype=int)
+            shifts_wan_merged = np.round(shifts_wan_merged).astype(int)
         else:
             atoms_centers_red_merged = None
             map_wan_to_atoms_merged = None
@@ -376,6 +378,26 @@ class SystemSOC(System_R):
                 matrix[rvectors_map_list[0], ::2, ::2] += self.system_up.get_R_mat(key)
                 matrix[rvectors_map_list[1], 1::2, 1::2] += self.system_down.get_R_mat(key)
             system_R.set_R_mat(key, matrix)
+
+        def interleave(a, b):
+            res = []
+            for i in range(max(len(a), len(b))):
+                if i < len(a):
+                    res.append(a[i])
+                if i < len(b):
+                    res.append(b[i])
+            return np.array(res)
+
         if shifts_wan_merged is not None:
             system_R.shift_wannier_centers(shifts=shifts_wan_merged)
+            map_up = map_wan_to_atoms_merged[::2]
+            map_down = map_wan_to_atoms_merged[1::2]
+            nat = len(atoms_centers_red_merged)
+            new_wann_indices = []
+            for i in range(nat):
+                wann_up = np.where(map_up == i)[0] * 2
+                wann_down = np.where(map_down == i)[0] * 2 + 1
+                new_wann_indices.append(interleave(wann_up, wann_down))
+            new_wann_indices = np.concatenate(new_wann_indices)
+            system_R.reorder(new_wann_indices)
         return system_R

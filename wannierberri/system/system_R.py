@@ -82,8 +82,8 @@ class System_R(System):
                  **parameters):
 
         super().__init__(**parameters)
-        self.atom_centers_red = atom_centers
-        self.wannier_to_atom_map = wannier_to_atom_map
+        self.atom_centers_red = np.array(atom_centers) if atom_centers is not None else None
+        self.wannier_to_atom_map = np.array(wannier_to_atom_map) if wannier_to_atom_map is not None else None
         self._XX_R = dict()
 
 
@@ -461,8 +461,20 @@ class System_R(System):
         self.rvec.reorder(new_wann_indices)
         if self.wannier_names is not None:
             self.wannier_names = self.wannier_names[new_wann_indices]
+        if self.wannier_to_atom_map is not None:
+            self.wannier_to_atom_map = self.wannier_to_atom_map[new_wann_indices]
         self.clear_cached_wcc()
         self.clear_cached_R()
+        return self
+
+    def order_to_group_on_atoms(self):
+        """
+        Reorder the wannier functions to group them according to the atoms they belong to.
+        """
+        if self.wannier_to_atom_map is None:
+            raise ValueError("wannier_to_atom_map is not set in the system. Please set it before calling order_to_group_on_atoms")
+        new_wann_indices = np.concatenate([np.where(self.wannier_to_atom_map == i)[0] for i in range(len(self.atom_centers_red))])
+        self.reorder(new_wann_indices)
         return self
 
     def reorder_atoms(self, new_atom_indices):

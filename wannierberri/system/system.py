@@ -74,7 +74,7 @@ class System:
         self.name = name
         self.silent = silent
         self.spinor = spinor
-        self.wannier_names = wannier_names
+        self.wannier_names = np.array(wannier_names) if wannier_names is not None else None
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
