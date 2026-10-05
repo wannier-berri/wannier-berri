@@ -216,7 +216,7 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def make_slab(self, M, nslab=1, reorder=True):
+    def make_slab(self, M, nslab=1, reorder=True, wannier_atom_centers = None):
         M = np.array(M, dtype=int, copy=True)
         M[2, :] *= nslab
         slab = self.make_supercell(M)

@@ -296,9 +296,8 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask, check_method)
 
 def test_get_iRvec_in_supercell():
     from wannierberri.system.system_supercell import _get_iRvec_in_supercell
-    M = np.diag([1,1,5])
-    iRvec = _get_iRvec_in_supercell(M)
+    iRvec = _get_iRvec_in_supercell([1, 1, 5])
     assert iRvec.shape == (5, 3)
-    assert np.all(iRvec[:,0] == 0)
-    assert np.all(iRvec[:,1] == 0)
-    assert np.all(iRvec[:,2] == np.arange(5))
+    assert np.all(iRvec[:, 0] == 0)
+    assert np.all(iRvec[:, 1] == 0)
+    assert np.all(iRvec[:, 2] == np.arange(5))

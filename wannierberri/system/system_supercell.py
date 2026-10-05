@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 def _check_supercell_matrix(supercell_matrix):
     """Check that ``supercell_matrix`` is a non-singular 3x3 integer matrix and return it as an integer array."""
     M = np.asarray(supercell_matrix)
-    if M.shape != (3, 3):
+    if M.ndim == 1:
+        assert len(M) == 3, f"supercell_matrix given as a vector should have length 3, found {len(M)}"
+        M = np.diag(M)
+    elif M.shape != (3, 3):
         raise ValueError(f"supercell_matrix should be a 3x3 integer matrix, found shape {M.shape}")
     M_int = np.round(M).astype(int)
     if not np.allclose(M, M_int):
