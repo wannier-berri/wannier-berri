@@ -257,9 +257,10 @@ def test_shift(system_Si_W90_JM_sym, change):
 
 
 @pytest.mark.parametrize("use_atoms", [True, False])
+@pytest.mark.parametrize("third_vector", ["normal", "skew"])
 @pytest.mark.parametrize("check_method", ["bands", "matrix"])
 @pytest.mark.parametrize("exclude_atom", ["Ga1", "Ga1As3", None])
-def test_slab_GaAs(check_system, system_GaAs_W90, exclude_atom, check_method, use_atoms):
+def test_slab_GaAs(check_system, system_GaAs_W90, exclude_atom, check_method, use_atoms, third_vector):
     if exclude_atom == "Ga1":
         exclude_WF_mask = "Ga:*_cell-0"
         exclude_atoms = [0]
@@ -269,6 +270,10 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_atom, check_method, us
     elif exclude_atom is None:
         exclude_WF_mask = None
         exclude_atoms = []
+    if third_vector == "skew":
+        if check_method == "matrix":
+            pytest.skip("matrix check is not used when third_vector=skew because system is different, but hte bands should be the same")
+
 
     if use_atoms and check_method == "matrix":
         pytest.skip("matrix check is not used when use_atoms=True because the order of R-vectors and Wannier functions may differ from the reference")
@@ -282,7 +287,13 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_atom, check_method, us
     if use_atoms:
         system_bulk.atom_centers_red = np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]])
         system_bulk.wannier_to_atom_map = np.array([1] * 8 + [0] * 8)
-    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], [1, 1, -1]], nslab=nslab, use_atoms=use_atoms)
+    if third_vector == "skew":
+        b3 = [0, 2, 0]
+    else:
+        b3 = [1, 1, -1]
+    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], b3], nslab=nslab, use_atoms=use_atoms)
+    print(f"real lattice vectors in slab system: {system_slab.real_lattice}")
+    # return
     if use_atoms:
         system_slab.exclude_atoms(exclude_atoms)
     else:
