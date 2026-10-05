@@ -34,19 +34,16 @@ Contains a general class for Rotation, Mirror, and also some pre-defined shortcu
 
 """
 
-import logging
+from collections.abc import Iterable
+from ..utility import real_recip_lattice
+from copy import deepcopy
 import numpy as np
 import scipy
-# import scipy.spatial
-# import scipy.spatial.transform
-import warnings
-from copy import deepcopy
-from ..utility import real_recip_lattice
-from collections.abc import Iterable
+import logging
+logger = logging.getLogger(__name__)
 
 
 SYMMETRY_PRECISION = 1e-6
-logger = logging.getLogger(__name__)
 
 
 class PointSymmetry:
@@ -523,7 +520,7 @@ def transform_from_dict(dic, key):
         if isinstance(d, dict):
             return Transform(**d)
         elif isinstance(d, str):
-            warnings.warn("transform read as string from file, recognized as None")
+            logger.warning("transform read as string from file, recognized as None")
             return None
         else:
             return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")

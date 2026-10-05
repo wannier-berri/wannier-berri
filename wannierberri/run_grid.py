@@ -441,6 +441,6 @@ def read_factors(file_Klist_path, iter):
             iter_index = 0
         else:
             if iter_index not in iter_indices:
-                Warning(f"requested iteration {iter} (index {iter_index}) is not found in factors files, will try to use the closest previous one")
+                logger.warning(f"requested iteration {iter} (index {iter_index}) is not found in factors files, will try to use the closest previous one")
                 iter_index = iter_indices[iter_indices <= iter_index][-1]
         return read_factors(file_Klist_path, iter_index)

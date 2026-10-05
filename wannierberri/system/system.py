@@ -1,12 +1,13 @@
 
+from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal, transform_ident, transform_odd
+from ..utility import real_recip_lattice
+from functools import cached_property
+import numpy as np
 import os
 import sys
-import warnings
-import numpy as np
-from functools import cached_property
+import logging
+logger = logging.getLogger(__name__)
 
-from ..utility import real_recip_lattice
-from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal, transform_ident, transform_odd
 
 
 def num_cart_dim(key):
@@ -137,7 +138,7 @@ class System:
         Will be removed in the future.
         """
         # deprecation warning
-        warnings.warn("The method `set_symmetry` is deprecated. Use `set_pointgroup` instead", DeprecationWarning)
+        logger.warning("DeprecationWarning: The method `set_symmetry` is deprecated. Use `set_pointgroup` instead")
         self.set_pointgroup(symmetry_gen=symmetry_gen, pointgroup=pointgroup, spacegroup=spacegroup)
 
 
@@ -265,10 +266,7 @@ class System:
         a wrapper for set_pointgroup_from_structure
         This method is deprecated and will be removed in future versions.
         """
-        warnings.warn(
-            "set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.",
-            DeprecationWarning
-        )
+        logger.warning("DeprecationWarning: set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.")
         self.set_pointgroup_from_structure()
 
     def set_pointgroup_from_structure(self):
@@ -302,7 +300,7 @@ class System:
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
         elif not tr_found:
-            warnings.warn(
+            logger.warning(
                 "you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
                 f"probably it is because you have an old spglib version {spglib.__version__}. "
                 "we suggest upgrading to spglib>=2.0.2")

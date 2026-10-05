@@ -1,14 +1,14 @@
+import copy
+from collections import defaultdict
+from ..system.system import num_cart_dim
+from ..utility import cached_einsum
+import numpy as np
 import os
 import sys
-import warnings
-import numpy as np
-
-from ..utility import cached_einsum
-from ..system.system import num_cart_dim
-from collections import defaultdict
-import copy
-
 import logging
+logger = logging.getLogger(__name__)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -256,7 +256,7 @@ class SymWann:
             raise NotImplementedError(f"symmetrization of matrices {unknown} is not implemented yet")
         unknown = set(XX_R.keys()) - set(self.tested_matrix_list)
         if unknown:
-            warnings.warn(f"symmetrization of matrices {unknown} is not tested. use on your own risk")
+            logger.warning(f"symmetrization of matrices {unknown} is not tested. use on your own risk")
 
         if cutoff_dict is None:
             cutoff_dict = {}
