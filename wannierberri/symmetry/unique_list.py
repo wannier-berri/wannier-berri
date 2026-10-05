@@ -108,6 +108,12 @@ class UniqueListMod1(UniqueList):
         self.last_try_append = -1
         super().__init__(iterator)
 
+    def __add__(self, other):
+        new_list = UniqueListMod1(self, tol=self.tol)
+        for item in other:
+            new_list.append(item)
+        return new_list
+
     def append(self, item):
         self.last_try_append += 1
         for i in self:

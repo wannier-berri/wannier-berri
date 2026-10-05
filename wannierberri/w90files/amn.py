@@ -202,7 +202,7 @@ class AMN(W90_file):
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
         return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list,
-                   spread_list=spread_list, spinor=spinor, 
+                   spread_list=spread_list, spinor=spinor,
                    wannier_names=projections.get_wannier_names(),
                    atom_centers_red=projections.atom_centers_red,
                    wannier_to_atom_map=projections.wannier_to_atom_map

@@ -268,8 +268,40 @@ class SystemSOC(System_R):
         return system_soc
 
     def get_system_R(self):
-        from ..fourier.rvectors import merge_Rvectors
 
+
+        atoms_up = self.system_up.atom_centers_red
+        atoms_down = self.system_down.atom_centers_red
+        if atoms_up is not None and atoms_down is not None:
+            from ..symmetry.unique_list import UniqueListMod1
+            atoms_centers_red_merged = UniqueListMod1(atoms_up) + UniqueListMod1(atoms_down)
+            print(f"atoms_centers_red_merged = {atoms_centers_red_merged}, len = {len(atoms_centers_red_merged)}")
+            map_up_to_merged = []
+            map_down_to_merged = []
+            shifts_atom_up = []
+            shifts_atom_down = []
+            for atom in atoms_up:
+                idx = atoms_centers_red_merged.index(atom)
+                map_up_to_merged.append(idx)
+                shifts_atom_up.append(atoms_centers_red_merged[idx] - atom)
+            for atom in atoms_down:
+                idx = atoms_centers_red_merged.index(atom)
+                map_down_to_merged.append(idx)
+                shifts_atom_down.append(atoms_centers_red_merged[idx] - atom)
+            map_wan_to_atoms_merged = []
+            shifts_wan_merged = []
+            for i, (at_up, at_dw) in enumerate(zip(self.system_up.wannier_to_atom_map, self.system_down.wannier_to_atom_map)):
+                map_wan_to_atoms_merged.append(map_up_to_merged[at_up])
+                map_wan_to_atoms_merged.append(map_down_to_merged[at_dw])
+                shifts_wan_merged.append(shifts_atom_up[at_up])
+                shifts_wan_merged.append(shifts_atom_down[at_dw])
+        else:
+            atoms_centers_red_merged = None
+            map_wan_to_atoms_merged = None
+            shifts_wan_merged = None
+
+
+        from ..fourier.rvectors import merge_Rvectors
         rvectors_merged, rvectors_map_list = merge_Rvectors([self.system_up.rvec, self.system_down.rvec, self.rvec, self.rvec.get_reversed()])
         shifts_red = np.zeros((self.num_wann, 3))
         shifts_red[::2] = self.rvec.shifts_left_red
@@ -277,19 +309,24 @@ class SystemSOC(System_R):
         rvectors_merged.shifts_left_red = shifts_red
         rvectors_merged.shifts_right_red = shifts_red
 
-        try:
-            wannier_names_up = self.system_up.wannier_names
-            wannier_names_down = self.system_down.wannier_names
-            wannier_names_merged = []
-            for name_up, name_down in zip(wannier_names_up, wannier_names_down):
-                wannier_names_merged.append(name_up + "_up")
-                wannier_names_merged.append(name_down + "_down")
-        except AttributeError:
-            wannier_names_merged = None
+
+        wannames_up = self.system_up.wannier_names
+        wannames_down = self.system_down.wannier_names
+        if wannames_up is not None and wannames_down is not None:
+            wannames_merged = []
+            for n1, n2 in zip(wannames_up, wannames_down):
+                wannames_merged.append(n1 + "_up")
+                wannames_merged.append(n2 + "_down")
+        else:
+            wannames_merged = None
+        system_R = System_R(
+            wannier_names=wannames_merged,
+            atom_centers=atoms_centers_red_merged,
+            wannier_to_atom_map=map_wan_to_atoms_merged,
+        )
 
 
-        system_R = System_R()
-        system_R.wannier_names = wannier_names_merged
+
         system_R.rvec = rvectors_merged
         system_R.is_phonon = self.is_phonon
         system_R.num_wann = self.num_wann
@@ -339,4 +376,6 @@ class SystemSOC(System_R):
                 matrix[rvectors_map_list[0], ::2, ::2] += self.system_up.get_R_mat(key)
                 matrix[rvectors_map_list[1], 1::2, 1::2] += self.system_down.get_R_mat(key)
             system_R.set_R_mat(key, matrix)
+        if shifts_wan_merged is not None:
+            system_R.shift_wannier_centers(shifts=shifts_wan_merged)
         return system_R

@@ -76,8 +76,8 @@ class System_R(System):
 
     half_wann_matrices = set()
 
-    def __init__(self, 
-                 atom_centers=None, 
+    def __init__(self,
+                 atom_centers=None,
                  wannier_to_atom_map=None,
                  **parameters):
 
@@ -667,8 +667,8 @@ class System_R(System):
 
         Parameters
         ----------
-        shift : array-like
-            The vector by which to shift the Wannier centers. Should be of shape (3,).
+        shifts : array-like
+            The vector by which to shift the Wannier centers. Should be of shape (num_wann, 3).
         """
         shifts_int = np.round(shifts).astype(int)
         assert np.allclose(shifts, shifts_int), f"shifts should be integer, found {shifts}"
