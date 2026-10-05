@@ -216,21 +216,41 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def make_slab(self, M, nslab=1, reorder=True, wannier_atom_centers = None):
+    def make_slab(self, M, nslab=1, reorder=True, use_atoms=True):
         M = np.array(M, dtype=int, copy=True)
         M[2, :] *= nslab
+        if use_atoms:
+            assert self.atom_centers_red is not None, "atom_centers_red is not set in the system. Please set it before calling make_slab with use_atoms=True"
+            assert self.wannier_to_atom_map is not None, "wannier_to_atom_map is not set in the system. Please set it before calling make_slab with use_atoms=True"
         slab = self.make_supercell(M)
-        normal_vector = get_nonperiodic_normal(slab.real_lattice)
-        shifts = np.zeros((slab.num_wann, 3), dtype=float)
-        shifts[:, 2] = -np.floor(np.dot(slab.wannier_centers_cart, normal_vector) / np.dot(normal_vector, normal_vector))
-        slab.shift_wannier_centers(shifts)
+        print(f"supercell has atoms {slab.atom_centers_red} and mapping {slab.wannier_to_atom_map}")
+
+        if use_atoms:
+            shifts = np.zeros((len(slab.atom_centers_red), 3), dtype=float)
+            shifts[:, 2] = -np.floor(slab.atom_centers_red[:, 2])
+            slab.shift_atoms(shifts)
+        else:
+            shifts = np.zeros((slab.num_wann, 3), dtype=float)
+            shifts[:, 2] = -np.floor(slab.wannier_centers_red[:, 2])
+            slab.shift_wannier_centers(shifts)
         slab.set_periodic([True, True, False])
         print(f"slab lattice vectors: {slab.real_lattice}")
+        normal_vector = get_nonperiodic_normal(slab.real_lattice)
+        if slab.atom_centers_red is not None:
+            atom_centers_cart = slab.atom_centers_red @ slab.real_lattice
         slab.real_lattice[2, :] = normal_vector
+        if slab.atom_centers_red is not None:
+            slab.atom_centers_red = atom_centers_cart @ np.linalg.inv(slab.real_lattice)
+
         print(f"slab lattice vectors after set_nonperiodic_normal: {slab.real_lattice}")
-        slab.shift_wannier_centers_to_unit_cell()
-        if reorder:
-            slab.reorder(np.argsort(slab.wannier_centers_red[:, 2]))
+        if use_atoms:
+            slab.shift_atoms_to_unit_cell()
+            if reorder:
+                slab.reorder_atoms(np.argsort(slab.atom_centers_red[:, 2]))
+        else:
+            slab.shift_wannier_centers_to_unit_cell()
+            if reorder:
+                slab.reorder(np.argsort(slab.wannier_centers_red[:, 2]))
         return slab
 
     def symmetrize2(self, symmetrizer, silent=None, use_symmetries_index=None,
@@ -441,6 +461,28 @@ class System_R(System):
         self.clear_cached_R()
         return self
 
+    def reorder_atoms(self, new_atom_indices):
+        """
+        Reorder the atoms according to the new indices
+
+        Parameters
+        ----------
+        new_atom_indices : list
+            list of new indices for the atoms. The length should be equal to the number of atoms.
+        """
+        assert len(new_atom_indices) <= len(self.atom_centers_red), f"new_atom_indices should have length {len(self.atom_centers_red)}, found {len(new_atom_indices)}"
+        assert len(set(new_atom_indices)) == len(new_atom_indices), "new_atom_indices should not contain duplicates"
+        self.atom_centers_red = self.atom_centers_red[new_atom_indices]
+        new_wannier_index = np.concatenate([np.where(self.wannier_to_atom_map == i)[0] for i in new_atom_indices])
+        reverse_index = {i: j for j, i in enumerate(new_atom_indices)}
+        self.wannier_to_atom_map = np.array([reverse_index[i] for i in self.wannier_to_atom_map[new_wannier_index]])
+        self.reorder(new_wannier_index)
+        return self
+
+    @property
+    def atom_centers_cart(self):
+        return self.atom_centers_red @ self.real_lattice
+
     def double_spin(self):
         """
         If the system is spinless, one can trivially dounle 
@@ -644,7 +686,10 @@ class System_R(System):
                 iRvec_new_set.add(iRnew)
         iRvec_add_set = iRvec_new_set - iRvec_old_set
         iRvec_add_array = np.array(sorted(list(iRvec_add_set), key=lambda x: (x[0], x[1], x[2])))
-        iRvec_new = np.vstack([iRvec_old, iRvec_add_array])
+        if len(iRvec_add_array) > 0:
+            iRvec_new = np.vstack([iRvec_old, iRvec_add_array])
+        else:
+            iRvec_new = iRvec_old.copy()
         nRvec_new = len(iRvec_new)
         logger.info(f"shifting Wannier centers number of R-vectors changed from {nRvec_old} to {len(iRvec_new)}")
 
@@ -662,7 +707,7 @@ class System_R(System):
             assert abs(self._XX_R[k].sum() - sums[k]) < 1e-10, f"the sum of the matrix {k} changed after shifting Wannier centers, from {sums[k]} to {self._XX_R[k].sum()}"
             assert abs(np.sum(np.abs(self._XX_R[k])) - sum_abs[k]) < 1e-10, f"the sum of the absolute values of the matrix {k} changed after shifting Wannier centers, from {sum_abs[k]} to {np.sum(np.abs(self._XX_R[k]))}"
 
-    
+
         def find_remapping_indices(shift):
             R_shifted = self.rvec.iRvec + np.array(shift)[None, :]
             list_old, list_new, list_missing = [], [], []
@@ -697,6 +742,20 @@ class System_R(System):
         self.remove_zero_Rvec()
 
 
+    def shift_atoms(self, shifts):
+        self.atom_centers_red += shifts
+        shifts_wannier = np.array([shifts[at] for at in self.wannier_to_atom_map])
+        self.shift_wannier_centers(shifts_wannier)
+
+
+    @property
+    def wannier_shifts_from_atoms_red(self):
+        return self.wannier_centers_red - self.atom_centers_red[self.wannier_to_atom_map]
+
+    @property
+    def wannier_shifts_from_atoms_cart(self):
+        return self.wannier_shifts_from_atoms_red @ self.real_lattice
+
     def shift_wannier_centers_to_unit_cell(self):
         """
         Shift the Wannier centers to the unit cell. This is useful for changing the origin of the system.
@@ -704,9 +763,41 @@ class System_R(System):
         shifts = np.floor(self.wannier_centers_red).astype(int)
         self.shift_wannier_centers(-shifts)
 
+    def shift_atoms_to_unit_cell(self):
+        """
+        Shift the atoms and associated Wannier centers to the unit cell. This is useful for changing the origin of the system.
+        """
+        shifts = np.floor(self.atom_centers_red).astype(int)
+        self.shift_atoms(-shifts)
+
     def remove_zero_Rvec(self):
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
         return self
+
+    def exclude_atoms(self, atom_indices):
+        """
+        Exclude atoms from the system. Useful for slabs
+
+        Parameters
+        ----------
+        atom_indices : list of int
+            The indices of the atoms to exclude.
+        """
+        if not hasattr(self, 'wannier_to_atom_map'):
+            raise RuntimeError("the system does not have wannier_to_atom_map, cannot exclude atoms")
+        if len(atom_indices) == 0:
+            return self
+        wf_indices = np.array([i for i in range(self.num_wann) if self.wannier_to_atom_map[i] in atom_indices], dtype=int)
+        self.exclude_WF_indices(wf_indices)
+        num_atoms_old = len(self.atom_centers_red)
+        new_atoms_index = np.array([i for i in range(num_atoms_old) if i not in atom_indices], dtype=int)
+        new_atoms_dict = {old: new for new, old in enumerate(new_atoms_index)}
+        self.wannier_to_atom_map = np.array([new_atoms_dict[at] for at in np.delete(self.wannier_to_atom_map, wf_indices)], dtype=int)
+        self.atom_centers_red = self.atom_centers_red[new_atoms_index]
+        # self.atom_labels = [self.atom_labels[i] for i in new_atoms_index]
+        return self
+
+
 
     def exclude_WF_indices(self, wf_indices):
         """
@@ -798,7 +889,7 @@ class System_R(System):
 
     @cached_property
     def optional_properties(self):
-        return ["positions", "magnetic_moments", "atom_labels"]
+        return ["positions", "magnetic_moments", "atom_labels", "atom_centers_red", "wannier_names", "wannier_to_atom_map"]
 
     def _R_mat_npz_filename(self, key, xxr=True):
         if xxr:
@@ -837,8 +928,6 @@ class System_R(System):
         super().to_npz(path)
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
-        if hasattr(self, 'wannier_names') and self.wannier_names is not None and 'wannier_names' not in exclude_properties:
-            properties.append('wannier_names')
         logger.info(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
@@ -866,7 +955,7 @@ class System_R(System):
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
-                if hasattr(self, key):
+                if hasattr(self, key) and getattr(self, key) is not None:
                     val = getattr(self, key)
                     np.savez(fullpath, val)
         for key in R_matrices:

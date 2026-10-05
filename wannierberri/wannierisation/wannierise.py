@@ -188,6 +188,10 @@ def wannierise(wandata,
         wandata.chk.num_wann = wandata.amn.NW
         if hasattr(wandata.amn, "wannier_names"):
             wandata.chk.wannier_names = wandata.amn.wannier_names
+        if hasattr(wandata.amn, "atom_centers_red"):
+            wandata.chk.atom_centers_red = wandata.amn.atom_centers_red
+        if hasattr(wandata.amn, "wannier_to_atom_map"):
+            wandata.chk.wannier_to_atom_map = wandata.amn.wannier_to_atom_map
     elif init == "random":
         if sitesym:
             num_wann = symmetrizer.num_wann

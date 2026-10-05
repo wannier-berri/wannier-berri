@@ -188,6 +188,16 @@ def get_system_supercell(system, supercell_matrix, **parameters):
         system_sc.wannier_names = np.array([f"{name}_cell-{i}" for i in range(num_cells) for name in system.wannier_names])
     else:
         system_sc.wannier_names = None
+    if hasattr(system, 'atom_centers_red') and system.atom_centers_red is not None:
+        system_sc.atom_centers_red = (iRvec_cells[:, None, :] + system.atom_centers_red[None, :, :]).reshape(-1, 3) @ np.linalg.inv(M)
+    else:
+        system_sc.atom_centers_red = None
+    if hasattr(system, 'wannier_to_atom_map') and system.wannier_to_atom_map is not None:
+        nat = len(system.atom_centers_red)
+        system_sc.wannier_to_atom_map = np.array([i * nat + system.wannier_to_atom_map for i in range(num_cells)]).reshape(-1)
+    else:
+        system_sc.wannier_to_atom_map = None
+
     system_sc.rvec = Rvectors(lattice=system_sc.real_lattice, shifts_left_red=system_sc.wannier_centers_red,
                               iRvec=iRvec_sc)
     for key, XX_R in system._XX_R.items():

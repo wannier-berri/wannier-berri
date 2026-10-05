@@ -163,6 +163,16 @@ class Projection:
         return np.array([pos for pos in self.wyckoff_position.positions for _ in range(self.num_wann_per_site)], dtype=float)
 
     @property
+    def atom_centers_red(self):
+        """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
+        return self.wyckoff_position.positions.copy()
+
+    @property
+    def wannier_to_atom_map(self):
+        """Map from wannier functions to atoms. Shape (num_wann,)"""
+        return np.array([i for i in range(self.num_points) for _ in range(self.num_wann_per_site)], dtype=int)
+
+    @property
     def wannier_centers_cart(self):
         return self.wannier_centers_red @ self.wyckoff_position.spacegroup.lattice
 
@@ -566,6 +576,12 @@ class ProjectionsSet:
             new_projections.append(projection)
         self.projections = new_projections
         self.clear_cached_properties()
+
+    def atom_centers_red(self):
+        return np.concatenate([p.atom_centers_red for p in self.projections], axis=0)
+
+    def wannier_to_atom_map(self):
+        return np.concatenate([p.wannier_to_atom_map + start for p, start in zip(self.projections, np.cumsum([0] + [p.num_points for p in self.projections]))], axis=0)
 
 
     def clear_cached_properties(self, attributes=None):

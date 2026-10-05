@@ -256,9 +256,22 @@ def test_shift(system_Si_W90_JM_sym, change):
     assert bands_diff < 1e-10, f"bandstructure differs after {change} by {bands_diff}"
 
 
+@pytest.mark.parametrize("use_atoms", [True, False])
 @pytest.mark.parametrize("check_method", ["bands", "matrix"])
-@pytest.mark.parametrize("exclude_WF_mask", ["Ga:*_cell-0", ["Ga:*_cell-0", "As:*_cell-3"], None])
-def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask, check_method):
+@pytest.mark.parametrize("exclude_atom", ["Ga1", "Ga1As3", None])
+def test_slab_GaAs(check_system, system_GaAs_W90, exclude_atom, check_method, use_atoms):
+    if exclude_atom == "Ga1":
+        exclude_WF_mask = "Ga:*_cell-0"
+        exclude_atoms = [0]
+    elif exclude_atom == "Ga1As3":
+        exclude_WF_mask = ["Ga:*_cell-0", "As:*_cell-3"]
+        exclude_atoms = [0, 7]
+    elif exclude_atom is None:
+        exclude_WF_mask = None
+        exclude_atoms = []
+
+    if use_atoms and check_method == "matrix":
+        pytest.skip("matrix check is not used when use_atoms=True because the order of R-vectors and Wannier functions may differ from the reference")
     nslab = 2
     exclude_WF_mask_list = exclude_WF_mask if isinstance(exclude_WF_mask, list) else [] if exclude_WF_mask is None else [exclude_WF_mask]
     sysname = f"GaAs_W90_JM-slab-nslab{nslab}-exclude:{','.join(exclude_WF_mask_list) if exclude_WF_mask_list else 'None'}"
@@ -266,9 +279,20 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask, check_method)
     system_bulk = copy.deepcopy(system_GaAs_W90)
     system_bulk._XX_R = {key: system_bulk.get_R_mat(key) for key in matrices}
     system_bulk.wannier_names = ["As:sp3"] * 8 + ["Ga:sp3"] * 8
-    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], [1, 1, -1]], nslab=nslab)
-    system_slab.exclude_WF_mask(exclude_WF_mask)
+    if use_atoms:
+        system_bulk.atom_centers_red = np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]])
+        system_bulk.wannier_to_atom_map = np.array([1] * 8 + [0] * 8)
+    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], [1, 1, -1]], nslab=nslab, use_atoms=use_atoms)
+    if use_atoms:
+        system_slab.exclude_atoms(exclude_atoms)
+    else:
+        system_slab.exclude_WF_mask(exclude_WF_mask)
+    print(f"wannier names in slab system: {system_slab.wannier_names}")
+    # return
+
     if check_method == "bands":
+        if use_atoms and exclude_atom is None:
+            pytest.skip("bands check would fail, because the WFs of the first atom are split between the top and bottom surfaces")
         from wannierberri.grid import Path
         path = Path.from_nodes(real_lattice=system_slab.real_lattice, nodes=[[0, 0, 0], [0, 0.5, 0], [0.5, 0.5, 0], [0, 0, 0], [0, 0, 0.5]], dk=0.05, labels=["Gamma", "X", "M", "Gamma", "Z"])
         bands = system_slab.get_bandstructure(path=path, return_path=False).results["Energy"].data

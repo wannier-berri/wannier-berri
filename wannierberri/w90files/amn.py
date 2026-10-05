@@ -38,7 +38,7 @@ class AMN(W90_file):
     """
 
     extension = "amn"
-    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor", "wannier_names"]
+    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor", "wannier_names", "atom_centers_red", "wannier_to_atom_map"]
 
     def __init__(self,
                  data,
@@ -49,6 +49,8 @@ class AMN(W90_file):
                  basis_list=None,
                  spread_list=None,
                  wannier_names=None,
+                 atom_centers_red=None,
+                 wannier_to_atom_map=None,
                  spinor=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
@@ -59,6 +61,8 @@ class AMN(W90_file):
         self.spread_list = spread_list
         self.spinor = spinor
         self.wannier_names = wannier_names
+        self.atom_centers_red = atom_centers_red
+        self.wannier_to_atom_map = wannier_to_atom_map
 
     @property
     def num_wann(self):
