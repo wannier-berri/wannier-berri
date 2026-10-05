@@ -51,6 +51,7 @@ def _get_iRvec_in_supercell(supercell_matrix):
     t = np.array(list(itertools.product(*[range(-b, b + 1) for b in bound])))
     frac = t @ np.linalg.inv(M)
     iRvec_cells = t[np.all((frac > -1e-8) & (frac < 1 - 1e-8), axis=1)]
+    iRvec_cells = iRvec_cells[np.lexsort(iRvec_cells.T[::-1])]
     assert len(iRvec_cells) == num_cells, f"found {len(iRvec_cells)} cells in the supercell, expected {num_cells}"
     return iRvec_cells
 

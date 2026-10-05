@@ -267,6 +267,7 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask, check_method)
     system_bulk._XX_R = {key: system_bulk.get_R_mat(key) for key in matrices}
     system_bulk.wannier_names = ["As:sp3"] * 8 + ["Ga:sp3"] * 8
     system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], [1, 1, -1]], nslab=nslab)
+    system_slab.exclude_WF_mask(exclude_WF_mask)
     if check_method == "bands":
         from wannierberri.grid import Path
         path = Path.from_nodes(real_lattice=system_slab.real_lattice, nodes=[[0, 0, 0], [0, 0.5, 0], [0.5, 0.5, 0], [0, 0, 0], [0, 0, 0.5]], dk=0.05, labels=["Gamma", "X", "M", "Gamma", "Z"])
@@ -277,13 +278,12 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask, check_method)
     else:
         print("wannier names in bulk system: ", system_bulk.wannier_names)
         print("real lattice vectors in bulk system: ", system_bulk.real_lattice)
-        system_slab.exclude_WF_mask(exclude_WF_mask)
         nat_exclude = len(exclude_WF_mask_list)
         num_wann_expected = nslab * 16 * 2 - 8 * nat_exclude
-        assert system_slab.num_wann == num_wann_expected, f"num_wann in slab system {system_slab.num_wann} does not match expected {num_wann_expected} for exclude_WF_mask {exclude_WF_mask}"
         print("wannier names in slab system: ", system_slab.wannier_names)
         print("real lattice vectors in slab system: ", system_slab.real_lattice)
         print("wannier centers in slab system: ", system_slab.wannier_centers_red)
+        assert system_slab.num_wann == num_wann_expected, f"num_wann in slab system {system_slab.num_wann} does not match expected {num_wann_expected} for exclude_WF_mask {exclude_WF_mask}"
         ham = system_slab.get_R_mat('Ham')
         print(f"Ham in slab system exclude_WF_mask {exclude_WF_mask} has shape {ham.shape} ")
 
@@ -292,3 +292,13 @@ def test_slab_GaAs(check_system, system_GaAs_W90, exclude_WF_mask, check_method)
             matrices=matrices,
             legacy=False,
         )
+
+
+def test_get_iRvec_in_supercell():
+    from wannierberri.system.system_supercell import _get_iRvec_in_supercell
+    M = np.diag([1,1,5])
+    iRvec = _get_iRvec_in_supercell(M)
+    assert iRvec.shape == (5, 3)
+    assert np.all(iRvec[:,0] == 0)
+    assert np.all(iRvec[:,1] == 0)
+    assert np.all(iRvec[:,2] == np.arange(5))
