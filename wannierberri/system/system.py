@@ -65,6 +65,7 @@ class System:
                  name='wberri',
                  silent=False,
                  spinor=None,
+                 wannier_names=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -73,7 +74,7 @@ class System:
         self.name = name
         self.silent = silent
         self.spinor = spinor
-
+        self.wannier_names = wannier_names
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT

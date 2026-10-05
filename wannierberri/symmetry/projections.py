@@ -577,9 +577,11 @@ class ProjectionsSet:
         self.projections = new_projections
         self.clear_cached_properties()
 
+    @property
     def atom_centers_red(self):
         return np.concatenate([p.atom_centers_red for p in self.projections], axis=0)
 
+    @property
     def wannier_to_atom_map(self):
         return np.concatenate([p.wannier_to_atom_map + start for p, start in zip(self.projections, np.cumsum([0] + [p.num_points for p in self.projections]))], axis=0)
 

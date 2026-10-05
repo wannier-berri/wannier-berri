@@ -160,6 +160,7 @@ class AMN(W90_file):
 
 
 
+
         if verbose:
             logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
@@ -201,7 +202,11 @@ class AMN(W90_file):
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
         return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list,
-                   spread_list=spread_list, spinor=spinor, wannier_names=projections.get_wannier_names())
+                   spread_list=spread_list, spinor=spinor, 
+                   wannier_names=projections.get_wannier_names(),
+                   atom_centers_red=projections.atom_centers_red,
+                   wannier_to_atom_map=projections.wannier_to_atom_map
+        )
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)

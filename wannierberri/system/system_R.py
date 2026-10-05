@@ -76,10 +76,14 @@ class System_R(System):
 
     half_wann_matrices = set()
 
-    def __init__(self, **parameters):
+    def __init__(self, 
+                 atom_centers=None, 
+                 wannier_to_atom_map=None,
+                 **parameters):
 
         super().__init__(**parameters)
-
+        self.atom_centers_red = atom_centers
+        self.wannier_to_atom_map = wannier_to_atom_map
         self._XX_R = dict()
 
 
@@ -455,7 +459,7 @@ class System_R(System):
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, :, new_wann_indices][:, new_wann_indices, :]
         self.rvec.reorder(new_wann_indices)
-        if hasattr(self, 'wannier_names') and self.wannier_names is not None:
+        if self.wannier_names is not None:
             self.wannier_names = self.wannier_names[new_wann_indices]
         self.clear_cached_wcc()
         self.clear_cached_R()
@@ -1171,6 +1175,8 @@ class System_R(System):
         wannier_centers_red = self.wannier_centers_red
         wannier_centers_red_new = symop.transform_r(wannier_centers_red)
         self.set_wannier_centers(wannier_centers_red=wannier_centers_red_new)
+        if self.atom_centers_red is not None:
+            self.atom_centers_red = symop.transform_r(self.atom_centers_red)
         self.rvec.transform(symop)
         self.clear_cached_wcc()
         from ..symmetry.sym_wann_2 import parity_I, parity_TR
