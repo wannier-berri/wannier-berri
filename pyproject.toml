@@ -37,8 +37,7 @@ Homepage = "https://wannier-berri.org"
 
 [project.optional-dependencies]
 parallel = [
-    "ray[default]",
-    "protobuf==3.20.2",
+    "ray",
 ]
 fftw = [
     "pyFFTW>=0.12.0",
