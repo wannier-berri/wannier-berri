@@ -1,15 +1,11 @@
 
+from .system_R import System_R
+from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
+from ..fourier.rvectors import Rvectors
+from .needed_data import NeededData
+import numpy as np
 import functools
 import logging
-import warnings
-import numpy as np
-
-from .needed_data import NeededData
-
-from ..fourier.rvectors import Rvectors
-from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
-from .system_R import System_R
-
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +65,7 @@ def get_system_w90(
     :class:`~wannierberri.system.system.System_R`
     """
     if transl_inv_MV:
-        warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
+        logger.warning("transl_inv_MV is deprecated and will be removed in the future. "
                       "Use transl_inv_JM instead.")
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
@@ -83,7 +79,7 @@ def get_system_w90(
             raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         # Deactivate transl_inv_MV if Jae-Mo's scheme is used
         if transl_inv_MV:
-            warnings.warn("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
+            logger.warning("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
                           "the band-diagonal matrix elements of the position operator.")
             transl_inv_MV = False
     else:

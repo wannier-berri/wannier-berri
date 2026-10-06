@@ -1,6 +1,7 @@
-from fractions import Fraction
-import warnings
 import numpy as np
+from fractions import Fraction
+import logging
+logger = logging.getLogger(__name__)
 
 readstr = lambda F: "".join(c.decode('ascii') for c in F.read_record('c')).strip()
 
@@ -128,7 +129,7 @@ def grid_from_kpoints(kpoints, grid=None):
                 kpoints_unique.add(kint)
                 selected_kpoints.append(i)
             else:
-                warnings.warn(f"k-point {k} is repeated")
+                logger.warning(f"k-point {k} is repeated")
 
     num_selected = len(selected_kpoints)
     num_k_grid = np.prod(npgrid)
@@ -137,7 +138,7 @@ def grid_from_kpoints(kpoints, grid=None):
     if num_selected > num_k_grid:
         raise RuntimeError("Some k-points are taken twice - this must be a bug")
     if len(kpoints_unique) < len(kpoints):
-        warnings.warn("Some k-points are not on the grid or are repeated")
+        logger.warning("Some k-points are not on the grid or are repeated")
     if returngrid:
         return grid
     else:

@@ -1,3 +1,8 @@
+import glob
+from collections import defaultdict
+from functools import cached_property
+import os
+import numpy as np
 from packaging import version
 from ..symmetry.wyckoff_position import split_into_orbits
 from ..symmetry.point_symmetry import PointGroup
@@ -5,13 +10,8 @@ from ..utility import clear_cached, one2three, pauli_xyz
 from .system import System, num_cart_dim
 from ..fourier.rvectors import Rvectors
 import copy
-import warnings
-import numpy as np
-import os
-from functools import cached_property
-from collections import defaultdict
-import glob
 import logging
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -367,13 +367,13 @@ class System_R(System):
             pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
             suborbit_list = split_into_orbits(pos, spacegroup=spacegroup)
             if len(suborbit_list) > 1:
-                warnings.warn(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
+                logger.warning(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
                          "it is recommentded to name atoms at different wyckoff positions differently:\n"
                          "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
             logger.info(f"pos_list: {suborbit_list}")
             if ";" in orbital:
-                warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                logger.warning("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
                               "But you need to do it consistently in wannier90 ")
             for suborbit in suborbit_list:
                 pos_loc = pos[suborbit]
@@ -451,11 +451,11 @@ class System_R(System):
             A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal().T
             A_diag_max = abs(A_diag).max()
             if A_diag_max > threshold:
-                warnings.warn(
+                logger.warning(
                     f"the maximal value of diagonal position matrix elements {msg} is {A_diag_max}."
                     f"This may signal a problem\n {A_diag}")
                 if set_zero:
-                    warnings.warn("setting AA diagonal to zero")
+                    logger.warning("setting AA diagonal to zero")
             if set_zero:
                 self.get_R_mat('AA')[self.rvec.iR0, self.range_wann, self.range_wann, :] = 0
 
@@ -465,7 +465,7 @@ class System_R(System):
             if not per:
                 sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
-                    warnings.warn(f"you declared your system as non-periodic along direction {i},"
+                    logger.warning(f"you declared your system as non-periodic along direction {i},"
                                   f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
                                   "They will be excluded, please make sure you know what you are doing")
                     exclude[sel] = True
@@ -495,7 +495,7 @@ class System_R(System):
         """
         spins = np.array(spins)
         if max(abs(spins) - 1) > 1e-3:
-            warnings.warn("some of your spins are not +1 or -1, are you sure you want it like this?")
+            logger.warning("some of your spins are not +1 or -1, are you sure you want it like this?")
         axis = np.array(axis) / np.linalg.norm(axis)
         value = np.array([s * axis for s in spins], dtype=complex)
         self.set_R_mat(key='SS', value=value, diag=True, **kwargs)
@@ -520,13 +520,13 @@ class System_R(System):
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            warnings.warn(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
+            logger.warning(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
                           "For other states spin properties will be set to zero. are yoiu sure ?")
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
             if dist > 1e-3:
-                warnings.warn(f"setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
+                logger.warning(f"setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
             SS_R0[i, i] = pauli_xyz[0, 0]
             SS_R0[i, j] = pauli_xyz[0, 1]
             SS_R0[j, i] = pauli_xyz[1, 0]

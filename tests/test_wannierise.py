@@ -85,7 +85,8 @@ def test_wannierise(outer_window, starting_wcc):
         localise=True,
         parallel=PARALLEL,
         wcc_start_red=wcc_start_red if starting_wcc == "arg" else None,
-        localise_num_iter=0
+        localise_num_iter=0,
+        savechk=False,
     )
     wannier_centers = wandata.chk.wannier_centers_cart
     wannier_spreads = wandata.chk.wannier_spreads
@@ -326,7 +327,8 @@ def test_graphene_freeze_bands(outer_window, parallel, z0):
                   localise=True,
                   sitesym=True,
                   parallel=parallel,
-                  localise_num_iter=0
+                  localise_num_iter=0,
+                  savechk=False,
                     )
 
     if outer_window[2] != "-outer-low":
