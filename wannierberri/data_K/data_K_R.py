@@ -67,8 +67,8 @@ class Data_K_R(Data_K, System_R):
         return CCab
 
 
-    def Xbar(self, name, der=0):
-        key = (name, der)
+    def Xbar(self, name, der=0, select_WF=None):
+        key = (name, der) + (tuple(select_WF) if select_WF is not None else ())
         if key not in self._bar_quantities:
             if name == 'GG' and not self.system.has_R_mat('GG'):
                 res = self.Xbar('FF', der=der)
@@ -82,17 +82,20 @@ class Data_K_R(Data_K, System_R):
                 res = self.R_to_k_H(
                     self.get_R_mat(name).copy(),
                     der=der,
-                    hermitian=(name in ['AA', 'SS', 'OO', 'rotAA', ]))
+                    hermitian=(name in ['AA', 'SS', 'OO', 'rotAA', ]),
+                    select_WF=select_WF
+                )
             self._bar_quantities[key] = res
         return self._bar_quantities[key]
 
-    def R_to_k_H(self, XX_R, der=0, hermitian=True):
+    def R_to_k_H(self, XX_R, der=0, hermitian=True, select_WF=None):
         """ converts from real-space matrix elements in Wannier gauge to
             k-space quantities in k-space.
             der [=0] - defines the order of comma-derivative
             hermitian [=True] - consider the matrix hermitian
+            select_WF [=None] - select a subset of WF to consider
             WARNING: the input matrix is destroyed, use np.copy to preserve it"""
-        return self._rotate((self.rvec.R_to_k(XX_R, hermitian=hermitian, der=der))[self.select_K])
+        return self._rotate((self.rvec.R_to_k(XX_R, hermitian=hermitian, der=der)[self.select_K]), select_WF=select_WF)
 
     @cached_property
     def expdK_corners_tetra(self):

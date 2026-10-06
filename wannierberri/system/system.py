@@ -4,7 +4,6 @@ from ..utility import real_recip_lattice
 from functools import cached_property
 import numpy as np
 import os
-import sys
 import logging
 logger = logging.getLogger(__name__)
 
@@ -308,7 +307,7 @@ class System:
     def get_bandstructure(self,
                           dk=0.05,
                           parallel=True,
-                          return_path=True,
+                          return_path=None,
                           path=None,
                           **kwargs):
         """Calculate the band structure along high-symmetry lines in the BZ. 
@@ -336,6 +335,8 @@ class System:
         """
         from ..grid.path import Path
         from ..evaluate_k import evaluate_k_path
+        if return_path is None:
+            return_path = path is None
         cell = self.get_spglib_cell(ignore_no_atoms=True)
         if path is not None:
             if not isinstance(path, Path):

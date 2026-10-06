@@ -127,9 +127,14 @@ class Data_K(System, abc.ABC):
     #  TOOLS  #
     ###########
 
-    def _rotate(self, mat):
+    def _rotate(self, mat, select_WF=None):
         assert mat.ndim > 2
-        return cached_einsum('kba,kbc...,kcd->kad...', self.UU_K.conj(), mat, self.UU_K)
+        if select_WF is None:
+            u = self.UU_K
+        else:
+            mat = mat[:, select_WF, :][:, :, select_WF]
+            u = self.UU_K[:, select_WF, :]
+        return cached_einsum('kba,kbc...,kcd->kad...', u.conj(), mat, u)
 
     #####################
     #  Basic variables  #
@@ -241,13 +246,17 @@ class Data_K(System, abc.ABC):
             raise RuntimeError(f"The band derivatives have considerable imaginary part: {check}")
         return delE_K.real
 
-    def covariant(self, name, commader=0, gender=0, save=True):
+    def covariant(self, name, commader=0, gender=0, save=True, select_WF=None):
         assert commader * gender == 0, "cannot mix comm and generalized derivatives"
-        key = (name, commader, gender)
+        if select_WF is not None:
+            save = False
+            if gender != 0:
+                raise NotImplementedError("select_WF is not implemented for generalized derivatives")
+        key = (name, commader, gender, None)
         if key not in self._covariant_quantities:
             if gender == 0:
                 res = formula.Matrix_ln(
-                    self.Xbar(name, commader),
+                    self.Xbar(name, commader, select_WF=select_WF),
                     transformTR=get_transform_TR(name, commader),
                     transformInv=get_transform_Inv(name, commader),
                 )
@@ -463,6 +472,17 @@ class Data_K(System, abc.ABC):
         M += -0.5 * (C_H - Eln_plus[:, :, :, None] * O_H)
         return M
 
+    def select_WF_atoms(self, select_WF=None, select_atoms=None):
+        if select_atoms is None:
+            return select_WF
+        else:
+            assert select_WF is None, "provide either select_WF or select_atoms, not both"
+            select_WF = np.zeros(self.num_wann, dtype=bool)
+            wan_to_atoms = self.system.wannier_to_atom_map
+            num_atoms = len(self.system.atom_centers_red)
+            for atom in np.array(select_atoms) % num_atoms:
+                select_WF[wan_to_atoms == atom] = True
+            return np.where(select_WF)[0]
 
     @lru_cache
     def get_E2(self, external_terms=True, degen_thresh=1e-3):

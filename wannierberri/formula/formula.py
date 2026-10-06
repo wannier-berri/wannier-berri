@@ -11,7 +11,9 @@ class Formula(abc.ABC):
     def __init__(self, data_K=None, internal_terms=True, cross_terms=True, external_terms=True,
                  transformTR=None, transformInv=None, ndim=0, OO_uIu=False,
                  FF_rotAA=False,
-                 CCab_antisym=False
+                 CCab_antisym=False,
+                 project_on_WF=None,
+                 project_on_atoms=None,
                  ):
         self.internal_terms = internal_terms
         self.external_terms = external_terms
@@ -26,6 +28,8 @@ class Formula(abc.ABC):
         self.ndim = ndim
         self.transformTR = transformTR
         self.transformInv = transformInv
+        self.project_WF = project_on_WF
+        self.project_atoms = project_on_atoms
 
 
 class Formula_ln(Formula):
@@ -82,7 +86,7 @@ class Matrix_ln(Formula_ln):
     "anything that can be called just as elements of a matrix"
 
     def __init__(self, matrix, **kwargs):
-        super().__init__(ndim=len(matrix.shape) - 3, **kwargs)
+        super().__init__(ndim=matrix.ndim - 3, **kwargs)
         self.matrix = matrix
 
     def ln(self, ik, inn, out):
