@@ -1,14 +1,11 @@
 
+from ..utility import one2three
+from .Kpoint import KpointBZparallel
+from ..symmetry.point_symmetry import PointGroup
 import numpy as np
 from time import time
 import abc
 from functools import cached_property
-
-from ..symmetry.point_symmetry import PointGroup
-from .Kpoint import KpointBZparallel
-from ..utility import one2three
-
-
 import logging
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,9 @@
-import warnings
-import numpy as np
-
-from ..fourier.rvectors import Rvectors
 from .system_R import System_R
+from ..fourier.rvectors import Rvectors
+import numpy as np
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 def get_system_sparse(real_lattice,
@@ -47,7 +48,7 @@ def get_system_sparse(real_lattice,
                     X[iR, j[0], j[1]] = h
             self.set_R_mat(k, X)
         else:
-            warnings.warn(f"{k} is empty")
+            logger.warning(f"{k} is empty")
 
     self.do_at_end_of_init()
     if symmetrize_info is not None:

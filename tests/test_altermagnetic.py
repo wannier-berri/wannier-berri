@@ -47,7 +47,7 @@ def test_wannierise(check_system):
         print_progress_every=50,
         sitesym=True,
         localise=True,
-        savechk=True,
+        savechk=False,
         localise_num_iter=0,
     )
     theta = 90

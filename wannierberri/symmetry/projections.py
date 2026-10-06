@@ -17,7 +17,7 @@ try:
     from jax.scipy.optimize import minimize as jminimize
     from jax import jit as jjit
 except ImportError:
-    # warnings.warn("jax not found, will use numpy insrtead")
+    # logger.warning("jax not found, will use numpy insrtead")
     import numpy as jnp
     from scipy.optimize import minimize as jminimize
     from functools import partial as jjit
@@ -144,7 +144,7 @@ class Projection:
 
         if basis_list is not None:
             if rotate_basis:
-                Warning("basis list is provided, rotate_basis is ignored")
+                logger.warning("basis list is provided, rotate_basis is ignored")
             for i, b in enumerate(basis_list):
                 b = np.array(b, dtype=float)
                 assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
