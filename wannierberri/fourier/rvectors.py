@@ -1,12 +1,12 @@
 
-from functools import cached_property
-import logging
-from typing import Iterable
-import warnings
-
-import numpy as np
-from ..utility import clear_cached, iterate3dpm, iterate_nd
 from .fft import FFT_R_to_k, execute_fft
+from ..utility import clear_cached, iterate3dpm, iterate_nd
+import numpy as np
+from functools import cached_property
+from typing import Iterable
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 logger = logging.getLogger(__name__)
@@ -452,7 +452,7 @@ class Rvectors:
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
         if len(notfound) > 0 and not self.ignore_mR_not_found:
             for ir in notfound:
-                warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+                logger.warning(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):

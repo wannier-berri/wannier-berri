@@ -9,16 +9,12 @@ The rows of ``supercell_matrix`` are the supercell lattice vectors in units of t
 The Wannier functions of the supercell are ordered as (cell, wannier function of the primitive system).
 """
 
+from .system_R import System_R
+from ..utility import iterate_nd, one2three
+from ..fourier.rvectors import Rvectors
+import numpy as np
 import itertools
 import logging
-import warnings
-
-import numpy as np
-
-from ..fourier.rvectors import Rvectors
-from ..utility import iterate_nd, one2three
-from .system_R import System_R
-
 logger = logging.getLogger(__name__)
 
 
@@ -178,8 +174,8 @@ def get_system_supercell(system, supercell_matrix, **parameters):
     system_sc.is_phonon = system.is_phonon
     system_sc.real_lattice = M @ system.real_lattice
     system_sc.num_wann = num_cells * system.num_wann
-    system_sc.wannier_centers_cart = ((iRvec_cells @ system.real_lattice)[:, None, :]
-                                      + system.wannier_centers_cart[None, :, :]).reshape(-1, 3)
+    system_sc.wannier_centers_cart = ((iRvec_cells @ system.real_lattice)[:, None, :] +
+                                      system.wannier_centers_cart[None, :, :]).reshape(-1, 3)
     system_sc.rvec = Rvectors(lattice=system_sc.real_lattice, shifts_left_red=system_sc.wannier_centers_red,
                               iRvec=iRvec_sc)
     for key, XX_R in system._XX_R.items():
@@ -235,7 +231,7 @@ def add_proximity_potential(system, VV_qq, mp_grid, supercell_matrix, ws_dist_to
     VV_qq_dagger = VV_qq.transpose(1, 0, 3, 2).conj()
     deviation = abs(VV_qq - VV_qq_dagger).max()
     if deviation > 1e-6 * abs(VV_qq).max():
-        warnings.warn(f"VV_qq is not Hermitian (deviation {deviation:.2e}, max |V| {abs(VV_qq).max():.2e}). "
+        logger.warning(f"VV_qq is not Hermitian (deviation {deviation:.2e}, max |V| {abs(VV_qq).max():.2e}). "
                       "Only its Hermitian part is used")
     VV_qq = (VV_qq + VV_qq_dagger) / 2
     iRvec_cells = _get_iRvec_in_supercell(M)
@@ -249,8 +245,8 @@ def add_proximity_potential(system, VV_qq, mp_grid, supercell_matrix, ws_dist_to
 
     # primitive lattice and Wannier centers, recovered from the supercell
     real_lattice = np.linalg.inv(M) @ system.real_lattice
-    wannier_centers_cart = (system.wannier_centers_cart.reshape(num_cells, num_wann, 3)
-                            - (iRvec_cells @ real_lattice)[:, None, :])
+    wannier_centers_cart = (system.wannier_centers_cart.reshape(num_cells, num_wann, 3) -
+                            (iRvec_cells @ real_lattice)[:, None, :])
     if not np.allclose(wannier_centers_cart, wannier_centers_cart[0], atol=1e-6):
         raise ValueError("the Wannier centers of the system do not correspond to a supercell with "
                          f"supercell_matrix\n{M}")
@@ -273,7 +269,7 @@ def add_proximity_potential(system, VV_qq, mp_grid, supercell_matrix, ws_dist_to
     deviation = max(abs(shifted(R1) - XX_R_grid[i]).max() for R1, i in zip(iRvec_grid, icell))
     VV_max = abs(VV_RR).max()
     if deviation > 1e-6 * VV_max:
-        warnings.warn(f"the potential is not periodic with the supercell (deviation {deviation:.2e}, "
+        logger.warning(f"the potential is not periodic with the supercell (deviation {deviation:.2e}, "
                       f"max |V| {VV_max:.2e}). Only its periodic part is used")
 
     rvec = Rvectors(lattice=real_lattice, shifts_left_red=wannier_centers_cart[0] @ np.linalg.inv(real_lattice))
