@@ -1,12 +1,13 @@
 
+import datetime
+from collections.abc import Iterable
 import os
 from functools import lru_cache
 import shutil
 import numpy as np
-import warnings
+import logging
+logger = logging.getLogger(__name__)
 
-from collections.abc import Iterable
-import datetime
 
 
 # Global cache to store einsum paths
@@ -54,7 +55,7 @@ def conjugate_basis(basis):
 def real_recip_lattice(real_lattice=None, recip_lattice=None):
     if recip_lattice is None:
         if real_lattice is None:
-            warnings.warn("usually need to provide either with real or reciprocal lattice."
+            logger.warning("usually need to provide either with real or reciprocal lattice."
                           "If you only want to generate a random symmetric tensor - that it fine")
             return None, None
         else:
@@ -277,7 +278,7 @@ def orthogonalize(u):
         U, _, VT = np.linalg.svd(u, full_matrices=False)
         return U @ VT
     except np.linalg.LinAlgError as e:
-        warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        logger.warning(f"SVD failed with error '{e}', using non-orthogonalized matrix")
         return u
 
 

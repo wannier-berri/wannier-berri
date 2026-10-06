@@ -1,11 +1,11 @@
+from .io import SavableNPZ
+from ..utility import alpha_A, beta_A
+from .utility import readstr
+import numpy as np
 from functools import cached_property
 from time import time
-import warnings
-import numpy as np
-from .utility import readstr
-from ..utility import alpha_A, beta_A
-from .io import SavableNPZ
 import logging
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -97,7 +97,7 @@ class CheckPoint(SavableNPZ):
             self.v_matrix = v_matrix
             nkey_provided = len(v_matrix)
             if nkey_provided == 0:
-                warnings.warn("v_matrix is empty, no matrix elements provided")
+                logger.warning("v_matrix is empty, no matrix elements provided")
             else:
                 V0 = list(v_matrix.values())[0]
             if num_bands is None:
