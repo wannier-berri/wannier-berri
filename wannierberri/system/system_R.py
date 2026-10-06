@@ -491,7 +491,7 @@ class System_R(System):
         self.atom_centers_red = self.atom_centers_red[new_atom_indices]
         new_wannier_index = np.concatenate([np.where(self.wannier_to_atom_map == i)[0] for i in new_atom_indices])
         reverse_index = {i: j for j, i in enumerate(new_atom_indices)}
-        self.wannier_to_atom_map = np.array([reverse_index[i] for i in self.wannier_to_atom_map[new_wannier_index]])
+        self.wannier_to_atom_map = np.array([reverse_index[i] for i in self.wannier_to_atom_map])
         self.reorder(new_wannier_index)
         return self
 
@@ -806,11 +806,10 @@ class System_R(System):
         wf_indices = np.array([i for i in range(self.num_wann) if self.wannier_to_atom_map[i] in atom_indices], dtype=int)
         self.exclude_WF_indices(wf_indices)
         num_atoms_old = len(self.atom_centers_red)
-        new_atoms_index = np.array([i for i in range(num_atoms_old) if i not in atom_indices], dtype=int)
+        new_atoms_index = np.delete(np.arange(num_atoms_old), atom_indices)
         new_atoms_dict = {old: new for new, old in enumerate(new_atoms_index)}
-        self.wannier_to_atom_map = np.array([new_atoms_dict[at] for at in np.delete(self.wannier_to_atom_map, wf_indices)], dtype=int)
+        self.wannier_to_atom_map = np.array([new_atoms_dict[at] for at in self.wannier_to_atom_map], dtype=int)
         self.atom_centers_red = self.atom_centers_red[new_atoms_index]
-        # self.atom_labels = [self.atom_labels[i] for i in new_atoms_index]
         return self
 
 
