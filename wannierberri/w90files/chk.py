@@ -24,7 +24,7 @@ class CheckPoint(SavableNPZ):
     """
 
     npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_red"]
-    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands", "frozen_bands", "lwindow"]
     # npz_keys_dict_int = ["v_matrix"]
     npz_keys_dict_int_optional = ["v_matrix"]
     extension = "chk"
@@ -44,7 +44,10 @@ class CheckPoint(SavableNPZ):
                 mp_grid=None,
                 kmesh_tol=1e-7,
                 bk_complete_tol=1e-5,
+                frozen_bands=None,
+                lwindow=None
     ):
+        self.lwindow = lwindow
         if real_lattice is not None:
             real_lattice = np.array(real_lattice, dtype=float)
             assert real_lattice.shape == (3, 3), f"real_lattice should be of shape (3, 3), but got {real_lattice.shape}"
@@ -85,6 +88,7 @@ class CheckPoint(SavableNPZ):
         self.kmesh_tol = kmesh_tol
         self.bk_complete_tol = bk_complete_tol
 
+
         if selected_bands is not None:
             self.selected_bands = selected_bands
 
@@ -110,6 +114,11 @@ class CheckPoint(SavableNPZ):
         self.num_wann = num_wann
         self.num_bands = num_bands
         self.num_kpts = num_kpts
+
+        if frozen_bands is not None:
+            self.frozen_bands = frozen_bands
+        else:
+            self.frozen_bands = {ik: np.zeros((self.num_bands,), dtype=bool) for ik in range(self.num_kpts)}
 
 
     def get_selected_bands(self):
@@ -174,6 +183,8 @@ class CheckPoint(SavableNPZ):
                     assert np.all(np.logical_not(lwindow[ik, :win_min[ik]]))
                 if win_max[ik] < num_bands - 1:
                     assert np.all(np.logical_not(lwindow[ik, win_max[ik] + 1:]))
+        else:
+            lwindow = np.ones((num_kpts, num_bands), dtype=bool)
         u_matrix = readcomplex().reshape((num_kpts, num_wann, num_wann)).swapaxes(1, 2)
         FIN.skip_record()  # skip m_matrix
         if have_disentangled:
@@ -194,7 +205,58 @@ class CheckPoint(SavableNPZ):
                    wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
                    kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
                    kpt_red=kpt_red, mp_grid=mp_grid,
+                   lwindow=lwindow
         )
+
+
+    # def to_w90_file(self, seedname):
+    #     seedname = seedname.strip()
+    #     from .fortio import FortranFileW
+    #     FOUT = FortranFileW(seedname + '.chk')
+    #     print('Writing restart information to file ' + seedname + '.chk :')
+    #     def writeint(arr):
+    #         FOUT.write_record('i4', np.array(arr, dtype=int))
+    #     def writefloat(arr):
+    #         FOUT.write_record('f8', np.array(arr, dtype=float))
+    #     def writestr(s):
+    #         FOUT.write_record('a', s)
+    #     def writecomplex(arr):
+    #         arr = np.array(arr, dtype=complex)
+    #         arr = np.column_stack((arr.real, arr.imag)).flatten()
+    #         FOUT.write_record('f8', arr)
+    #     writestr("Written by wannierberri on " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    #     writeint([self.num_bands])
+    #     writeint([0])  # num_exclude_bands
+    #     writeint([])  # exclude_bands
+    #     writefloat(self.real_lattice.flatten(order='F'))
+    #     writefloat(self.recip_lattice.flatten(order='F'))
+    #     writeint([self.num_kpts])
+    #     writeint(self.mp_grid)
+    #     writefloat(self.kpt_red.flatten())
+    #     writeint([0])  # nntot
+    #     writeint([self.num_wann])
+    #     writestr("Written by wannierberri on " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    #     writeint([0])  # have_disentangled
+    #     # print(f"have_disentangled={have_disentangled}")
+    #     have_disentangled = True
+    #     if have_disentangled:
+    #         writefloat([555.555])  # omega_invariant
+    #         writeint(self.lwindow.flatten())
+    #         writeint([self.num_bands]*self.num_kpts)  # ndimwin
+    #         writecomplex(self.u_matrix_opt.swapaxes(1, 2).flatten())
+    #     writecomplex( [np.eye(self.num_wann, dtype=complex)] * self.num_kpts)
+    #     writecomplex([]) # skip m_matrix
+
+    #     # write
+    #     wannier_centers_cart = readfloat().reshape((num_wann, 3))
+    #     wannier_spreads = readfloat().reshape((num_wann))
+    #     print(f"Time to read .chk : {time() - t0}")
+    #     return cls(real_lattice=real_lattice,
+    #                v_matrix=v_matrix,
+    #                wannier_centers_cart=wannier_centers_cart, wannier_spreads=wannier_spreads,
+    #                kmesh_tol=kmesh_tol, bk_complete_tol=bk_complete_tol,
+    #                kpt_red=kpt_red, mp_grid=mp_grid,
+    #     )
 
 
     @property
@@ -540,3 +602,121 @@ class CheckPoint(SavableNPZ):
             self.num_bands = sum(selected_bands_bool)
             self.selected_bands = selected_bands
         return self
+
+    def set_frozen(self, frozen, kpt2kptirr):
+        frozen_nbands = np.zeros((self.num_kpts, self.num_bands), dtype=bool)
+        for ik, ikirr in enumerate(kpt2kptirr):
+            frozen_nbands[ik] = frozen[ikirr]
+        self.frozen_bands = frozen_nbands
+
+    def write_epw_ukk(self, *args, **kwargs):
+        """
+        Returns the string of the EPW `.ukk` file
+        """
+        logger.warning("DeprecationWarning: write_epw_ukk is deprecated, use write_epw instead")
+        return self.write_epw(*args, **kwargs)
+
+    def write_epw(self, file, alat_angstrom, excluded_bands_list=[], nbndskip_occ=None):
+        """
+        Write EPW format: 
+
+        Parameters
+        ----------
+        file : str or file-like
+            The file to write to. If a string is provided, it will be opened for writing.
+        alat_angstrom: float
+            QE lattice parameter alat in Angstrom, used to express the Wannier centres in units of alat.
+        excluded_bands_list: list
+            Excluded original QE band indices, using 0-based numbering
+        nbndskip_occ: int
+            Number of excluded occupied bands, written as the second integer in the UKK header. It is not necessarily the total number of excluded bands. 
+            EPW uses it to adjust the electron count when determining the Fermi level from the Wannier-interpolated bands.
+            If None, it will be automatically determined as the first continuous block of excluded bands starting from the lowest band, or 0 if there is no such block.
+
+
+        nbndep/nbndskip, kept bands, U, windows, exclusions, centres.
+        nbndskip counts excluded occupied bands; alat_angstrom is QE alat in Angstrom.
+        Only full k-point grids in EPW order are supported; no unfolding is performed.
+        exclude_bands uses original QE 1-based indices, e.g. '1-3,18-20' or ''.
+        The remaining bands must match the checkpoint rows in ascending order.
+        """
+
+
+        num_bands_original = self.num_bands + len(excluded_bands_list)
+        if nbndskip_occ is None:
+            nbndskip_occ = get_nbndskip_occ_from_exclude_bands(num_bands_original, excluded_bands_list)
+        selected_bands = [ib for ib in range(num_bands_original) if ib not in excluded_bands_list]
+        lwindow = self.lwindow
+        if lwindow is None:
+            raise ValueError("No saved outer window: rerun wannierise with the updated code (full k grid).")
+        if len(selected_bands) != self.num_bands or lwindow.shape != (self.num_kpts, self.num_bands):
+            raise ValueError("The excluded bands or saved outer window do not match the checkpoint.")
+        if isinstance(file, str):
+            io = open(file, 'w')
+        else:
+            io = file
+
+        io.write(f"{self.num_bands} {nbndskip_occ}\n")
+        for ib in selected_bands:
+            io.write(f"{ib + 1}\n")
+
+        # the unitary matrices
+        for ik in range(self.num_kpts):
+            v = self.v_matrix[ik]
+            u_epw = np.zeros_like(v)
+            u_epw[:np.sum(lwindow[ik])] = v[lwindow[ik]]
+            for ib in range(self.num_bands):
+                for iw in range(self.num_wann):
+                    u = u_epw[ib, iw]
+                    io.write("(%25.18E,%25.18E)\n" % (u.real, u.imag))
+
+        # needs also lwindow when disentanglement is used
+        for ik in range(self.num_kpts):
+            for ib in range(self.num_bands):
+                if lwindow[ik, ib]:
+                    io.write("T\n")
+                else:
+                    io.write("F\n")
+
+
+        #  Write T for excluded bands, F for included bands
+        for ib in range(num_bands_original):
+            if ib not in selected_bands:
+                io.write("T\n")
+            else:
+                io.write("F\n")
+
+        # now write the Wannier centers to files
+        for iw in range(self.num_wann):
+            io.write("%22.12E  %22.12E  %22.12E\n" % tuple(self.wannier_centers_cart[iw] / alat_angstrom))
+
+        if isinstance(file, str):
+            io.close()
+
+
+
+
+def get_nbndskip_occ_from_exclude_bands(num_bands_original, exclude_bands):
+    """
+    Determine the number of excluded occupied bands (nbndskip_occ) from the list of excluded bands.
+    determined as the first continuous block of excluded bands starting from the lowest band, or 0 if there is no such block.
+    only works if there are at most two continuous blocks of excluded bands, and each of them either starts from 0 or ends at num_bands_original - 1.
+    Otherwise, it raises a ValueError and asks the user to provide nbndskip_occ explicitly.
+    """
+    if len(exclude_bands) == 0:
+        return 0
+    exclude_sorted = np.sort(exclude_bands)
+    gaps = np.where(np.diff(exclude_sorted) > 1)[0]
+    if len(gaps) > 1:
+        raise ValueError(f"exclude_bands = {exclude_bands} has more than two continuous blocks, cannot determine nbndskip_occ automatically. Please provide it as an argument to write_epw()")
+    if exclude_sorted[0] == 0:
+        if len(gaps) == 0:
+            return len(exclude_sorted)
+        if exclude_sorted[-1] != num_bands_original - 1:
+            raise ValueError(f"exclude_bands = {exclude_bands} has a gap, but does not end at the last band, cannot determine nbndskip_occ automatically. Please provide it as an argument to write_epw()")
+        return gaps[0] + 1
+    if len(gaps) > 0:
+        raise ValueError(f"exclude_bands = {exclude_bands} has a gap, but does not start from 0, cannot determine nbndskip_occ automatically. Please provide it as an argument to write_epw()")
+    if exclude_sorted[-1] != num_bands_original - 1:
+        raise ValueError(f"exclude_bands = {exclude_bands} has no gap, but does not end at the last band and does not start from 0, cannot determine nbndskip_occ automatically. Please provide it as an argument to write_epw()")
+    return 0
