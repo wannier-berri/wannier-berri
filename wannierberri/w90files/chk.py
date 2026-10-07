@@ -24,7 +24,7 @@ class CheckPoint(SavableNPZ):
     """
 
     npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_red"]
-    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands", "frozen_bands"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands", "frozen_bands", "lwindow"]
     # npz_keys_dict_int = ["v_matrix"]
     npz_keys_dict_int_optional = ["v_matrix"]
     extension = "chk"
@@ -44,8 +44,10 @@ class CheckPoint(SavableNPZ):
                 mp_grid=None,
                 kmesh_tol=1e-7,
                 bk_complete_tol=1e-5,
-                frozen_bands=None
+                frozen_bands=None,
+                lwindow=None
     ):
+        self.lwindow = lwindow
         if real_lattice is not None:
             real_lattice = np.array(real_lattice, dtype=float)
             assert real_lattice.shape == (3, 3), f"real_lattice should be of shape (3, 3), but got {real_lattice.shape}"
@@ -604,51 +606,70 @@ class CheckPoint(SavableNPZ):
             frozen_nbands[ik] = frozen[ikirr]
         self.frozen_bands = frozen_nbands
 
-    def write_epw_ukk(self, file):
+    def write_epw_ukk(self, file, alat_angstrom, num_bands_original, exclude_bands, nbndskip):
         """
         Returns the string of the EPW `.ukk` file
         """
         warnings.warn("write_epw_ukk is deprecated, use write_epw instead", DeprecationWarning)
-        return self.write_epw(file)
+        return self.write_epw(file, alat_angstrom, num_bands_original, exclude_bands, nbndskip)
 
-    def write_epw(self, file):
+    def write_epw(self, file, alat_angstrom, num_bands_original, exclude_bands, nbndskip):
         """
-        Returns the string of the EPW `.ukk` file
+        Write EPW format: nbndep/nbndskip, kept bands, U, windows, exclusions, centres.
+        nbndskip counts excluded occupied bands; alat_angstrom is QE alat in Angstrom.
+        Only full k-point grids in EPW order are supported; no unfolding is performed.
+        exclude_bands uses original QE 1-based indices, e.g. '1-3,18-20' or ''.
+        The remaining bands must match the checkpoint rows in ascending order.
         """
+        excluded = set()
+        for item in exclude_bands.split(','):
+            if item.strip():
+                ends = [int(x) for x in item.replace(':', '-').split('-')]
+                excluded.update(range(ends[0] - 1, ends[-1]))
+        selected_bands = [ib for ib in range(num_bands_original) if ib not in excluded]
+        lwindow = self.lwindow
+        if lwindow is None:
+            raise ValueError("No saved outer window: rerun wannierise with the updated code (full k grid).")
+        if len(selected_bands) != self.num_bands or lwindow.shape != (self.num_kpts, self.num_bands):
+            raise ValueError("The excluded bands or saved outer window do not match the checkpoint.")
         if isinstance(file, str):
             io = open(file, 'w')
         else:
             io = file
 
-        selected_bands = self.get_selected_bands()
-        io.write(f"{np.min(selected_bands) + 1} {np.max(selected_bands) + 1}\n")
+        io.write(f"{self.num_bands} {nbndskip}\n")
+        for ib in selected_bands:
+            io.write(f"{ib + 1}\n")
 
         # the unitary matrices
         for ik in range(self.num_kpts):
+            v = self.v_matrix[ik]
+            u_epw = np.zeros_like(v)
+            u_epw[:np.sum(lwindow[ik])] = v[lwindow[ik]]
             for ib in range(self.num_bands):
                 for iw in range(self.num_wann):
-                    u = self.v_matrix[ik][ib, iw]
+                    u = u_epw[ib, iw]
                     io.write("(%25.18E,%25.18E)\n" % (u.real, u.imag))
 
         # needs also lwindow when disentanglement is used
         for ik in range(self.num_kpts):
             for ib in range(self.num_bands):
-                if self.frozen_bands[ik][ib]:
+                if lwindow[ik, ib]:
                     io.write("T\n")
                 else:
                     io.write("F\n")
 
 
         #  Write T for excluded bands, F for included bands
-        for ex in selected_bands:
-            if not ex:
+        for ib in range(num_bands_original):
+            if ib not in selected_bands:
                 io.write("T\n")
             else:
                 io.write("F\n")
 
         # now write the Wannier centers to files
         for iw in range(self.num_wann):
-            io.write("%22.12E  %22.12E  %22.12E\n" % tuple(self.wannier_centers_cart[iw]))
+            io.write("%22.12E  %22.12E  %22.12E\n" % tuple(self.wannier_centers_cart[iw] / alat_angstrom))
 
         if isinstance(file, str):
             io.close()
