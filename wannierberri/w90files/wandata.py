@@ -931,10 +931,29 @@ class WannierData:
                    irreducible=self.irreducible,
                    **kwargs)
 
-    def write_epw(self, path=None, alat_angstrom=None, seedname=None, seedname_pw=None,
+    def write_epw(self, path=None, alat_angstrom=None, seedname_pw=None,
                   exclude_bands=None, nbndskip_occ=None,
                   ukk_name="Ukk.dat", mmn_name="mmn.dat", bkvec_name="bkvec.dat", eig_name="eig.dat"
                   ):
+        """
+        Write the files needed for EPW
+
+        Parameters
+        ----------
+        path : str
+            the path where to write the files. If None, the current working directory is used
+        alat_angstrom : float
+            the lattice parameter in Angstrom. If None, it is read from the seedname_pw.save/data-file-schema.xml file.
+        seedname_pw : str
+            the seedname of the pwscf calculation. If None, it is assumed to be the same as the seedname of the WannierData
+        exclude_bands : list of int
+            the list of bands to be excluded from the EPW calculation. or a string like "1-3,5,7-9" to exclude bands 1,2,3,5,7,8,9. If None, it is read from the win file.
+            Note: if string - the bands are 1-indexed, and the ranges are inclusive. If list of int - the bands are 0-indexed.
+        nbndskip_occ : int
+            the number of occupied bands skipped. If None, it will be determined from exclude_bands as the first contiguous block of excluded bands starting from the lowest band. 
+        ukk_name, mmn_name, bkvec_name, eig_name : str
+            the names of the files to be written (in the path directory)
+        """
 
         if eig_name is None:
             eig_name = f"{self.seedname}.eig"
@@ -949,9 +968,6 @@ class WannierData:
                 seedname_pw = self.seedname
             alat_angstrom = get_alat_espresso(seedname_pw)
 
-
-        if seedname is None:
-            seedname = self.seedname
 
         if exclude_bands is None:
             try:

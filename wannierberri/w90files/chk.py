@@ -626,10 +626,12 @@ class CheckPoint(SavableNPZ):
             The file to write to. If a string is provided, it will be opened for writing.
         alat_angstrom: float
             QE lattice parameter alat in Angstrom, used to express the Wannier centres in units of alat.
-        exclude_bands: str
-            Excluded original QE band indices, using 1-based numbering, e.g. "1-12,46-60". This describes bands already excluded from the calculation; it does not remove bands during export.
+        excluded_bands_list: list
+            Excluded original QE band indices, using 0-based numbering
         nbndskip_occ: int
-            Number of excluded occupied bands, written as the second integer in the UKK header. It is not necessarily the total number of excluded bands. EPW uses it to adjust the electron count when determining the Fermi level from the Wannier-interpolated bands.
+            Number of excluded occupied bands, written as the second integer in the UKK header. It is not necessarily the total number of excluded bands. 
+            EPW uses it to adjust the electron count when determining the Fermi level from the Wannier-interpolated bands.
+            If None, it will be automatically determined as the first continuous block of excluded bands starting from the lowest band, or 0 if there is no such block.
 
 
         nbndep/nbndskip, kept bands, U, windows, exclusions, centres.
@@ -695,6 +697,12 @@ class CheckPoint(SavableNPZ):
 
 
 def get_nbndskip_occ_from_exclude_bands(num_bands_original, exclude_bands):
+    """
+    Determine the number of excluded occupied bands (nbndskip_occ) from the list of excluded bands.
+    determined as the first continuous block of excluded bands starting from the lowest band, or 0 if there is no such block.
+    only works if there are at most two continuous blocks of excluded bands, and each of them either starts from 0 or ends at num_bands_original - 1.
+    Otherwise, it raises a ValueError and asks the user to provide nbndskip_occ explicitly.
+    """
     if len(exclude_bands) == 0:
         return 0
     exclude_sorted = np.sort(exclude_bands)
