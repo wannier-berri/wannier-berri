@@ -238,6 +238,18 @@ class Data_K(System, abc.ABC):
     def HH_K(self):
         """returns Wannier Hamiltonian for all points of the FFT grid"""
 
+    def Xbar(self, name, der=0, select_WF=None):
+        store = (select_WF is None)
+        if store:
+            key = (name, der)
+            if key in self._bar_quantities:
+                return self._bar_quantities[key]
+        res = self.getXbar(name, der=der, select_WF=select_WF)
+        if store:
+            self._bar_quantities[key] = res
+        return res
+
+
     @cached_property
     def delE_K(self):
         delE_K = cached_einsum("klla->kla", self.Xbar('Ham', 1))
