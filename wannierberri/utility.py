@@ -411,3 +411,26 @@ def normalize_type(obj, recursive=True):
     if recursive and isinstance(obj, dict):
         return {k: normalize_type(v, recursive=True) for k, v in obj.items()}
     return obj
+
+
+def get_alat_espresso(seedname_pw):
+    """
+    get the lattice parameter in angstrom from the pwscf input file
+
+    Parameters
+    ----------
+    seedname_pw : str
+        the seedname of the pwscf input file (including relative/absolute path, but not including the extension)
+
+    Returns
+    -------
+    alat_angstrom : float
+        the lattice parameter in angstrom
+    """
+    from irrep.parsers.espresso import ParserEspresso
+    parser = ParserEspresso(prefix=seedname_pw)
+    from scipy import constants
+    bohr_angstrom = constants.physical_constants['Bohr radius'][0] / constants.angstrom
+    _Lattice, _positions, _typat, alat_bohr = parser.parse_lattice()
+    alat_angstrom = alat_bohr * bohr_angstrom
+    return alat_angstrom

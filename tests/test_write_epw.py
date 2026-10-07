@@ -1,3 +1,5 @@
+import pytest
+
 from .common import OUTPUT_DIR, DATA_DIR
 import os
 from wannierberri.w90files.wandata import WannierData
@@ -42,13 +44,49 @@ def compare_dat_files(file1, file2):
 def test_write_epw(create_files_Si_W90):
     seedname = os.path.join(DATA_DIR, "Si_Wannier90", "Si")
     wandata = WannierData.from_w90_files(seedname=seedname,
-                                        files=['mmn', 'eig', 'chk'])
+                                        files=['mmn', 'eig', 'chk', 'win'])
 
-    wandata.chk.write_epw(os.path.join(OUTPUT_DIR, "Ukk.dat"))
-    wandata.mmn.write_epw(os.path.join(OUTPUT_DIR, "mmn.dat"))
+    out_dir = os.path.join(OUTPUT_DIR, "Si_Wannier90_epw")
+    alat = -wandata.chk.real_lattice[0, 0] * 2
+    print(f"alat = {alat} Angstrom")
+    wandata.write_epw(path=out_dir, alat_angstrom=alat, eig_name="Si.eig")
 
-    chk_ref = os.path.join(DATA_DIR, "Si_Wannier90", "Ukk.dat")
-    mmn_ref = os.path.join(DATA_DIR, "Si_Wannier90", "mmn.dat")
+    def check_file(name):
+        ref_file = os.path.join(DATA_DIR, "Si_Wannier90", name)
+        out_file = os.path.join(out_dir, name)
+        compare_dat_files(out_file, ref_file)
 
-    compare_dat_files(os.path.join(OUTPUT_DIR, "mmn.dat"), mmn_ref)
-    compare_dat_files(os.path.join(OUTPUT_DIR, "Ukk.dat"), chk_ref)
+    check_file("Ukk.dat")
+    check_file("mmn.dat")
+    check_file("bkvec.dat")
+    check_file("Si.eig")
+
+
+
+def test_alat_espresso():
+    seedname_pw = os.path.join(DATA_DIR, "diamond", "di")
+    from wannierberri.utility import get_alat_espresso
+    alat = get_alat_espresso(seedname_pw)
+    alat_ref = 3.227980984
+    assert np.isclose(alat, alat_ref, atol=1e-8), f"Expected alat ~ {alat_ref}, got {alat}"
+
+
+@pytest.mark.parametrize("exclude_bands, expected_nbndskip_occ", [
+    ([], 0),
+    ([5], None),
+    ([3, 4,], None),
+    ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 10),
+    ([0, 1, 2, 7, 8, 9], 3),
+    ([8, 9], 0),
+    ([0, 1, 5, 6, 9], None),
+])
+def test_nbndskip_occ(exclude_bands, expected_nbndskip_occ):
+    from wannierberri.w90files.chk import get_nbndskip_occ_from_exclude_bands
+    num_bands_original = 10
+    # if expected value is None - expect ValueError
+    if expected_nbndskip_occ is None:
+        with pytest.raises(ValueError):
+            nbndskip_occ = get_nbndskip_occ_from_exclude_bands(num_bands_original, exclude_bands)
+    else:
+        nbndskip_occ = get_nbndskip_occ_from_exclude_bands(num_bands_original, exclude_bands)
+        assert nbndskip_occ == expected_nbndskip_occ, f"Expected nbndskip_occ = {expected_nbndskip_occ}, got {nbndskip_occ}"

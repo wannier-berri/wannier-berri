@@ -57,6 +57,9 @@ class WIN(SavableNPZ):
             self["kpoints"] = self.get_kpoints()
             self["projections"] = self.get_projections()
             self["atoms_frac"], self.data["atoms_names"] = self.get_atoms()
+            self["exclude_bands"] = self.get_exclude_bands()
+            if "fermi_energy" in self.parsed:
+                self["fermi_energy"] = self.parsed["fermi_energy"]
         if data is not None:
             for k, v in data.items():
                 self.data[k.lower()] = v
@@ -254,6 +257,22 @@ class WIN(SavableNPZ):
             return atoms_frac, atoms_names
         else:
             return None, None
+
+    def get_exclude_bands(self):
+        if "exclude_bands" in self.parsed:
+            return self.parsed["exclude_bands"]["exclude_bands"]
+        else:
+            return np.array([], dtype=int)
+
+    @classmethod
+    def parse_exclude_bands(exclude_bands: str):
+        excluded = set()
+        for item in exclude_bands.split(','):
+            if item.strip():
+                ends = [int(x) for x in item.replace(':', '-').split('-')]
+                excluded.update(range(ends[0] - 1, ends[-1]))
+        return np.array(list(excluded))
+
 
 
 def parse_win_raw(filename=None, text=None):

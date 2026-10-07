@@ -931,6 +931,43 @@ class WannierData:
                    irreducible=self.irreducible,
                    **kwargs)
 
+    def write_epw(self, path=None, alat_angstrom=None, seedname=None, seedname_pw=None,
+                  exclude_bands=None, nbndskip_occ=None,
+                  ukk_name="Ukk.dat", mmn_name="mmn.dat", bkvec_name="bkvec.dat", eig_name="eig.dat"
+                  ):
+
+        if eig_name is None:
+            eig_name = f"{self.seedname}.eig"
+        if path is None:
+            path = os.getcwd()
+        # create the folder if it does not exist
+        os.makedirs(path, exist_ok=True)
+
+        if alat_angstrom is None:
+            from ..utility import get_alat_espresso
+            if seedname_pw is None:
+                seedname_pw = self.seedname
+            alat_angstrom = get_alat_espresso(seedname_pw)
+
+
+        if seedname is None:
+            seedname = self.seedname
+
+        if exclude_bands is None:
+            try:
+                exclude_bands = self.win["exclude_bands"]
+            except KeyError as e:
+                raise ValueError(f"exclude_bands is not set in the win file, and was not provided as an argument. Please provide it as an argument to write_epw() :{e}")
+        elif isinstance(exclude_bands, str):
+            exclude_bands = WIN.parse_exclude_bands(exclude_bands)
+
+        self.chk.write_epw(os.path.join(path, ukk_name), alat_angstrom, exclude_bands, nbndskip_occ)
+        self.bkvec.write_epw(os.path.join(path, bkvec_name))
+        self.mmn.write_epw(os.path.join(path, mmn_name))
+        eig_path = os.path.join(path, eig_name)
+        if not os.path.exists(eig_path):
+            self.eig.to_w90_file(eig_path, ignore_extension=True)
+
 
     def apply_window(self, *args, **kwargs):
         raise NotImplementedError("apply_window is deprecated. Use select_bands instead")
