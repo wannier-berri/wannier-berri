@@ -60,7 +60,7 @@ class SystemSOC(System_R):
         self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
         self.wannier_centers_cart[1::2] = self.system_down.wannier_centers_cart
 
-        self.pointgroup = PointGroup()
+        self.pointgroup = PointGroup(real_lattice=self.real_lattice)
         self.force_internal_terms_only = any(
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
         self.rvec = None
@@ -133,9 +133,11 @@ class SystemSOC(System_R):
     def has_soc(self):
         logger.debug(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
         if self.nspin == 2:
-            return self.has_R_mat_all(['dV_soc', 'overlap_up_down'])
+            return (self.has_R_mat_all(['dV_soc', 'overlap_up_down']) and
+                    self.system_up.has_R_mat('dV_soc') and
+                    self.system_down.has_R_mat('dV_soc'))
         else:
-            return self.has_R_mat_all(['dV_soc'])
+            return self.system_up.has_R_mat('dV_soc')
 
 
     @classmethod
