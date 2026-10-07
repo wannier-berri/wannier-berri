@@ -42,6 +42,8 @@ class Data_K_soc(Data_K_R):
         return H
 
     def getXbar(self, name, der=0, select_WF=None):
+        if select_WF is not None:
+            raise NotImplementedError("select_WF is not implemented for Data_K_soc.")
         if name == "SS":
             Xbar = self.SS_W(der=der)
         elif name.startswith("S"):
