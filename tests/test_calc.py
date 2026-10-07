@@ -26,6 +26,7 @@ def check_calculator(compare_any_result):
                factor=1,
                transformTR=None,
                transformInv=None,
+               void_if_missing=False
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_k_class = wberri.data_K.get_data_k_class_from_system(system)
@@ -49,7 +50,7 @@ def check_calculator(compare_any_result):
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             print(f"Comparing with reference file {path_filename_ref}")
-            result_ref = result_type.from_npz(path_filename_ref)
+            result_ref = result_type.from_npz(path_filename_ref, void_if_missing=void_if_missing)
         if transformTR is not None:
             result_ref.transformTR = transformTR
         if transformInv is not None:
@@ -187,6 +188,7 @@ def test_SDCT(system, system_type, Efermi, check_calculator):
                              name, do_not_compare=False,
                              compare_zero=(term == "none"),
                             #  precision=1e-8 if term == "none" else None,
+                            void_if_missing=True,  # if term == "none" else False,
                              transformTR=transform_TR)
 
 
