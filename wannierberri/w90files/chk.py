@@ -24,8 +24,7 @@ class CheckPoint(SavableNPZ):
     """
 
     npz_tags = ["mp_grid", "real_lattice", "num_wann", "num_bands", "num_kpts", "kpt_red"]
-    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands"]
-    # npz_keys_dict_int = ["v_matrix"]
+    npz_tags_optional = ["wannier_centers_cart", "wannier_spreads", "selected_bands", "wannier_names", "atom_centers_red", "wannier_to_atom_map"]
     npz_keys_dict_int_optional = ["v_matrix"]
     extension = "chk"
 
@@ -43,6 +42,9 @@ class CheckPoint(SavableNPZ):
                 selected_bands=None,
                 mp_grid=None,
                 kmesh_tol=1e-7,
+                wannier_names=None,
+                atom_centers_red=None,
+                wannier_to_atom_map=None,
                 bk_complete_tol=1e-5,
     ):
         if real_lattice is not None:
@@ -87,6 +89,10 @@ class CheckPoint(SavableNPZ):
 
         if selected_bands is not None:
             self.selected_bands = selected_bands
+
+        self.wannier_names = wannier_names
+        self.atom_centers_red = atom_centers_red
+        self.wannier_to_atom_map = wannier_to_atom_map
 
         if v_matrix is not None:
             if isinstance(v_matrix, list) or isinstance(v_matrix, np.ndarray):

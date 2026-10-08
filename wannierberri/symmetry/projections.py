@@ -101,7 +101,8 @@ class Projection:
                  spread_factor=1.0,
                  zaxis=None,
                  xaxis=None,
-                 do_not_split_projections=False):
+                 do_not_split_projections=False,
+                 atom_name=None):
         if void:
             return
         if do_not_split_projections:
@@ -110,6 +111,11 @@ class Projection:
             self.orbitals = orbital.split(";")
         self.radial_nodes = radial_nodes
         self.spread_factor = spread_factor
+
+        # if none - generate a random 5-letter name for the atom,
+        if atom_name is None:
+            atom_name = ''.join([np.random.choice(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) for _ in range(5)])
+        self.atom_name = atom_name
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
@@ -155,6 +161,16 @@ class Projection:
     def wannier_centers_red(self):
         """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
         return np.array([pos for pos in self.wyckoff_position.positions for _ in range(self.num_wann_per_site)], dtype=float)
+
+    @property
+    def atom_centers_red(self):
+        """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
+        return self.wyckoff_position.positions.copy()
+
+    @property
+    def wannier_to_atom_map(self):
+        """Map from wannier functions to atoms. Shape (num_wann,)"""
+        return np.array([i for i in range(self.num_points) for _ in range(self.num_wann_per_site)], dtype=int)
 
     @property
     def wannier_centers_cart(self):
@@ -283,6 +299,15 @@ class Projection:
                     positions.append(pos)
         return positions, orbitals
 
+    def get_wannier_names(self):
+        """
+        Returns
+        -------
+        list(str)
+            The names of the wannier functions (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
+        """
+        return [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
+
     @property
     def num_free_vars(self):
         return self.wyckoff_position.num_free_vars
@@ -349,6 +374,9 @@ class ProjectionsSet:
         """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
         with spin TAKEN into account (i.e. multiplied by 2 if spinor)"""
         return sum([p.num_wann for p in self.projections])
+
+    def get_wannier_names(self):
+        return sum((p.get_wannier_names() for p in self.projections), [])
 
     @property
     def num_wann_scalar(self):
@@ -548,6 +576,14 @@ class ProjectionsSet:
             new_projections.append(projection)
         self.projections = new_projections
         self.clear_cached_properties()
+
+    @property
+    def atom_centers_red(self):
+        return np.concatenate([p.atom_centers_red for p in self.projections], axis=0)
+
+    @property
+    def wannier_to_atom_map(self):
+        return np.concatenate([p.wannier_to_atom_map + start for p, start in zip(self.projections, np.cumsum([0] + [p.num_points for p in self.projections]))], axis=0)
 
 
     def clear_cached_properties(self, attributes=None):

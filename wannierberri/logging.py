@@ -12,7 +12,6 @@ def output(self, message, *args, **kwargs):
 
 logging.Logger.output = output
 
-
 def configure_logging(logfile="wannierberri.log",
                       loglevel=logging.INFO,
                       logmode="a",

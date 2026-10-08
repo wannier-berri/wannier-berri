@@ -15,6 +15,7 @@ class NeededData:
     needed_files['SR'] = ['spn', 'mmn']
     needed_files['SA'] = ['siu', 'mmn']
     needed_files['SHA'] = ['shu', 'mmn']
+    needed_files['Ham'] = ['eig']
 
     @classmethod
     def get_parameters(cls, **parameters):

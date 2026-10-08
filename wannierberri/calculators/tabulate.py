@@ -173,6 +173,20 @@ class Spin(Tabulator):
         super().__init__(frml.Spin, **kwargs)
 
 
+class ProjectedSpin(Spin):
+    r""" Projected Spin expectation :math:` \langle u | \mathbf{\sigma} | u \rangle`"""
+
+    def __init__(self, select_atoms=None, select_WF=None, **kwargs):
+        super().__init__(kwargs_formula=dict(select_WF=select_WF, select_atoms=select_atoms))
+
+
+class ProjectedWeight(Tabulator):
+    r""" Projected weight :math:` \langle u | P | u \rangle`"""
+
+    def __init__(self, select_atoms=None, select_WF=None, **kwargs):
+        super().__init__(frml.ProjectOnWF, kwargs_formula=dict(select_WF=select_WF, select_atoms=select_atoms), **kwargs)
+
+
 class DerSpin(Tabulator):
     r"Derivative of Spin :math:`\partial_a \langle u | \mathbf{\sigma} | u \rangle` in units of angstrom"
 
