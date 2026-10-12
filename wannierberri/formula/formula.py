@@ -193,6 +193,7 @@ class FormulaSum(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+    @property
     def additive(self):
         return self._additive
 

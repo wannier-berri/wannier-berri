@@ -709,9 +709,9 @@ class QuantumMetric_FermiSea(StaticCalculator):
 
 
 class QuantumMetricDipole_FermiSea(StaticCalculator):
-    r"""Quantum metric of all occupied states (Angstrom^-1)
+    r"""Quantum Dipole metric of all occupied states (dimensionless)
     """
-    
+
     def __init__(self, constant_factor=1., **kwargs):
         self.Formula = frml.DerQuantumMetric_ab_d
         self.fder = 0
