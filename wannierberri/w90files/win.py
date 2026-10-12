@@ -1,10 +1,11 @@
+from .io import SavableNPZ
+from .utility import get_mp_grid
+from scipy.constants import physical_constants
+import numpy as np
 import functools
 from typing import Iterable
-import warnings
-import numpy as np
-from scipy.constants import physical_constants
-from .utility import get_mp_grid
-from .io import SavableNPZ
+import logging
+logger = logging.getLogger(__name__)
 
 
 class WIN(SavableNPZ):
@@ -113,7 +114,7 @@ class WIN(SavableNPZ):
         if key in self.data:
             del self.data[key]
         else:
-            warnings.warn(f"key {key} not found in the data, nothing to delete")
+            logger.warning(f"key {key} not found in the data, nothing to delete")
 
     def __contains__(self, key):
         """
