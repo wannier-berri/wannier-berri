@@ -181,7 +181,7 @@ class FormulaSum(Formula_ln):
         self.index = index_list
         self.sign = sign
         self.ndim = formula_list[0].ndim
-        self.additive = additive
+        self._additive = additive
 
     def nn(self, ik, inn, out):
         matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
@@ -194,7 +194,7 @@ class FormulaSum(Formula_ln):
         raise NotImplementedError()
 
     def additive(self):
-        return self.additive
+        return self._additive
 
 
 class DeltaProduct(Formula_ln):
