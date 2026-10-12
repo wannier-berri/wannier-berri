@@ -301,7 +301,7 @@ def test_Fermi_scan_Fe(datak_Fe, tetra, shift):
         "ohmic": static.Ohmic_FermiSea,
         "gme": static.GME_orb_FermiSea,
         "gme_spin": static.GME_spin_FermiSea,
-        # "hall": static.Hall_classic_FermiSea,
+        # "hall": static.Hall_classic_FermiSea,  # This test does not pass - a bug to be investigasted
         "sbcd": static.SpinBerryDipole_FermiSea,
         "nldrude": static.NLDrude_FermiSea
     }
