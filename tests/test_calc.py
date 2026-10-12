@@ -263,8 +263,7 @@ def datak_GaAs(system_GaAs_W90):
 
 @pytest.mark.parametrize("tetra", [True, False])
 @pytest.mark.parametrize("shift", [0, 2, 5, 7])
-def test_Fermi_scan(datak_GaAs, tetra, shift):
-    from wannierberri.calculators import static
+def test_Fermi_scan_GaAs(datak_GaAs, tetra, shift):
     from .common_systems import Efermi_GaAs
 
     data_K = datak_GaAs
@@ -274,6 +273,37 @@ def test_Fermi_scan(datak_GaAs, tetra, shift):
     calculators_dict = {
         "quantum_metric": static.QuantumMetric_FermiSea,
         "quantum_metric_dqm": static.QuantumMetric_Vel_DQ,
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_Fe(datak_Fe, tetra, shift):
+    from .common_systems import Efermi_Fe
+
+    data_K = datak_Fe
+    Efermi = Efermi_Fe
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "ahc": static.AHC,
+        "Morb": static.Morb,
+        "bcd": static.BerryDipole_FermiSea,
+        "ohmic": static.Ohmic_FermiSea,
+        "gme": static.GME_orb_FermiSea,
+        "gme_spin": static.GME_spin_FermiSea,
+        # "hall": static.Hall_classic_FermiSea,
+        "sbcd": static.SpinBerryDipole_FermiSea,
+        "nldrude": static.NLDrude_FermiSea
     }
 
     for calc_name, calc_class in calculators_dict.items():

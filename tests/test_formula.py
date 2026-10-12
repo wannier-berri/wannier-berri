@@ -35,7 +35,7 @@ FORMULA_REFERENCE_FILENAMES = {
 }
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def datak_Fe():
     system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
     return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[1, 2, 3])
