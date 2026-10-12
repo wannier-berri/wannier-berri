@@ -272,6 +272,7 @@ def test_Fermi_scan_GaAs(datak_GaAs, tetra, shift):
 
     calculators_dict = {
         "quantum_metric": static.QuantumMetric_FermiSea,
+        "quantum_metric_dipole": static.QuantumMetricDipole_FermiSea,
         "quantum_metric_dqm": static.QuantumMetric_Vel_DQ,
     }
 
