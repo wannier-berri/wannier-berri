@@ -49,8 +49,10 @@ class DynamicCalculator(Calculator, abc.ABC):
 
         if self.smr_type == 'Lorentzian':
             self.smear = functools.partial(Lorentzian, width=self.smr_fixed_width)
+            self.max_smear_width = 100 * self.smr_fixed_width
         elif self.smr_type == 'Gaussian':
             self.smear = functools.partial(Gaussian, width=self.smr_fixed_width, adpt_smr=False)
+            self.max_smear_width = 5 * self.smr_fixed_width
         else:
             raise ValueError("Invalid smearing type {self.smr_type}")
         self.FermiDirac = functools.partial(FermiDirac, mu=self.Efermi, kBT=self.kBT)
@@ -158,14 +160,14 @@ class JDOS(DynamicCalculator):
         return self.smear(E1 - E2 - self.omega)
 
     def nonzero(self, E1, E2):
-        return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
-            self.omega.min() - 5 * self.smr_fixed_width < E1 - E2 < self.omega.max() + 5 * self.smr_fixed_width)
+        if not super().nonzero(E1, E2):
+            return False
+        return self.omega.min() - self.max_smear_width < E1 - E2 < self.omega.max() + self.max_smear_width
 
 
 ################################
 #    Optical Conductivity      #
 ################################
-
 
 class Formula_OptCond(Formula):
 
