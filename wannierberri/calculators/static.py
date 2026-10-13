@@ -22,6 +22,17 @@ from ..utility import alpha_A, beta_A, cached_einsum, weight_select_bands
 
 
 class StaticCalculator(Calculator):
+    """
+    Parameters
+    -----------
+    Efermi : array-like
+        Fermi energies (eV), in increasing order. Without the tetrahedron method (``tetra=False``) they must also
+        be evenly spaced: the states are sorted into bins of width ``Efermi[1] - Efermi[0]`` starting at
+        ``Efermi[0]``, and the Fermi-surface quantities are finite differences on this grid. With ``tetra=True``
+        the spacing may be uneven, but the bands are selected between ``Efermi[0]`` and ``Efermi[-1]``.
+    tetra : bool
+        use the tetrahedron method
+    """
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula=None,
                  Emin=-np.inf, Emax=np.inf, hole_like=False, k_resolved=False, Formula=None, fder=None,
@@ -50,9 +61,18 @@ class StaticCalculator(Calculator):
         self.constant_factor = constant_factor
         if self.hole_like and self.fder == 0:
             self.constant_factor *= -1
+        if np.any(np.diff(self.Efermi) < 0):
+            raise ValueError(f"Efermi must be in increasing order for static calculators; got {self.Efermi}")
         if not self.tetra:
+            Efermi = self.Efermi
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
             self.dEF = Efermi[1] - Efermi[0] if len(Efermi) > 1 else 0.001
+            if len(Efermi) > 1:
+                grid = Efermi[0] + self.dEF * np.arange(len(Efermi))
+                if self.dEF <= 0 or not np.allclose(Efermi, grid, rtol=0, atol=1e-6 * self.dEF):
+                    raise ValueError(
+                        "Efermi must be evenly spaced and increasing for static calculators without the tetrahedron "
+                        f"method (tetra=False); got {Efermi}. Use e.g. np.linspace, or tetra=True.")
             self.EFmin = Efermi[0] - self.extraEf * self.dEF
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
