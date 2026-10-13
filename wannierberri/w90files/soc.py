@@ -1,8 +1,8 @@
-import warnings
-import numpy as np
-from .w90file import W90_file, check_shape
 from ..utility import cached_einsum, pauli_xyz
+from .w90file import W90_file, check_shape
+import numpy as np
 import logging
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -49,7 +49,7 @@ class SOC(W90_file):
             self.overlap = overlap
         elif overlap is None:
             if self.nspin == 2:
-                warnings.warn("nspin=2, but No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
+                logger.warning("nspin=2, but No overlap matrix provided, using identity matrices - this mightt be very inaccurate in some cases.")
             self.overlap = {i: np.eye(self.NB, dtype=complex) for i in self.data}
         else:
             raise ValueError(f"Invalid overlap input: {overlap} of type {type(overlap)}. Should be a list or array or None")

@@ -1,4 +1,5 @@
 
+import numpy as np
 from .chk import CheckPoint
 from .unk import UNK
 from .spn import SPN
@@ -13,9 +14,8 @@ import datetime
 from functools import cached_property
 from copy import copy
 import os
-import warnings
-import numpy as np
 import logging
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -126,7 +126,7 @@ class WannierData:
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
             logger.debug(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
             if len(selected_kpoints) < np.prod(grid):
-                warnings.warn(f"detected grid {grid} od {np.prod(grid)} kpoints, "
+                logger.warning(f"detected grid {grid} od {np.prod(grid)} kpoints, "
                               f"but only {len(selected_kpoints)} kpoints are available."
                               "assuming that only irreducible kpoints are needed.")
                 irreducible = True
@@ -355,7 +355,8 @@ class WannierData:
                 seedname="wannier90",
                 files=None,
                 ignore_missing_files=True,
-                irreducible=False):
+                irreducible=False,
+                allow_pickle=True):
         self = cls()
         self.seedname = copy(seedname)
         if files is None:
@@ -374,15 +375,15 @@ class WannierData:
                 if f == "symmetrizer":
                     from ..symmetry.sawf import SymmetrizerSAWF
                     filepath = seedname + ".sawf.npz"
-                    val = SymmetrizerSAWF.from_npz(filepath)
+                    val = SymmetrizerSAWF.from_npz(filepath, allow_pickle=allow_pickle)
                 elif f in ["mmn_ud", "mmn_du"]:
                     from .mmn import MMN
                     filepath = seedname + "." + f + ".npz"
-                    val = MMN.from_npz(filepath)
+                    val = MMN.from_npz(filepath, allow_pickle=allow_pickle)
                 elif f in FILES_CLASSES:
                     cls = FILES_CLASSES[f]
                     filepath = seedname + "." + cls.extension + ".npz"
-                    val = cls.from_npz(filepath)
+                    val = cls.from_npz(filepath, allow_pickle=allow_pickle)
                 else:
                     raise ValueError(f"file {f} is not a valid w90 file")
                 logger.info(f"setting file {f} from npz {filepath} as {val}")
@@ -414,7 +415,7 @@ class WannierData:
                 nkeys = len(ff.data.keys())
                 NK = ff.NK
             if nkeys < NK:
-                warnings.warn(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
+                logger.warning(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
                               "so we assume the files contain only on irreducible k-points")
                 irreducible = True
         self.irreducible = irreducible
@@ -437,7 +438,7 @@ class WannierData:
                 val = self.get_file(f)
                 val.to_npz(str(seedname) + "." + val.extension + ".npz")
             else:
-                warnings.warn(f"file {f} is not set, cannot write to npz")
+                logger.warning(f"file {f} is not set, cannot write to npz")
 
 
 
@@ -525,7 +526,7 @@ class WannierData:
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             if f not in FILES_CLASSES:
-                warnings.warn(f"file {f} is not a valid Wannier file, skipping it")
+                logger.warning(f"file {f} is not a valid Wannier file, skipping it")
                 continue
             kwargs_w90 = {}
             if f in ['uhu', 'uiu', 'shu', 'siu']:
@@ -661,7 +662,7 @@ class WannierData:
         """
         if self.bands_were_selected:
             if allow_selected_bands:
-                warnings.warn("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
+                logger.warning("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
             else:
                 raise RuntimeError("window was applied, so new added files may be inconsistent with the window. To allow it, set allow_selected_bands=True (on your own risk)")
         if key == "chk":
@@ -670,7 +671,7 @@ class WannierData:
         if self.has_file(key):
             if overwrite:
                 self.unset_file(key)
-                warnings.warn(f"file '{key}' was already set, overwriting it")
+                logger.warning(f"file '{key}' was already set, overwriting it")
             else:
                 raise RuntimeError(f"file '{key}' was already set")
         self.check_conform(key, val)
@@ -929,6 +930,59 @@ class WannierData:
         wannierise(self,
                    irreducible=self.irreducible,
                    **kwargs)
+
+    def write_epw(self, path=None, alat_angstrom=None, seedname_pw=None,
+                  exclude_bands=None, nbndskip_occ=None,
+                  ukk_name="Ukk.dat", mmn_name="mmn.dat", bkvec_name="bkvec.dat", eig_name="eig.dat"
+                  ):
+        """
+        Write the files needed for EPW
+
+        Parameters
+        ----------
+        path : str
+            the path where to write the files. If None, the current working directory is used
+        alat_angstrom : float
+            the lattice parameter in Angstrom. If None, it is read from the seedname_pw.save/data-file-schema.xml file.
+        seedname_pw : str
+            the seedname of the pwscf calculation. If None, it is assumed to be the same as the seedname of the WannierData
+        exclude_bands : list of int
+            the list of bands to be excluded from the EPW calculation. or a string like "1-3,5,7-9" to exclude bands 1,2,3,5,7,8,9. If None, it is read from the win file.
+            Note: if string - the bands are 1-indexed, and the ranges are inclusive. If list of int - the bands are 0-indexed.
+        nbndskip_occ : int
+            the number of occupied bands skipped. If None, it will be determined from exclude_bands as the first contiguous block of excluded bands starting from the lowest band. 
+        ukk_name, mmn_name, bkvec_name, eig_name : str
+            the names of the files to be written (in the path directory)
+        """
+
+        if eig_name is None:
+            eig_name = f"{self.seedname}.eig"
+        if path is None:
+            path = os.getcwd()
+        # create the folder if it does not exist
+        os.makedirs(path, exist_ok=True)
+
+        if alat_angstrom is None:
+            from ..utility import get_alat_espresso
+            if seedname_pw is None:
+                seedname_pw = self.seedname
+            alat_angstrom = get_alat_espresso(seedname_pw)
+
+
+        if exclude_bands is None:
+            try:
+                exclude_bands = self.win["exclude_bands"]
+            except KeyError as e:
+                raise ValueError(f"exclude_bands is not set in the win file, and was not provided as an argument. Please provide it as an argument to write_epw() :{e}")
+        elif isinstance(exclude_bands, str):
+            exclude_bands = WIN.parse_exclude_bands(exclude_bands)
+
+        self.chk.write_epw(os.path.join(path, ukk_name), alat_angstrom, exclude_bands, nbndskip_occ)
+        self.bkvec.write_epw(os.path.join(path, bkvec_name))
+        self.mmn.write_epw(os.path.join(path, mmn_name))
+        eig_path = os.path.join(path, eig_name)
+        if not os.path.exists(eig_path):
+            self.eig.to_w90_file(eig_path, ignore_extension=True)
 
 
     def apply_window(self, *args, **kwargs):

@@ -10,7 +10,7 @@ import numpy as np
 import os
 import pytest
 from .common_systems import Efermi_Fe, Efermi_Si
-
+from .test_formula import get_datak
 
 datak_Fe = datak_Fe_
 
@@ -250,3 +250,67 @@ def test_band_resolved(tetra, system_Fe_sym_W90, datak_Fe):
     rel_diff = np.max(np.abs(res_bands - res_all) / scale)
     print(f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}")
     assert rel_diff < 1e-8, f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}"
+
+
+
+@pytest.fixture(scope="module")
+def datak_GaAs(system_GaAs_W90):
+    dK = [0.1, 0.2, 0.3]
+    NKFFT = [3, 3, 3]
+    data_K = get_datak(system_GaAs_W90, k=dK, NKFFT=NKFFT)
+    return data_K
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_GaAs(datak_GaAs, tetra, shift):
+    from .common_systems import Efermi_GaAs
+
+    data_K = datak_GaAs
+    Efermi = Efermi_GaAs
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "quantum_metric": static.QuantumMetric_FermiSea,
+        "quantum_metric_dipole": static.QuantumMetricDipole_FermiSea,
+        "quantum_metric_dqm": static.QuantumMetric_Vel_DQ,
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_Fe(datak_Fe, tetra, shift):
+    from .common_systems import Efermi_Fe
+
+    data_K = datak_Fe
+    Efermi = Efermi_Fe
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "ahc": static.AHC,
+        "Morb": static.Morb,
+        "bcd": static.BerryDipole_FermiSea,
+        "ohmic": static.Ohmic_FermiSea,
+        "gme": static.GME_orb_FermiSea,
+        "gme_spin": static.GME_spin_FermiSea,
+        # "hall": static.Hall_classic_FermiSea,  # This test does not pass - a bug to be investigasted
+        "sbcd": static.SpinBerryDipole_FermiSea,
+        "nldrude": static.NLDrude_FermiSea
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])

@@ -974,6 +974,10 @@ class QuantumMetric_ab(FormulaSymmetric):
         self.transformTR = transform_ident
         self.transformInv = transform_ident
 
+    @property
+    def additive(self):
+        return False
+
 
 class DerQuantumMetric_ab_d(FormulaSymmetric):
 
@@ -982,9 +986,17 @@ class DerQuantumMetric_ab_d(FormulaSymmetric):
         self.transformTR = transform_odd
         self.transformInv = transform_odd
 
+    @property
+    def additive(self):
+        return False
+
 
 class VelDQM(FormulaProduct):
 
     def __init__(self, data_K, **parameters):
         super().__init__([data_K.covariant('Ham', commader=1), DerQuantumMetric_ab_d(data_K, **parameters)],
                          name='VelDQM')
+
+    @property
+    def additive(self):
+        return False

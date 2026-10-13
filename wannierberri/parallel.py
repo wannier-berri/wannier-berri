@@ -1,8 +1,5 @@
-import logging
 import os
-import warnings
-
-
+import logging
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +53,7 @@ def ray_init_cluster(
     import ray
     if ray.is_initialized():
         if not ignore_initialized:
-            warnings.warn("Ray is already initialized, using the existing initialization, ignoring the parameters passed to ray_init_cluster")
+            logger.warning("Ray is already initialized, using the existing initialization, ignoring the parameters passed to ray_init_cluster")
         return
     ray_init_loc = {}
 
@@ -64,7 +61,7 @@ def ray_init_cluster(
         if opt not in ray_init:
             ray_init_loc[opt] = def_val()
         else:
-            warnings.warn(f"the ray cluster will use '{opt}={ray_init[opt]}' provided in ray_init")
+            logger.warning(f"the ray cluster will use '{opt}={ray_init[opt]}' provided in ray_init")
     set_opt('address', lambda: 'auto')
     set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
     set_opt('_redis_password', lambda: os.environ["redis_password"])
@@ -122,8 +119,8 @@ def check_ray_initialized():
         if ray.is_initialized():
             return True
         else:
-            warnings.warn("ray package found, but ray is not initialized, running in serial mode")
+            logger.warning("ray package found, but ray is not initialized, running in serial mode")
             return False
     except ImportError:
-        warnings.warn("Ray is not installed, running in serial mode")
+        logger.warning("Ray is not installed, running in serial mode")
         return False

@@ -1,11 +1,11 @@
+from .path_order import flatten_path
+import numpy as np
+from collections.abc import Iterable
 from .grid import GridAbstract
 from .Kpoint import KpointBZpath
-import warnings
-from collections.abc import Iterable
-import numpy as np
-from .path_order import flatten_path
-
 import logging
+logger = logging.getLogger(__name__)
+
 logger = logging.getLogger(__name__)
 
 
@@ -276,7 +276,7 @@ class Path(GridAbstract):
     def get_K_list(self, use_symmetry=False, k_batch=None):
         """ returns the list of K-points"""
         if use_symmetry:
-            warnings.warn("symmetry is not used for a tabulation along path")
+            logger.warning("symmetry is not used for a tabulation along path")
         logger.debug("generating K_list")
         K_list = []
         for ik in range(0, len(self.K_list), k_batch):

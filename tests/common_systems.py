@@ -62,8 +62,8 @@ def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"])
         kwargs = {}
         for tag in tags_compute:
             kwargs["write" + tag.upper()] = True
-
-        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
+        from wannierberri import utils
+        nb_out_list = utils.mmn2uHu.run_mmn2uHu(
             seedname, INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced", **kwargs)
         nb_out = nb_out_list[0]
 
@@ -130,7 +130,6 @@ def create_files_GaAs_W90():
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
-
     return data_dir
 
 
@@ -327,6 +326,7 @@ def system_Fe_gpaw_soc_dowannierise(wandata_Fe_gpaw):
     wandata = copy.deepcopy(wandata_Fe_gpaw)
     wandata.wannierise(num_iter=100, sitesym=True,
                     froz_min=-1000, froz_max=15,
+                    savechk=False,
                     localise_num_iter=0)
     system = SystemSOC.from_wannierdata(wandata, berry=True)
     return system
