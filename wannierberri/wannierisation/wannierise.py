@@ -170,7 +170,6 @@ def wannierise(wandata,
                         logger.warning(str(e))
 
 
-
     if not wandata.has_file("chk"):
         from ..w90files.chk import CheckPoint
         wandata.set_file("chk", CheckPoint(num_kpts=NK,
@@ -182,6 +181,7 @@ def wannierise(wandata,
                          allow_selected_bands=True
                                            )  # num_wann will be set later from amn
 
+    wandata.chk.set_frozen(frozen=frozen, kpt2kptirr=symmetrizer.kpt2kptirr)
 
     if init == "amn":
         amn = {kpt: wandata.amn.data[kpt] for kpt in kptirr}
@@ -290,6 +290,8 @@ def wannierise(wandata,
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k if irreducible else None)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
     update_chk(wandata=wandata, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads, print_wcc=print_wcc_chk)
+    # Store the actual outer window for EPW export; irreducible-only output is unsupported.
+    wandata.chk.lwindow = None if irreducible else selected_bands[symmetrizer.kpt2kptirr].copy()
     if not irreducible:
         wcc_chk, spreads_chk = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
         print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")

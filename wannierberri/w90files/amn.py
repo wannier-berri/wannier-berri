@@ -79,14 +79,14 @@ class AMN(W90_file):
         return AMN(data=data)
 
     def to_w90_file(self, seedname):
-        f_amn_out = open(seedname + ".amn", "w")
+        f_amn_out = self.open_file(seedname, "w")
         f_amn_out.write(f"created by WannierBerri on {datetime.now()} \n")
         logger.debug(f"writing {seedname}.amn: ")
         f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
             for iw in range(self.NW):
                 for ib in range(self.NB):
-                    f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
+                    f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik][ib, iw].real:17.12f} {self.data[ik][ib, iw].imag:17.12f}\n")
 
 
     def spin_order_block_to_interlace(self):
