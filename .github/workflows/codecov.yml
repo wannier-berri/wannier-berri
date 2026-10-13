@@ -15,8 +15,8 @@ jobs:
     timeout-minutes: 40
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
       with:
         python-version: '3.13'
     - name: Install dependencies
@@ -32,10 +32,9 @@ jobs:
       run: |
         pytest tests/test_*.py --serial -s --cov=./wannierberri --cov-config=pyproject.toml --cov-report=xml:coverage.xml
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         files: ./coverage.xml
-        fail_ci_if_error: true
         verbose: true
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
