@@ -719,7 +719,7 @@ class SHC(StaticCalculator):
 
 
 class QuantumMetric_FermiSea(StaticCalculator):
-    r"""Quantum metric of all occupied states (Angstr^-1)
+    r"""Quantum metric of all occupied states (Angstrom^-1)
     """
 
     def __init__(self, constant_factor=1., **kwargs):
@@ -728,8 +728,18 @@ class QuantumMetric_FermiSea(StaticCalculator):
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 
+class QuantumMetricDipole_FermiSea(StaticCalculator):
+    r"""Quantum Dipole metric of all occupied states (dimensionless)
+    """
+
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.DerQuantumMetric_ab_d
+        self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
 class QuantumMetric_Vel_DQ(StaticCalculator):
-    r"""Quantum metric dipole with velocity (Angstr^-1)
+    r"""Quantum metric dipole with velocity (Angstrom)
     """
 
     def __init__(self, constant_factor=1., **kwargs):
