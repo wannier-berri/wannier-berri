@@ -165,7 +165,7 @@ class FormulaSum(Formula_ln):
     return an array with same index with first formula.
     """
 
-    def __init__(self, formula_list, sign, index_list, name="unknown", additive=True):
+    def __init__(self, formula_list, sign, index_list, name="unknown"):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
         assert len(formula_list) > 0, 'formula_list is empty'
@@ -181,7 +181,7 @@ class FormulaSum(Formula_ln):
         self.index = index_list
         self.sign = sign
         self.ndim = formula_list[0].ndim
-        self.additive = additive
+        self._additive = np.all([f.additive for f in formula_list])
 
     def nn(self, ik, inn, out):
         matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
@@ -193,8 +193,9 @@ class FormulaSum(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+    @property
     def additive(self):
-        return self.additive
+        return self._additive
 
 
 class DeltaProduct(Formula_ln):
