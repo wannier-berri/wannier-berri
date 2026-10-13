@@ -25,6 +25,9 @@ eV_au = physical_constants['electron volt-hartree relationship'][0]
 
 class DynamicCalculator(Calculator, abc.ABC):
 
+    # if True, only the pair of each band group with itself is taken (terms with a single band index)
+    self_pairs_only = False
+
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian',
                  kwargs_formula=None, dtype=complex, **kwargs):
 
@@ -83,7 +86,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)}
             degen_group_pairs = [
                 (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
-                if self.nonzero(Em, En)
+                if self.nonzero(Em, En) and (ibm == ibn or not self.self_pairs_only)
             ]
             npair = len(degen_group_pairs)
             if npair == 0:
