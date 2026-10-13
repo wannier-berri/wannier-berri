@@ -265,13 +265,22 @@ class WIN(SavableNPZ):
             return np.array([], dtype=int)
 
     @classmethod
-    def parse_exclude_bands(exclude_bands: str):
+    def parse_exclude_bands(cls, exclude_bands: str):
+        """
+        parses the exclude_bands string  (1-based indexing) 
+        and returns a sorted numpy array of excluded bands (0-based indexing)"""
         excluded = set()
         for item in exclude_bands.split(','):
             if item.strip():
                 ends = [int(x) for x in item.replace(':', '-').split('-')]
-                excluded.update(range(ends[0] - 1, ends[-1]))
-        return np.array(list(excluded))
+                assert len(ends) in [1, 2], f"Invalid exclude_bands format: {item}"
+                if ends[-1] < ends[0]:
+                    raise ValueError(f"bands range should be in ascending order: {item}")
+                if np.any(np.array(ends) < 1):
+                    raise ValueError(f"bands index should be positive: {item}")
+                excluded.update(range(ends[0] - 1, ends[-1])) if len(ends) == 2 else excluded.add(ends[0] - 1)
+                
+        return np.array(sorted(excluded))
 
 
 

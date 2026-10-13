@@ -90,3 +90,29 @@ def test_nbndskip_occ(exclude_bands, expected_nbndskip_occ):
     else:
         nbndskip_occ = get_nbndskip_occ_from_exclude_bands(num_bands_original, exclude_bands)
         assert nbndskip_occ == expected_nbndskip_occ, f"Expected nbndskip_occ = {expected_nbndskip_occ}, got {nbndskip_occ}"
+
+
+def test_parse_exclude_bands():
+    from wannierberri.w90files.win import WIN
+    test_cases = [
+        ("", []),
+        ("1,2,3", [0, 1, 2]),
+        ("3-5", [2, 3, 4]),
+        ("1,3-5,8", [0, 2, 3, 4, 7]),
+        ("7-9,11", [6, 7, 8, 10]),
+        ("1-2,4-6", [0, 1, 3, 4, 5]),
+        ("3-3,5-5,9-7", None),
+        ("0,2-4", None),
+        ("5-5", [4]),
+        ("10", [9]),
+        ("2-4,6-8,10-12", [1, 2, 3, 5, 6, 7, 9, 10, 11]),
+        ("1-3,5-7,9-11", [0, 1, 2, 4, 5, 6, 8, 9, 10]),
+    ]
+    for input_str, expected_output in test_cases:
+        if expected_output is None:
+            with pytest.raises(ValueError):
+                WIN.parse_exclude_bands(input_str)
+        else:
+            output = WIN.parse_exclude_bands(input_str)
+            assert len(output) == len(expected_output), f"Expected length {len(expected_output)} for input '{input_str}', got {len(output)}"
+            assert np.all(np.array(output) == expected_output), f"Expected {expected_output} for input '{input_str}', got {output}"
