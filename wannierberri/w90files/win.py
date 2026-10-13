@@ -57,6 +57,9 @@ class WIN(SavableNPZ):
             self["kpoints"] = self.get_kpoints()
             self["projections"] = self.get_projections()
             self["atoms_frac"], self.data["atoms_names"] = self.get_atoms()
+            self["exclude_bands"] = self.get_exclude_bands()
+            if "fermi_energy" in self.parsed:
+                self["fermi_energy"] = self.parsed["fermi_energy"]
         if data is not None:
             for k, v in data.items():
                 self.data[k.lower()] = v
@@ -254,6 +257,31 @@ class WIN(SavableNPZ):
             return atoms_frac, atoms_names
         else:
             return None, None
+
+    def get_exclude_bands(self):
+        if "exclude_bands" in self.parsed:
+            return self.parsed["exclude_bands"]["exclude_bands"]
+        else:
+            return np.array([], dtype=int)
+
+    @classmethod
+    def parse_exclude_bands(cls, exclude_bands: str):
+        """
+        parses the exclude_bands string  (1-based indexing) 
+        and returns a sorted numpy array of excluded bands (0-based indexing)"""
+        excluded = set()
+        for item in exclude_bands.split(','):
+            if item.strip():
+                ends = [int(x) for x in item.replace(':', '-').split('-')]
+                assert len(ends) in [1, 2], f"Invalid exclude_bands format: {item}"
+                if ends[-1] < ends[0]:
+                    raise ValueError(f"bands range should be in ascending order: {item}")
+                if np.any(np.array(ends) < 1):
+                    raise ValueError(f"bands index should be positive: {item}")
+                excluded.update(range(ends[0] - 1, ends[-1])) if len(ends) == 2 else excluded.add(ends[0] - 1)
+                
+        return np.array(sorted(excluded))
+
 
 
 def parse_win_raw(filename=None, text=None):
