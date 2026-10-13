@@ -11,6 +11,8 @@ from .common import OUTPUT_DIR, REF_DIR
 import wannierberri as wberri
 from wannierberri.utility import alpha_A, beta_A
 from wannierberri.system.system_R import System_R
+from wannierberri.system.system_soc import SystemSOC
+
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
@@ -608,3 +610,19 @@ def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, al
     ref_data = np.load(ref_data_file)
     for key in out_dict:
         assert out_dict[key] == pytest.approx(ref_data[key]), f"Mismatch in {key} for system Fe_gpaw_soc_{name}"
+
+
+def test_system_soc_nspin_1(system_Fe_gpaw_soc):
+    """Test that the system with SOC and nspin=1 is equivalent to the system without SOC"""
+    system_soc = system_Fe_gpaw_soc
+    system_nospin = SystemSOC(system_up=system_soc.system_up, cell=system_soc.cell)
+    assert system_nospin.nspin == 1, "System without spin should have nspin=1"
+    assert system_nospin.rvec is None, "System without spin should not have rvec"
+    assert system_nospin.has_soc, "System without spin should have SOC"
+    path_tmp = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_nspin_1")
+    system_nospin.to_npz(path_tmp)
+    system_nospin_loaded = SystemSOC.from_npz(path_tmp)
+    assert system_nospin_loaded.nspin == 1, "Loaded system without spin should have nspin=1"
+    assert system_nospin_loaded.rvec is None, "Loaded system without spin should not have rvec"
+    assert system_nospin_loaded.has_soc, "Loaded system without spin should retain SOC"
+    system_nospin_loaded.set_soc_axis()

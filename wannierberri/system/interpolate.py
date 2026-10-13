@@ -2,11 +2,12 @@
 
 
 
-import copy
-import warnings
-
-import numpy as np
 from ..fourier.rvectors import Rvectors
+import numpy as np
+import copy
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 class SystemInterpolator:
@@ -49,7 +50,7 @@ class SystemInterpolator:
         matrix_keys_all = matrix_keys0.union(matrix_keys1)
         matrix_keys_exclude = matrix_keys_all - matrix_keys0.intersection(matrix_keys1)
         if len(matrix_keys_exclude) > 0:
-            warnings.warn(f"The following matrix elements are present in only one of the systems: {matrix_keys_exclude} , they will be excluded from the interpolation")
+            logger.warning(f"The following matrix elements are present in only one of the systems: {matrix_keys_exclude} , they will be excluded from the interpolation")
         for sys, iRmap  in zip([self.system0, self.system1], [iRvec_map_0, iRvec_map_1]):
             for key in matrix_keys_exclude:
                 if key in sys._XX_R:

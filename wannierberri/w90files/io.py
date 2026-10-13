@@ -29,8 +29,8 @@ class SavableNPZ(abc.ABC):
         return self
 
     @classmethod
-    def from_npz(cls, f_npz, **kwargs):
-        dic = np.load(f_npz)
+    def from_npz(cls, f_npz, allow_pickle=False, **kwargs):
+        dic = np.load(f_npz, allow_pickle=allow_pickle)
         return cls.from_dict(dic, **kwargs)
 
     def as_dict(self):
