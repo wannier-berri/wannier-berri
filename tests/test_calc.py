@@ -11,6 +11,11 @@ import os
 import pytest
 from .common_systems import Efermi_Fe, Efermi_Si
 from .test_formula import get_datak
+from wannierberri.calculators.dynamic import JDOS
+from pytest import approx
+from wannierberri.system.system_kp import SystemKP
+
+
 
 datak_Fe = datak_Fe_
 
@@ -316,3 +321,33 @@ def test_Fermi_scan_Fe(datak_Fe, tetra, shift):
         assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
         # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
         # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+
+
+def test_jdos():
+
+    system = SystemKP(Ham=lambda k: np.diag([-0.5, 0.5]).astype(complex))
+    datak = get_datak(system)
+
+
+    print(f"cell volume = {system.cell_volume}")
+    width = 0.1
+    expected_value_gauss = 1. / (width * np.sqrt(np.pi) * system.cell_volume)
+    expected_value_lorentz = 1.0 / (np.pi * width) / system.cell_volume * (
+        1 - 1 / (1 + 4 / width**2)   # the correction is due to the finite width of the Lorentzian, which is not negligible for width=0.1 for delta(0.5-(-0.5)-(-1)) = delta(2)
+    )
+
+
+    for (omega, smr_type), expected in [
+        (([1.0], 'Gaussian'), expected_value_gauss),
+        (([-1.0], 'Gaussian'), -expected_value_gauss),
+        (([0.0], 'Lorentzian'), 0),
+        (([1.0], 'Lorentzian'), expected_value_lorentz),
+        (([-1.0], 'Lorentzian'), -expected_value_lorentz),
+        (([0.0, -1.0], 'Lorentzian'), np.array([0, -expected_value_lorentz]))
+    ]:
+        result = JDOS(Efermi=[0.0], omega=np.array(omega), smr_fixed_width=0.1,
+                      smr_type=smr_type, kBT=0)(datak).data[0]
+        assert result == approx(expected, abs=1e-8), f"jdos({omega}, '{smr_type}') = {result}, expected {expected}"
