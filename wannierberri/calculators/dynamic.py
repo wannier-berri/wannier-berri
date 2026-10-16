@@ -28,9 +28,6 @@ class DynamicCalculator(Calculator, abc.ABC):
     # if True, only the pair of each band group with itself is taken (terms with a single band index)
     self_pairs_only = False
 
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, 
-                 max_smear_arg=None, smr_type='Lorentzian',
-                 kwargs_formula=None, dtype=complex, **kwargs):
     """
     Base class for calculators, which depend on Fermi level and frequency (omega). 
 
@@ -52,6 +49,9 @@ class DynamicCalculator(Calculator, abc.ABC):
     kwargs_formula : dict
         Additional keyword arguments for the formula class.
     """
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, 
+                 max_smear_arg=None, smr_type='Lorentzian',
+                 kwargs_formula=None, dtype=complex, **kwargs):
 
 
         if kwargs_formula is None:
