@@ -173,7 +173,7 @@ class SystemSOC(System_R):
             soc = None
 
         system_up = System_R.from_wannierdata(wandata=wandata.data_up, symmetrize=symmetrize,
-                                              soc=soc, soc_component=(0, 0), **kwargs)
+                                              soc=soc, soc_ispin=0, **kwargs)
 
         cell = wandata.cell
         if "altermagnetic_rotation_latt" in cell:
@@ -197,7 +197,7 @@ class SystemSOC(System_R):
 
         if wandata.nspin == 2 and not altermagnetic:
             system_down = System_R.from_wannierdata(wandata=wandata.data_down, symmetrize=symmetrize,
-                                                    soc=soc, soc_component=(1, 1), **kwargs)
+                                                    soc=soc, soc_ispin=1, **kwargs)
         elif altermagnetic:
             system_down = copy.deepcopy(system_up)
             system_down.transform(symop)
