@@ -1,8 +1,9 @@
-import warnings
-import numpy as np
-from .system import num_cart_dim
-from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
+from ..fourier.rvectors import Rvectors
+from .system import num_cart_dim
+import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 
 def get_system_random(num_wann,
@@ -51,7 +52,7 @@ def get_system_random(num_wann,
         R_try = set(tuple(R) for R in R_try)
         iRvec.update(R_try)
     if len(iRvec) < nRvec:
-        warnings.warn(f"required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
+        logger.warning(f"required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
     iRvec = np.array(list(iRvec))
     norm = np.linalg.norm(iRvec, axis=1)
     srt = np.argsort(norm)

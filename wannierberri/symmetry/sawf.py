@@ -1,13 +1,9 @@
 from functools import cached_property, lru_cache
-import warnings
 import numpy as np
-
-
 from ..utility import cached_einsum, clear_cached, arr_to_string, normalize_type
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
-
 from .Dwann import Dwann
 from .orbitals import OrbitalRotator
 import logging
@@ -251,7 +247,7 @@ class SymmetrizerSAWF:
             basis_list = proj.basis_list
             # logger.info(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
-                warnings.warn(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+                logger.warning(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
             for orb in orbitals:
                 projections_list.append((proj.positions, orb, basis_list))
 

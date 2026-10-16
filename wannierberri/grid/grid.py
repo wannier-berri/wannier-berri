@@ -1,16 +1,16 @@
 
+from ..utility import one2three
+from .Kpoint import KpointBZparallel
+from ..symmetry.point_symmetry import PointGroup
 import numpy as np
 from time import time
 import abc
 from functools import cached_property
-import warnings
-
-from ..symmetry.point_symmetry import PointGroup
-from .Kpoint import KpointBZparallel
-from ..utility import one2three
-
-
 import logging
+logger = logging.getLogger(__name__)
+
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -227,7 +227,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
             NK = np.array(np.round(length / (2 * np.pi) * np.linalg.norm(pointgroup.recip_lattice, axis=1)), dtype=int)
             logger.info(f"length={length} was converted into NK={NK}")
         else:
-            warnings.warn("length is disregarded in presence of NK")
+            logger.warning("length is disregarded in presence of NK")
 
     if length_FFT is not None:
         if NKFFT is None:

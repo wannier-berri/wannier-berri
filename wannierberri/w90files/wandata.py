@@ -1,4 +1,5 @@
 
+import numpy as np
 from .chk import CheckPoint
 from .unk import UNK
 from .spn import SPN
@@ -13,9 +14,8 @@ import datetime
 from functools import cached_property
 from copy import copy
 import os
-import warnings
-import numpy as np
 import logging
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -126,7 +126,7 @@ class WannierData:
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
             logger.debug(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
             if len(selected_kpoints) < np.prod(grid):
-                warnings.warn(f"detected grid {grid} od {np.prod(grid)} kpoints, "
+                logger.warning(f"detected grid {grid} od {np.prod(grid)} kpoints, "
                               f"but only {len(selected_kpoints)} kpoints are available."
                               "assuming that only irreducible kpoints are needed.")
                 irreducible = True
@@ -414,7 +414,7 @@ class WannierData:
                 nkeys = len(ff.data.keys())
                 NK = ff.NK
             if nkeys < NK:
-                warnings.warn(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
+                logger.warning(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
                               "so we assume the files contain only on irreducible k-points")
                 irreducible = True
         self.irreducible = irreducible
@@ -437,7 +437,7 @@ class WannierData:
                 val = self.get_file(f)
                 val.to_npz(str(seedname) + "." + val.extension + ".npz")
             else:
-                warnings.warn(f"file {f} is not set, cannot write to npz")
+                logger.warning(f"file {f} is not set, cannot write to npz")
 
 
 
@@ -525,7 +525,7 @@ class WannierData:
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             if f not in FILES_CLASSES:
-                warnings.warn(f"file {f} is not a valid Wannier file, skipping it")
+                logger.warning(f"file {f} is not a valid Wannier file, skipping it")
                 continue
             kwargs_w90 = {}
             if f in ['uhu', 'uiu', 'shu', 'siu']:
@@ -661,7 +661,7 @@ class WannierData:
         """
         if self.bands_were_selected:
             if allow_selected_bands:
-                warnings.warn("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
+                logger.warning("window was applied, so new added files may be inconsistent with the window. It is your responsibility to check it")
             else:
                 raise RuntimeError("window was applied, so new added files may be inconsistent with the window. To allow it, set allow_selected_bands=True (on your own risk)")
         if key == "chk":
@@ -670,7 +670,7 @@ class WannierData:
         if self.has_file(key):
             if overwrite:
                 self.unset_file(key)
-                warnings.warn(f"file '{key}' was already set, overwriting it")
+                logger.warning(f"file '{key}' was already set, overwriting it")
             else:
                 raise RuntimeError(f"file '{key}' was already set")
         self.check_conform(key, val)

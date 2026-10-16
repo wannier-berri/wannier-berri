@@ -310,7 +310,8 @@ def test_create_amn_diamond_s_bond():
         num_iter_converge=20,
         print_progress_every=20,
         sitesym=True,
-        localise=True
+        localise=True,
+        savechk=False
     )
 
     wannier_centers = wandata.chk.wannier_centers_cart
@@ -399,7 +400,8 @@ def test_create_amn_diamond_p_bond():
         mix_ratio_z=1,
         print_progress_every=1,
         sitesym=True,
-        localise=True
+        localise=True,
+        savechk=False
     )
     wandata.plotWF()
 
@@ -470,7 +472,8 @@ def test_create_amn_diamond_sp3():
         mix_ratio_z=1,
         print_progress_every=1,
         sitesym=True,
-        localise=True
+        localise=True,
+        savechk=False
     )
 
 
