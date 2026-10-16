@@ -279,7 +279,7 @@ class WIN(SavableNPZ):
                 if np.any(np.array(ends) < 1):
                     raise ValueError(f"bands index should be positive: {item}")
                 excluded.update(range(ends[0] - 1, ends[-1])) if len(ends) == 2 else excluded.add(ends[0] - 1)
-                
+
         return np.array(sorted(excluded))
 
 
