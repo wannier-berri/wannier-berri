@@ -90,6 +90,7 @@ from .common_comparers import (
 
 from .test_run import check_run
 from .test_system import check_system
+from .test_calc import check_calculator
 
 from .common_parallel import init_parallel_ray
 

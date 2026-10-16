@@ -84,7 +84,7 @@ class EnergyResult(Result):
         self.comment = comment
 
     @classmethod
-    def from_npz(cls, file_npz, void_if_missing=True):
+    def from_npz(cls, file_npz, void_if_missing=False):
         if void_if_missing and not os.path.isfile(file_npz):
             logger.info(f"File {file_npz} does not exist, returning VoidResult.")
             return VoidResult()
