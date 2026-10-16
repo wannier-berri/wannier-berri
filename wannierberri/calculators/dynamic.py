@@ -49,7 +49,8 @@ class DynamicCalculator(Calculator, abc.ABC):
     kwargs_formula : dict
         Additional keyword arguments for the formula class.
     """
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, 
+
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1,
                  max_smear_arg=None, smr_type='Lorentzian',
                  kwargs_formula=None, dtype=complex, **kwargs):
 
@@ -112,10 +113,14 @@ class DynamicCalculator(Calculator, abc.ABC):
                 ik, -np.inf, np.inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
             # now find needed pairs:
             # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)}
-            degen_group_pairs = [
-                (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
-                if self.nonzero(Em, En) and (ibm == ibn or not self.self_pairs_only)
-            ]
+            if self.self_pairs_only:
+                degen_group_pairs = [
+                    (ibm, ibm, Em, Em) for ibm, Em in degen_groups.items()
+                    if self.nonzero(Em, Em)]
+            else:
+                degen_group_pairs = [
+                    (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
+                    if self.nonzero(Em, En)]
             npair = len(degen_group_pairs)
             if npair == 0:
                 continue
