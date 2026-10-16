@@ -787,6 +787,13 @@ class ProjectionsSet:
                            unit_cell_volume=self.unit_cell_volume,
                            bessel=bessel)
 
+    def get_proj_gk_ecut(self, k_reduced, ecut):
+        from irrep.gvectors import calc_gvectors
+        igall, Eg = calc_gvectors(K=k_reduced,
+                                  RecLattice=self.reciprocal_lattice,
+                                    Ecut=ecut)
+        return igall, Eg, self.get_proj_gk(igall, bessel=Eg)
+
 
 class RepulsivePotential:
 
