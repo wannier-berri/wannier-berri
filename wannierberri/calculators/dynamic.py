@@ -25,7 +25,30 @@ eV_au = physical_constants['electron volt-hartree relationship'][0]
 
 class DynamicCalculator(Calculator, abc.ABC):
 
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian',
+    """
+    Base class for calculators, which depend on Fermi level and frequency (omega). 
+
+    Parameters
+    ----------
+    Efermi : array_like
+        Fermi level(s) in eV.
+    omega : array_like
+        Frequencies in eV.
+    kBT : float
+        Temperature in eV.
+    smr_fixed_width : float
+        Fixed smearing width in eV.
+    smr_type : str
+        Type of smearing function. Can be 'Lorentzian' or 'Gaussian'.
+    max_smear_arg : float
+        For efficiency, when the argument of the smearing function is larger than max_smear_arg * smr_fixed_width, 
+        the corresponding pairs of bands are ignored. If None, it is set to 100 for Lorentzian and 5 for Gaussian.
+    kwargs_formula : dict
+        Additional keyword arguments for the formula class.
+    """
+
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, 
+                 max_smear_arg=None, smr_type='Lorentzian',
                  kwargs_formula=None, dtype=complex, **kwargs):
 
         if kwargs_formula is None:
@@ -49,10 +72,15 @@ class DynamicCalculator(Calculator, abc.ABC):
 
         if self.smr_type == 'Lorentzian':
             self.smear = functools.partial(Lorentzian, width=self.smr_fixed_width)
+            if max_smear_arg is None:
+                max_smear_arg = 100
         elif self.smr_type == 'Gaussian':
             self.smear = functools.partial(Gaussian, width=self.smr_fixed_width, adpt_smr=False)
+            if max_smear_arg is None:
+                max_smear_arg = 5
         else:
             raise ValueError("Invalid smearing type {self.smr_type}")
+        self.max_smear_width = max_smear_arg * self.smr_fixed_width
         self.FermiDirac = functools.partial(FermiDirac, mu=self.Efermi, kBT=self.kBT)
 
     @abc.abstractmethod
@@ -158,14 +186,14 @@ class JDOS(DynamicCalculator):
         return self.smear(E1 - E2 - self.omega)
 
     def nonzero(self, E1, E2):
-        return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
-            self.omega.min() - 5 * self.smr_fixed_width < E1 - E2 < self.omega.max() + 5 * self.smr_fixed_width)
+        if not super().nonzero(E1, E2):
+            return False
+        return self.omega.min() - self.max_smear_width < E1 - E2 < self.omega.max() + self.max_smear_width
 
 
 ################################
 #    Optical Conductivity      #
 ################################
-
 
 class Formula_OptCond(Formula):
 

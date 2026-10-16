@@ -23,7 +23,7 @@ def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
     data_k_class = wberri.data_K.get_data_k_class_from_system(system)
-    data_k = data_k_class(system, dK=[0, 0, 0], grid=grid, Kpoint=kpoint, fftlib='fftw')
+    data_k = data_k_class(system, dK=np.array([0, 0, 0]), grid=grid, Kpoint=kpoint, fftlib='fftw')
     return data_k
 
 
