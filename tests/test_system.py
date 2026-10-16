@@ -50,7 +50,7 @@ def check_system():
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
-        system.to_npz(out_dir)
+        system.to_npz(out_dir, extra_properties=properties, R_matrices=matrices)
         # for key in matrices:
         #     print(f"saving {key}", end="")
         #     np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
@@ -67,6 +67,8 @@ def check_system():
             except FileNotFoundError as err:
                 if XX:
                     data_ref = np.load(os.path.join(REF_DIR, "systems", name, "_XX_R_" + key + ".npz"))['arr_0']
+                elif key == 'nRvec':
+                    data_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"))['arr_0'].shape[0]
                 else:
                     raise err
             if XX:

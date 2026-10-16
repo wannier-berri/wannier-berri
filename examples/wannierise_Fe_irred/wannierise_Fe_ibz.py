@@ -9,12 +9,12 @@ ray_init()
 path_data = "../../tests/data/Fe-444-sitesym/pwscf-irred/"
 
 bandstructure = BandStructure.from_espresso(
-                            prefix=path_data + "/Fe",
-                            magmom=[[0, 0, 1.]],
-                            include_TR=True,
-                            irreducible=True,
-                            # select_grid=[2,2,2],  # optionaly -reduce the grid
-                            )
+    prefix=path_data + "/Fe",
+    magmom=[[0, 0, 1.]],
+    include_TR=True,
+    irreducible=True,
+    # select_grid=[2,2,2],  # optionaly -reduce the grid
+)
 spacegroup = bandstructure.spacegroup
 
 spacegroup.show()
