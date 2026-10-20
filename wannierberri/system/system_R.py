@@ -545,16 +545,16 @@ class System_R(System):
                 if np.any(sel):
                     if warn:
                         logger.warning(f"you declared your system as non-periodic along direction {i},"
-                                       f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
+                                       f"but there are {sum(sel)} of total {self.rvec.nRvec} R-vectors with R[{i}]!=0."
                                        "They will be excluded, please make sure you know what you are doing")
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
             self.rvec.iRvec = self.rvec.iRvec[notexclude]
-            for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
-                if X in self._XX_R:
-                    self.set_R_mat(X, self.get_R_mat(X)[notexclude, :, :], reset=True)
             self.rvec.clear_cached()
+            for X in list(self._XX_R):
+                self.set_R_mat(X, self.get_R_mat(X)[notexclude], reset = True)
+            
 
     def set_periodic(self, periodic):
         self.periodic = np.array(periodic, dtype=bool)
