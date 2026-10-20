@@ -626,3 +626,30 @@ def test_system_soc_nspin_1(system_Fe_gpaw_soc):
     assert system_nospin_loaded.rvec is None, "Loaded system without spin should not have rvec"
     assert system_nospin_loaded.has_soc, "Loaded system without spin should retain SOC"
     system_nospin_loaded.set_soc_axis()
+
+
+def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
+    """A non-periodic direction with R vectors must warn and exclude them.
+
+    Regression test for ``System_R.check_periodic``: its warning formatted
+    ``self.nRvec`` (an attribute ``System_R`` does not have) instead of
+    ``self.rvec.nRvec``, so declaring ``periodic=(True, True, False)`` for a
+    slab and having R vectors along that axis raised AttributeError before the
+    vectors were excluded (upstream issue #610).
+    """
+
+    class _RVec:
+        nRvec = 2
+
+        def __init__(self):
+            self.iRvec = np.array([[0, 0, 0], [0, 0, 1]])
+
+        def clear_cached(self):
+            pass
+
+    system = System_R()
+    system.periodic = np.array([True, True, False])
+    system.rvec = _RVec()
+    system._XX_R = {}
+    system.check_periodic()
+    assert system.rvec.iRvec.tolist() == [[0, 0, 0]]
