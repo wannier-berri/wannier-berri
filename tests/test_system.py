@@ -631,18 +631,17 @@ def test_system_soc_nspin_1(system_Fe_gpaw_soc):
 def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
     """A non-periodic direction with R vectors must warn and exclude them.
 
-    Regression test for ``System_R.check_periodic``: its warning formatted
-    ``self.nRvec`` (an attribute ``System_R`` does not have) instead of
-    ``self.rvec.nRvec``, so declaring ``periodic=(True, True, False)`` for a
-    slab and having R vectors along that axis raised AttributeError before the
-    vectors were excluded (upstream issue #610).
+    Regression test for ``System_R.check_periodic``: the exclusion branch
+    formatted the nonexistent ``self.nRvec``, called the nonexistent
+    ``self.get_X_mat``, and sliced the Wannier axes instead of the R-vector axis
+    (upstream issue #610).
     """
 
     class _RVec:
-        nRvec = 2
+        nRvec = 3
 
         def __init__(self):
-            self.iRvec = np.array([[0, 0, 0], [0, 0, 1]])
+            self.iRvec = np.array([[0, 0, 0], [0, 0, 1], [0, 0, -1]])
 
         def clear_cached(self):
             pass
@@ -650,6 +649,9 @@ def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
     system = System_R()
     system.periodic = np.array([True, True, False])
     system.rvec = _RVec()
-    system._XX_R = {}
+    ham = np.arange(3 * 2 * 2, dtype=float).reshape(3, 2, 2)
+    system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
     system.check_periodic()
     assert system.rvec.iRvec.tolist() == [[0, 0, 0]]
+    assert system.get_R_mat("Ham").tolist() == ham[:1].tolist()
+    assert system.get_R_mat("AA").shape == (1, 2, 2)
