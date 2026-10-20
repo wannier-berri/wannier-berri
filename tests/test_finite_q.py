@@ -298,6 +298,12 @@ def test_parallel():
         run(s, {"q": calculator(Q["general"], "metal", allow_q_off_grid=False)}, NKdiv=[2, 1, 1], parallel=True)
 
 
+def test_kp_systems_are_refused():
+    s = wberri.system.SystemKP(Ham=lambda k: np.array([[np.dot(k, k)]], dtype=complex), kmax=1.)
+    with pytest.raises(ValueError, match="real-space matrix elements"):
+        run(s, {"q": calculator(Q["zero"], "metal")})
+
+
 def test_phonons_are_refused():
     data_K = types.SimpleNamespace(rvec=None, is_phonon=True)
     with pytest.raises(ValueError, match="phonons"):
