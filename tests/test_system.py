@@ -639,9 +639,8 @@ def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
     (upstream issue #610).
     """
 
-    class _RVec:
-        nRvec = 3
-
+    class _RVec(Rvectors):
+        
         def __init__(self):
             self.iRvec = np.array([[0, 0, 0], [0, 0, 1], [0, 0, -1]])
 
@@ -649,10 +648,13 @@ def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
             pass
 
     system = System_R()
+    system.num_wann = 2
     system.periodic = np.array([True, True, False])
     system.rvec = _RVec()
     ham = np.arange(3 * 2 * 2, dtype=float).reshape(3, 2, 2)
-    system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
+    system.set_R_mat("Ham", ham.copy())
+    system.set_R_mat("AA", np.ones((3, 2, 2)))
+    # system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
     system.check_periodic()
     assert system.rvec.iRvec.tolist() == [[0, 0, 0]]
     assert system.get_R_mat("Ham").tolist() == ham[:1].tolist()
