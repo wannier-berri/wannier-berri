@@ -466,15 +466,14 @@ class System_R(System):
                 sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
                     logger.warning(f"you declared your system as non-periodic along direction {i},"
-                                  f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
+                                  f"but there are {sum(sel)} of total {self.rvec.nRvec} R-vectors with R[{i}]!=0."
                                   "They will be excluded, please make sure you know what you are doing")
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
             self.rvec.iRvec = self.rvec.iRvec[notexclude]
-            for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
-                if X in self._XX_R:
-                    self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
+            for X in list(self._XX_R):
+                self._XX_R[X] = self.get_R_mat(X)[notexclude]
             self.rvec.clear_cached()
 
     def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
