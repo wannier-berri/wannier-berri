@@ -4,7 +4,6 @@ from ..utility import real_recip_lattice
 from functools import cached_property
 import numpy as np
 import os
-import sys
 import logging
 logger = logging.getLogger(__name__)
 
@@ -67,6 +66,7 @@ class System:
                  name='wberri',
                  silent=False,
                  spinor=None,
+                 wannier_names=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -75,7 +75,7 @@ class System:
         self.name = name
         self.silent = silent
         self.spinor = spinor
-
+        self.wannier_names = np.array(wannier_names) if wannier_names is not None else None
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
@@ -85,12 +85,6 @@ class System:
         self.is_phonon = False
         self.force_internal_terms_only = force_internal_terms_only
 
-    @property
-    def logfile(self):
-        if self.silent:
-            return open(os.devnull, 'w')
-        else:
-            return sys.stdout
 
     def save_npz(self, *args, **kwargs):
         """alias for :func:`~wannierberri.system.System.to_npz`"""
@@ -313,7 +307,7 @@ class System:
     def get_bandstructure(self,
                           dk=0.05,
                           parallel=True,
-                          return_path=True,
+                          return_path=None,
                           path=None,
                           **kwargs):
         """Calculate the band structure along high-symmetry lines in the BZ. 
@@ -341,6 +335,8 @@ class System:
         """
         from ..grid.path import Path
         from ..evaluate_k import evaluate_k_path
+        if return_path is None:
+            return_path = path is None
         cell = self.get_spglib_cell(ignore_no_atoms=True)
         if path is not None:
             if not isinstance(path, Path):

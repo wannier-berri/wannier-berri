@@ -10,18 +10,18 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import wannierberri
 import os
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, ROOT)
 
-import wannierberri
 
 # -- Project information -----------------------------------------------------
 
 project = 'Wannier Berri'
-copyright = '2021, Stepan Tsirkin' 
+copyright = '2021, Stepan Tsirkin'
 author = 'Stepan Tsirkin'
 numfig = True
 master_doc = 'index'
@@ -34,11 +34,11 @@ release = wannierberri.__version__
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-#extensions = ['sphinx.ext.autodoc']
+# extensions = ['sphinx.ext.autodoc']
 
 extensions = [
     'sphinx.ext.autodoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx',
-    'sphinx.ext.viewcode', 'sphinx_pyreverse' , 'sphinx_sitemap' , 'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode', 'sphinx_pyreverse', 'sphinx_sitemap', 'sphinx.ext.napoleon',
     'nbsphinx',
 ]
 
@@ -60,25 +60,27 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-#html_theme = 'alabaster'
-#html_theme = 'groundwork'
-#html_theme = 'basic'
+# html_theme = 'alabaster'
+# html_theme = 'groundwork'
+# html_theme = 'basic'
 
-#html_theme = 'sphinx_drove_theme'
-#import sphinx_drove_theme
-#html_theme_path = [sphinx_drove_theme.get_html_theme_path()]
+# html_theme = 'sphinx_drove_theme'
+# import sphinx_drove_theme
+# html_theme_path = [sphinx_drove_theme.get_html_theme_path()]
 
-#import sphinx_pdj_theme
-#html_theme = 'sphinx_pdj_theme'
-#htm_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
+# import sphinx_pdj_theme
+# html_theme = 'sphinx_pdj_theme'
+# htm_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
 
 # sets the darker appearence
-#html_theme_options = {     'style': 'darker' }
+# html_theme_options = {     'style': 'darker' }
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+
 def setup(app):
     app.add_css_file('css/custom.css')
 
@@ -92,9 +94,9 @@ def setup(app):
 # 'searchbox.html']``.
 #
 
-#html_sidebars = {
+# html_sidebars = {
 #    '**': ['globaltoc.html', 'localtoc.html']
-#}
+# }
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -113,34 +115,34 @@ html_use_opensearch = 'https://docs.wannier-berri.org'
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
-#---sphinx-themes-----
-#html_favicon = 'favicon.ico'
-#html_theme = 'sphinx_pdj_theme'
-#import sphinx_pdj_theme
-#html_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
+# ---sphinx-themes-----
+# html_favicon = 'favicon.ico'
+# html_theme = 'sphinx_pdj_theme'
+# import sphinx_pdj_theme
+# html_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
 
 html_theme = 'sphinx_rtd_theme'
 html_favicon = 'imag/logo-WB/WB-logo.ico'
-#html_logo = 'imag/logo-WB/WANNIERBERRI-redblack.png'
+# html_logo = 'imag/logo-WB/WANNIERBERRI-redblack.png'
 html_logo = 'imag/logo-WB/Book.png'
 html_show_sourcelink = False
 
 # True Basque colors
-bred='#D62618' 
-bgreen= '#009C46'
+bred = '#D62618'
+bgreen = '#009C46'
 
 
-red='#a00000'
-green='#008880'
+red = '#a00000'
+green = '#008880'
 
 html_theme_options = {
     'canonical_url': '',
-#    'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
+    #    'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
     'logo_only': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': True,
-#    'vcs_pageview_mode': '',
-    'style_nav_header_background':  bgreen , # '#009C46', #  'white',
+    #    'vcs_pageview_mode': '',
+    'style_nav_header_background': bgreen,  # '#009C46', #  'white',
     # Toc options
     'collapse_navigation': True,
     'sticky_navigation': True,
@@ -149,5 +151,6 @@ html_theme_options = {
     'titles_only': False,
 }
 
+
 def setup(app):
-     app.add_css_file('style.css')
+    app.add_css_file('style.css')

@@ -328,11 +328,24 @@ class Velocity(Matrix_ln):
                 data_K.E_K[:, :, None, None] - data_K.E_K[:, None, :, None])
 
 
+
 class Spin(Matrix_ln):
 
-    def __init__(self, data_K):
-        s = data_K.covariant('SS')
+    def __init__(self, data_K, select_WF=None, select_atoms=None):
+        select_WF = data_K.select_WF_atoms(select_WF=select_WF, select_atoms=select_atoms)
+        s = data_K.covariant('SS', select_WF=select_WF)
         self.__dict__.update(s.__dict__)
+
+
+class ProjectOnWF(Matrix_ln):
+
+    def __init__(self, data_K, select_WF=None, select_atoms=None):
+        select_WF = data_K.select_WF_atoms(select_WF=select_WF, select_atoms=select_atoms)
+        U = data_K.UU_K[:, select_WF, :]
+        U = cached_einsum('kba,kbc->kac', U.conj(), U)
+        super().__init__(matrix=U,
+                         transformTR=transform_ident,
+                         transformInv=transform_ident)
 
 
 class DerSpin(Matrix_GenDer_ln):

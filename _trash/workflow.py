@@ -482,10 +482,10 @@ class WorkflowQE:
 
     def get_spacegroup(self, from_sym_file=None):
         bandstructure = BandStructure.from_espresso(
-                                      prefix=self.prefix,
-                                      onlysym=True,
-                                    from_sym_file=from_sym_file
-                                    )
+            prefix=self.prefix,
+            onlysym=True,
+            from_sym_file=from_sym_file
+        )
         return bandstructure.spacegroup
 
     # def create_symmetrizer(self, Ecut=30, enforce=False, from_sym_file=None):
