@@ -21,6 +21,7 @@ from scipy.constants import elementary_charge, hbar, angstrom
 import wannierberri as wberri
 from wannierberri.calculators.dynamic import OpticalConductivity
 from wannierberri.calculators.finite_q import OpticalConductivity_q
+from wannierberri.data_K import Data_K_R
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.parallel import check_ray_initialized
 from wannierberri.system.system_R import System_R
@@ -305,7 +306,8 @@ def test_kp_systems_are_refused():
 
 
 def test_phonons_are_refused():
-    data_K = types.SimpleNamespace(rvec=None, is_phonon=True)
+    data_K = Data_K_R.__new__(Data_K_R)  # only its system is looked at before the error
+    data_K.system = types.SimpleNamespace(is_phonon=True)
     with pytest.raises(ValueError, match="phonons"):
         calculator(Q["zero"], "metal")(data_K)
 

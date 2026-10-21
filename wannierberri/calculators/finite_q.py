@@ -10,9 +10,11 @@ import numpy as np
 from scipy.constants import elementary_charge, hbar, angstrom
 
 from .calculator import Calculator
+from ..data_K.data_K_R import Data_K_R
 from ..data_K.data_K_soc import Data_K_soc
 from ..result import EnergyResult
 from ..symmetry.point_symmetry import transform_ident, transform_trans
+from ..utility import cached_einsum
 
 
 def _bond_average(x):
@@ -21,11 +23,16 @@ def _bond_average(x):
 
 
 def _fermi(E, mu, kBT):
-    """occupation, E (...), mu (nEF) -> (..., nEF)."""
-    x = E[..., None] - mu
+    """occupation, E (k, n), mu (nEF) -> (k, n, nEF)."""
+    x = E[:, :, None] - mu[None, None, :]
     if kBT == 0:
         return 1.0 * (x <= 0)
     return 0.5 * (1 - np.tanh(x / (2 * kBT)))
+
+
+def _rotate(U1, X, U2):
+    """matrix elements U1^dagger X U2, X (k, i, j, a) -> (k, n, m, a)."""
+    return cached_einsum("kin,kija,kjm->knma", U1.conj(), X, U2)
 
 
 class OpticalConductivity_q(Calculator):
@@ -42,8 +49,10 @@ class OpticalConductivity_q(Calculator):
     Wannier functions (external terms) are not included.
 
     Take :math:`\mathbf{q}` on the k grid (its reduced coordinates times ``NKFFT*NKdiv`` integers): then
-    :math:`\mathbf{k}+\mathbf{q}` is also on the grid, and the result is gauge invariant
-    (:math:`\sigma_{ab}(\mathbf{q}, \omega) q_b \to 0` for :math:`\omega, \eta \to 0`) and satisfies
+    :math:`\mathbf{k}+\mathbf{q}` is also on the grid, and the result is invariant under electromagnetic gauge
+    transformations: a static longitudinal vector potential :math:`\mathbf{A} \propto \mathbf{q}`, which is a pure
+    gauge, drives no current (:math:`\sigma_{ab}(\mathbf{q}, \omega) q_b \to 0` for :math:`\omega, \eta \to 0`,
+    i.e. charge is conserved). The result also satisfies
     :math:`\sigma_{ab}(\mathbf{q}, \omega)^* = \sigma_{ab}(-\mathbf{q}, -\omega)` on any grid. For other
     :math:`\mathbf{q}`, :math:`\mathbf{k}+\mathbf{q}` is not among the k-points summed over, the paramagnetic and
     diamagnetic terms do not cancel exactly, and these hold only as the grid gets denser; the calculation then stops
@@ -100,7 +109,8 @@ class OpticalConductivity_q(Calculator):
         self.omega = np.array(omega, dtype=float).reshape(-1)
         self.kBT = float(kBT)
         self.eta = float(smr_fixed_width)
-        for name, x in (("q", self.q), ("Efermi", self.Efermi), ("omega", self.omega)):
+        for name in ("q", "Efermi", "omega"):
+            x = getattr(self, name)
             if x.size == 0 or not np.all(np.isfinite(x)):
                 raise ValueError(f"{name} should be a non-empty array of finite numbers, found {x}")
         if not (np.isfinite(self.kBT) and self.kBT >= 0):
@@ -132,7 +142,7 @@ class OpticalConductivity_q(Calculator):
         return not np.any(self.q)
 
     def __call__(self, data_K):
-        if not hasattr(data_K, "rvec"):
+        if not isinstance(data_K, Data_K_R):
             raise ValueError("OpticalConductivity_q needs a system given by real-space matrix elements (System_R)")
         if isinstance(data_K, Data_K_soc) or data_K.is_phonon:
             raise ValueError("OpticalConductivity_q does not support systems with spin-orbit blocks (SystemSOC) "
@@ -142,8 +152,9 @@ class OpticalConductivity_q(Calculator):
         Ham_R = data_K.Ham_R  # including the phase of the grid shift
         nw = Ham_R.shape[1]
         R = rvec.cRvec
-        tau = data_K.system.wannier_centers_cart
-        d = tau[None, :, None, :] - R[:, None, None, :] - tau[None, None, :, :]  # (R, i, j, 3)
+        # the Wannier centres tau, as in the R vectors and in the derivatives of data_K
+        tau = rvec.shifts_right_cart
+        d = -rvec.cRvec_shifted  # bond tau_i - R - tau_j, (R, i, j, 3)
         qd = d @ self.q
         exp_qR = np.exp(1j * R @ self.q)[:, None, None]
         exp_qtau = np.exp(1j * tau @ self.q)[None, None, :]
@@ -163,15 +174,15 @@ class OpticalConductivity_q(Calculator):
         # current vertices (Peierls coupling, in units of e/hbar) between k and k+q, and the diamagnetic vertex at k
         X = R_to_k(Ham_R[..., None] * 1j * d * (_bond_average(-qd) / exp_qtau)[..., None])
         Y = R_to_k(Ham_R[..., None] * -1j * d * (_bond_average(qd) * exp_qR * exp_qtau)[..., None])
-        X = np.einsum("kin,kija,kjm->knma", U0.conj(), X, U1, optimize=True)
-        Y = np.einsum("kin,kija,kjm->knma", U1.conj(), Y, U0, optimize=True)
+        X = _rotate(U0, X, U1)
+        Y = _rotate(U1, Y, U0)
         # diagonal of the diamagnetic vertex in the bands at k, one component at a time
         D = np.zeros(E0.shape + (3, 3))
         bond2 = np.abs(_bond_average(qd)) ** 2
         for a in range(3):
             for b in range(a, 3):
                 Dab = R_to_k(Ham_R * -d[..., a] * d[..., b] * bond2)
-                D[..., a, b] = D[..., b, a] = np.einsum("kin,kij,kjn->kn", U0.conj(), Dab, U0, optimize=True).real
+                D[..., a, b] = D[..., b, a] = np.diagonal(_rotate(U0, Dab[..., None], U0)[..., 0], axis1=1, axis2=2).real
 
         f0 = _fermi(E0, self.Efermi, self.kBT)  # (k, n, EF)
         f1 = _fermi(E1, self.Efermi, self.kBT)
