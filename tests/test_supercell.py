@@ -2,10 +2,11 @@
 
 import itertools
 import os
+import copy
 import numpy as np
 import pytest
 
-from .common import REF_DIR, OUTPUT_DIR_RUN
+from .common import REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEGRATE
 from wannierberri.evaluate_k import evaluate_k
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.system.system_R import System_R
@@ -216,3 +217,122 @@ def test_Fe_supercell():
     diff = abs(ahc_pc_ext - ahc_sc_ext)
     # vmax = np.abs([ahc_pc_ext, ahc_sc_ext]).max()
     assert np.allclose(ahc_pc_ext, ahc_sc_ext, atol=1e-8), f"ahc_pc_ext and ahc_sc_ext differ by {diff.max()}, \n ahc_pc_ext={ahc_pc_ext}\\n ahc_sc_ext={ahc_sc_ext}\\n diff={diff}"
+
+
+@pytest.mark.parametrize("change", ["nothing", "remove_zeros", "shift_uc", "shift_random", "reorder_random", "reorder_reverse", ])
+def test_shift(system_Si_W90_JM_sym, change):
+    """Test that reordering of Wannier functions works correctly."""
+    system = system_Si_W90_JM_sym
+    system_modified = copy.deepcopy(system)
+    if change == "shift_uc":
+        system_modified.shift_wannier_centers_to_unit_cell()
+    elif change == "shift_random":
+        shifts = np.random.randint(-3, 3, size=(system.num_wann, 3))
+        system_modified.shift_wannier_centers(shifts)
+    elif change == "reorder_random":
+        new_order = np.random.permutation(system.num_wann)
+        system_modified.reorder(new_order)
+    elif change == "reorder_reverse":
+        new_order = np.arange(system.num_wann)[::-1]
+        system_modified.reorder(new_order)
+    elif change == "remove_zeros":
+        system_modified.remove_zero_Rvec()
+    elif change == "nothing":
+        pass
+
+    # for iR, R in enumerate(system_modified.rvec.iRvec):
+    #     print (f"{change}: Rvec {iR}: {R}, norm(H[iR])={np.linalg.norm(system_modified.get_R_mat('Ham')[iR])}")
+
+
+    # system_modified.shift_wannier_centers_to_unit_cell()
+    print(f"difference in wannier centers: {system_modified.wannier_centers_red - system.wannier_centers_red}")
+    print(f"number of Rvecotrs: {system.rvec.nRvec} vs {system_modified.rvec.nRvec}")
+    path, bands = system.get_bandstructure(dk=0.05)
+    bands_shifted = system_modified.get_bandstructure(path=path, return_path=False)
+    bands_diff = abs(bands_shifted.results["Energy"].data - bands.results["Energy"].data).max()
+    for ik, (band0, band1) in enumerate(zip(bands.results["Energy"].data, bands_shifted.results["Energy"].data)):
+        if not np.allclose(band0, band1, atol=1e-10):
+            print(f"ik={ik}:  diff={abs(band0 - band1)}")
+    assert bands_diff < 1e-10, f"bandstructure differs after {change} by {bands_diff}"
+
+
+@pytest.mark.parametrize("use_atoms", [True, False])
+@pytest.mark.parametrize("third_vector", ["normal", "skew"])
+@pytest.mark.parametrize("check_method", ["bands", "matrix"])
+@pytest.mark.parametrize("exclude_atom", ["Ga1", "Ga1As3", None])
+def test_slab_GaAs(check_system, system_GaAs_W90, exclude_atom, check_method, use_atoms, third_vector):
+    if exclude_atom == "Ga1":
+        exclude_WF_mask = "Ga:*_cell-0"
+        exclude_atoms = [0]
+    elif exclude_atom == "Ga1As3":
+        exclude_WF_mask = ["Ga:*_cell-0", "As:*_cell-3"]
+        exclude_atoms = [0, 7]
+    elif exclude_atom is None:
+        exclude_WF_mask = None
+        exclude_atoms = []
+    if third_vector == "skew":
+        if check_method == "matrix":
+            pytest.skip("matrix check is not used when third_vector=skew because system is different, but hte bands should be the same")
+
+
+    if use_atoms and check_method == "matrix":
+        pytest.skip("matrix check is not used when use_atoms=True because the order of R-vectors and Wannier functions may differ from the reference")
+    nslab = 2
+    exclude_WF_mask_list = exclude_WF_mask if isinstance(exclude_WF_mask, list) else [] if exclude_WF_mask is None else [exclude_WF_mask]
+    sysname = f"GaAs_W90_JM-slab-nslab{nslab}-exclude:{','.join(exclude_WF_mask_list) if exclude_WF_mask_list else 'None'}"
+    matrices = ['Ham', 'AA', 'SS']
+    system_bulk = copy.deepcopy(system_GaAs_W90)
+    system_bulk._XX_R = {key: system_bulk.get_R_mat(key) for key in matrices}
+    system_bulk.wannier_names = ["As:sp3"] * 8 + ["Ga:sp3"] * 8
+    if use_atoms:
+        system_bulk.atom_centers_red = np.array([[0, 0, 0], [1 / 4, 1 / 4, 1 / 4]])
+        system_bulk.wannier_to_atom_map = np.array([1] * 8 + [0] * 8)
+    if third_vector == "skew":
+        b3 = [0, 2, 0]
+    else:
+        b3 = [1, 1, -1]
+    system_slab = system_bulk.make_slab([[-1, 1, 0], [0, 0, 1], b3], nslab=nslab, use_atoms=use_atoms)
+    print(f"real lattice vectors in slab system: {system_slab.real_lattice}")
+    # return
+    if use_atoms:
+        system_slab.exclude_atoms(exclude_atoms)
+    else:
+        system_slab.exclude_WF_mask(exclude_WF_mask)
+    print(f"wannier names in slab system: {system_slab.wannier_names}")
+    # return
+
+    if check_method == "bands":
+        if use_atoms and exclude_atom is None:
+            pytest.skip("bands check would fail, because the WFs of the first atom are split between the top and bottom surfaces")
+        from wannierberri.grid import Path
+        path = Path.from_nodes(real_lattice=system_slab.real_lattice, nodes=[[0, 0, 0], [0, 0.5, 0], [0.5, 0.5, 0], [0, 0, 0], [0, 0, 0.5]], dk=0.05, labels=["Gamma", "X", "M", "Gamma", "Z"])
+        bands = system_slab.get_bandstructure(path=path, return_path=False).results["Energy"].data
+        np.savez(os.path.join(OUTPUT_DIR_RUN, f"{sysname}.bands.npz"), bands=bands)
+        bands_ref = np.load(os.path.join(REF_DIR_INTEGRATE, f"{sysname}.bands.npz"))["bands"]
+        assert np.allclose(bands, bands_ref, atol=1e-8), f"bands in slab system {sysname} differ from reference"
+    else:
+        print("wannier names in bulk system: ", system_bulk.wannier_names)
+        print("real lattice vectors in bulk system: ", system_bulk.real_lattice)
+        nat_exclude = len(exclude_WF_mask_list)
+        num_wann_expected = nslab * 16 * 2 - 8 * nat_exclude
+        print("wannier names in slab system: ", system_slab.wannier_names)
+        print("real lattice vectors in slab system: ", system_slab.real_lattice)
+        print("wannier centers in slab system: ", system_slab.wannier_centers_red)
+        assert system_slab.num_wann == num_wann_expected, f"num_wann in slab system {system_slab.num_wann} does not match expected {num_wann_expected} for exclude_WF_mask {exclude_WF_mask}"
+        ham = system_slab.get_R_mat('Ham')
+        print(f"Ham in slab system exclude_WF_mask {exclude_WF_mask} has shape {ham.shape} ")
+
+        check_system(
+            system_slab, sysname,
+            matrices=matrices,
+            legacy=False,
+        )
+
+
+def test_get_iRvec_in_supercell():
+    from wannierberri.system.system_supercell import _get_iRvec_in_supercell
+    iRvec = _get_iRvec_in_supercell([1, 1, 5])
+    assert iRvec.shape == (5, 3)
+    assert np.all(iRvec[:, 0] == 0)
+    assert np.all(iRvec[:, 1] == 0)
+    assert np.all(iRvec[:, 2] == np.arange(5))

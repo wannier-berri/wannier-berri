@@ -9,8 +9,8 @@ from irrep.bandstructure import BandStructure
 
 
 bandstructure = BandStructure.from_gpaw(
-                              calculator_gpaw="Fe-gs.gpw",
-                              onlysym=True,)
+    calculator_gpaw="Fe-gs.gpw",
+    onlysym=True,)
 sg = bandstructure.spacegroup
 mg = SpaceGroup.from_cell(real_lattice=sg.real_lattice, positions=sg.positions, typat=sg.typat,
                           magmom=[[0, 0, 1]])

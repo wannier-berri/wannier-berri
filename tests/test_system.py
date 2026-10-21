@@ -50,7 +50,7 @@ def check_system():
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
-        system.to_npz(out_dir)
+        system.to_npz(out_dir, extra_properties=properties, R_matrices=matrices)
         # for key in matrices:
         #     print(f"saving {key}", end="")
         #     np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
@@ -67,6 +67,8 @@ def check_system():
             except FileNotFoundError as err:
                 if XX:
                     data_ref = np.load(os.path.join(REF_DIR, "systems", name, "_XX_R_" + key + ".npz"))['arr_0']
+                elif key == 'nRvec':
+                    data_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"))['arr_0'].shape[0]
                 else:
                     raise err
             if XX:
@@ -637,9 +639,8 @@ def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
     (upstream issue #610).
     """
 
-    class _RVec:
-        nRvec = 3
-
+    class _RVec(Rvectors):
+        
         def __init__(self):
             self.iRvec = np.array([[0, 0, 0], [0, 0, 1], [0, 0, -1]])
 
@@ -647,10 +648,13 @@ def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
             pass
 
     system = System_R()
+    system.num_wann = 2
     system.periodic = np.array([True, True, False])
     system.rvec = _RVec()
     ham = np.arange(3 * 2 * 2, dtype=float).reshape(3, 2, 2)
-    system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
+    system.set_R_mat("Ham", ham.copy())
+    system.set_R_mat("AA", np.ones((3, 2, 2)))
+    # system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
     system.check_periodic()
     assert system.rvec.iRvec.tolist() == [[0, 0, 0]]
     assert system.get_R_mat("Ham").tolist() == ham[:1].tolist()

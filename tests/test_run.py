@@ -1078,7 +1078,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
                 data2, abs=precision), (
-                    f"calcuylated data of {label1}  and {label2} give a maximal "
+                    f"calculated data of {label1}  and {label2} give a maximal "
                     f"absolute difference of {np.max(abs(data1 - data2))}"
                     f"greater than the required precision {precision}. ")
 

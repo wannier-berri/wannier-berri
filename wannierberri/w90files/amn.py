@@ -38,7 +38,7 @@ class AMN(W90_file):
     """
 
     extension = "amn"
-    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor"]
+    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor", "wannier_names", "atom_centers_red", "wannier_to_atom_map"]
 
     def __init__(self,
                  data,
@@ -48,6 +48,9 @@ class AMN(W90_file):
                  radial_nodes_list=None,
                  basis_list=None,
                  spread_list=None,
+                 wannier_names=None,
+                 atom_centers_red=None,
+                 wannier_to_atom_map=None,
                  spinor=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
@@ -57,6 +60,9 @@ class AMN(W90_file):
         self.basis_list = basis_list
         self.spread_list = spread_list
         self.spinor = spinor
+        self.wannier_names = wannier_names
+        self.atom_centers_red = atom_centers_red
+        self.wannier_to_atom_map = wannier_to_atom_map
 
     @property
     def num_wann(self):
@@ -154,6 +160,7 @@ class AMN(W90_file):
 
 
 
+
         if verbose:
             logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
@@ -194,7 +201,12 @@ class AMN(W90_file):
                 data[ikirr] = np.array(datak).T
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
-        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list, spread_list=spread_list, spinor=spinor)
+        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list,
+                   spread_list=spread_list, spinor=spinor,
+                   wannier_names=projections.get_wannier_names(),
+                   atom_centers_red=projections.atom_centers_red,
+                   wannier_to_atom_map=projections.wannier_to_atom_map
+        )
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)
