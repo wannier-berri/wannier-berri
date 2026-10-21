@@ -1,10 +1,12 @@
 import logging
+import os
 
 import numpy as np
-from .result import Result
+from .result import Result, VoidResult
 import itertools
 import abc
 from ..symmetry.point_symmetry import transform_from_dict
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,10 @@ class K__Result(Result, abc.ABC):
         self.other_properties = other_properties
 
     @classmethod
-    def from_npz(cls, file_npz):
+    def from_npz(cls, file_npz, void_if_missing=False):
+        if void_if_missing and not os.path.isfile(file_npz):
+            logger.info(f"File {file_npz} does not exist, returning VoidResult.")
+            return VoidResult()
         res = np.load(open(file_npz, "rb"), allow_pickle=True)
         return cls(
             data=res['data'],
