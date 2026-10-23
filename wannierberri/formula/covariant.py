@@ -802,6 +802,24 @@ class SpinOmega(Formula_ln):
         raise NotImplementedError()
 
 
+class SpinVelVel(Formula_ln):
+    """product of the spin current and the velocity within the states at the Fermi level, J^s_a v_b"""
+
+    def __init__(self, data_K, spin_current_type="ryoo", **parameters):
+        super().__init__(data_K, **parameters)
+        self.J = SpinVelocity(data_K, spin_current_type, external_terms=self.external_terms)
+        self.V = data_K.covariant('Ham', commader=1)
+        self.ndim = 3
+        self.transformTR = transform_odd
+        self.transformInv = transform_ident
+
+    def nn(self, ik, inn, out):
+        return cached_einsum("mlas,lnb->mnabs", self.J.nn(ik, inn, out), self.V.nn(ik, inn, out))
+
+    def ln(self, ik, inn, out):
+        raise NotImplementedError()
+
+
 def _hermitize_band_matrix(full):
     return 0.5 * (full + full.swapaxes(1, 2).conj())
 
