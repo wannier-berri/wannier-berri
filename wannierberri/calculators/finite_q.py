@@ -187,7 +187,7 @@ class OpticalConductivity_q(Calculator):
         f0 = _fermi(E0, self.Efermi, self.kBT)  # (k, n, EF)
         f1 = _fermi(E1, self.Efermi, self.kBT)
         K = np.zeros((len(self.Efermi), len(self.omega), 3, 3), dtype=complex)
-        K -= np.einsum("kne,knab->eab", f0, D)[:, None]
+        K -= cached_einsum("kne,knab->eab", f0, D)[:, None]
         # paramagnetic term: sum over k, n, m of (f_n(k) - f_m(k+q)) / (omega + i eta + E_n(k) - E_m(k+q))
         # X_nm^a Y_mn^b, in chunks of k-points to bound the size of its temporary arrays
         nEF = len(self.Efermi)

@@ -2,7 +2,7 @@ from copy import deepcopy
 from functools import cached_property
 
 import scipy
-from ..utility import get_max_eig, orthogonalize
+from ..utility import cached_einsum, get_max_eig, orthogonalize
 import numpy as np
 
 
@@ -131,13 +131,13 @@ class Kpoint_and_neighbours:
             U = np.linalg.inv(Mmn_loc_sumb)
             U = U.T.conj()
             U = orthogonalize(U)
-            Mmn_loc_rotated = np.einsum('ji, bjl->bil', U.conj(), Mmn_loc)
+            Mmn_loc_rotated = cached_einsum('ji, bjl->bil', U.conj(), Mmn_loc)
             r2_old = get_r2(wb=self.wb, Mmn_rotated=Mmn_loc_rotated, weight=self.weight)
             multiplier = localise_alpha / (2 * self.sumwb)
             for _ in range(localise_num_iter):
                 grad = gradOmega(self.wb, Mmn_loc_rotated) * multiplier
                 dU = scipy.linalg.expm(grad)
-                Mmn_loc_rotated = np.einsum('ji, bjl->bil', dU.conj(), Mmn_loc_rotated)
+                Mmn_loc_rotated = cached_einsum('ji, bjl->bil', dU.conj(), Mmn_loc_rotated)
                 U = U.dot(dU)
                 check_U = U.T.conj().dot(U) - np.eye(self.num_wann)
                 assert np.allclose(check_U, 0, atol=1e-6), f"U is not unitary : {check_U}"
