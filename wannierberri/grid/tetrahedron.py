@@ -201,13 +201,35 @@ def delta_weights_tetra(edges, dE):
 
 
 @njit
+def _tetrahedra_parallel(dEcorners):
+    """the 12 tetrahedra of a parallelepiped as in `TetraWeightsParal`: for each, the values at its 3 corners other
+    than the centre. dEcorners : array (2, 2, 2); returns an array (12, 3)"""
+    res = np.empty((12, 3))
+    face = np.empty((2, 2))
+    n = 0
+    for axis in range(3):
+        for iface in range(2):
+            for a in range(2):
+                for b in range(2):
+                    if axis == 0:
+                        face[a, b] = dEcorners[iface, a, b]
+                    elif axis == 1:
+                        face[a, b] = dEcorners[a, iface, b]
+                    else:
+                        face[a, b] = dEcorners[a, b, iface]
+            res[n, 0], res[n, 1], res[n, 2] = face[0, 0], face[0, 1], face[1, 1]
+            res[n + 1, 0], res[n + 1, 1], res[n + 1, 2] = face[0, 0], face[1, 0], face[1, 1]
+            n += 2
+    return res
+
+
+@njit
 def delta_weights_parallel(edges, dEcenter, dEcorners):
     """the same as `delta_weights_tetra` over a parallelepiped, divided into 12 tetrahedra as in `TetraWeightsParal`
 
     dEcenter : array (npair,), dEcorners : array (npair, 2, 2, 2); returns an array (npair, nomega)"""
     width = edges[1:] - edges[:-1]
     res = np.zeros((dEcenter.shape[0], width.shape[0]))
-    face = np.empty((2, 2))
     for i in range(dEcenter.shape[0]):
         emin = min(dEcenter[i], dEcorners[i].min())
         emax = max(dEcenter[i], dEcorners[i].max())
@@ -216,19 +238,73 @@ def delta_weights_parallel(edges, dEcenter, dEcorners):
             continue
         e = edges[lo:hi + 1]
         occ = np.zeros(e.shape[0])
-        for axis in range(3):
-            for iface in range(2):
-                for a in range(2):
-                    for b in range(2):
-                        if axis == 0:
-                            face[a, b] = dEcorners[i, iface, a, b]
-                        elif axis == 1:
-                            face[a, b] = dEcorners[i, a, iface, b]
-                        else:
-                            face[a, b] = dEcorners[i, a, b, iface]
-                occ += weights_tetra(e, dEcenter[i], face[0, 0], face[0, 1], face[1, 1], 0)
-                occ += weights_tetra(e, dEcenter[i], face[0, 0], face[1, 0], face[1, 1], 0)
+        for t in _tetrahedra_parallel(dEcorners[i]):
+            occ += weights_tetra(e, dEcenter[i], t[0], t[1], t[2], 0)
         res[i, lo:hi] = (occ[1:] - occ[:-1]) / width[lo:hi] / 12.
+    return res
+
+
+@njit
+def delta_tetra(omega, e0, e1, e2, e3):
+    """delta(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its corners, at each
+    of the given values of omega (the density of the values of dE within the tetrahedron, normalised to 1). For
+    nearly equal values, they are separated as in `weights_tetra`."""
+    e = np.array(sorted([e0, e1, e2, e3]))
+    diff_min = 1e-12
+    for i in range(3):
+        if e[i + 1] - e[i] < diff_min:
+            e[i + 1] = e[i] + diff_min
+    e1, e2, e3, e4 = e
+    res = np.zeros(omega.shape[0])
+    for i in range(omega.shape[0]):
+        w = omega[i]
+        if w <= e1 or w >= e4:
+            continue
+        elif w < e2:
+            res[i] = 3 * (w - e1) ** 2 / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+        elif w < e3:
+            x = w - e2
+            res[i] = (3 * (e2 - e1) + 6 * x - 3 * (e3 - e1 + e4 - e2) * x ** 2 / ((e3 - e2) * (e4 - e2))) / (
+                (e3 - e1) * (e4 - e1))
+        else:
+            res[i] = 3 * (e4 - w) ** 2 / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    return res
+
+
+@njit
+def _omega_in_range(omega, emin, emax):
+    """the slice lo:hi of the increasing values omega within [emin, emax]"""
+    return np.searchsorted(omega, emin, side='left'), np.searchsorted(omega, emax + 1e-10, side='right')
+
+
+@njit
+def delta_values_tetra(omega, dE):
+    """values of delta(dE - omega) over a tetrahedron (see `delta_tetra`) at the given increasing values of omega
+
+    omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
+    res = np.zeros((dE.shape[0], omega.shape[0]))
+    for i in range(dE.shape[0]):
+        lo, hi = _omega_in_range(omega, dE[i].min(), dE[i].max())
+        if hi > lo:
+            res[i, lo:hi] = delta_tetra(omega[lo:hi], dE[i, 0], dE[i, 1], dE[i, 2], dE[i, 3])
+    return res
+
+
+@njit
+def delta_values_parallel(omega, dEcenter, dEcorners):
+    """the same as `delta_values_tetra` over a parallelepiped, divided into 12 tetrahedra as in `TetraWeightsParal`
+
+    dEcenter : array (npair,), dEcorners : array (npair, 2, 2, 2); returns an array (npair, nomega)"""
+    res = np.zeros((dEcenter.shape[0], omega.shape[0]))
+    for i in range(dEcenter.shape[0]):
+        emin = min(dEcenter[i], dEcorners[i].min())
+        emax = max(dEcenter[i], dEcorners[i].max())
+        lo, hi = _omega_in_range(omega, emin, emax)
+        if hi <= lo:
+            continue
+        for t in _tetrahedra_parallel(dEcorners[i]):
+            res[i, lo:hi] += delta_tetra(omega[lo:hi], dEcenter[i], t[0], t[1], t[2])
+        res[i, lo:hi] /= 12.
     return res
 
 
@@ -327,11 +403,12 @@ class TetraWeights:
         return res
 
 
-    def delta_weights(self, ik, pairs, edges):
+    def delta_weights(self, ik, pairs, omega, edges=None):
         """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
-        averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2, and over the intervals of omega between the
-        given edges. Returns an array (len(pairs), len(edges) - 1)"""
-        edges = np.asarray(edges, dtype=float)
+        averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
+        if edges are given, the averages over the intervals of omega between them. Returns an array
+        (len(pairs), len(omega))"""
+        omega = np.asarray(omega, dtype=float)
         band_i, band_j, group = [], [], []
         for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
             for i in range(i1, i2):
@@ -339,16 +416,21 @@ class TetraWeights:
                     band_i.append(i)
                     band_j.append(j)
                     group.append(ig)
-        res = np.zeros((len(pairs), len(edges) - 1))
+        res = np.zeros((len(pairs), len(omega)))
         if len(group) == 0 or self.null:
             return res
-        np.add.at(res, np.array(group), self._delta_weights_bands(ik, np.array(band_i), np.array(band_j), edges))
+        if edges is not None:
+            edges = np.asarray(edges, dtype=float)
+            assert len(edges) == len(omega) + 1
+        np.add.at(res, np.array(group), self._delta_weights_bands(ik, np.array(band_i), np.array(band_j), omega, edges))
         nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
         return res / nband_pairs[:, None]
 
-    def _delta_weights_bands(self, ik, band_i, band_j, edges):
-        dE = self.eCorners[ik][:, band_i] - self.eCorners[ik][:, band_j]
-        return delta_weights_tetra(edges, np.ascontiguousarray(dE.T))
+    def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
+        dE = np.ascontiguousarray((self.eCorners[ik][:, band_i] - self.eCorners[ik][:, band_j]).T)
+        if edges is None:
+            return delta_values_tetra(omega, dE)
+        return delta_weights_tetra(edges, dE)
 
 
 class TetraWeightsParal(TetraWeights):
@@ -364,7 +446,9 @@ class TetraWeightsParal(TetraWeights):
                 occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
         return occ / 12.
 
-    def _delta_weights_bands(self, ik, band_i, band_j, edges):
+    def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
         dEcenter = self.eCenter[ik, band_i] - self.eCenter[ik, band_j]
-        dEcorners = self.eCorners[ik][..., band_i] - self.eCorners[ik][..., band_j]
-        return delta_weights_parallel(edges, dEcenter, np.ascontiguousarray(np.moveaxis(dEcorners, -1, 0)))
+        dEcorners = np.ascontiguousarray(np.moveaxis(self.eCorners[ik][..., band_i] - self.eCorners[ik][..., band_j], -1, 0))
+        if edges is None:
+            return delta_values_parallel(omega, dEcenter, dEcorners)
+        return delta_weights_parallel(edges, dEcenter, dEcorners)

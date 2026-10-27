@@ -1,4 +1,4 @@
-"""Tests of the tetrahedron method for the delta functions of the frequency in the dynamic calculators (tetra=True)."""
+"""Tests of the tetrahedron method for the delta functions of the frequency in the dynamic calculators (tetra_delta=True)."""
 
 import contextlib
 import io
@@ -12,8 +12,10 @@ import wannierberri as wberri
 from wannierberri.calculators import dynamic
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetrahedron import (TetraWeights, TetraWeightsParal, _edges_in_range, delta_weights_parallel,
-                                           delta_weights_tetra, weights_tetra)
+from wannierberri.grid.tetrahedron import (TetraWeights, TetraWeightsParal, _edges_in_range, _omega_in_range,
+                                           _tetrahedra_parallel, delta_tetra, delta_values_parallel,
+                                           delta_values_tetra, delta_weights_parallel, delta_weights_tetra,
+                                           weights_tetra)
 from wannierberri.system import System_R
 
 S0 = np.eye(2, dtype=complex)
@@ -158,10 +160,17 @@ def test_python_versions():
                                delta_weights_parallel(edges, centre, corners), rtol=0, atol=1e-12)
     for emin, emax in [(-6.0, -5.5), (-1.0, 1.0), (1.0, 1.0), (4.0, 6.0), (6.0, 7.0)]:
         assert _edges_in_range.py_func(edges, emin, emax) == _edges_in_range(edges, emin, emax)
+        assert _omega_in_range.py_func(edges, emin, emax) == _omega_in_range(edges, emin, emax)
+    np.testing.assert_allclose(delta_values_tetra.py_func(edges, dE), delta_values_tetra(edges, dE), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_values_parallel.py_func(edges, centre, corners),
+                               delta_values_parallel(edges, centre, corners), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_tetra.py_func(edges, *dE[0]), delta_tetra(edges, *dE[0]), rtol=0, atol=1e-12)
+    np.testing.assert_array_equal(_tetrahedra_parallel.py_func(corners[0]), _tetrahedra_parallel(corners[0]))
 
 
+@pytest.mark.parametrize("average", [False, True])
 @pytest.mark.parametrize("cls", [TetraWeights, TetraWeightsParal])
-def test_delta_weights_groups(cls):
+def test_delta_weights_groups(cls, average):
     """the weights for pairs of band groups are the averages over the pairs of bands, with the energies at the
     corners of each band (here not degenerate)"""
     rng = np.random.default_rng(3)
@@ -170,25 +179,62 @@ def test_delta_weights_groups(cls):
     shape = (1, 4, nb) if cls is TetraWeights else (1, 2, 2, 2, nb)
     eCorners = eCenter.reshape((1,) + (1,) * (len(shape) - 2) + (nb,)) + rng.normal(size=shape) * 0.5
     edges = np.linspace(-15, 15, 301)
+    omega = (edges[1:] + edges[:-1]) / 2
+    if not average:
+        edges = None
     pairs = [((2, 4), (0, 2)), ((0, 2), (2, 4)), ((3, 4), (1, 2)), ((1, 3), (1, 3))]
     weights = cls(eCenter=eCenter, eCorners=eCorners)
-    result = weights.delta_weights(0, pairs, edges)
+    result = weights.delta_weights(0, pairs, omega, edges)
     # empty pairs (used for the pairs that do not contribute) give zeros, and do not change the others
-    with_empty = weights.delta_weights(0, [((0, 0), (0, 0))] + pairs, edges)
+    with_empty = weights.delta_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges)
     np.testing.assert_array_equal(with_empty[0], 0)
     np.testing.assert_allclose(with_empty[1:], result, rtol=0, atol=1e-14)
-    np.testing.assert_array_equal(weights.delta_weights(0, [((0, 0), (0, 0))], edges), 0)
+    np.testing.assert_array_equal(weights.delta_weights(0, [((0, 0), (0, 0))], omega, edges), 0)
 
     def one(i, j):
         if cls is TetraWeights:
-            return delta_weights_tetra(edges, (eCorners[0][:, i] - eCorners[0][:, j])[None])[0]
-        return delta_weights_parallel(edges, eCenter[0, i:i + 1] - eCenter[0, j:j + 1],
-                                      (eCorners[0][..., i] - eCorners[0][..., j])[None])[0]
+            dE = (eCorners[0][:, i] - eCorners[0][:, j])[None]
+            return (delta_weights_tetra(edges, dE) if average else delta_values_tetra(omega, dE))[0]
+        dEcenter = eCenter[0, i:i + 1] - eCenter[0, j:j + 1]
+        dEcorners = (eCorners[0][..., i] - eCorners[0][..., j])[None]
+        return (delta_weights_parallel(edges, dEcenter, dEcorners) if average
+                else delta_values_parallel(omega, dEcenter, dEcorners))[0]
 
     for (gi, gj), res in zip(pairs, result):
         expected = np.mean([one(i, j) for i in range(*gi) for j in range(*gj)], axis=0)
         np.testing.assert_allclose(res, expected, rtol=0, atol=1e-12)
         assert np.abs(res).max() > 0
+
+
+@pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 2.0, 3.0], [1.0, 2.0, 2.0, 3.0], [1.0, 2.0, 3.0, 3.0],
+                                [-1.0, 0.0, 0.0, 0.0]])
+def test_delta_values(dE):
+    """the values of the delta function are the derivative of the cumulative weight, and are continuous unless three
+    corners have the same value"""
+    omega = np.linspace(-3, 4, 7001)
+    values = delta_tetra(omega, *dE)
+    h = 1e-6
+    derivative = (weights_tetra(omega + h, *dE, der=0) - weights_tetra(omega - h, *dE, der=0)) / (2 * h)
+    inside = np.min(np.abs(omega[:, None] - np.array(dE)[None, :]), axis=1) > 2 * h  # not at the kinks
+    np.testing.assert_allclose(values[inside], derivative[inside], rtol=0, atol=1e-5 * np.abs(derivative).max())
+    if len(set(dE)) > 2:
+        assert np.abs(np.diff(values)).max() < 0.01 * np.abs(values).max()
+    assert np.all(values >= 0)
+
+
+@pytest.mark.parametrize("dE", [[1.0, 1.2, 1.4, 2.0], [-3.0, -2.0, -1.0, 0.5], [3.5, 4.0, 4.5, 6.0],
+                                [-9.0, -8.0, -7.0, -6.0], [0.5, 0.5, 0.5, 1.0 + 1e-13], [1.0, 1.0, 1.0, 1.0]])
+def test_delta_values_range(dE):
+    """the values are computed only at the frequencies within the range of dE: the same as at all frequencies"""
+    omega = np.arange(-5.0, 5.001, 0.25)
+    dE = np.array(dE)
+    np.testing.assert_allclose(delta_values_tetra(omega, dE[None])[0], delta_tetra(omega, *dE), rtol=0, atol=1e-12)
+    corners = np.empty((2, 2, 2))
+    corners[0, 0, 0], corners[1, 1, 1], corners[0, 1, 0], corners[1, 0, 1] = dE
+    corners[1, 0, 0] = corners[0, 1, 1] = corners[0, 0, 1] = corners[1, 1, 0] = dE.mean()
+    expected = sum(delta_tetra(omega, dE.mean(), *t) for t in _tetrahedra_parallel(corners)) / 12
+    np.testing.assert_allclose(delta_values_parallel(omega, np.array([dE.mean()]), corners[None])[0], expected,
+                               rtol=0, atol=1e-12)
 
 
 def jdos_reference():
@@ -199,7 +245,8 @@ def jdos_reference():
     return bins, np.histogram(Ehigh - Elow, bins=bins)[0] / Elow.size / (bins[1] - bins[0]) / A ** 3
 
 
-def test_jdos_against_reference():
+@pytest.mark.parametrize("average", [False, True])
+def test_jdos_against_reference(average):
     """JDOS against a histogram of the band gaps on a dense grid. On the same grid, the tetrahedron method is closer to
     it than the Gaussian smearing with any of the widths tried."""
     system = two_band_system()
@@ -207,7 +254,7 @@ def test_jdos_against_reference():
     domega = 0.005
     omega = np.arange(bins[0], bins[-1], domega) + domega / 2
     widths = (0.05, 0.1, 0.2)
-    calculators = {"tetra": dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra=True)}
+    calculators = {"tetra": dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=average)}
     calculators.update({f"smear{w}": dynamic.JDOS(Efermi=EFERMI, omega=omega, smr_type="Gaussian", smr_fixed_width=w)
                         for w in widths})
     result = run(system, calculators, NK=16)
@@ -229,9 +276,9 @@ CALCULATORS = [
 ]
 
 
-@pytest.mark.parametrize("copies", [1, 2])
+@pytest.mark.parametrize("copies, average", [(1, False), (2, False), (1, True)])
 @pytest.mark.parametrize("calculator, parameters", CALCULATORS)
-def test_frequency_integral(calculator, parameters, copies):
+def test_frequency_integral(calculator, parameters, copies, average):
     """the delta functions of the tetrahedron method and of the smearing are normalised. The two results differ only
     in the delta functions (the principal part of the optical and spin Hall conductivities is the same Lorentzian
     in both), so the integral of their difference over frequencies that cover all the band gaps vanishes, for each
@@ -241,7 +288,7 @@ def test_frequency_integral(calculator, parameters, copies):
     domega = 0.01
     omega = np.arange(0.005, 60, domega)  # the band gaps of the model are below 40 eV
     kwargs = dict(Efermi=EFERMI, omega=omega, **parameters)
-    result = run(system, {"tetra": calculator(tetra=True, **kwargs),
+    result = run(system, {"tetra": calculator(tetra_delta=True, tetra_delta_average=average, **kwargs),
                           "smear": calculator(smr_type="Gaussian", smr_fixed_width=0.1, **kwargs)}, NK=6)
     difference = result["tetra"] - result["smear"]
     scale = np.abs(difference).sum(axis=1).max() * domega
@@ -264,7 +311,7 @@ def test_against_dense_smearing(calculator, parameters, tolerance):
     omega = np.arange(0.005, 20, domega)
     kwargs = dict(Efermi=[0.0], omega=omega, **parameters)
     reference = run(system, {"x": calculator(smr_type="Gaussian", smr_fixed_width=0.05, **kwargs)}, NK=[120, 120, 1])["x"]
-    tetra = run(system, {"x": calculator(tetra=True, **kwargs)}, NK=[32, 32, 1])["x"]
+    tetra = run(system, {"x": calculator(tetra_delta=True, **kwargs)}, NK=[32, 32, 1])["x"]
 
     def binned(x):
         return x[0].reshape(-1, 50, *x.shape[2:]).mean(axis=1)
@@ -272,29 +319,34 @@ def test_against_dense_smearing(calculator, parameters, tolerance):
     assert np.abs(binned(tetra) - binned(reference)).max() < tolerance * np.abs(binned(reference)).max()
 
 
-def test_grid_tetra():
+@pytest.mark.parametrize("average", [False, True])
+def test_grid_tetra(average):
     """JDOS on a grid of tetrahedra (GridTetra), against the histogram of the band gaps on a dense grid. With the band
-    gaps at the k-points instead of the corners, the error would be 0.13."""
+    gaps at the k-points instead of the corners, the error would be 0.13. The frequency integral is 1/V, exactly
+    with the averages over the intervals; with the values at the frequencies, the sum over them misses 0.5% here,
+    from the features of the small tetrahedra that are narrower than the intervals."""
     system = two_band_system()
     bins, reference = jdos_reference()
     domega = 0.005
     omega = np.arange(bins[0], bins[-1], domega) + domega / 2
     grid = wberri.grid.GridTetra(system, length=40, NKFFT=(12, 12, 12))
-    jdos = run(system, {"x": dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra=True)}, grid=grid)["x"]
+    jdos = run(system, {"x": dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=average)},
+               grid=grid)["x"]
     binned = jdos[0].reshape(len(bins) - 1, -1).mean(axis=1)
     assert np.abs(binned - reference).sum() < 0.05 * np.abs(reference).sum()
-    assert jdos.sum() * domega == pytest.approx(1 / A ** 3, rel=1e-10)
+    assert jdos.sum() * domega == pytest.approx(1 / A ** 3, rel=1e-10 if average else 1e-2)
 
 
-def test_narrow_window():
+@pytest.mark.parametrize("average", [False, True])
+def test_narrow_window(average):
     """with a range of frequencies narrower than the spread of the band gaps within a cell, the pairs are selected by
     the energies at the corners, not by those at the k-point"""
     system = random_system()
     domega = 0.01
     omega = np.arange(0.005, 60, domega)
     window = slice(1000, 1100)  # 10 to 11 eV
-    calculators = {"full": dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra=True),
-                   "window": dynamic.JDOS(Efermi=EFERMI, omega=omega[window], tetra=True)}
+    kwargs = dict(Efermi=EFERMI, tetra_delta=True, tetra_delta_average=average)
+    calculators = {"full": dynamic.JDOS(omega=omega, **kwargs), "window": dynamic.JDOS(omega=omega[window], **kwargs)}
     result = run(system, calculators, NK=4)
     assert np.abs(result["window"]).max() > 0
     np.testing.assert_allclose(result["window"], result["full"][:, window], rtol=1e-10, atol=0)
@@ -307,7 +359,7 @@ def test_parallel():
         pytest.skip("ray is not initialized")
     system = random_system()
     omega = np.arange(0.005, 40, 0.05)
-    calculator = dict(Efermi=EFERMI, omega=omega, tetra=True)
+    calculator = dict(Efermi=EFERMI, omega=omega, tetra_delta=True)
     grid = wberri.Grid(system, NKFFT=4, NKdiv=2)
     serial = run(system, {"x": dynamic.OpticalConductivity(**calculator)}, grid=grid)["x"]
     parallel = run(system, {"x": dynamic.OpticalConductivity(**calculator)}, grid=grid, parallel=True)["x"]
@@ -319,7 +371,7 @@ def test_nkdiv_fermi_levels_temperature():
     levels at a finite temperature give the same results as separate calculations"""
     system = random_system()
     omega = np.arange(0.005, 40, 0.05)
-    kwargs = dict(omega=omega, kBT=0.05, tetra=True)
+    kwargs = dict(omega=omega, kBT=0.05, tetra_delta=True)
     efermi = [0.0, 0.5]
     divided = run(system, {"x": dynamic.OpticalConductivity(Efermi=efermi, **kwargs)},
                   grid=wberri.Grid(system, NKFFT=4, NKdiv=2))["x"]
@@ -333,20 +385,50 @@ def test_nkdiv_fermi_levels_temperature():
 
 def test_tetra_not_implemented():
     with pytest.raises(ValueError, match="tetrahedron method"):
-        SDCT_sym(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra=True)
+        SDCT_sym(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra_delta=True)
+
+
+def test_tetra_delta_average_requires_tetra_delta():
+    with pytest.raises(ValueError, match="requires tetra_delta=True"):
+        dynamic.JDOS(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra_delta_average=True)
+
+
+def test_independent_of_frequency_grid():
+    """the values at the frequencies do not depend on the other frequencies: every second point of a twice denser
+    grid, or a single frequency, gives the same result. With the averages over the intervals, they do."""
+    system = random_system()
+    omega = np.arange(0.005, 30, 0.1)
+    dense = np.arange(0.005, 30, 0.05)
+    assert np.allclose(dense[::2], omega)
+
+    def jdos(w, average=False):
+        return run(system, {"x": dynamic.OpticalConductivity(Efermi=EFERMI, omega=w, tetra_delta=True,
+                                                             tetra_delta_average=average)}, NK=4)["x"]
+
+    coarse = jdos(omega)
+    scale = np.abs(coarse).max()
+    np.testing.assert_allclose(jdos(dense)[:, ::2], coarse, rtol=0, atol=1e-12 * scale)
+    np.testing.assert_allclose(jdos(omega[100:101]), coarse[:, 100:101], rtol=0, atol=1e-12 * scale)
+    assert np.abs(jdos(dense, True)[:, ::2] - jdos(omega, True)).max() > 1e-3 * scale
 
 
 @pytest.mark.parametrize("dE", [0.97, 1.03])
 def test_tetra_omega_intervals(dE):
     """the result at each frequency is the average over the interval between the midpoints to its neighbours"""
     omega = np.array([0.9, 1.0, 1.1, 1.3])
-    edges = dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra=True).omega_edges
+    edges = dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=True).omega_edges
     np.testing.assert_allclose(edges, [0.85, 0.95, 1.05, 1.2, 1.4])
     weights = delta_weights_tetra(edges, np.full((1, 4), dE))[0]
     np.testing.assert_allclose(weights, [0, 10, 0, 0])
 
 
-@pytest.mark.parametrize("omega", [[0.5], [1.0, 0.5, 2.0], [0.0, np.nan, 2.0], [0.0, 1.0, np.inf]])
-def test_tetra_omega_increasing(omega):
+@pytest.mark.parametrize("omega, average", [([0.5], True), ([1.0, 0.5, 2.0], False), ([1.0, 1.0], False),
+                                            ([0.0, np.nan, 2.0], False), ([0.0, 1.0, np.inf], True)])
+def test_tetra_omega_increasing(omega, average):
     with pytest.raises(ValueError, match="omega must be finite and increasing"):
-        dynamic.JDOS(Efermi=EFERMI, omega=np.array(omega), tetra=True)
+        dynamic.JDOS(Efermi=EFERMI, omega=np.array(omega), tetra_delta=True, tetra_delta_average=average)
+
+
+def test_single_frequency():
+    """without the averages over the intervals, a single frequency is allowed"""
+    assert dynamic.JDOS(Efermi=EFERMI, omega=np.array([0.5]), tetra_delta=True).omega_edges is None
