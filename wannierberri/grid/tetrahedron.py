@@ -14,6 +14,10 @@ def ones(n):
 
 @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
+    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
+    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
+    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
+    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
     e = np.array(sorted([e0, e1, e2, e3]))
     # a dirty trick to avoid divisions by zero
     diff_min = 1e-12
@@ -26,8 +30,9 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     occ = np.zeros(nEF)
 
     if der == 1:
-        # the density (the derivative of the occupation), written in the differences from the corner values: the
-        # polynomial in efall below loses precision when the spread of the values is small compared with the values
+        # the density (the derivative of the occupation), written in the differences from the corner values as in
+        # Bloechl et al.: the polynomial in efall below loses precision when the spread of the values is small
+        # compared with the values
         for i in range(nEF):
             ef = efall[i]
             if ef <= e1 or ef >= e4:
