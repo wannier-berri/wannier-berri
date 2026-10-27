@@ -360,7 +360,7 @@ class KuboReference:
         return result * factor / (len(self.k) * self.volume)
 
 
-@pytest.mark.parametrize("average, kBT", [(False, 0), (True, 0), (False, 0.3)])
+@pytest.mark.parametrize("average, kBT", [(False, 0), (True, 0), (False, 0.3), (True, 0.3)])
 def test_against_kubo_reference(average, kBT):
     """JDOS, optical and spin Hall conductivities and the injection current against the Kubo formulas written out with
     numpy (`KuboReference`), to 1e-10, also at a finite temperature (where all pairs of bands contribute). With the
@@ -429,6 +429,50 @@ def test_delta_values_flat(spread):
     np.testing.assert_array_equal(delta_values_tetra(np.array([0.75]), np.full((1, 4), 0.8)), 0)
     single = delta_values_tetra(np.array([0.75]), np.array([[0.7, 0.72, 0.78, 0.8]]))
     assert single[0, 0] == pytest.approx(delta_tetra(np.array([0.75]), 0.7, 0.72, 0.78, 0.8)[0], rel=1e-14)
+
+
+def test_delta_values_flat_intervals():
+    """the interval of a flat dE, on a nonuniform grid (edges -0.125, 0.125, 0.375, 0.75, 1.25), by the middle of the
+    range of dE: explicit values, at the edges, outside the ends, and at the threshold of the spread"""
+    omega = np.array([0.0, 0.25, 0.5, 1.0])
+    widths = np.array([0.25, 0.25, 0.375, 0.5])
+
+    def expected(i):
+        res = np.zeros(4)
+        if i is not None:
+            res[i] = 1 / widths[i]
+        return res
+
+    for dE, i in [(0.1, 0), (0.125, 1), (0.374, 1), (0.375, 2), (0.8, 3), (1.249, 3), (-0.125, 0),
+                  (-0.2, None), (1.25, None), (1.3, None)]:
+        np.testing.assert_allclose(delta_values_tetra(omega, np.full((1, 4), dE))[0], expected(i), rtol=1e-14)
+    # the middle of the range (0.3749997, below the edge 0.375), not the mean of the corners (above it), selects the
+    # interval
+    corners = np.array([[0.374999, 0.3750004, 0.3750004, 0.3750004]])
+    assert (corners.min() + corners.max()) / 2 < 0.375 <= corners.mean()
+    np.testing.assert_allclose(delta_values_tetra(omega, corners)[0], expected(1), rtol=1e-14)
+    # just below and above the threshold, FLAT_FRACTION times the width of the interval
+    for factor, flat in ((0.99, True), (1.01, False)):
+        spread = factor * FLAT_FRACTION * widths[2]
+        dE = np.array([[0.6, 0.6 + spread / 3, 0.6 + spread / 2, 0.6 + spread]])
+        values = delta_values_tetra(omega, dE)[0]
+        if flat:
+            np.testing.assert_allclose(values, expected(2), rtol=1e-14)
+        else:
+            np.testing.assert_allclose(values, delta_tetra(omega, *dE[0]), rtol=1e-14, atol=0)
+    # a parallelepiped where only some of the tetrahedra are flat: those through the flat face x = 0 (corners at
+    # 0.6) with the centre (also 0.6), while the others extend to 0.9
+    corners = np.full((2, 2, 2), 0.6)
+    corners[1] = 0.9
+    fine = np.linspace(-0.125, 1.25, 1101)[:-1] + 0.000625
+    values = delta_values_parallel(fine, np.array([0.6]), corners[None])[0]
+    expected_values = sum(delta_values_tetra(fine, np.array([[0.6, *t]])) for t in _tetrahedra_parallel(corners))[0] / 12
+    np.testing.assert_allclose(values, expected_values, rtol=1e-14, atol=0)
+    flat_tetrahedra = sum(np.ptp([0.6, *t]) == 0 for t in _tetrahedra_parallel(corners))
+    assert flat_tetrahedra == 2
+    i = np.searchsorted(fine, 0.6) - 1  # the flat ones are in one interval around 0.6
+    assert values.sum() * 0.00125 == pytest.approx(1, rel=1e-3)
+    assert values[i:i + 2].max() * 0.00125 >= flat_tetrahedra / 12 - 1e-12
 
 
 def test_jdos_constant_splitting():
