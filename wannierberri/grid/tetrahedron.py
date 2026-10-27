@@ -2,7 +2,7 @@ from collections import defaultdict
 import numpy as np
 from numba import njit
 
-from functools import lru_cache
+from functools import cached_property, lru_cache
 
 from ..utility import weight_select_bands
 
@@ -176,20 +176,36 @@ class TetraWeights:
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
 
-    def __init__(self, eCenter, eCorners):
+    def __init__(self, eCenter, eCorners, kind="single"):
         self.eCenter = eCenter
-        self.eCorners = eCorners
-        assert self.eCenter.shape == (self.eCorners.shape[0], self.eCorners.shape[-1])
         self.nk, self.nb = self.eCenter.shape
+        assert eCorners.shape[0] == self.nk
+        assert eCorners.shape[-1] == self.nb
+        if kind == "single":
+            assert eCorners.shape == (self.nk, 4, self.nb)
+            self.all_tetrahedra_vertices = [eCorners.copy()]
+        elif kind == "parallelepiped":
+            assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)
+            self.all_tetrahedra_vertices = []
+            for iface in 0, 1:
+                for Eface in eCorners[:, iface, :, :], eCorners[:, :, iface, :], eCorners[:, :, :, iface]:
+                    E0 = eCenter
+                    E1 = Eface[:, 0, 0]
+                    E3 = Eface[:, 1, 1]
+                    for E2 in (Eface[:, 0, 1], Eface[:, 1, 0]):
+                        self.all_tetrahedra_vertices.append(np.array([E0, E1, E2, E3]).swapaxes(0, 1))
+                        assert self.all_tetrahedra_vertices[-1].shape == (self.nk, 4, self.nb)
+        else:
+            raise ValueError(f"Unknown kind of tetrahedra: {kind}")
+
         self.eFermis = []
         self.eFermi = None
         if self.nk == 0:
             self.null = True
         else:
             self.null = False
-            #        self.eFermis = []
             self.weights = []
-            Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
+            Eall = np.concatenate((self.eCenter[:, None, :], eCorners.reshape(self.nk, -1, self.nb)), axis=1)
             self.Emin = Eall.min(axis=1)
             self.Emax = Eall.max(axis=1)
 
@@ -200,14 +216,20 @@ class TetraWeights:
             return 1 - self.weight_1k1b(ief, ik, ib, der=0)
         return self.weight_1k1b_priv(self.eFermis[ief], ik, ib, der=der)
 
+    @cached_property
+    def factor_num_tetra(self):
+        return 1. / len(self.all_tetrahedra_vertices)
+
     def weight_1k1b_priv(self, eFermi, ik, ib, der):
-        eCorners = self.eCorners[ik, :, ib]
-        return weights_tetra(eFermi, eCorners[0], eCorners[1], eCorners[2], eCorners[3], der=der)
+        occ = np.zeros(eFermi.shape, dtype=float)
+        for tetrahedron in self.all_tetrahedra_vertices:
+            evert = tetrahedron[ik, :, ib]
+            occ += weights_tetra(eFermi, evert[0], evert[1], evert[2], evert[3], der=der)
+        return occ * self.factor_num_tetra
 
     def __weight_1b(self, ief, ik, ib, der):
         if ib not in self.weights[ief][der][ik]:
             self.weights[ief][der][ik][ib] = self.weight_1k1b(ief, ik, ib, der)
-        #                self.eFermis[ief], self.eCenter[ik, ib], self.eCorners[ik, :, :, :, ib], der=der)
         return self.weights[ief][der][ik][ib]
 
     def index_eFermi(self, eFermi):
@@ -265,17 +287,3 @@ class TetraWeights:
 
             res.append(weights)
         return res
-
-
-class TetraWeightsParal(TetraWeights):
-
-    def weight_1k1b_priv(self, eFermi, ik, ib, der):
-        occ = np.zeros(eFermi.shape)
-        eCorner = self.eCorners[ik, ..., ib]
-        eCenter = self.eCenter[ik, ib]
-
-        for iface in 0, 1:
-            for Eface in eCorner[iface, :, :], eCorner[:, iface, :], eCorner[:, :, iface]:
-                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
-                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
-        return occ / 12.

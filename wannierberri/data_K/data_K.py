@@ -164,15 +164,13 @@ class Data_K(System, abc.ABC):
 
     @cached_property
     def tetraWeights(self):
+        from ..grid.tetrahedron import TetraWeights
         if isinstance(self.Kpoint, KpointBZparallel):
-            from ..grid.tetrahedron import TetraWeightsParal
-            return TetraWeightsParal(eCenter=self.E_K, eCorners=self.E_K_corners_parallel())
+            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="parallelepiped")
         elif isinstance(self.Kpoint, KpointBZtetra):
-            from ..grid.tetrahedron import TetraWeights
-
-            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra())
+            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra(), kind="single")
         else:
-            raise RuntimeError()
+            raise TypeError(f"Unknown Kpoint type {type(self.Kpoint)}")
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
                                      Emin=-np.inf, Emax=np.inf, select_bands=None):

@@ -469,7 +469,7 @@ def _rotate_matrix(X, L, R):
     Rotate a matrix X[m,n,...] with L[m,n] and R[m,n] matrices
     """
     return cached_einsum("ij,jk...,kl->il...", L, X, R)
-    
+
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     """transforms a matrix X[iR, m,n,...] into a nested dictionary like
