@@ -179,13 +179,13 @@ class TetraWeights:
     def __init__(self, eCenter, eCorners, kind="single"):
         self.eCenter = eCenter
         self.nk, self.nb = self.eCenter.shape
-        assert eCorners.shape[0] == self.nk
-        assert eCorners.shape[-1] == self.nb
+        assert eCorners.shape[0] == self.nk, f"nk mismatch: {eCorners.shape[0]} != {self.nk}"
+        assert eCorners.shape[-1] == self.nb, f"nb mismatch: {eCorners.shape[-1]} != {self.nb}"
         if kind == "single":
-            assert eCorners.shape == (self.nk, 4, self.nb)
+            assert eCorners.shape == (self.nk, 4, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 4, self.nb)}"
             self.all_tetrahedra_vertices = [eCorners.copy()]
         elif kind == "parallelepiped":
-            assert eCorners.shape == (self.nk, 2, 2, 2, self.nb)
+            assert eCorners.shape == (self.nk, 2, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
             self.all_tetrahedra_vertices = []
             for iface in 0, 1:
                 for Eface in eCorners[:, iface, :, :], eCorners[:, :, iface, :], eCorners[:, :, :, iface]:
@@ -194,7 +194,6 @@ class TetraWeights:
                     E3 = Eface[:, 1, 1]
                     for E2 in (Eface[:, 0, 1], Eface[:, 1, 0]):
                         self.all_tetrahedra_vertices.append(np.array([E0, E1, E2, E3]).swapaxes(0, 1))
-                        assert self.all_tetrahedra_vertices[-1].shape == (self.nk, 4, self.nb)
         else:
             raise ValueError(f"Unknown kind of tetrahedra: {kind}")
 
