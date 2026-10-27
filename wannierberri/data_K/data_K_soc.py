@@ -102,7 +102,7 @@ class Data_K_soc(Data_K_R):
     def E_K_corners_tetra(self):
         # raise NotImplementedError("E_K_corners_tetra is not implemented for Data_K_soc. ")
         expdK_up = self.data_K_up.expdK_corners_tetra
-        expdK_down = self.data_K_up.expdK_corners_tetra
+        expdK_down = self.data_K_down.expdK_corners_tetra
         expdK_soc = self.expdK_corners_tetra if self.has_soc else None
         Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv in range(4):
