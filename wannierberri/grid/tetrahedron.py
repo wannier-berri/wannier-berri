@@ -184,8 +184,9 @@ def _edges_in_range(edges, emin, emax):
 
 @njit
 def delta_weights_tetra(edges, dE):
-    """weights of delta(dE - omega) over a tetrahedron, where dE is linear and given at its 4 corners, averaged over
-    the intervals between the given edges of omega
+    """the averages of delta(dE - omega) over a tetrahedron, as a function of omega, over the intervals of omega
+    between the given edges, where dE is linear and given at its 4 corners: for each interval, the fraction of the
+    tetrahedron where dE is within it, divided by its width. omega itself is not needed, only the edges.
 
     edges : increasing array (nomega + 1,); dE : array (npair, 4); returns an array (npair, nomega). The weights times
     the widths of the intervals sum to the fraction of the tetrahedron where edges[0] < dE < edges[-1]"""

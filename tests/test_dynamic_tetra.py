@@ -10,6 +10,7 @@ import pytest
 
 import wannierberri as wberri
 from wannierberri.calculators import dynamic
+from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.grid.tetrahedron import (TetraWeights, TetraWeightsParal, _edges_in_range, _omega_in_range,
@@ -80,6 +81,8 @@ def random_system(num_wann=3, seed=1, copies=1, two_dimensional=False):
         s = rng.normal(size=(num_wann, num_wann)) + 1j * rng.normal(size=(num_wann, num_wann))
         SS[system.rvec.iR0, :, :, a] = s + s.conj().T
     system.set_R_mat("SS", SS)
+    system.test_hoppings = hoppings  # for the reference written out below
+    system.test_spin = SS[system.rvec.iR0]
     return system
 
 
@@ -235,6 +238,166 @@ def test_delta_values_range(dE):
     expected = sum(delta_tetra(omega, dE.mean(), *t) for t in _tetrahedra_parallel(corners)) / 12
     np.testing.assert_allclose(delta_values_parallel(omega, np.array([dE.mean()]), corners[None])[0], expected,
                                rtol=0, atol=1e-12)
+
+
+class KuboReference:
+    """the dynamic calculators for `random_system` (internal terms only, kBT = 0) written out k-point by k-point
+    with numpy, independently of wannierberri: the Kubo formulas with the delta function given either by the Gaussian
+    smearing or by the linear tetrahedron method (the band energies at the corners of the parallelepiped around each
+    k-point, divided into 12 tetrahedra, and the density of a linear function on a tetrahedron by Bloechl et al.,
+    PRB 49, 16223 (1994))"""
+
+    def __init__(self, system, N, efermi, omega):
+        self.hoppings, self.spin = system.test_hoppings, system.test_spin
+        self.lattice = system.real_lattice
+        self.nw = system.num_wann
+        self.N, self.omega = N, omega
+        self.k = np.array(np.meshgrid(*[np.arange(N) / N] * 3, indexing="ij")).reshape(3, -1).T
+        H, v = self.hamiltonian(self.k)
+        self.E, U = np.linalg.eigh(H)
+        V = np.einsum("kin,akij,kjm->aknm", U.conj(), v, U)
+        self.V = V
+        self.S = np.einsum("kin,ija,kjm->aknm", U.conj(), self.spin, U)
+        gap = self.E[:, None, :] - self.E[:, :, None]  # E_m - E_n [k, n, m]
+        offdiagonal = ~np.eye(self.nw, dtype=bool)
+        self.A = np.zeros_like(V)  # the Berry connection A_nm = i v_nm / (E_m - E_n) for n != m
+        self.A[:, :, offdiagonal] = 1j * V[:, :, offdiagonal] / gap[None][:, :, offdiagonal]
+        self.f = (self.E < efermi).astype(float)
+        self.corners = np.zeros((2, 2, 2, len(self.k), self.nw))
+        for i in np.ndindex(2, 2, 2):
+            self.corners[i] = np.linalg.eigvalsh(self.hamiltonian(self.k + (np.array(i) - 0.5) / N)[0])
+        self.volume = abs(np.linalg.det(self.lattice))
+
+    def hamiltonian(self, k):
+        """H and dH/dk (Cartesian) at the reduced k-points"""
+        H = np.zeros((len(k), self.nw, self.nw), dtype=complex)
+        v = np.zeros((3,) + H.shape, dtype=complex)
+        for R, h in self.hoppings.items():
+            phase = np.exp(2j * np.pi * k @ np.array(R))[:, None, None]
+            H += phase * h
+            for a, Ra in enumerate(np.array(R) @ self.lattice):
+                v[a] += 1j * Ra * phase * h
+        return H, v
+
+    def delta(self, ik, n, m, method, edges=None):
+        """delta(E_n - E_m - omega) at the k-point ik"""
+        if method == "smearing":
+            x = (self.E[ik, n] - self.E[ik, m] - self.omega) / 0.1
+            return np.exp(-x ** 2) / np.sqrt(np.pi) / 0.1
+        center = self.E[ik, n] - self.E[ik, m]
+        corners = self.corners[..., ik, n] - self.corners[..., ik, m]
+        result = 0
+        for axis in range(3):
+            for side in (0, 1):
+                face = np.take(corners, side, axis=axis)
+                for triangle in ([face[0, 0], face[0, 1], face[1, 1]], [face[0, 0], face[1, 0], face[1, 1]]):
+                    e = np.sort([center] + triangle)
+                    if edges is None:
+                        result = result + self.bloechl(self.omega, e, density=True)
+                    else:
+                        result = result + np.diff(self.bloechl(edges, e, density=False)) / np.diff(edges)
+        return result / 12
+
+    @staticmethod
+    def bloechl(w, e, density):
+        """the density (or the fraction below w) of a linear function with the sorted corner values e"""
+        e1, e2, e3, e4 = e
+        res = np.zeros(len(w)) if density else (w >= e4).astype(float)
+        x = w - e1
+        inside = (w > e1) & (w < e2)
+        c = 1 / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+        res[inside] = (3 * x ** 2 * c if density else x ** 3 * c)[inside]
+        x = w - e2
+        inside = (w >= e2) & (w < e3)
+        c, q = 1 / ((e3 - e1) * (e4 - e1)), (e3 - e1 + e4 - e2) / ((e3 - e2) * (e4 - e2))
+        if density:
+            res[inside] = ((3 * (e2 - e1) + 6 * x - 3 * q * x ** 2) * c)[inside]
+        else:
+            res[inside] = (((e2 - e1) ** 2 + 3 * (e2 - e1) * x + 3 * x ** 2 - q * x ** 3) * c)[inside]
+        x = e4 - w
+        inside = (w >= e3) & (w < e4)
+        c = 1 / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+        res[inside] = (3 * x ** 2 * c if density else 1 - x ** 3 * c)[inside]
+        return res
+
+    def calculate(self, name, method, edges=None):
+        """the result [omega, ...] of the calculator `name` with the delta function by `method`"""
+        omega, eta = self.omega, 0.1
+        shape = {"JDOS": (), "OpticalConductivity": (3, 3), "SHC": (3, 3, 3)}[name]
+        result = np.zeros((len(omega),) + shape, dtype=complex)
+        for ik in range(len(self.k)):
+            for n in range(self.nw):
+                for m in range(self.nw):
+                    occupation = self.f[ik, m] - self.f[ik, n]  # f(E2) - f(E1) for the pair (n, m)
+                    if n == m or occupation == 0:
+                        continue
+                    gap = self.E[ik, m] - self.E[ik, n]
+                    if name == "JDOS":
+                        result += occupation * self.delta(ik, n, m, method, edges)
+                    elif name == "OpticalConductivity":
+                        cfac = 1 / (gap - omega - 1j * eta)
+                        cfac.imag = np.pi * self.delta(ik, m, n, method, edges)
+                        element = 1j * self.A[:, ik, n, m][:, None] * self.A[:, ik, m, n][None, :]
+                        result += (occupation * gap * cfac)[:, None, None] * element
+                    else:  # SHC with the spin current {S, v} / 2
+                        cfac = 1 / (-gap - omega - 1j * eta)
+                        cfac.imag = np.pi * self.delta(ik, n, m, method, edges)
+                        J = np.array([[(self.V[a, ik] @ self.S[g, ik] + self.S[g, ik] @ self.V[a, ik])[n, m] / 2
+                                       for g in range(3)] for a in range(3)])  # [a, gamma]
+                        element = np.imag(J[:, None, :] * (-1j * self.A[:, ik, m, n])[None, :, None])
+                        result += (occupation * cfac / 2)[:, None, None, None] * element
+        factor = {"JDOS": 1, "OpticalConductivity": factors.factor_opt, "SHC": factors.factor_shc}[name]
+        return result * factor / (len(self.k) * self.volume)
+
+
+@pytest.mark.parametrize("average", [False, True])
+def test_against_kubo_reference(average):
+    """JDOS, optical and spin Hall conductivities against the Kubo formulas written out with numpy (`KuboReference`),
+    to 1e-10. With the smearing, the reference reproduces the calculators, which checks the reference itself; with
+    the tetrahedron method, the results differ from those with the smearing by more than the result itself."""
+    system = random_system()
+    N = 4
+    omega = np.arange(0.05, 40, 0.1)
+    reference = KuboReference(system, N, EFERMI[0], omega)
+    edges = dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=True).omega_edges
+    for name, parameters in [("JDOS", {}), ("OpticalConductivity", {}), ("SHC", {"SHC_type": "simple"})]:
+        calculator = getattr(dynamic, name)
+        kwargs = dict(Efermi=EFERMI, omega=omega, **parameters)
+        result = run(system, {"smear": calculator(smr_type="Gaussian", smr_fixed_width=0.1, **kwargs),
+                              "tetra": calculator(tetra_delta=True, tetra_delta_average=average, **kwargs)}, NK=N)
+        smear = reference.calculate(name, "smearing")
+        tetra = reference.calculate(name, "tetra", edges if average else None)
+        scale = np.abs(tetra).max()
+        np.testing.assert_allclose(result["smear"][0], smear, rtol=0, atol=1e-10 * np.abs(smear).max())
+        np.testing.assert_allclose(result["tetra"][0], tetra, rtol=0, atol=1e-10 * scale)
+        assert np.abs(tetra - smear).max() > 0.5 * scale
+
+
+REFERENCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reference", "dynamic_tetra.npz")
+
+
+def stored_results():
+    """the results of the five calculators with the tetrahedron method (values at the frequencies, and averages over
+    the intervals) for `random_system`, compared with `REFERENCE_FILE`. To write the file again, run this module."""
+    system = random_system()
+    omega = np.arange(0.05, 40, 0.2)
+    calculators = {}
+    for calculator, parameters in CALCULATORS:
+        for average in (False, True):
+            calculators[f"{calculator.__name__}-{'average' if average else 'values'}"] = calculator(
+                Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=average, **parameters)
+    return run(system, calculators, NK=4)
+
+
+def test_against_stored_reference():
+    """all five calculators against stored results, to 1e-10. These were computed with this implementation, so they
+    guard against changes; for JDOS, OpticalConductivity and SHC they agree with `KuboReference`."""
+    reference = np.load(REFERENCE_FILE)
+    result = stored_results()
+    assert sorted(result) == sorted(reference.files)
+    for key, value in result.items():
+        np.testing.assert_allclose(value, reference[key], rtol=0, atol=1e-10 * np.abs(reference[key]).max(),
+                                   err_msg=key)
 
 
 def jdos_reference():
@@ -432,3 +595,7 @@ def test_tetra_omega_increasing(omega, average):
 def test_single_frequency():
     """without the averages over the intervals, a single frequency is allowed"""
     assert dynamic.JDOS(Efermi=EFERMI, omega=np.array([0.5]), tetra_delta=True).omega_edges is None
+
+
+if __name__ == "__main__":
+    np.savez_compressed(REFERENCE_FILE, **stored_results())
