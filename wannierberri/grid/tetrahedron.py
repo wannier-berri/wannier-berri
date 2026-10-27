@@ -2,7 +2,7 @@ from collections import defaultdict
 import numpy as np
 from numba import njit
 
-from functools import lru_cache
+from functools import cached_property, lru_cache
 
 from ..utility import weight_select_bands
 
@@ -204,50 +204,6 @@ def delta_weights_tetra(edges, dE):
 
 
 @njit
-def _tetrahedra_parallel(dEcorners):
-    """the 12 tetrahedra of a parallelepiped as in `TetraWeightsParal`: for each, the values at its 3 corners other
-    than the centre. dEcorners : array (2, 2, 2); returns an array (12, 3)"""
-    res = np.empty((12, 3))
-    face = np.empty((2, 2))
-    n = 0
-    for axis in range(3):
-        for iface in range(2):
-            for a in range(2):
-                for b in range(2):
-                    if axis == 0:
-                        face[a, b] = dEcorners[iface, a, b]
-                    elif axis == 1:
-                        face[a, b] = dEcorners[a, iface, b]
-                    else:
-                        face[a, b] = dEcorners[a, b, iface]
-            res[n, 0], res[n, 1], res[n, 2] = face[0, 0], face[0, 1], face[1, 1]
-            res[n + 1, 0], res[n + 1, 1], res[n + 1, 2] = face[0, 0], face[1, 0], face[1, 1]
-            n += 2
-    return res
-
-
-@njit
-def delta_weights_parallel(edges, dEcenter, dEcorners):
-    """the same as `delta_weights_tetra` over a parallelepiped, divided into 12 tetrahedra as in `TetraWeightsParal`
-
-    dEcenter : array (npair,), dEcorners : array (npair, 2, 2, 2); returns an array (npair, nomega)"""
-    width = edges[1:] - edges[:-1]
-    res = np.zeros((dEcenter.shape[0], width.shape[0]))
-    for i in range(dEcenter.shape[0]):
-        emin = min(dEcenter[i], dEcorners[i].min())
-        emax = max(dEcenter[i], dEcorners[i].max())
-        lo, hi = _edges_in_range(edges, emin, emax)
-        if hi <= lo:
-            continue
-        e = edges[lo:hi + 1]
-        occ = np.zeros(e.shape[0])
-        for t in _tetrahedra_parallel(dEcorners[i]):
-            occ += weights_tetra(e, dEcenter[i], t[0], t[1], t[2], 0)
-        res[i, lo:hi] = (occ[1:] - occ[:-1]) / width[lo:hi] / 12.
-    return res
-
-
-@njit
 def delta_tetra(omega, e0, e1, e2, e3):
     """delta(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its corners, at each
     of the given values of omega (the density of the values of dE within the tetrahedron, normalised to 1). For
@@ -329,37 +285,39 @@ def delta_values_tetra(omega, dE):
     return res
 
 
-@njit
-def delta_values_parallel(omega, dEcenter, dEcorners):
-    """the same as `delta_values_tetra` over a parallelepiped, divided into 12 tetrahedra as in `TetraWeightsParal`
-
-    dEcenter : array (npair,), dEcorners : array (npair, 2, 2, 2); returns an array (npair, nomega)"""
-    res = np.zeros((dEcenter.shape[0], omega.shape[0]))
-    edges = omega_intervals(omega)
-    for i in range(dEcenter.shape[0]):
-        for t in _tetrahedra_parallel(dEcorners[i]):
-            _add_delta_values(res[i], omega, edges, 1. / 12, dEcenter[i], t[0], t[1], t[2])
-    return res
-
-
 class TetraWeights:
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
 
-    def __init__(self, eCenter, eCorners):
+    def __init__(self, eCenter, eCorners, kind="single"):
         self.eCenter = eCenter
-        self.eCorners = eCorners
-        assert self.eCenter.shape == (self.eCorners.shape[0], self.eCorners.shape[-1])
         self.nk, self.nb = self.eCenter.shape
+        assert eCorners.shape[0] == self.nk, f"nk mismatch: {eCorners.shape[0]} != {self.nk}"
+        assert eCorners.shape[-1] == self.nb, f"nb mismatch: {eCorners.shape[-1]} != {self.nb}"
+        if kind == "single":
+            assert eCorners.shape == (self.nk, 4, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 4, self.nb)}"
+            self.all_tetrahedra_vertices = [eCorners.copy()]
+        elif kind == "parallelepiped":
+            assert eCorners.shape == (self.nk, 2, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
+            self.all_tetrahedra_vertices = []
+            for iface in 0, 1:
+                for Eface in eCorners[:, iface, :, :], eCorners[:, :, iface, :], eCorners[:, :, :, iface]:
+                    E0 = eCenter
+                    E1 = Eface[:, 0, 0]
+                    E3 = Eface[:, 1, 1]
+                    for E2 in (Eface[:, 0, 1], Eface[:, 1, 0]):
+                        self.all_tetrahedra_vertices.append(np.array([E0, E1, E2, E3]).swapaxes(0, 1))
+        else:
+            raise ValueError(f"Unknown kind of tetrahedra: {kind}")
+
         self.eFermis = []
         self.eFermi = None
         if self.nk == 0:
             self.null = True
         else:
             self.null = False
-            #        self.eFermis = []
             self.weights = []
-            Eall = np.concatenate((self.eCenter[:, None, :], self.eCorners.reshape(self.nk, -1, self.nb)), axis=1)
+            Eall = np.concatenate((self.eCenter[:, None, :], eCorners.reshape(self.nk, -1, self.nb)), axis=1)
             self.Emin = Eall.min(axis=1)
             self.Emax = Eall.max(axis=1)
 
@@ -370,14 +328,20 @@ class TetraWeights:
             return 1 - self.weight_1k1b(ief, ik, ib, der=0)
         return self.weight_1k1b_priv(self.eFermis[ief], ik, ib, der=der)
 
+    @cached_property
+    def factor_num_tetra(self):
+        return 1. / len(self.all_tetrahedra_vertices)
+
     def weight_1k1b_priv(self, eFermi, ik, ib, der):
-        eCorners = self.eCorners[ik, :, ib]
-        return weights_tetra(eFermi, eCorners[0], eCorners[1], eCorners[2], eCorners[3], der=der)
+        occ = np.zeros(eFermi.shape, dtype=float)
+        for tetrahedron in self.all_tetrahedra_vertices:
+            evert = tetrahedron[ik, :, ib]
+            occ += weights_tetra(eFermi, evert[0], evert[1], evert[2], evert[3], der=der)
+        return occ * self.factor_num_tetra
 
     def __weight_1b(self, ief, ik, ib, der):
         if ib not in self.weights[ief][der][ik]:
             self.weights[ief][der][ik][ib] = self.weight_1k1b(ief, ik, ib, der)
-        #                self.eFermis[ief], self.eCenter[ik, ib], self.eCorners[ik, :, :, :, ib], der=der)
         return self.weights[ief][der][ik][ib]
 
     def index_eFermi(self, eFermi):
@@ -436,7 +400,6 @@ class TetraWeights:
             res.append(weights)
         return res
 
-
     def delta_weights(self, ik, pairs, omega, edges=None):
         """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
         averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
@@ -461,28 +424,8 @@ class TetraWeights:
         return res / nband_pairs[:, None]
 
     def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
-        dE = np.ascontiguousarray((self.eCorners[ik][:, band_i] - self.eCorners[ik][:, band_j]).T)
-        if edges is None:
-            return delta_values_tetra(omega, dE)
-        return delta_weights_tetra(edges, dE)
-
-
-class TetraWeightsParal(TetraWeights):
-
-    def weight_1k1b_priv(self, eFermi, ik, ib, der):
-        occ = np.zeros(eFermi.shape)
-        eCorner = self.eCorners[ik, ..., ib]
-        eCenter = self.eCenter[ik, ib]
-
-        for iface in 0, 1:
-            for Eface in eCorner[iface, :, :], eCorner[:, iface, :], eCorner[:, :, iface]:
-                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[0, 1], Eface[1, 1], der=der)
-                occ += weights_tetra(eFermi, eCenter, Eface[0, 0], Eface[1, 0], Eface[1, 1], der=der)
-        return occ / 12.
-
-    def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
-        dEcenter = self.eCenter[ik, band_i] - self.eCenter[ik, band_j]
-        dEcorners = np.ascontiguousarray(np.moveaxis(self.eCorners[ik][..., band_i] - self.eCorners[ik][..., band_j], -1, 0))
-        if edges is None:
-            return delta_values_parallel(omega, dEcenter, dEcorners)
-        return delta_weights_parallel(edges, dEcenter, dEcorners)
+        res = 0
+        for vertices in self.all_tetrahedra_vertices:
+            dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
+            res = res + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
+        return res * self.factor_num_tetra

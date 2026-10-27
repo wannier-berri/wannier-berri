@@ -13,10 +13,9 @@ from wannierberri.calculators import dynamic
 from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetrahedron import (FLAT_FRACTION, TetraWeights, TetraWeightsParal, _edges_in_range,
+from wannierberri.grid.tetrahedron import (FLAT_FRACTION, TetraWeights, _edges_in_range,
                                            _omega_in_range,
-                                           _tetrahedra_parallel, delta_tetra, delta_values_parallel,
-                                           delta_values_tetra, delta_weights_parallel, delta_weights_tetra,
+                                           delta_tetra, delta_values_tetra, delta_weights_tetra,
                                            weights_tetra)
 from wannierberri.system import System_R
 
@@ -97,6 +96,22 @@ def run(system, calculators, NK=10, grid=None, parallel=False):
     return {key: result.results[key].data for key in calculators}
 
 
+def parallel_delta(omega, center, corners, edges=None):
+    """delta(dE - omega) over the 12 tetrahedra of a parallelepiped (values at omega, or averages over the intervals
+    between the edges), for dE given at its centre and at its corners (2, 2, 2): the weights of a pair of bands,
+    the upper one with the energies dE and the lower one at zero"""
+    eCenter = np.array([[0.0, center]])
+    eCorners = np.stack([np.zeros((2, 2, 2)), corners], axis=-1)[None]
+    weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    return weights.delta_weights(0, [((1, 2), (0, 1))], omega, edges)[0]
+
+
+def parallelepiped_tetrahedra(center, corners):
+    """the values at the 4 vertices of each of the 12 tetrahedra of a parallelepiped"""
+    weights = TetraWeights(eCenter=np.array([[center]]), eCorners=corners[None, ..., None], kind="parallelepiped")
+    return [vertices[0, :, 0] for vertices in weights.all_tetrahedra_vertices]
+
+
 @pytest.mark.parametrize("shape", ["parallelepiped", "tetrahedron"])
 def test_delta_weights_linear(shape):
     """for a linear function dE, the weights of delta(dE - omega) summed up to an edge of omega give the fraction of
@@ -107,7 +122,7 @@ def test_delta_weights_linear(shape):
         c, g = rng.normal(), rng.normal(size=3) * 2
         if shape == "parallelepiped":
             corners = np.array([[[c + g @ (np.array([i, j, k]) - 0.5) for k in (0, 1)] for j in (0, 1)] for i in (0, 1)])
-            weights = delta_weights_parallel(edges, np.array([c]), corners[None])[0]
+            weights = parallel_delta((edges[1:] + edges[:-1]) / 2, c, corners, edges)
             x = rng.random((400000, 3)) - 0.5
         else:
             vertices = rng.normal(size=(4, 3))
@@ -148,7 +163,7 @@ def test_delta_weights_range(dE):
             face = np.take(corners, iface, axis=axis)
             occ += weights_tetra(edges, dE.mean(), face[0, 0], face[0, 1], face[1, 1], 0)
             occ += weights_tetra(edges, dE.mean(), face[0, 0], face[1, 0], face[1, 1], 0)
-    np.testing.assert_allclose(delta_weights_parallel(edges, np.array([dE.mean()]), corners[None])[0],
+    np.testing.assert_allclose(parallel_delta((edges[1:] + edges[:-1]) / 2, dE.mean(), corners, edges),
                                np.diff(occ) / np.diff(edges) / 12, rtol=0, atol=1e-12)
 
 
@@ -158,36 +173,29 @@ def test_python_versions():
     edges = np.arange(-5.0, 5.001, 0.5)
     dE = np.concatenate([rng.normal(size=(6, 4)) * 2, [[1.0, 1.0, 1.0, 1.0], [7.0, 8.0, 8.5, 9.0]]])
     np.testing.assert_allclose(delta_weights_tetra.py_func(edges, dE), delta_weights_tetra(edges, dE), rtol=0, atol=1e-12)
-    centre = dE.mean(axis=1)
-    corners = centre[:, None, None, None] + rng.normal(size=(len(dE), 2, 2, 2))
-    np.testing.assert_allclose(delta_weights_parallel.py_func(edges, centre, corners),
-                               delta_weights_parallel(edges, centre, corners), rtol=0, atol=1e-12)
     for emin, emax in [(-6.0, -5.5), (-1.0, 1.0), (1.0, 1.0), (4.0, 6.0), (6.0, 7.0)]:
         assert _edges_in_range.py_func(edges, emin, emax) == _edges_in_range(edges, emin, emax)
         assert _omega_in_range.py_func(edges, emin, emax) == _omega_in_range(edges, emin, emax)
     np.testing.assert_allclose(delta_values_tetra.py_func(edges, dE), delta_values_tetra(edges, dE), rtol=0, atol=1e-12)
-    np.testing.assert_allclose(delta_values_parallel.py_func(edges, centre, corners),
-                               delta_values_parallel(edges, centre, corners), rtol=0, atol=1e-12)
     np.testing.assert_allclose(delta_tetra.py_func(edges, *dE[0]), delta_tetra(edges, *dE[0]), rtol=0, atol=1e-12)
-    np.testing.assert_array_equal(_tetrahedra_parallel.py_func(corners[0]), _tetrahedra_parallel(corners[0]))
 
 
 @pytest.mark.parametrize("average", [False, True])
-@pytest.mark.parametrize("cls", [TetraWeights, TetraWeightsParal])
-def test_delta_weights_groups(cls, average):
+@pytest.mark.parametrize("kind", ["single", "parallelepiped"])
+def test_delta_weights_groups(kind, average):
     """the weights for pairs of band groups are the averages over the pairs of bands, with the energies at the
     corners of each band (here not degenerate)"""
     rng = np.random.default_rng(3)
     nb = 4
     eCenter = np.sort(rng.normal(size=(1, nb)) * 3, axis=1)
-    shape = (1, 4, nb) if cls is TetraWeights else (1, 2, 2, 2, nb)
+    shape = (1, 4, nb) if kind == "single" else (1, 2, 2, 2, nb)
     eCorners = eCenter.reshape((1,) + (1,) * (len(shape) - 2) + (nb,)) + rng.normal(size=shape) * 0.5
     edges = np.linspace(-15, 15, 301)
     omega = (edges[1:] + edges[:-1]) / 2
     if not average:
         edges = None
     pairs = [((2, 4), (0, 2)), ((0, 2), (2, 4)), ((3, 4), (1, 2)), ((1, 3), (1, 3))]
-    weights = cls(eCenter=eCenter, eCorners=eCorners)
+    weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
     result = weights.delta_weights(0, pairs, omega, edges)
     # empty pairs (used for the pairs that do not contribute) give zeros, and do not change the others
     with_empty = weights.delta_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges)
@@ -196,13 +204,10 @@ def test_delta_weights_groups(cls, average):
     np.testing.assert_array_equal(weights.delta_weights(0, [((0, 0), (0, 0))], omega, edges), 0)
 
     def one(i, j):
-        if cls is TetraWeights:
+        if kind == "single":
             dE = (eCorners[0][:, i] - eCorners[0][:, j])[None]
             return (delta_weights_tetra(edges, dE) if average else delta_values_tetra(omega, dE))[0]
-        dEcenter = eCenter[0, i:i + 1] - eCenter[0, j:j + 1]
-        dEcorners = (eCorners[0][..., i] - eCorners[0][..., j])[None]
-        return (delta_weights_parallel(edges, dEcenter, dEcorners) if average
-                else delta_values_parallel(omega, dEcenter, dEcorners))[0]
+        return parallel_delta(omega, eCenter[0, i] - eCenter[0, j], eCorners[0][..., i] - eCorners[0][..., j], edges)
 
     for (gi, gj), res in zip(pairs, result):
         expected = np.mean([one(i, j) for i in range(*gi) for j in range(*gj)], axis=0)
@@ -237,8 +242,8 @@ def test_delta_values_range(dE):
     corners = np.empty((2, 2, 2))
     corners[0, 0, 0], corners[1, 1, 1], corners[0, 1, 0], corners[1, 0, 1] = dE
     corners[1, 0, 0] = corners[0, 1, 1] = corners[0, 0, 1] = corners[1, 1, 0] = dE.mean()
-    expected = sum(delta_tetra(omega, dE.mean(), *t) for t in _tetrahedra_parallel(corners)) / 12
-    np.testing.assert_allclose(delta_values_parallel(omega, np.array([dE.mean()]), corners[None])[0], expected,
+    expected = sum(delta_tetra(omega, *t) for t in parallelepiped_tetrahedra(dE.mean(), corners)) / 12
+    np.testing.assert_allclose(parallel_delta(omega, dE.mean(), corners), expected,
                                rtol=0, atol=1e-12)
 
 
@@ -423,8 +428,8 @@ def test_delta_values_flat(spread):
         values = delta_values_tetra(omega, corners[None])[0]
         assert values.sum() * 0.1 == pytest.approx(1, rel=1e-12)
         assert np.count_nonzero(values) == 1 and abs(omega[np.argmax(values)] - corners.mean()) <= 0.05 + 1e-12
-        parallel = delta_values_parallel(omega, np.array([dE]), (dE + spread * np.arange(8).reshape(2, 2, 2) / 7)[None])
-        assert parallel[0].sum() * 0.1 == pytest.approx(1, rel=1e-12)
+        parallel = parallel_delta(omega, dE, dE + spread * np.arange(8).reshape(2, 2, 2) / 7)
+        assert parallel.sum() * 0.1 == pytest.approx(1, rel=1e-12)
     # a single frequency has no interval: nothing is taken as flat
     np.testing.assert_array_equal(delta_values_tetra(np.array([0.75]), np.full((1, 4), 0.8)), 0)
     single = delta_values_tetra(np.array([0.75]), np.array([[0.7, 0.72, 0.78, 0.8]]))
@@ -465,10 +470,11 @@ def test_delta_values_flat_intervals():
     corners = np.full((2, 2, 2), 0.6)
     corners[1] = 0.9
     fine = np.linspace(-0.125, 1.25, 1101)[:-1] + 0.000625
-    values = delta_values_parallel(fine, np.array([0.6]), corners[None])[0]
-    expected_values = sum(delta_values_tetra(fine, np.array([[0.6, *t]])) for t in _tetrahedra_parallel(corners))[0] / 12
+    values = parallel_delta(fine, 0.6, corners)
+    tetrahedra = parallelepiped_tetrahedra(0.6, corners)
+    expected_values = sum(delta_values_tetra(fine, t[None]) for t in tetrahedra)[0] / 12
     np.testing.assert_allclose(values, expected_values, rtol=1e-14, atol=0)
-    flat_tetrahedra = sum(np.ptp([0.6, *t]) == 0 for t in _tetrahedra_parallel(corners))
+    flat_tetrahedra = sum(np.ptp(t) == 0 for t in tetrahedra)
     assert flat_tetrahedra == 2
     i = np.searchsorted(fine, 0.6) - 1  # the flat ones are in one interval around 0.6
     assert values.sum() * 0.00125 == pytest.approx(1, rel=1e-3)
