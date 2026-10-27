@@ -717,21 +717,23 @@ class SpinVelocity(Matrix_ln):
     """spin current matrix elements. SpinVelocity.matrix[ik, m, n, a, s] = <u_mk|{v^a S^s}|u_nk> / 2"""
 
     def __init__(self, data_K, spin_current_type, external_terms=True):
+        super(Matrix_ln, self).__init__(data_K, external_terms=external_terms)
         if spin_current_type == "simple":
             # tight-binding case
-            super().__init__(self._J_H_simple(data_K, external_terms=external_terms))
+            super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms))
         elif spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
-            super().__init__(self._J_H_qiao(data_K, external_terms=external_terms))
+            super().__init__(self._J_H_qiao(data_K, external_terms=self.external_terms))
         elif spin_current_type == "ryoo":
             # J. H. Ryoo et al PRB (2019)
-            super().__init__(self._J_H_ryoo(data_K, external_terms=external_terms))
+            super().__init__(self._J_H_ryoo(data_K, external_terms=self.external_terms))
         else:
             raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
         self.transformTR = transform_ident
         self.transformInv = transform_odd
 
-    def _J_H_simple(self, data_K, external_terms=True):
+    @classmethod
+    def _J_H_simple(cls, data_K, external_terms=True):
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
         S = data_K.Xbar('SS')
@@ -739,7 +741,8 @@ class SpinVelocity(Matrix_ln):
         J = cached_einsum("klms,kmna->klnas", S, V)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
-    def _J_H_qiao(self, data_K, external_terms=True):
+    @classmethod
+    def _J_H_qiao(cls, data_K, external_terms=True):
         if not external_terms:
             raise NotImplementedError(
                 "spin Hall qiao without external terms is not implemented yet. Use `SHC_type='simple'`")
@@ -756,7 +759,8 @@ class SpinVelocity(Matrix_ln):
             data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
         return (J + J.swapaxes(1, 2).conj()) / 2
 
-    def _J_H_ryoo(self, data_K, external_terms=True):
+    @classmethod
+    def _J_H_ryoo(cls, data_K, external_terms=True):
         if not external_terms:
             raise NotImplementedError(
                 "spin Hall ryoo without external terms is not implemented yet. Use `SHC_type='simple'`")
@@ -800,6 +804,18 @@ class SpinOmega(Formula_ln):
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
+
+
+class SpinVelVel(FormulaProduct):
+    """product of the spin current and the velocity within the states at the Fermi level, J^s_a v_b with indices order [m,n,a,b,s]"""
+
+    def __init__(self, data_K, spin_current_type="ryoo", **parameters):
+        super().__init__([SpinVelocity(data_K, spin_current_type, **parameters),
+                          data_K.covariant('Ham', commader=1)],
+                         name='SpinVelVel')
+
+    def nn(self, ik, inn, out):
+        return super().nn(ik, inn, out).swapaxes(-1, -2)
 
 
 def _hermitize_band_matrix(full):

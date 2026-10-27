@@ -309,6 +309,11 @@ class Formula_SHC(Formula):
 
 
 class SHC(DynamicCalculator):
+    r"""Spin Hall conductivity at finite frequency (:math:`S/m`), from the interband terms of the spin current and
+    the Berry connection. It is symmetrized as a quantity even under time reversal.
+
+    Without time-reversal symmetry, the intraband (relaxation-time) term is not included. Its static limit is given
+    by :class:`~wannierberri.calculators.static.SpinOhmic_FermiSurf`."""
 
     allow_tetra = True
     tetra_deltas = (True, False)
