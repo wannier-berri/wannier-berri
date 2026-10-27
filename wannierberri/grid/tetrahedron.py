@@ -187,9 +187,8 @@ def delta_weights_tetra(edges, dE):
     """the averages of delta(dE - omega) over a tetrahedron, as a function of omega, over the intervals of omega
     between the given edges, where dE is linear and given at its 4 corners: for each interval, the fraction of the
     tetrahedron where dE is within it, divided by its width. omega itself is not needed, only the edges. (With
-    tetra_delta_average=True, the dynamic calculators take the edges at the midpoints between neighbouring
-    frequencies, and as far beyond the two ends, and the average over each interval is the result at the frequency
-    inside it.)
+    tetra_delta_average=True, the dynamic calculators take the edges from `omega_intervals`, and the average over
+    each interval is the result at the frequency inside it.)
 
     edges : increasing array (nomega + 1,); dE : array (npair, 4); returns an array (npair, nomega). The weights times
     the widths of the intervals sum to the fraction of the tetrahedron where edges[0] < dE < edges[-1]"""
@@ -282,9 +281,12 @@ def _omega_in_range(omega, emin, emax):
 
 
 @njit
-def _omega_intervals(omega):
-    """the edges of the intervals around the increasing values omega, at the midpoints between them (and as far
-    beyond the ends); for a single value, the whole axis (then nothing is taken as flat)"""
+def omega_intervals(omega):
+    """the edges of the intervals around the increasing values omega: at the midpoints between neighbouring values,
+    and as far beyond the two ends, so that each value has one interval around it. For example, omega = 0, 0.25,
+    0.5, 1 gives the edges -0.125, 0.125, 0.375, 0.75, 1.25. For a single value, the whole axis.
+
+    Used for the averages over the intervals (tetra_delta_average=True), and for flat dE (see `_add_delta_values`)"""
     if omega.shape[0] < 2:
         return np.array([-np.inf, np.inf])
     edges = np.empty(omega.shape[0] + 1)
@@ -321,7 +323,7 @@ def delta_values_tetra(omega, dE):
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
-    edges = _omega_intervals(omega)
+    edges = omega_intervals(omega)
     for i in range(dE.shape[0]):
         _add_delta_values(res[i], omega, edges, 1., dE[i, 0], dE[i, 1], dE[i, 2], dE[i, 3])
     return res
@@ -333,7 +335,7 @@ def delta_values_parallel(omega, dEcenter, dEcorners):
 
     dEcenter : array (npair,), dEcorners : array (npair, 2, 2, 2); returns an array (npair, nomega)"""
     res = np.zeros((dEcenter.shape[0], omega.shape[0]))
-    edges = _omega_intervals(omega)
+    edges = omega_intervals(omega)
     for i in range(dEcenter.shape[0]):
         for t in _tetrahedra_parallel(dEcorners[i]):
             _add_delta_values(res[i], omega, edges, 1. / 12, dEcenter[i], t[0], t[1], t[2])

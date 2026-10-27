@@ -2,6 +2,7 @@ import numpy as np
 import abc
 import functools
 from ..utility import Gaussian, Lorentzian, FermiDirac, cached_einsum
+from ..grid.tetrahedron import omega_intervals
 from ..result import EnergyResult
 from .calculator import Calculator
 from ..formula.covariant import SpinVelocity
@@ -96,8 +97,8 @@ class DynamicCalculator(Calculator, abc.ABC):
                                  + (", with at least two values for tetra_delta_average=True" if tetra_delta_average
                                     else "") + f"; got {omega}")
             if tetra_delta_average:
-                mid = (w[1:] + w[:-1]) / 2
-                self.omega_edges = np.concatenate(([2 * w[0] - mid[0]], mid, [2 * w[-1] - mid[-1]]))
+                # the edges of the intervals around the frequencies, at the midpoints between them
+                self.omega_edges = omega_intervals(w)
         elif tetra_delta_average:
             raise ValueError("tetra_delta_average=True requires tetra_delta=True")
         self.kwargs_formula = copy(kwargs_formula)
