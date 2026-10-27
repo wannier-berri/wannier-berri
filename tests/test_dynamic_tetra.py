@@ -13,7 +13,8 @@ from wannierberri.calculators import dynamic
 from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetrahedron import (TetraWeights, TetraWeightsParal, _edges_in_range, _omega_in_range,
+from wannierberri.grid.tetrahedron import (FLAT_FRACTION, TetraWeights, TetraWeightsParal, _edges_in_range,
+                                           _omega_in_range,
                                            _tetrahedra_parallel, delta_tetra, delta_values_parallel,
                                            delta_values_tetra, delta_weights_parallel, delta_weights_tetra,
                                            weights_tetra)
@@ -226,9 +227,10 @@ def test_delta_values(dE):
 
 
 @pytest.mark.parametrize("dE", [[1.0, 1.2, 1.4, 2.0], [-3.0, -2.0, -1.0, 0.5], [3.5, 4.0, 4.5, 6.0],
-                                [-9.0, -8.0, -7.0, -6.0], [0.5, 0.5, 0.5, 1.0 + 1e-13], [1.0, 1.0, 1.0, 1.0]])
+                                [-9.0, -8.0, -7.0, -6.0], [0.5, 0.5, 0.5, 1.0 + 1e-13]])
 def test_delta_values_range(dE):
-    """the values are computed only at the frequencies within the range of dE: the same as at all frequencies"""
+    """the values are computed only at the frequencies within the range of dE: the same as at all frequencies (for
+    a flat dE, see `test_delta_values_flat`)"""
     omega = np.arange(-5.0, 5.001, 0.25)
     dE = np.array(dE)
     np.testing.assert_allclose(delta_values_tetra(omega, dE[None])[0], delta_tetra(omega, *dE), rtol=0, atol=1e-12)
@@ -247,7 +249,7 @@ class KuboReference:
     k-point, divided into 12 tetrahedra, and the density of a linear function on a tetrahedron by Bloechl et al.,
     PRB 49, 16223 (1994))"""
 
-    def __init__(self, system, N, efermi, omega):
+    def __init__(self, system, N, efermi, omega, kBT=0):
         self.hoppings, self.spin = system.test_hoppings, system.test_spin
         self.lattice = system.real_lattice
         self.nw = system.num_wann
@@ -262,7 +264,10 @@ class KuboReference:
         offdiagonal = ~np.eye(self.nw, dtype=bool)
         self.A = np.zeros_like(V)  # the Berry connection A_nm = i v_nm / (E_m - E_n) for n != m
         self.A[:, :, offdiagonal] = 1j * V[:, :, offdiagonal] / gap[None][:, :, offdiagonal]
-        self.f = (self.E < efermi).astype(float)
+        if kBT == 0:
+            self.f = (self.E < efermi).astype(float)
+        else:
+            self.f = 1 / (1 + np.exp((self.E - efermi) / kBT))
         self.corners = np.zeros((2, 2, 2, len(self.k), self.nw))
         for i in np.ndindex(2, 2, 2):
             self.corners[i] = np.linalg.eigvalsh(self.hamiltonian(self.k + (np.array(i) - 0.5) / N)[0])
@@ -323,7 +328,7 @@ class KuboReference:
     def calculate(self, name, method, edges=None):
         """the result [omega, ...] of the calculator `name` with the delta function by `method`"""
         omega, eta = self.omega, 0.1
-        shape = {"JDOS": (), "OpticalConductivity": (3, 3), "SHC": (3, 3, 3)}[name]
+        shape = {"JDOS": (), "OpticalConductivity": (3, 3), "SHC": (3, 3, 3), "InjectionCurrent": (3, 3, 3)}[name]
         result = np.zeros((len(omega),) + shape, dtype=complex)
         for ik in range(len(self.k)):
             for n in range(self.nw):
@@ -339,6 +344,10 @@ class KuboReference:
                         cfac.imag = np.pi * self.delta(ik, m, n, method, edges)
                         element = 1j * self.A[:, ik, n, m][:, None] * self.A[:, ik, m, n][None, :]
                         result += (occupation * gap * cfac)[:, None, None] * element
+                    elif name == "InjectionCurrent":  # (v_nn - v_mm)^a A_nm^b A_mn^c delta(E_n - E_m - omega)
+                        dv = self.V[:, ik, n, n] - self.V[:, ik, m, m]
+                        element = np.einsum("a,b,c->abc", dv, self.A[:, ik, n, m], self.A[:, ik, m, n])
+                        result += (occupation * self.delta(ik, n, m, method, edges))[:, None, None, None] * element
                     else:  # SHC with the spin current {S, v} / 2
                         cfac = 1 / (-gap - omega - 1j * eta)
                         cfac.imag = np.pi * self.delta(ik, n, m, method, edges)
@@ -346,23 +355,26 @@ class KuboReference:
                                        for g in range(3)] for a in range(3)])  # [a, gamma]
                         element = np.imag(J[:, None, :] * (-1j * self.A[:, ik, m, n])[None, :, None])
                         result += (occupation * cfac / 2)[:, None, None, None] * element
-        factor = {"JDOS": 1, "OpticalConductivity": factors.factor_opt, "SHC": factors.factor_shc}[name]
+        factor = {"JDOS": 1, "OpticalConductivity": factors.factor_opt, "SHC": factors.factor_shc,
+                  "InjectionCurrent": factors.factor_injection_current}[name]
         return result * factor / (len(self.k) * self.volume)
 
 
-@pytest.mark.parametrize("average", [False, True])
-def test_against_kubo_reference(average):
-    """JDOS, optical and spin Hall conductivities against the Kubo formulas written out with numpy (`KuboReference`),
-    to 1e-10. With the smearing, the reference reproduces the calculators, which checks the reference itself; with
-    the tetrahedron method, the results differ from those with the smearing by more than the result itself."""
+@pytest.mark.parametrize("average, kBT", [(False, 0), (True, 0), (False, 0.3)])
+def test_against_kubo_reference(average, kBT):
+    """JDOS, optical and spin Hall conductivities and the injection current against the Kubo formulas written out with
+    numpy (`KuboReference`), to 1e-10, also at a finite temperature (where all pairs of bands contribute). With the
+    smearing, the reference reproduces the calculators, which checks the reference itself; with the tetrahedron
+    method, the results differ from those with the smearing by more than half of the result."""
     system = random_system()
     N = 4
     omega = np.arange(0.05, 40, 0.1)
-    reference = KuboReference(system, N, EFERMI[0], omega)
+    reference = KuboReference(system, N, EFERMI[0], omega, kBT=kBT)
     edges = dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=True).omega_edges
-    for name, parameters in [("JDOS", {}), ("OpticalConductivity", {}), ("SHC", {"SHC_type": "simple"})]:
+    for name, parameters in [("JDOS", {}), ("OpticalConductivity", {}), ("SHC", {"SHC_type": "simple"}),
+                             ("InjectionCurrent", {})]:
         calculator = getattr(dynamic, name)
-        kwargs = dict(Efermi=EFERMI, omega=omega, **parameters)
+        kwargs = dict(Efermi=EFERMI, omega=omega, kBT=kBT, **parameters)
         result = run(system, {"smear": calculator(smr_type="Gaussian", smr_fixed_width=0.1, **kwargs),
                               "tetra": calculator(tetra_delta=True, tetra_delta_average=average, **kwargs)}, NK=N)
         smear = reference.calculate(name, "smearing")
@@ -391,13 +403,48 @@ def stored_results():
 
 def test_against_stored_reference():
     """all five calculators against stored results, to 1e-10. These were computed with this implementation, so they
-    guard against changes; for JDOS, OpticalConductivity and SHC they agree with `KuboReference`."""
+    guard against changes; for JDOS, OpticalConductivity, SHC and InjectionCurrent they agree with `KuboReference`
+    (ShiftCurrent is checked independently only by `test_frequency_integral`)."""
     reference = np.load(REFERENCE_FILE)
     result = stored_results()
     assert sorted(result) == sorted(reference.files)
     for key, value in result.items():
         np.testing.assert_allclose(value, reference[key], rtol=0, atol=1e-10 * np.abs(reference[key]).max(),
                                    err_msg=key)
+
+
+@pytest.mark.parametrize("spread", [0, 1e-13, 1e-9, 0.5 * FLAT_FRACTION * 0.1])
+def test_delta_values_flat(spread):
+    """for a (nearly) flat dE, the delta function cannot be sampled at the frequencies: its weight is put into the
+    interval around the nearest one (here 0.1 wide), also over a parallelepiped"""
+    omega = np.arange(0.05, 2, 0.1)
+    for dE in (0.73, 0.75 + 1e-13, 0.8):  # inside an interval, at an edge, at a frequency
+        corners = dE + spread * np.array([0, 0.3, 0.7, 1.0])
+        values = delta_values_tetra(omega, corners[None])[0]
+        assert values.sum() * 0.1 == pytest.approx(1, rel=1e-12)
+        assert np.count_nonzero(values) == 1 and abs(omega[np.argmax(values)] - corners.mean()) <= 0.05 + 1e-12
+        parallel = delta_values_parallel(omega, np.array([dE]), (dE + spread * np.arange(8).reshape(2, 2, 2) / 7)[None])
+        assert parallel[0].sum() * 0.1 == pytest.approx(1, rel=1e-12)
+    # a single frequency has no interval: nothing is taken as flat
+    np.testing.assert_array_equal(delta_values_tetra(np.array([0.75]), np.full((1, 4), 0.8)), 0)
+    single = delta_values_tetra(np.array([0.75]), np.array([[0.7, 0.72, 0.78, 0.8]]))
+    assert single[0, 0] == pytest.approx(delta_tetra(np.array([0.75]), 0.7, 0.72, 0.78, 0.8)[0], rel=1e-14)
+
+
+def test_jdos_constant_splitting():
+    """two bands with a constant splitting 2J: the JDOS is (1/V) delta(omega - 2J), with the weight in the interval
+    around 2J, without the tetrahedron method being able to resolve it, also with omega exactly at 2J"""
+    J = 0.4
+    hoppings = {(0, 0, 0): J * SIGMA[2]}
+    for a in range(3):
+        R = tuple(int(a == b) for b in range(3))
+        hoppings[R] = hoppings[tuple(-r for r in R)] = T0 / 2 * S0  # bands T0 sum_a cos k_a -/+ J, an insulator
+    system = make_system(hoppings, 2)
+    domega = 0.01
+    for omega in (np.arange(0.005, 2, domega), np.arange(0, 2, domega)):
+        jdos = run(system, {"x": dynamic.JDOS(Efermi=[0.0], omega=omega, tetra_delta=True)}, NK=4)["x"][0]
+        assert jdos.sum() * domega == pytest.approx(1 / A ** 3, rel=1e-10)
+        assert abs(omega[np.argmax(jdos)] - 2 * J) <= domega / 2 + 1e-12
 
 
 def jdos_reference():
@@ -451,8 +498,10 @@ def test_frequency_integral(calculator, parameters, copies, average):
     domega = 0.01
     omega = np.arange(0.005, 60, domega)  # the band gaps of the model are below 40 eV
     kwargs = dict(Efermi=EFERMI, omega=omega, **parameters)
-    result = run(system, {"tetra": calculator(tetra_delta=True, tetra_delta_average=average, **kwargs),
-                          "smear": calculator(smr_type="Gaussian", smr_fixed_width=0.1, **kwargs)}, NK=6)
+    smearing = dict(smr_type="Gaussian", smr_fixed_width=0.1)  # the same on both sides: if the tetrahedron method
+    # were not used, the difference would vanish
+    result = run(system, {"tetra": calculator(tetra_delta=True, tetra_delta_average=average, **smearing, **kwargs),
+                          "smear": calculator(**smearing, **kwargs)}, NK=6)
     difference = result["tetra"] - result["smear"]
     scale = np.abs(difference).sum(axis=1).max() * domega
     assert scale > 0.1 * np.abs(result["smear"]).sum(axis=1).max() * domega
@@ -466,9 +515,9 @@ def test_frequency_integral(calculator, parameters, copies, average):
 ])
 def test_against_dense_smearing(calculator, parameters, tolerance):
     """for a two-dimensional model, against the Gaussian smearing on a much denser grid, averaged over 0.5 eV. The
-    differences are dominated by the principal part and by the grid, so this checks the sign and the normalisation
-    rather than the accuracy: it fails if the delta function is taken with the wrong sign of the frequency (by 45%
-    for the optical conductivity and by 160% for the spin Hall conductivity)."""
+    differences are dominated by the principal part and by the grid, so this is only a rough check (e.g. of the
+    sign): it fails if the delta function is taken with the wrong sign of the frequency (by 45% for the optical
+    conductivity and by 160% for the spin Hall conductivity). The accurate comparison is with `KuboReference`."""
     system = random_system(seed=2, two_dimensional=True)
     domega = 0.01
     omega = np.arange(0.005, 20, domega)

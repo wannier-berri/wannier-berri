@@ -49,7 +49,12 @@ class DynamicCalculator(Calculator, abc.ABC):
         `SHC` still uses the Lorentzian of width ``smr_fixed_width``, as with ``smr_type='Gaussian'``. The band
         energies are interpolated linearly between the corners of the parallelepiped (or tetrahedron) around each
         k-point, while the matrix elements and the occupation factors are taken at the k-point itself. ``omega``
-        must be finite and increasing. Requires a grid (not a path).
+        must be finite and increasing. Requires a grid (not a path). For a band pair whose energy difference is
+        constant within a tetrahedron (to 1e-3 of the spacing of ``omega``), the delta function cannot be sampled
+        at the frequencies, and its weight is put into the interval around the nearest frequency, as with
+        ``tetra_delta_average=True``. As for the static calculators with the tetrahedron method, the cells are not
+        symmetric under the point group, so the results with ``use_irred_kpt=True`` or ``symmetrize=True`` differ
+        from those on the full grid without symmetrization, by the error of the discretization.
     tetra_delta_average : bool
         With ``tetra_delta=True``, give at each frequency the average of the delta function over the interval
         between the midpoints to the neighbouring frequencies (``omega`` then needs at least two values), instead of
