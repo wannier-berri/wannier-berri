@@ -12,8 +12,8 @@ import wannierberri as wberri
 from wannierberri.calculators import dynamic
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetrahedron import (TetraWeights, TetraWeightsParal, delta_weights_parallel, delta_weights_tetra,
-                                           weights_tetra)
+from wannierberri.grid.tetrahedron import (TetraWeights, TetraWeightsParal, _edges_in_range, delta_weights_parallel,
+                                           delta_weights_tetra, weights_tetra)
 from wannierberri.system import System_R
 
 S0 = np.eye(2, dtype=complex)
@@ -144,6 +144,20 @@ def test_delta_weights_range(dE):
             occ += weights_tetra(edges, dE.mean(), face[0, 0], face[1, 0], face[1, 1], 0)
     np.testing.assert_allclose(delta_weights_parallel(edges, np.array([dE.mean()]), corners[None])[0],
                                np.diff(occ) / np.diff(edges) / 12, rtol=0, atol=1e-12)
+
+
+def test_python_versions():
+    """the compiled functions give the same results as their Python versions (which the coverage report can trace)"""
+    rng = np.random.default_rng(4)
+    edges = np.arange(-5.0, 5.001, 0.5)
+    dE = np.concatenate([rng.normal(size=(6, 4)) * 2, [[1.0, 1.0, 1.0, 1.0], [7.0, 8.0, 8.5, 9.0]]])
+    np.testing.assert_allclose(delta_weights_tetra.py_func(edges, dE), delta_weights_tetra(edges, dE), rtol=0, atol=1e-12)
+    centre = dE.mean(axis=1)
+    corners = centre[:, None, None, None] + rng.normal(size=(len(dE), 2, 2, 2))
+    np.testing.assert_allclose(delta_weights_parallel.py_func(edges, centre, corners),
+                               delta_weights_parallel(edges, centre, corners), rtol=0, atol=1e-12)
+    for emin, emax in [(-6.0, -5.5), (-1.0, 1.0), (1.0, 1.0), (4.0, 6.0), (6.0, 7.0)]:
+        assert _edges_in_range.py_func(edges, emin, emax) == _edges_in_range(edges, emin, emax)
 
 
 @pytest.mark.parametrize("cls", [TetraWeights, TetraWeightsParal])
