@@ -247,6 +247,10 @@ def run(
             if not calc.allow_grid:
                 raise ValueError(
                     f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
+            if symmetrize and not getattr(calc, "allow_symmetrize", True):
+                raise ValueError(
+                    f"The result of calculator `{key}` is not symmetric under the point group: "
+                    "use `use_irred_kpt=False` and `symmetrize=False` (the defaults of run() are True)")
         logger.debug("All calculators are compatible")
 
     if dump_results:

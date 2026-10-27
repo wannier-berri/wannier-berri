@@ -467,14 +467,9 @@ class SymWann:
 def _rotate_matrix(X, L, R):
     """
     Rotate a matrix X[m,n,...] with L[m,n] and R[m,n] matrices
-    comptes L.dot(X).dot(R) where X can have additional dimensions in the end, which are not touched
-    assumed to be a faster version of np.einsum("ij,jk...,kl->il...", L, X, R)
     """
     return cached_einsum("ij,jk...,kl->il...", L, X, R)
-    # _ = np.tensordot(L, X, axes=((1,), (0,)))
-    # _ = np.tensordot(R, _, axes=((0,), (1,)))
-    # return _.swapaxes(0, 1)
-
+    
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
     """transforms a matrix X[iR, m,n,...] into a nested dictionary like
