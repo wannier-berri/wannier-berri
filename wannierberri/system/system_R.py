@@ -552,7 +552,7 @@ class System_R(System):
             notexclude = np.logical_not(exclude)
             self.rvec.iRvec = self.rvec.iRvec[notexclude]
             self.rvec.clear_cached()
-            print(f"number of R-vectors after excluding non-periodic directions: {self.rvec.nRvec}, self.rvec.iRvec.shape = {self.rvec.iRvec.shape}")   
+            print(f"number of R-vectors after excluding non-periodic directions: {self.rvec.nRvec}, self.rvec.iRvec.shape = {self.rvec.iRvec.shape}")
             for X in list(self._XX_R):
                 self.set_R_mat(X, self.get_R_mat(X)[notexclude], reset=True)
 
