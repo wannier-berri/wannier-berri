@@ -231,6 +231,23 @@ def test_delta_values(dE):
     assert np.all(values >= 0)
 
 
+@pytest.mark.parametrize("offset, spread", [(5.0, 1e-3), (10.0, 1e-4), (20.0, 1e-2)])
+def test_density_small_spread(offset, spread):
+    """the density (`weights_tetra` with der=1, used by `delta_tetra` and by the Fermi-surface quantities) for
+    values with a small spread far from zero, against the derivative of the occupation (der=0). A polynomial in the
+    absolute energies would lose precision here (by 0.2, 4e3 and 3e-3 relative)."""
+    rng = np.random.default_rng(7)
+    for _ in range(20):
+        e = offset + rng.random(4) * spread
+        w = np.linspace(e.min(), e.max(), 1003)[1:-1]
+        h = 1e-7 * spread
+        reference = (weights_tetra(w + h, *e, der=0) - weights_tetra(w - h, *e, der=0)) / (2 * h)
+        away = np.min(np.abs(w[:, None] - e[None]), axis=1) > 1e-5 * spread  # not at the kinks
+        values = weights_tetra(w, *e, der=1)
+        np.testing.assert_allclose(values[away], reference[away], rtol=0, atol=1e-4 * np.abs(reference).max())
+        np.testing.assert_array_equal(delta_tetra(w, *e), values)
+
+
 @pytest.mark.parametrize("dE", [[1.0, 1.2, 1.4, 2.0], [-3.0, -2.0, -1.0, 0.5], [3.5, 4.0, 4.5, 6.0],
                                 [-9.0, -8.0, -7.0, -6.0], [0.5, 0.5, 0.5, 1.0 + 1e-13]])
 def test_delta_values_range(dE):

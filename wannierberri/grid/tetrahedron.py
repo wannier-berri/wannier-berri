@@ -25,6 +25,23 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     nEF = len(efall)
     occ = np.zeros(nEF)
 
+    if der == 1:
+        # the density (the derivative of the occupation), written in the differences from the corner values: the
+        # polynomial in efall below loses precision when the spread of the values is small compared with the values
+        for i in range(nEF):
+            ef = efall[i]
+            if ef <= e1 or ef >= e4:
+                continue
+            elif ef < e2:
+                occ[i] = 3 * (ef - e1) ** 2 / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+            elif ef < e3:
+                x = ef - e2
+                occ[i] = (3 * (e2 - e1) + 6 * x - 3 * (e3 - e1 + e4 - e2) * x ** 2 / ((e3 - e2) * (e4 - e2))) / (
+                    (e3 - e1) * (e4 - e1))
+            else:
+                occ[i] = 3 * (e4 - ef) ** 2 / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+        return occ
+
     # the accurate behaviour is a bit slower, but in some cases the faster implementation gives wrong results
     # in particular, when the energies e0,e1,e2,e3 are close to each other
     # TODO : check how to handle this with derivatives
@@ -206,28 +223,9 @@ def delta_weights_tetra(edges, dE):
 @njit
 def delta_tetra(omega, e0, e1, e2, e3):
     """delta(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its corners, at each
-    of the given values of omega (the density of the values of dE within the tetrahedron, normalised to 1). For
-    nearly equal values, they are separated as in `weights_tetra`."""
-    e = np.array(sorted([e0, e1, e2, e3]))
-    diff_min = 1e-12
-    for i in range(3):
-        if e[i + 1] - e[i] < diff_min:
-            e[i + 1] = e[i] + diff_min
-    e1, e2, e3, e4 = e
-    res = np.zeros(omega.shape[0])
-    for i in range(omega.shape[0]):
-        w = omega[i]
-        if w <= e1 or w >= e4:
-            continue
-        elif w < e2:
-            res[i] = 3 * (w - e1) ** 2 / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-        elif w < e3:
-            x = w - e2
-            res[i] = (3 * (e2 - e1) + 6 * x - 3 * (e3 - e1 + e4 - e2) * x ** 2 / ((e3 - e2) * (e4 - e2))) / (
-                (e3 - e1) * (e4 - e1))
-        else:
-            res[i] = 3 * (e4 - w) ** 2 / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-    return res
+    of the given values of omega: the density of the values of dE within the tetrahedron, normalised to 1, which is
+    `weights_tetra` with der=1"""
+    return weights_tetra(omega, e0, e1, e2, e3, der=1)
 
 
 @njit
