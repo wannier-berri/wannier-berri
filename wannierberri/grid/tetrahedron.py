@@ -31,8 +31,8 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
 
     if der == 1:
         # the density (the derivative of the occupation), written in the differences from the corner values as in
-        # Bloechl et al.: the polynomial in efall below loses precision when the spread of the values is small
-        # compared with the values
+        # Bloechl et al. It is the derivative of the polynomial in efall below (used for der = 0, 2, 3), which
+        # loses precision when the spread of the values is small compared with the values
         for i in range(nEF):
             ef = efall[i]
             if ef <= e1 or ef >= e4:
@@ -108,19 +108,6 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
                 occ[i] = c20 + ef * (c21 + ef * (c22 + c23 * ef))
             else:  # c1
                 occ[i] = c10 + ef * (c11 + ef * (c12 + c13 * ef))
-    elif der == 1:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef >= e4:
-                occ[i] = 0.
-            elif ef < e1:
-                occ[i] = 0.
-            elif ef >= e3:  # c3
-                occ[i] = c31 + ef * (2 * c32 + 3 * c33 * ef)
-            elif ef >= e2:  # c2
-                occ[i] = c21 + ef * (2 * c22 + 3 * c23 * ef)
-            else:  # c1
-                occ[i] = c11 + ef * (2 * c12 + 3 * c13 * ef)
     elif der == 2:
         for i in range(nEF):
             ef = efall[i]
