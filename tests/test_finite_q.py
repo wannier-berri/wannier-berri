@@ -112,8 +112,8 @@ def kubo(irvec, H, q, omega, ef, kBT, nk=NK, eta=ETA):
     omega = np.array(omega)
     volume = abs(np.linalg.det(LATTICE))
     # j = K A with A in units of hbar / (e Angstrom); E = i omega A
-    return (elementary_charge ** 2 / hbar / angstrom * K / (len(kpoints) * volume)
-            / (1j * (omega[:, None, None] + 1j * eta)))
+    return (elementary_charge ** 2 / hbar / angstrom * K / (len(kpoints) * volume) /
+            (1j * (omega[:, None, None] + 1j * eta)))
 
 
 def calculator(q, case, **kwargs):

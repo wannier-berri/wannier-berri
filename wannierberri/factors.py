@@ -65,3 +65,14 @@ m_spin_prefactor_SI = -0.5 * electron_g_factor * hbar / electron_mass
 # hbar*1e20/elementary_charge ~= 65821.19569
 #
 m_spin_prefactor = m_spin_prefactor_SI * (hbar * 1e20 / elementary_charge)
+
+
+
+# factor for Peierls substitution, to convert the integral of A(r) . dr to a phase factor
+# A is in units of Tesla*Angstrom, dr is in units of Angstrom, so the integral is in units of Tesla*Angstrom^2
+# First, we convert Tesla*Angstrom^2 to SI units: 1 Tesla = 1 kg/(A*s^2), 1 Angstrom^2 = 1e-20 m^2, so the integral is in units of kg*m^2/(A*s^2) * 1e-20 = 1e-20 kg*m^2/(A*s^2)
+# Then, we multiply by e/hbar to get a dimensionless phase factor:
+# e in SI units is 1.602176634e-19 A*s, hbar in SI units is 1.054571817e-34 J*s = 1.054571817e-34 kg*m^2/s,
+# so e/hbar =  1.519267447e15 A*s^2/kg*m^2 = 1.519267447e15 1/(Tesla*m^2) = 1.519267447e-5 1/(Tesla*Angstrom^2)
+# Tesla is SI is kg/(A*s^2),
+factor_peierls = 1j * elementary_charge / hbar * 1e-20

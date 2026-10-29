@@ -24,9 +24,9 @@ class Rvectors:
 
         Parameters
         ----------
-        shift_left : int
+        shifts_left : int
             The left shift value for the Rvector (in reduced coordinates).
-        shift_right : int
+        shifts_right : int
             The right shift value for the Rvector (in reduced coordinates).
         """
         self.lattice = np.array(lattice)
@@ -399,6 +399,13 @@ class Rvectors:
         R+tj-ti.
         """
         return self.cRvec[:, None, None, :] + self.shifts_diff_cart[None, :, :, :]
+
+    @cached_property
+    def mid_point_hop(self):
+        """
+        mid_hop = (R+tj-ti)/2
+        """
+        return self.cRvec_shifted / 2 + self.shifts_left_cart[None, :, None, :]
 
 
     @cached_property

@@ -86,6 +86,11 @@ class System_R(System):
         self.wannier_to_atom_map = np.array(wannier_to_atom_map) if wannier_to_atom_map is not None else None
         self._XX_R = dict()
 
+    def set_atoms_trivial(self):
+        """sets atom_centers_red and wannier_to_atom_map to trivial values, i.e. one atom per Wannier function
+        """
+        self.atom_centers_red = self.wannier_centers_red.copy()
+        self.wannier_to_atom_map = np.arange(self.num_wann)
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_red=None):
         """
@@ -1184,6 +1189,11 @@ class System_R(System):
         from .system_supercell import get_system_supercell
         return get_system_supercell(self, supercell_matrix, **parameters)
 
+    def check_Hermitean(self, key='Ham'):
+        XX_R = self.get_R_mat(key)
+        XX_R_conj = self.rvec.conj_XX_R(XX_R)
+        diff = XX_R - XX_R_conj
+        return np.max(np.abs(diff))
 
     def transform(self, symop):
         wannier_centers_red = self.wannier_centers_red
@@ -1208,6 +1218,26 @@ class System_R(System):
                 XX_R_new = XX_R_new.conj() * parity_TR[key]
             self.set_R_mat(key, XX_R_new, reset=True)
         return self
+
+    def set_peierls(self, **kwargs):
+        """
+        Set the Peierls substitution for the system. This is useful for adding a magnetic field to the system.
+
+        Parameters
+        ----------
+        kwargs : dict
+            The parameters for the Peierls substitution. See :func:`~wannierberri.system.peierls.get_peierls_phases` for details.
+        """
+        nonham = set(self._XX_R.keys()) - {'Ham'}
+        if len(nonham) > 0:
+            logger.warning(f"Peierls substitution is only applied to the Hamiltonian. The following matrices will not be affected: {nonham}")
+        from .peierls import get_peierls_phases
+        phases = get_peierls_phases(rvectors=self.rvec, **kwargs)
+        self._XX_R['Ham'] *= phases
+        check_Hermitean = self.check_Hermitean(key='Ham')
+        if check_Hermitean > 1e-10:
+            logger.warning(f"Peierls substitution resulted in a non-Hermitian Hamiltonian. Max deviation from Hermiticity: {check_Hermitean}."
+                           " To avoid this - use a vector potential  varaying in a non-periodic direction")
 
 
 def get_nonperiodic_normal(real_lattice):
