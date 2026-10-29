@@ -683,7 +683,7 @@ class LFAHE_spin_fsea(StaticCalculator):
         self.Formula = frml_pert.PertOmegaZeemanSpin
         self.fder = 0
         super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
-        
+
 
 class OmegaOmega(StaticCalculator):
 

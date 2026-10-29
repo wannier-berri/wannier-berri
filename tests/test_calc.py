@@ -11,7 +11,7 @@ from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
-from .common_systems import Efermi_Fe, Efermi_Si
+from .common_systems import Efermi_Chiral, Efermi_Fe, Efermi_Si
 from .test_formula import get_datak
 from wannierberri.calculators.dynamic import JDOS
 from pytest import approx
@@ -33,6 +33,7 @@ def check_calculator(compare_any_result):
                factor=1,
                transformTR=None,
                transformInv=None,
+               void_if_missing=True
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_k_class = wberri.data_K.get_data_k_class_from_system(system)
@@ -56,7 +57,7 @@ def check_calculator(compare_any_result):
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             print(f"Comparing with reference file {path_filename_ref}")
-            result_ref = result_type.from_npz(path_filename_ref)
+            result_ref = result_type.from_npz(path_filename_ref, void_if_missing=void_if_missing)
             print(f"result_ref = {result_ref}")
         if transformTR is not None:
             result_ref.transformTR = transformTR
@@ -355,14 +356,32 @@ def test_jdos():
         assert result == approx(expected, abs=1e-8), f"jdos({omega}, '{smr_type}') = {result}, expected {expected}"
 
 
-def test_calc_LFAHE(system_Fe_W90, check_calculator):
+@pytest.mark.parametrize("ext_terms", [True, False])
+@pytest.mark.parametrize("int_terms", [True, False])
+@pytest.mark.parametrize("fermi", ["sea", "surf"])
+def test_LFAHE(system_Fe_W90, check_calculator, ext_terms, int_terms, fermi):
     system = deepcopy(system_Fe_W90)
+    if fermi == "sea":
+        calc = static.LFAHE_spin_fsea
+    else:
+        calc = static.AHC_Zeeman_spin
+    ext_terms_str = "ext" if ext_terms else "noext"
+    int_terms_str = "int" if int_terms else "noint"
+    calc_name = f"{calc.__name__}_{ext_terms_str}_{int_terms_str}"
+    calculator = calc(Efermi=Efermi_Fe, 
+                                    kwargs_formula={"external_terms": ext_terms, 
+                                                    "internal_terms": int_terms})
+    check_calculator(system, calculator, calc_name, void_if_missing=False,
+                     compare_zero=not (ext_terms or int_terms))
+
+
+def test_LFAHE_tb(system_Chiral_left, check_calculator):
+    system = deepcopy(system_Chiral_left)
 
     from wannierberri.calculators.static import LFAHE_spin_fsea, AHC_Zeeman_spin
-    kwargs = dict(Efermi=Efermi_Fe,
-                  )
+    kwargs = dict(Efermi=Efermi_Chiral)
     calculators = dict(surf=AHC_Zeeman_spin(**kwargs),
                        fsea=LFAHE_spin_fsea(**kwargs),
                        )
     for name, calc in calculators.items():
-        check_calculator(system, calc, f"Fe_LFAHE_{name}", do_not_compare=False)
+        check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False,)
