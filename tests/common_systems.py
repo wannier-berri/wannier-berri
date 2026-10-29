@@ -62,8 +62,8 @@ def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"])
         kwargs = {}
         for tag in tags_compute:
             kwargs["write" + tag.upper()] = True
-
-        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
+        from wannierberri import utils
+        nb_out_list = utils.mmn2uHu.run_mmn2uHu(
             seedname, INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced", **kwargs)
         nb_out = nb_out_list[0]
 
@@ -130,7 +130,6 @@ def create_files_GaAs_W90():
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
-
     return data_dir
 
 
@@ -327,6 +326,7 @@ def system_Fe_gpaw_soc_dowannierise(wandata_Fe_gpaw):
     wandata = copy.deepcopy(wandata_Fe_gpaw)
     wandata.wannierise(num_iter=100, sitesym=True,
                     froz_min=-1000, froz_max=15,
+                    savechk=False,
                     localise_num_iter=0)
     system = SystemSOC.from_wannierdata(wandata, berry=True)
     return system
@@ -481,9 +481,6 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
     if double:
         system.double_spin()
     if symmetrize:
-        iRold = [tuple(R) for R in system.rvec.iRvec]
-        print("Rvectors before symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
-        print(f"wannier-diff {system.wannier_centers_red[:, None, :] - system.wannier_centers_red[None, :, :]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
                                 [0.375, -0.125, -0.125],
@@ -492,15 +489,6 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
             atom_name=['bond'] * 4,
             proj=['bond:s'],
             soc=double)
-        print("Rvectors after symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
-        iRnew = [tuple(R) for R in system.rvec.iRvec]
-        for rnew in iRnew:
-            if rnew not in iRold:
-                print("New Rvector", rnew)
-                for r in iRold:
-                    if np.all(np.array(rnew) - np.array(r) % 2 == 0):
-                        print("    Old Rvector", r)
-
 
     return system
 
@@ -535,6 +523,17 @@ def system_Si_W90_JM_sym_OOGGFF(create_files_Si_W90):
     system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
                                   matrices=matrices_Si_GGOOFF,
                                   symmetrize=True)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_OOGGFF_uc(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=True)
+    system.shift_wannier_centers_to_unit_cell()
     return system
 
 

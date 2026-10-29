@@ -1,15 +1,11 @@
 
+from .system_R import System_R
+from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
+from ..fourier.rvectors import Rvectors
+from .needed_data import NeededData
+import numpy as np
 import functools
 import logging
-import warnings
-import numpy as np
-
-from .needed_data import NeededData
-
-from ..fourier.rvectors import Rvectors
-from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
-from .system_R import System_R
-
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +19,7 @@ def get_system_w90(
     ws_dist_tol=1e-5,
     silent_symmetrize=True,
     soc=None,
-    soc_component=None,
+    soc_ispin=None,
     **parameters
 ):
     """
@@ -69,10 +65,14 @@ def get_system_w90(
     :class:`~wannierberri.system.system.System_R`
     """
     if transl_inv_MV:
-        warnings.warn("transl_inv_MV is deprecated and will be removed in the future. "
+        logger.warning("transl_inv_MV is deprecated and will be removed in the future. "
                       "Use transl_inv_JM instead.")
+    logger.debug("parameters before NeededData.get_parameters: " + str(parameters))
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
+    logger.debug(f"needed_data.matrices: {needed_data.matrices}")
+    logger.debug(f"parameters after NeededData.get_parameters: {parameters}")
+
     system = System_R(**parameters)
 
 
@@ -83,7 +83,7 @@ def get_system_w90(
             raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         # Deactivate transl_inv_MV if Jae-Mo's scheme is used
         if transl_inv_MV:
-            warnings.warn("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
+            logger.warning("Jae-Mo's scheme does not apply Marzari & Vanderbilt formula for"
                           "the band-diagonal matrix elements of the position operator.")
             transl_inv_MV = False
     else:
@@ -97,6 +97,12 @@ def get_system_w90(
         symmetrize = True
     logger.info(f"irreducible : {wandata.irreducible}, symmetrize set to {symmetrize}")
     chk = wandata.chk
+    if hasattr(chk, 'wannier_names'):
+        system.wannier_names = chk.wannier_names
+    if hasattr(chk, 'atom_centers_red'):
+        system.atom_centers_red = chk.atom_centers_red
+    if hasattr(chk, 'wannier_to_atom_map'):
+        system.wannier_to_atom_map = chk.wannier_to_atom_map
     system.real_lattice, system.recip_lattice = real_recip_lattice(chk.real_lattice, chk.recip_lattice)
     system.set_pointgroup(spacegroup=wandata.get_spacegroup())
     kptirr, weights_k = wandata.kptirr_system
@@ -143,9 +149,11 @@ def get_system_w90(
         system.set_R_mat('SS', system.rvec.q_to_R(chk.get_SS_q(wandata.spn, kptirr=kptirr, weights_k=weights_k)))
 
     if soc is not None:
+        if soc_ispin is None:
+            raise ValueError("soc_ispin must be specified when soc is provided")
         dVsoc = np.zeros((chk.num_kpts, chk.num_wann, chk.num_wann, 3), dtype=complex)
         for ik, w in zip(kptirr, weights_k):
-            data = soc.data[ik][*soc_component].transpose(1, 2, 0)  # shape (num_wann, num_wann, 3)
+            data = soc.data[ik][soc_ispin, soc_ispin].transpose(1, 2, 0)  # shape (num_wann, num_wann, 3)
             dVsoc[ik] = chk.wannier_gauge(data, ik, ik) * w  # Hamiltonian gauge
         dVsoc = 0.5 * (dVsoc + dVsoc.swapaxes(1, 2).conj())
         system.set_R_mat('dV_soc', system.rvec.q_to_R(dVsoc))
@@ -344,15 +352,6 @@ def get_system_w90(
             system.set_R_mat('SHA',
                             sum_matrix_b(getter_from_chk=getter_from_chk, nd_cart=2, nb=1))
             logger.debug("setting SHA - OK")
-
-        if soc is not None:
-            dV_soc = soc.data
-            dV_soc_wann_ik = np.zeros((chk.num_kpts, system.num_wann, system.num_wann, 3), dtype=complex)
-            for ik, w in zip(kptirr, weights_k):
-                vt = chk.v_matrix[ik].T.conj()
-                v = chk.v_matrix[ik]
-                dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][0, 0][:, :, :][:, :, :], v)
-            system.set_R_mat('dV_soc', system.rvec.q_to_R(dV_soc_wann_ik), reset=True)
 
 
         del expjphase1, expjphase2

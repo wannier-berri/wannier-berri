@@ -15,14 +15,14 @@ class NeededData:
     needed_files['SR'] = ['spn', 'mmn']
     needed_files['SA'] = ['siu', 'mmn']
     needed_files['SHA'] = ['shu', 'mmn']
+    needed_files['Ham'] = ['eig']
 
     @classmethod
     def get_parameters(cls, **parameters):
         """selects the parameters needed for this class from a dictionary of parameters,
         and removes them from the dictionary"""
-
-        remove_keys = []
         return_dict = {}
+        return_parameters = {}
         for key, val in parameters.items():
             if key in ["berry", "morb", "spin",
                        "SHCryoo", "SHCqiao",
@@ -31,11 +31,11 @@ class NeededData:
                        "keepOOGG", "FF", "OOGG_to_FF",
                        "chk"]:
                 return_dict[key] = val
-                if key not in ["force_internal_terms_only"]:
-                    remove_keys.append(key)
-        for key in remove_keys:
-            del parameters[key]
-        return parameters, return_dict
+                if key in ["force_internal_terms_only"]:
+                    return_parameters[key] = val
+            else:
+                return_parameters[key] = val
+        return return_parameters, return_dict
 
     def __init__(self,
                  berry=False,

@@ -1,12 +1,13 @@
 
+import datetime
+from collections.abc import Iterable
 import os
 from functools import lru_cache
 import shutil
 import numpy as np
-import warnings
+import logging
+logger = logging.getLogger(__name__)
 
-from collections.abc import Iterable
-import datetime
 
 
 # Global cache to store einsum paths
@@ -54,7 +55,7 @@ def conjugate_basis(basis):
 def real_recip_lattice(real_lattice=None, recip_lattice=None):
     if recip_lattice is None:
         if real_lattice is None:
-            warnings.warn("usually need to provide either with real or reciprocal lattice."
+            logger.warning("usually need to provide either with real or reciprocal lattice."
                           "If you only want to generate a random symmetric tensor - that it fine")
             return None, None
         else:
@@ -277,7 +278,7 @@ def orthogonalize(u):
         U, _, VT = np.linalg.svd(u, full_matrices=False)
         return U @ VT
     except np.linalg.LinAlgError as e:
-        warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        logger.warning(f"SVD failed with error '{e}', using non-orthogonalized matrix")
         return u
 
 
@@ -410,3 +411,26 @@ def normalize_type(obj, recursive=True):
     if recursive and isinstance(obj, dict):
         return {k: normalize_type(v, recursive=True) for k, v in obj.items()}
     return obj
+
+
+def get_alat_espresso(seedname_pw):
+    """
+    get the lattice parameter in angstrom from the pwscf input file
+
+    Parameters
+    ----------
+    seedname_pw : str
+        the seedname of the pwscf input file (including relative/absolute path, but not including the extension)
+
+    Returns
+    -------
+    alat_angstrom : float
+        the lattice parameter in angstrom
+    """
+    from irrep.parsers.espresso import ParserEspresso
+    parser = ParserEspresso(prefix=seedname_pw)
+    from scipy import constants
+    bohr_angstrom = constants.physical_constants['Bohr radius'][0] / constants.angstrom
+    _Lattice, _positions, _typat, alat_bohr = parser.parse_lattice()
+    alat_angstrom = alat_bohr * bohr_angstrom
+    return alat_angstrom

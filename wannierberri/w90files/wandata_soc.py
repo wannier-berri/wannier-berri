@@ -47,9 +47,10 @@ class WannierDataSOC(WannierData):
             return [f for f in files if f in cls.files_proper]
 
     @classmethod
-    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False, ignore_missing_files=False):
+    def from_npz(cls, seedname, nspin=None, files=None, irreducible=False, ignore_missing_files=False,
+                 allow_pickle=True):
         """Create Wannier90DataSOC from NPZ files."""
-        cell = np.load(seedname + ".cell.npz", allow_pickle=True)
+        cell = np.load(seedname + ".cell.npz", allow_pickle=allow_pickle)
         if nspin is None:
             if 'nspin' in cell:
                 nspin = cell["nspin"]
@@ -62,12 +63,14 @@ class WannierDataSOC(WannierData):
         data_up = WannierData.from_npz(seedname=seedname + "-spin-0",
                                        files=files_ud,
                                        irreducible=irreducible,
-                                       ignore_missing_files=ignore_missing_files)
+                                       ignore_missing_files=ignore_missing_files,
+                                       allow_pickle=allow_pickle)
         if nspin == 2 and not altermagnetic:
             data_down = WannierData.from_npz(seedname=seedname + "-spin-1",
                                              files=files_ud,
                                              irreducible=irreducible,
-                                             ignore_missing_files=ignore_missing_files)
+                                             ignore_missing_files=ignore_missing_files,
+                                             allow_pickle=allow_pickle)
         else:
             data_down = None
         try:
@@ -75,7 +78,7 @@ class WannierDataSOC(WannierData):
             soc = SOC.from_npz(seedname + ".soc.npz")
         except FileNotFoundError:
             if ignore_missing_files:
-                logger.warning(f"Warning: SOC file {seedname}.soc.npz not found. SOC will be set to None.")
+                logger.warning(f"SOC file {seedname}.soc.npz not found. SOC will be set to None.")
                 soc = None
             else:
                 raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")
@@ -301,17 +304,17 @@ class WannierDataSOC(WannierData):
         if projections is not None:
             logger.info("Using 'projections' for both spin channels.")
             if projections_up is not None:
-                logger.info("Warning: 'projections' will override 'projections_up'.")
+                logger.warning("'projections' will override 'projections_up'.")
             projections_up = projections
             if projections_down is not None:
-                logger.info("Warning: 'projections' will override 'projections_down'.")
+                logger.warning("'projections' will override 'projections_down'.")
             projections_down = projections
         if self.nspin == 2 and not self.altermagnetic:
             assert bandstructure_up is not None and bandstructure_down is not None, "two bandstructures (up and down) must be provided for nspin=2."
         elif self.nspin == 1:
             if bandstructure is not None:
                 if bandstructure_up is not None:
-                    Warning("bandstructure_up will be ignored since nspin=1., using `bandstructure` instead.")
+                    logger.warning("bandstructure_up will be ignored since nspin=1., using `bandstructure` instead.")
                 bandstructure_up = bandstructure
         self.data_up.set_projections(projections=projections_up,
                                      bandstructure=bandstructure_up,

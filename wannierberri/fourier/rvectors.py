@@ -1,12 +1,12 @@
 
-from functools import cached_property
-import logging
-from typing import Iterable
-import warnings
-
-import numpy as np
-from ..utility import clear_cached, iterate3dpm, iterate_nd
 from .fft import FFT_R_to_k, execute_fft
+from ..utility import clear_cached, iterate3dpm, iterate_nd
+import numpy as np
+from functools import cached_property
+from typing import Iterable
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 logger = logging.getLogger(__name__)
@@ -425,15 +425,21 @@ class Rvectors:
 
     @cached_property
     def iR0(self):
-        return self.iRvec.tolist().index([0, 0, 0])
+        return self.iR((0, 0, 0))
 
     @cached_property
     def index_R(self):
         return {tuple(R): i for i, R in enumerate(self.iRvec)}
 
-    def iR(self, R):
-        R = np.array(np.round(R), dtype=int).tolist()
-        return self.iRvec.tolist().index(R)
+    def iR(self, R, allow_none=False):
+        R = tuple(np.array(np.round(R), dtype=int).tolist())
+        try:
+            return self.index_R[R]
+        except KeyError:
+            if allow_none:
+                return None
+            else:
+                raise KeyError(f"R={R} is not in the list of R-vectors")
 
     def add_minus_R(self, XX_R_dict):
         mapping = np.all(self.iRvec[:, None, :] + self.iRvec[None, :, :] == 0, axis=2)
@@ -452,7 +458,7 @@ class Rvectors:
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
         if len(notfound) > 0 and not self.ignore_mR_not_found:
             for ir in notfound:
-                warnings.warn(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+                logger.warning(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):

@@ -1,17 +1,19 @@
+from ..utility import cached_einsum
 from functools import cached_property
 from time import time
-import warnings
 
 import numpy as np
 
-from ..utility import cached_einsum
+import logging
+logger = logging.getLogger(__name__)
+
 
 try:
     import pyfftw
     PYFFTW_IMPORTED = True
 except Exception as err:
     PYFFTW_IMPORTED = False
-    warnings.warn(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
+    logger.warning(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
 
 
 def fft_W(inp, axes, inverse=False, destroy=True):

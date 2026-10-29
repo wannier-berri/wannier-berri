@@ -116,7 +116,8 @@ class Formula_SDCT_surf_II(Formula_SDCT):
                 Bn_M1 = np.diagonal(B_M1, axis1=1, axis2=2).transpose(0, 3, 1, 2)
                 # --- Formula --- #
                 self.summ += Vn[:, :, :, None, None] * Bn_M1[:, :, None, :, :]
-                self.summ = self.summ - self.summ.swapaxes(3, 4)
+                # antisymmetric in (a, b): with one band index, these are axes 2 and 3 of (nk, n, a, b, c)
+                self.summ = self.summ - self.summ.swapaxes(2, 3)
 
     def trace_ln(self, ik, inn1, inn2):  # There is no sum over l
         return self.summ[ik, inn1].sum(axis=0)

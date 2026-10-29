@@ -11,7 +11,9 @@ class Formula(abc.ABC):
     def __init__(self, data_K=None, internal_terms=True, cross_terms=True, external_terms=True,
                  transformTR=None, transformInv=None, ndim=0, OO_uIu=False,
                  FF_rotAA=False,
-                 CCab_antisym=False
+                 CCab_antisym=False,
+                 project_on_WF=None,
+                 project_on_atoms=None,
                  ):
         self.internal_terms = internal_terms
         self.external_terms = external_terms
@@ -26,6 +28,8 @@ class Formula(abc.ABC):
         self.ndim = ndim
         self.transformTR = transformTR
         self.transformInv = transformInv
+        self.project_WF = project_on_WF
+        self.project_atoms = project_on_atoms
 
 
 class Formula_ln(Formula):
@@ -82,7 +86,7 @@ class Matrix_ln(Formula_ln):
     "anything that can be called just as elements of a matrix"
 
     def __init__(self, matrix, **kwargs):
-        super().__init__(ndim=len(matrix.shape) - 3, **kwargs)
+        super().__init__(ndim=matrix.ndim - 3, **kwargs)
         self.matrix = matrix
 
     def ln(self, ik, inn, out):
@@ -93,7 +97,7 @@ class Matrix_ln(Formula_ln):
 
 
 class Matrix_GenDer_ln(Formula_ln):
-    "generalized erivative of MAtrix_ln"
+    "generalized erivative of Matrix_ln"
 
     def __init__(self, matrix, matrix_comader, D, transformTR=None, transformInv=None):
         self.A = matrix
@@ -165,7 +169,7 @@ class FormulaSum(Formula_ln):
     return an array with same index with first formula.
     """
 
-    def __init__(self, formula_list, sign, index_list, name="unknown", additive=True):
+    def __init__(self, formula_list, sign, index_list, name="unknown"):
         if type(formula_list) not in (list, tuple):
             formula_list = [formula_list]
         assert len(formula_list) > 0, 'formula_list is empty'
@@ -181,7 +185,7 @@ class FormulaSum(Formula_ln):
         self.index = index_list
         self.sign = sign
         self.ndim = formula_list[0].ndim
-        self.additive = additive
+        self._additive = np.all([f.additive for f in formula_list])
 
     def nn(self, ik, inn, out):
         matrices = [frml.nn(ik, inn, out) for frml in self.formulae]
@@ -193,8 +197,9 @@ class FormulaSum(Formula_ln):
     def ln(self, ik, inn, out):
         raise NotImplementedError()
 
+    @property
     def additive(self):
-        return self.additive
+        return self._additive
 
 
 class DeltaProduct(Formula_ln):

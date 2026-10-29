@@ -23,7 +23,7 @@ def get_datak(system, k=[0.1, 0.2, -0.3], NKFFT=[4, 3, 2]):
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
     data_k_class = wberri.data_K.get_data_k_class_from_system(system)
-    data_k = data_k_class(system, dK=[0, 0, 0], grid=grid, Kpoint=kpoint, fftlib='fftw')
+    data_k = data_k_class(system, dK=np.array([0, 0, 0]), grid=grid, Kpoint=kpoint, fftlib='fftw')
     return data_k
 
 
@@ -35,7 +35,7 @@ FORMULA_REFERENCE_FILENAMES = {
 }
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def datak_Fe():
     system_Fe_sym_W90 = wberri.system.System_R.from_npz(os.path.join(REF_DIR, "systems", "system_Fe_sym_W90_OSD"))
     return get_datak(system_Fe_sym_W90, k=[0.1, 0.2, -0.3], NKFFT=[1, 2, 3])
@@ -121,7 +121,7 @@ def test_Hermitean(datak_Fe, terms):
 
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def check_formula_output():
     def __inner(value, filename, rel_tol=1e-6, atol_zero=1e-10):
         path_out = os.path.join(OUTPUT_DIR, "formula")

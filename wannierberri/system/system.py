@@ -1,12 +1,12 @@
 
-import os
-import sys
-import warnings
-import numpy as np
-from functools import cached_property
-
-from ..utility import real_recip_lattice
 from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal, transform_ident, transform_odd
+from ..utility import real_recip_lattice
+from functools import cached_property
+import numpy as np
+import os
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 def num_cart_dim(key):
@@ -66,6 +66,7 @@ class System:
                  name='wberri',
                  silent=False,
                  spinor=None,
+                 wannier_names=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -74,7 +75,7 @@ class System:
         self.name = name
         self.silent = silent
         self.spinor = spinor
-
+        self.wannier_names = np.array(wannier_names) if wannier_names is not None else None
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
@@ -84,12 +85,6 @@ class System:
         self.is_phonon = False
         self.force_internal_terms_only = force_internal_terms_only
 
-    @property
-    def logfile(self):
-        if self.silent:
-            return open(os.devnull, 'w')
-        else:
-            return sys.stdout
 
     def save_npz(self, *args, **kwargs):
         """alias for :func:`~wannierberri.system.System.to_npz`"""
@@ -137,7 +132,7 @@ class System:
         Will be removed in the future.
         """
         # deprecation warning
-        warnings.warn("The method `set_symmetry` is deprecated. Use `set_pointgroup` instead", DeprecationWarning)
+        logger.warning("DeprecationWarning: The method `set_symmetry` is deprecated. Use `set_pointgroup` instead")
         self.set_pointgroup(symmetry_gen=symmetry_gen, pointgroup=pointgroup, spacegroup=spacegroup)
 
 
@@ -265,10 +260,7 @@ class System:
         a wrapper for set_pointgroup_from_structure
         This method is deprecated and will be removed in future versions.
         """
-        warnings.warn(
-            "set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.",
-            DeprecationWarning
-        )
+        logger.warning("DeprecationWarning: set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.")
         self.set_pointgroup_from_structure()
 
     def set_pointgroup_from_structure(self):
@@ -302,7 +294,7 @@ class System:
         if self.magnetic_moments is None:
             symmetry_gen.append(TimeReversal)
         elif not tr_found:
-            warnings.warn(
+            logger.warning(
                 "you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
                 f"probably it is because you have an old spglib version {spglib.__version__}. "
                 "we suggest upgrading to spglib>=2.0.2")
@@ -315,7 +307,7 @@ class System:
     def get_bandstructure(self,
                           dk=0.05,
                           parallel=True,
-                          return_path=True,
+                          return_path=None,
                           path=None,
                           **kwargs):
         """Calculate the band structure along high-symmetry lines in the BZ. 
@@ -343,6 +335,8 @@ class System:
         """
         from ..grid.path import Path
         from ..evaluate_k import evaluate_k_path
+        if return_path is None:
+            return_path = path is None
         cell = self.get_spglib_cell(ignore_no_atoms=True)
         if path is not None:
             if not isinstance(path, Path):

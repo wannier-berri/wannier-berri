@@ -10,6 +10,11 @@ import numpy as np
 import os
 import pytest
 from .common_systems import Efermi_Fe, Efermi_Si
+from .test_formula import get_datak
+from wannierberri.calculators.dynamic import JDOS
+from pytest import approx
+from wannierberri.system.system_kp import SystemKP
+
 
 
 datak_Fe = datak_Fe_
@@ -146,6 +151,7 @@ def check_save_result():
         pytest.param("system_Si_W90_JM_sym", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym"),
         pytest.param("system_Si_W90_JM_sym_FF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_FF"),
         pytest.param("system_Si_W90_JM_sym_OOGGFF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF"),
+        pytest.param("system_Si_W90_JM_sym_OOGGFF_uc", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF_uc"),
         pytest.param("system_Si_W90_JM_OOGG", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGG"),
         pytest.param("system_Si_W90_JM_FF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_FF"),
         pytest.param("system_Si_W90_JM_OOGGFF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGGFF"),
@@ -250,3 +256,97 @@ def test_band_resolved(tetra, system_Fe_sym_W90, datak_Fe):
     rel_diff = np.max(np.abs(res_bands - res_all) / scale)
     print(f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}")
     assert rel_diff < 1e-8, f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}"
+
+
+
+@pytest.fixture(scope="module")
+def datak_GaAs(system_GaAs_W90):
+    dK = [0.1, 0.2, 0.3]
+    NKFFT = [3, 3, 3]
+    data_K = get_datak(system_GaAs_W90, k=dK, NKFFT=NKFFT)
+    return data_K
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_GaAs(datak_GaAs, tetra, shift):
+    from .common_systems import Efermi_GaAs
+
+    data_K = datak_GaAs
+    Efermi = Efermi_GaAs
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "quantum_metric": static.QuantumMetric_FermiSea,
+        "quantum_metric_dipole": static.QuantumMetricDipole_FermiSea,
+        "quantum_metric_dqm": static.QuantumMetric_Vel_DQ,
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_Fe(datak_Fe, tetra, shift):
+    from .common_systems import Efermi_Fe
+
+    data_K = datak_Fe
+    Efermi = Efermi_Fe
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "ahc": static.AHC,
+        "Morb": static.Morb,
+        "bcd": static.BerryDipole_FermiSea,
+        "ohmic": static.Ohmic_FermiSea,
+        "gme": static.GME_orb_FermiSea,
+        "gme_spin": static.GME_spin_FermiSea,
+        # "hall": static.Hall_classic_FermiSea,  # This test does not pass - a bug to be investigasted
+        "sbcd": static.SpinBerryDipole_FermiSea,
+        "nldrude": static.NLDrude_FermiSea
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+
+
+def test_jdos():
+
+    system = SystemKP(Ham=lambda k: np.diag([-0.5, 0.5]).astype(complex))
+    datak = get_datak(system)
+
+
+    print(f"cell volume = {system.cell_volume}")
+    width = 0.1
+    expected_value_gauss = 1. / (width * np.sqrt(np.pi) * system.cell_volume)
+    expected_value_lorentz = 1.0 / (np.pi * width) / system.cell_volume * (
+        1 - 1 / (1 + 4 / width**2)   # the correction is due to the finite width of the Lorentzian, which is not negligible for width=0.1 for delta(0.5-(-0.5)-(-1)) = delta(2)
+    )
+
+
+    for (omega, smr_type), expected in [
+        (([1.0], 'Gaussian'), expected_value_gauss),
+        (([-1.0], 'Gaussian'), -expected_value_gauss),
+        (([0.0], 'Lorentzian'), 0),
+        (([1.0], 'Lorentzian'), expected_value_lorentz),
+        (([-1.0], 'Lorentzian'), -expected_value_lorentz),
+        (([0.0, -1.0], 'Lorentzian'), np.array([0, -expected_value_lorentz]))
+    ]:
+        result = JDOS(Efermi=[0.0], omega=np.array(omega), smr_fixed_width=0.1,
+                      smr_type=smr_type, kBT=0)(datak).data[0]
+        assert result == approx(expected, abs=1e-8), f"jdos({omega}, '{smr_type}') = {result}, expected {expected}"

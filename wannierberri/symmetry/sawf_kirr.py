@@ -1,9 +1,9 @@
-import warnings
-import numpy as np
-from ..utility import orthogonalize
-from .utility import get_inverse_block, rotate_block_matrix
 from .sawf import SymmetrizerSAWF, VoidSymmetrizer
+from .utility import get_inverse_block, rotate_block_matrix
+from ..utility import orthogonalize
+import numpy as np
 import logging
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
@@ -96,7 +96,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                     if verbose:
                         logger.info(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
                 else:
-                    warnings.warn(f"Warning: max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not among the  upper"
+                    logger.warning(f"max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not among the  upper"
                                 f" bands({no_exclude_bands}:{self.nb}) bands, this may indicate inaccuracy in the input data")
                     maxerr = max(maxerr, max_error_in_blocks[i])
             else:
@@ -129,7 +129,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                 return Usym
             Uprev = Usym_ortho
         else:
-            logger.info(f"Warning: symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
+            logger.warning(f"symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
                   "; probably the input data are not perfectly symmetrizable, or the provided projections are not"
                   "compatible with the irreps of the DFT bands."
             )

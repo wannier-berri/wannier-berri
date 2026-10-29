@@ -11,6 +11,8 @@ from .common import OUTPUT_DIR, REF_DIR
 import wannierberri as wberri
 from wannierberri.utility import alpha_A, beta_A
 from wannierberri.system.system_R import System_R
+from wannierberri.system.system_soc import SystemSOC
+
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
@@ -48,7 +50,7 @@ def check_system():
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
-        system.to_npz(out_dir)
+        system.to_npz(out_dir, extra_properties=properties, R_matrices=matrices)
         # for key in matrices:
         #     print(f"saving {key}", end="")
         #     np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
@@ -65,6 +67,8 @@ def check_system():
             except FileNotFoundError as err:
                 if XX:
                     data_ref = np.load(os.path.join(REF_DIR, "systems", name, "_XX_R_" + key + ".npz"))['arr_0']
+                elif key == 'nRvec':
+                    data_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"))['arr_0'].shape[0]
                 else:
                     raise err
             if XX:
@@ -608,3 +612,50 @@ def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, al
     ref_data = np.load(ref_data_file)
     for key in out_dict:
         assert out_dict[key] == pytest.approx(ref_data[key]), f"Mismatch in {key} for system Fe_gpaw_soc_{name}"
+
+
+def test_system_soc_nspin_1(system_Fe_gpaw_soc):
+    """Test that the system with SOC and nspin=1 is equivalent to the system without SOC"""
+    system_soc = system_Fe_gpaw_soc
+    system_nospin = SystemSOC(system_up=system_soc.system_up, cell=system_soc.cell)
+    assert system_nospin.nspin == 1, "System without spin should have nspin=1"
+    assert system_nospin.rvec is None, "System without spin should not have rvec"
+    assert system_nospin.has_soc, "System without spin should have SOC"
+    path_tmp = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_nspin_1")
+    system_nospin.to_npz(path_tmp)
+    system_nospin_loaded = SystemSOC.from_npz(path_tmp)
+    assert system_nospin_loaded.nspin == 1, "Loaded system without spin should have nspin=1"
+    assert system_nospin_loaded.rvec is None, "Loaded system without spin should not have rvec"
+    assert system_nospin_loaded.has_soc, "Loaded system without spin should retain SOC"
+    system_nospin_loaded.set_soc_axis()
+
+
+def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
+    """A non-periodic direction with R vectors must warn and exclude them.
+
+    Regression test for ``System_R.check_periodic``: the exclusion branch
+    formatted the nonexistent ``self.nRvec``, called the nonexistent
+    ``self.get_X_mat``, and sliced the Wannier axes instead of the R-vector axis
+    (upstream issue #610).
+    """
+
+    class _RVec(Rvectors):
+        
+        def __init__(self):
+            self.iRvec = np.array([[0, 0, 0], [0, 0, 1], [0, 0, -1]])
+
+        def clear_cached(self):
+            pass
+
+    system = System_R()
+    system.num_wann = 2
+    system.periodic = np.array([True, True, False])
+    system.rvec = _RVec()
+    ham = np.arange(3 * 2 * 2, dtype=float).reshape(3, 2, 2)
+    system.set_R_mat("Ham", ham.copy())
+    system.set_R_mat("AA", np.ones((3, 2, 2)))
+    # system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
+    system.check_periodic()
+    assert system.rvec.iRvec.tolist() == [[0, 0, 0]]
+    assert system.get_R_mat("Ham").tolist() == ham[:1].tolist()
+    assert system.get_R_mat("AA").shape == (1, 2, 2)

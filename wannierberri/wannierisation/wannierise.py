@@ -1,13 +1,13 @@
-from time import time
-import warnings
-import numpy as np
-
-from ..symmetry.sawf_kirr import get_symmetrizer_Zirr, get_symmetrizer_Uirr
-from ..utility import vectorize, select_window_degen
-from ..symmetry.sawf import IrrepsIncompatibleError, VoidSymmetrizer
 from .wannierizer import Wannierizer
-
+from ..symmetry.sawf import IrrepsIncompatibleError, VoidSymmetrizer
+from ..utility import vectorize, select_window_degen
+from ..symmetry.sawf_kirr import get_symmetrizer_Zirr, get_symmetrizer_Uirr
+import numpy as np
+from time import time
 import logging
+logger = logging.getLogger(__name__)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -157,9 +157,9 @@ def wannierise(wandata,
     if sitesym:
         if check_irreps or check_irreps_warn:
             if wandata.symmetrizer.spacegroup.spinor:
-                Warning("The check of irreps is not implemented for spinor case. Skipping the check, leaving to your responsibility")
+                logger.warning("The check of irreps is not implemented for spinor case. Skipping the check, leaving to your responsibility")
             elif np.any([symop.time_reversal for symop in wandata.symmetrizer.spacegroup.symmetries]):
-                Warning("The check of irreps is not implemented for anti-unitary symmetries. Skipping the check, leaving to your responsibility")
+                logger.warning("The check of irreps is not implemented for anti-unitary symmetries. Skipping the check, leaving to your responsibility")
             else:
                 try:
                     symmetrizer.check_windows(frozen=frozen, outer=selected_bands)
@@ -167,8 +167,7 @@ def wannierise(wandata,
                     if check_irreps:
                         raise e
                     elif check_irreps_warn:
-                        warnings.warn(str(e))
-
+                        logger.warning(str(e))
 
 
     if not wandata.has_file("chk"):
@@ -182,10 +181,17 @@ def wannierise(wandata,
                          allow_selected_bands=True
                                            )  # num_wann will be set later from amn
 
+    wandata.chk.set_frozen(frozen=frozen, kpt2kptirr=symmetrizer.kpt2kptirr)
 
     if init == "amn":
         amn = {kpt: wandata.amn.data[kpt] for kpt in kptirr}
         wandata.chk.num_wann = wandata.amn.NW
+        if hasattr(wandata.amn, "wannier_names"):
+            wandata.chk.wannier_names = wandata.amn.wannier_names
+        if hasattr(wandata.amn, "atom_centers_red"):
+            wandata.chk.atom_centers_red = wandata.amn.atom_centers_red
+        if hasattr(wandata.amn, "wannier_to_atom_map"):
+            wandata.chk.wannier_to_atom_map = wandata.amn.wannier_to_atom_map
     elif init == "random":
         if sitesym:
             num_wann = symmetrizer.num_wann
@@ -290,18 +296,20 @@ def wannierise(wandata,
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k if irreducible else None)
     print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
     update_chk(wandata=wandata, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads, print_wcc=print_wcc_chk)
+    # Store the actual outer window for EPW export; irreducible-only output is unsupported.
+    wandata.chk.lwindow = None if irreducible else selected_bands[symmetrizer.kpt2kptirr].copy()
     if not irreducible:
         wcc_chk, spreads_chk = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
         print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")
         if not np.allclose(wcc, wcc_chk, atol=1e-6):
-            warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
+            logger.warning(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
         if not np.allclose(spreads, spreads_chk, atol=1e-2):
-            warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+            logger.warning(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
 
     # if not np.allclose(wcc, wcc_chk, atol=1e-4):
-    #     warnings.warn(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
+    #     logger.warning(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
     # if not np.allclose(spreads, spreads_chk, atol=1e-4):
-    #     warnings.warn(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+    #     logger.warning(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
 
 
     wandata.wannierised = True

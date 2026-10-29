@@ -28,11 +28,11 @@ class EIG(W90_file):
         data = {ik: data[ik] for ik in selected_kpoints}
         return EIG(data=data, NK=NK)
 
-    def to_w90_file(self, seedname):
-        file = open(seedname + ".eig", "w")
+    def to_w90_file(self, seedname, ignore_extension=False):
+        file = self.open_file(seedname, "w", ignore_extension=ignore_extension)
         for ik in range(self.NK):
             for ib in range(self.NB):
-                file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
+                file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik][ib]:17.12f}\n")
 
 
     @classmethod
