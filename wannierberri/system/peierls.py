@@ -105,7 +105,7 @@ def get_peierls_phases(rvectors,
                        B=None, A_direction=None):
     assert (A_func is not None) + (A_matrix is not None) + (B is not None) == 1, "Exactly one of A_cartesian_fun, A_matrix, or B must be provided"
     if A_func is not None:
-        return get_peierls_phases_numerical(rvectors, A_func)
+        return get_peierls_phases_numerical(rvectors, A_func, num_points=num_points)
     elif A_matrix is not None:
         return get_peierls_phases_linear(rvectors, A_matrix, A0=A0)
     elif B is not None:
