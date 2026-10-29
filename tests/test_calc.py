@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from .test_formula import datak_Fe_Gamma as datak_Fe_
 import wannierberri as wberri
 from wannierberri.calculators import static
@@ -55,6 +57,7 @@ def check_calculator(compare_any_result):
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             print(f"Comparing with reference file {path_filename_ref}")
             result_ref = result_type.from_npz(path_filename_ref)
+            print(f"result_ref = {result_ref}")
         if transformTR is not None:
             result_ref.transformTR = transformTR
         if transformInv is not None:
@@ -350,3 +353,16 @@ def test_jdos():
         result = JDOS(Efermi=[0.0], omega=np.array(omega), smr_fixed_width=0.1,
                       smr_type=smr_type, kBT=0)(datak).data[0]
         assert result == approx(expected, abs=1e-8), f"jdos({omega}, '{smr_type}') = {result}, expected {expected}"
+
+
+def test_calc_LFAHE(system_Fe_W90, check_calculator):
+    system = deepcopy(system_Fe_W90)
+
+    from wannierberri.calculators.static import LFAHE_spin_fsea, AHC_Zeeman_spin
+    kwargs = dict(Efermi=Efermi_Fe,
+                  )
+    calculators = dict(surf=AHC_Zeeman_spin(**kwargs),
+                       fsea=LFAHE_spin_fsea(**kwargs),
+                       )
+    for name, calc in calculators.items():
+        check_calculator(system, calc, f"Fe_LFAHE_{name}", do_not_compare=False)

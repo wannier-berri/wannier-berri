@@ -11,6 +11,7 @@ from math import ceil
 from copy import copy
 from ..formula import covariant as frml
 from ..formula import basic as frml_basic
+from ..formula import perturbation as frml_pert
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
@@ -672,6 +673,17 @@ class AHC_Zeeman_spin(StaticCalculator):
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
 
+
+class LFAHE_spin_fsea(StaticCalculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        "describe input parameters here"
+        self.Formula = frml_pert.PertOmegaZeemanSpin
+        self.fder = 0
+        super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
+        
 
 class OmegaOmega(StaticCalculator):
 

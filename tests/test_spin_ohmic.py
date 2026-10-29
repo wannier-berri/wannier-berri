@@ -54,8 +54,8 @@ def kubo(M, eta=None):
     sx, sy, _ = SIGMA
     k = 2 * np.pi * np.arange(N) / N
     kx, ky = [x.ravel() for x in np.meshgrid(k, k, indexing="ij")]
-    H = ((T * (np.cos(kx) + np.cos(ky)))[:, None, None] * S0
-         + ALPHA * (np.sin(ky)[:, None, None] * sx - np.sin(kx)[:, None, None] * sy) + sum(m * s for m, s in zip(M, SIGMA)))
+    H = ((T * (np.cos(kx) + np.cos(ky)))[:, None, None] * S0 +
+         ALPHA * (np.sin(ky)[:, None, None] * sx - np.sin(kx)[:, None, None] * sy) + sum(m * s for m, s in zip(M, SIGMA)))
     vx = (-T * np.sin(kx))[:, None, None] * S0 - ALPHA * np.cos(kx)[:, None, None] * sy
     vy = (-T * np.sin(ky))[:, None, None] * S0 + ALPHA * np.cos(ky)[:, None, None] * sx
     V = [vx, vy, np.zeros_like(vx)]
