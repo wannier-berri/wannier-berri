@@ -11,7 +11,6 @@ class PertOmega(Formula_ln):
         # pertScomma - the comma derivative of perturbation, with derivative being the first cartesian index
         super().__init__(data_K, **parameters)
         self.ndimPert = pertS.ndim - 3
-        print("perturbation is {} dimensiona; ".format(self.ndimPert))
         self.D = data_K.Dcov
         self.V = data_K.covariant('Ham', commader=1)
         self.S = Matrix_ln(pertS)
