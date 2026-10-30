@@ -364,7 +364,7 @@ def test_LFAHE(system_Fe_W90, check_calculator, ext_terms, int_terms, fermi):
     if fermi == "sea":
         calc = static.LFAHE_spin_fsea
     else:
-        calc = static.AHC_Zeeman_spin
+        calc = static.LFAHE_spin_fsurf
     ext_terms_str = "ext" if ext_terms else "noext"
     int_terms_str = "int" if int_terms else "noint"
     calc_name = f"{calc.__name__}_{ext_terms_str}_{int_terms_str}"
@@ -378,10 +378,13 @@ def test_LFAHE(system_Fe_W90, check_calculator, ext_terms, int_terms, fermi):
 def test_LFAHE_tb(system_Chiral_left, check_calculator):
     system = deepcopy(system_Chiral_left)
 
-    from wannierberri.calculators.static import LFAHE_spin_fsea, AHC_Zeeman_spin
+    from wannierberri.calculators.static import LFAHE_spin_fsea, LFAHE_spin_fsurf
     kwargs = dict(Efermi=Efermi_Chiral)
-    calculators = dict(surf=AHC_Zeeman_spin(**kwargs),
+    calculators = dict(surf=LFAHE_spin_fsurf(**kwargs),
                        fsea=LFAHE_spin_fsea(**kwargs),
                        )
+    results = {}
     for name, calc in calculators.items():
-        check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False)
+        results[name] = check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False)
+    isfit, msg = results["surf"].fit(results["fsea"], return_message=True)
+    assert isfit, f"LFAHE_spin_fsurf and LFAHE_spin_fsea should not fit each other, but {msg}"

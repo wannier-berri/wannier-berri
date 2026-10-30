@@ -1,5 +1,5 @@
 import pytest
-from wannierberri.calculators.static import LFAHE_spin_fsea, AHC_Zeeman_spin, AHC
+from wannierberri.calculators.static import LFAHE_spin_fsea, LFAHE_spin_fsurf, AHC
 from wannierberri import run
 from wannierberri.grid import Grid
 import numpy as np
@@ -31,14 +31,13 @@ def test_LFAHE_vs_FiniteField(B_tesla, system_Haldane_ptb_double):
     calculators_mag["AHC_ext"] = AHC(**kwargs_ext)
     calculators_nomag["LFAHE_spin_fsea_int"] = LFAHE_spin_fsea(**kwargs_int)
     calculators_nomag["LFAHE_spin_fsea_ext"] = LFAHE_spin_fsea(**kwargs_ext)
-    calculators_nomag["AHC_Zeeman_spin_int"] = AHC_Zeeman_spin(**kwargs_int)
-    calculators_nomag["AHC_Zeeman_spin_ext"] = AHC_Zeeman_spin(**kwargs_ext)
+    calculators_nomag["LFAHE_spin_fsurf_int"] = LFAHE_spin_fsurf(**kwargs_int)
+    calculators_nomag["LFAHE_spin_fsurf_ext"] = LFAHE_spin_fsurf(**kwargs_ext)
     kwargs_run = dict(grid=grid, use_irred_kpt=False, symmetrize=False)  # do not use symmetry because tetrahedron is not very symmetric
     result_non_magnetic = run(system, calculators=calculators_nomag, **kwargs_run).results
     result_magnetic = run(system_magnetic, calculators=calculators_mag, **kwargs_run).results
-    correct_sign_AHC_Z = -1.0  # to match the sign of AHC_Zeeman_spin with AHC
     for term in ["int", "ext"]:
-        ahc_Z_fsurf = correct_sign_AHC_Z * result_non_magnetic[f"AHC_Zeeman_spin_{term}"].data[:, 2, 2]
+        ahc_Z_fsurf = result_non_magnetic[f"LFAHE_spin_fsurf_{term}"].data[:, 2, 2]
         ahc_Z_fsea = result_non_magnetic[f"LFAHE_spin_fsea_{term}"].data[:, 2, 2]
         AHC_finiteB = result_magnetic[f"AHC_{term}"].data[:, 2]
         ahc_linear = (ahc_Z_fsurf + ahc_Z_fsea) * B_tesla

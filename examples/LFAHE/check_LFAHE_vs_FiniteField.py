@@ -44,10 +44,9 @@ result_magnetic = run(system_magnetic, grid, calculators=calculators_mag).result
 
 fig, axes = plt.subplots(2, 1, figsize=(8, 6))
 
-correct_sign_AHC_Z = -1
 
 for ax, term in zip(axes, ["int", "ext"]):
-    ahc_Z_fsurf = correct_sign_AHC_Z * result_non_magnetic[f"AHC_Zeeman_spin_{term}"].data[:, 2, 2] * B_tesla
+    ahc_Z_fsurf = result_non_magnetic[f"AHC_Zeeman_spin_{term}"].data[:, 2, 2] * B_tesla
     ahc_Z_fsea = result_non_magnetic[f"LFAHE_spin_fsea_{term}"].data[:, 2, 2] * B_tesla
     AHC_finiteB = result_magnetic[f"AHC_{term}"].data[:, 2]
     ax.plot(EFermi, AHC_finiteB, label=f"AHC_{term} with B={B_tesla} T")
