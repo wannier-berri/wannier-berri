@@ -19,7 +19,7 @@ system = Haldane_ptb_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_
 B_tesla = 100
 
 system_magnetic = deepcopy(system)
-system_magnetic.add_Zeemann_spin(B=np.array([0, 0, B_tesla]))
+system_magnetic.add_Zeeman_spin(B=np.array([0, 0, B_tesla]))
 EFermi = np.linspace(-2, 2, 1001)
 kwargs = dict(Efermi=EFermi, tetra=True)
 kwargs_ext = dict(kwargs_formula=dict(internal_terms=False, external_terms=True), **kwargs)

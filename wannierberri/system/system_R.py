@@ -764,7 +764,7 @@ class System_R(System):
         shifts_wannier = np.array([shifts[at] for at in self.wannier_to_atom_map])
         self.shift_wannier_centers(shifts_wannier)
 
-    def add_Zeemann_spin(self, B):
+    def add_Zeeman_spin(self, B):
         "B is in Tesla"
         Bfield_spin = np.array(B) * factor_spin
         self.set_R_mat('Ham', self.get_R_mat('SS') @ Bfield_spin, add=True)

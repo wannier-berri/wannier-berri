@@ -19,7 +19,7 @@ def system_Haldane_ptb_double():
 def test_LFAHE_vs_FiniteField(B_tesla, system_Haldane_ptb_double):
     system = system_Haldane_ptb_double
     system_magnetic = deepcopy(system)
-    system_magnetic.add_Zeemann_spin(B=np.array([0, 0, B_tesla]))
+    system_magnetic.add_Zeeman_spin(B=np.array([0, 0, B_tesla]))
     EFermi = np.linspace(-1.8, -1.2, 61)
     kwargs = dict(Efermi=EFermi, tetra=True)
     kwargs_ext = dict(kwargs_formula=dict(internal_terms=False, external_terms=True), **kwargs)
