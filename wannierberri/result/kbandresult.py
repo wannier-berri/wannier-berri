@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from .result import Result
+from .result import Result, VoidResult
 import itertools
 import abc
 from ..symmetry.point_symmetry import transform_from_dict
@@ -29,13 +29,19 @@ class K__Result(Result, abc.ABC):
         self.other_properties = other_properties
 
     @classmethod
-    def from_npz(cls, file_npz):
-        res = np.load(open(file_npz, "rb"), allow_pickle=True)
-        return cls(
-            data=res['data'],
-            transformTR=transform_from_dict(res, 'transformTR'),
-            transformInv=transform_from_dict(res, 'transformInv'),
-        )
+    def from_npz(cls, file_npz, void_if_missing=False):
+        try:
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
+            return cls(
+                data=res['data'],
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
+            )
+        except FileNotFoundError as err:
+            if void_if_missing:
+                return VoidResult()
+            else:
+                raise err
 
 
     def get_rank(self):
