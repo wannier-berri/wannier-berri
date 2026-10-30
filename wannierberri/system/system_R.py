@@ -9,6 +9,7 @@ from ..symmetry.point_symmetry import PointGroup
 from ..utility import clear_cached, one2three, pauli_xyz
 from .system import System, num_cart_dim
 from ..fourier.rvectors import Rvectors
+from ..factors import factor_spin
 import copy
 import logging
 logger = logging.getLogger(__name__)
@@ -763,6 +764,10 @@ class System_R(System):
         shifts_wannier = np.array([shifts[at] for at in self.wannier_to_atom_map])
         self.shift_wannier_centers(shifts_wannier)
 
+    def add_Zeemann_spin(self, B):
+        "B is in Tesla"
+        Bfield_spin = np.array(B) * factor_spin
+        self.set_R_mat('Ham', self.get_R_mat('SS') @ Bfield_spin, add=True)
 
     @property
     def wannier_shifts_from_atoms_red(self):

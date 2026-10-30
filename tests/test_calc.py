@@ -368,9 +368,9 @@ def test_LFAHE(system_Fe_W90, check_calculator, ext_terms, int_terms, fermi):
     ext_terms_str = "ext" if ext_terms else "noext"
     int_terms_str = "int" if int_terms else "noint"
     calc_name = f"{calc.__name__}_{ext_terms_str}_{int_terms_str}"
-    calculator = calc(Efermi=Efermi_Fe, 
-                                    kwargs_formula={"external_terms": ext_terms, 
-                                                    "internal_terms": int_terms})
+    calculator = calc(Efermi=Efermi_Fe,
+                      kwargs_formula={"external_terms": ext_terms,
+                                      "internal_terms": int_terms})
     check_calculator(system, calculator, calc_name, void_if_missing=False,
                      compare_zero=not (ext_terms or int_terms))
 
@@ -384,4 +384,4 @@ def test_LFAHE_tb(system_Chiral_left, check_calculator):
                        fsea=LFAHE_spin_fsea(**kwargs),
                        )
     for name, calc in calculators.items():
-        check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False,)
+        check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False)

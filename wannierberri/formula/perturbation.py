@@ -3,6 +3,7 @@ from .formula import Formula_ln, Matrix_ln
 from ..utility import alpha_A, beta_A
 from ..symmetry.point_symmetry import transform_ident
 
+
 class PertOmega(Formula_ln):
     " evaluates the change of Berry curvature in response to small perturbation"
 
@@ -55,7 +56,7 @@ class PertOmega(Formula_ln):
                 #  green terms
                 summ += 2 * s * np.einsum(f"mla,lna{indpert}->mna{indpert}", D[:, :, a], summ_loc_2[:, :, b])
         return summ
-    ##TODO : this is probably correct only for the traces, check for the full matrices
+    ## TODO : this is probably correct only for the traces, check for the full matrices
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
