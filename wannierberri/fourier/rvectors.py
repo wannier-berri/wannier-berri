@@ -405,6 +405,7 @@ class Rvectors:
     def shifts_diff_red(self):
         return -self.shifts_left_red[:, np.newaxis] + self.shifts_right_red[np.newaxis, :]
 
+
     @cached_property
     def shifts_diff_cart(self):
         return -self.shifts_left_cart[:, np.newaxis] + self.shifts_right_cart[np.newaxis, :]

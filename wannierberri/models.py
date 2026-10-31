@@ -82,6 +82,60 @@ def Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     return my_model
 
 
+def Haldane_ptb_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3):
+    from wannierberri.system import System_R
+    """same as :func:`~wannierberri.models.Haldane_tbm`, but uses `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
+
+    Notes
+    -----
+    PythTB should be installed to use this (`pip install pythtb`)
+    """
+    import pythtb
+    lat = [[1.0, 0.0, 0], [0.5, np.sqrt(3.0) / 2.0, 0], [0, 0, 1]]
+    orb = [[1. / 3., 1. / 3., 0], [1. / 3., 1. / 3., 0], [2. / 3., 2. / 3., 0.2], [2. / 3., 2. / 3., 0.2]]
+    lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
+    my_model = pythtb.TBModel(lattice)
+    delta = 0.2
+    t2 = hop2 * np.exp(1.j * phi)
+    t2c = t2.conjugate()
+
+    my_model.set_hop(soc_term, 0, 1, [0, 0, 0])
+    my_model.set_hop(soc_term, 2, 3, [0, 0, 0])
+
+    for i, _t2 in enumerate([t2, t2c]):
+        _t2c = _t2.conjugate()
+        my_model.set_onsite([-delta, -delta, delta, delta])
+        my_model.set_hop(hop1, 0 + i, 2 + i, [0, 0, 0])
+        my_model.set_hop(hop1, 2 + i, 0 + i, [1, 0, 0])
+        my_model.set_hop(hop1, 2 + i, 0 + i, [0, 1, 0])
+        my_model.set_hop(_t2, 0 + i, 0 + i, [1, 0, 0])
+        my_model.set_hop(_t2, 2 + i, 2 + i, [1, -1, 0])
+        my_model.set_hop(_t2, 2 + i, 2 + i, [0, 1, 0])
+        my_model.set_hop(_t2c, 2 + i, 2 + i, [1, 0, 0])
+        my_model.set_hop(_t2c, 0 + i, 0 + i, [1, -1, 0])
+        my_model.set_hop(_t2c, 0 + i, 0 + i, [0, 1, 0])
+
+
+
+    system = System_R.from_pythtb(my_model)
+    system.force_internal_terms_only = False
+    system.set_periodic([True, True, False])
+    system.set_spin_eigenstates([1, -1, 1, -1])
+    system.set_fake_AA(exp_decay=1, factor=0.5)
+    # system.set_R_mat('AA', np.random.random((system.rvec.nRvec, 4,4,3)) )
+    A = system.get_R_mat('AA')
+    for i in 0, 2:
+        for j in 1, 3:
+            A[:, i, j] = 0
+            A[:, j, i] = 0
+    for i in 1, 3:
+        for j in 1, 3:
+            A[:, i, j] = A[:, i - 1, j - 1]
+    # system.set_pointgroup(["C3z"])
+    return system
+
+
+
 def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_left=0.2, hopz_vert=0.0):
     """Create a chiral model  - a chirally stacked haldane model -
        using `PythTB <http://www.physics.rutgers.edu/pythtb/>`__

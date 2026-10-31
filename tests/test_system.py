@@ -640,7 +640,7 @@ def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
     """
 
     class _RVec(Rvectors):
-        
+
         def __init__(self):
             self.iRvec = np.array([[0, 0, 0], [0, 0, 1], [0, 0, -1]])
 
