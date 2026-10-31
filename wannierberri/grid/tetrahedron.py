@@ -12,7 +12,7 @@ def ones(n):
     return np.ones(n)
 
 
-@njit
+# @njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0):
     """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
     tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
@@ -29,17 +29,28 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
     nEF = len(efall)
     occ = np.zeros(nEF)
 
-    denom3 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom4 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    # denom2 = 1./ (((e4-e2) * (e3-e2) * (e2-e1)))
+    # denom3 = 1./ (((e4-e3) * (e3-e2) * (e3-e1)))
 
-    if der == 0:
-        denom_2324 = 1. / ((e3 - e2) * (e4 - e2))
-        denom_131424 = 1. / ((e3 - e1) * (e4 - e1) * (e4 - e2))
-        denom_132423 = 1. / ((e3 - e1) * (e4 - e2) * (e3 - e2))
+    # vol1 = (e2-e1)**2/((e3-e1)*(e4-e1))
+    # C22 = 3. / ((e3 - e1) * (e4 - e1))
+    # C23 = (e3+e4-e1-e2)/(3*(e4-e2)*(e3-e2))
+    # e21 = e2 - e1
+    # for an alternative formula for the middle region
+    # e43 = e4 - e3
+    # vol4 = (e4-e3)**2/((e4-e1)*(e4-e2))
+    # C22a = 3. / ((e4 - e2) * (e4 - e1))
+    # C23a = (e4+e3-e2-e1)/(3*(e3-e1)*(e3-e2))
 
-    if der > 0:
-        c12 = - (e3 - e1 + e4 - e2) / ((e3 - e2) * (e4 - e2))
-        denom_3141 = 3. / ((e3 - e1) * (e4 - e1))
+    # symmetric expression, using the peak of der=1
+    S = e3 + e4 - e1 - e2
+    Ecenter = (e3 * e4 - e1 * e2) / S
+    coef_middle = S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    vol_middle = ((e2 - e1) * S + 2 * (e3 - e2) * (e4 - e2)) / S**2
+    peak_height = 3 / S
+
 
     if der == 0:
         for i in range(nEF):
@@ -49,43 +60,46 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
             elif ef < e1:
                 continue
             elif ef >= e3:  # c3
-                ef4 = ef - e4
-                occ[i] = 1 + ef4 ** 3 * denom3
+                occ[i] = 1 - (e4 - ef) ** 3 * denom4
             elif ef >= e2:  # c2  # e2:e3
-                ef1, ef2, ef3, ef4 = ef - e
-                # due to e4 and e3 being negative, all terms in the denominators are positive, so we do not loose precision
-                occ[i] = ef2**2 * denom_2324 - denom_131424 * ef1 * ef1 * ef4 - denom_132423 * ef1 * ef2 * ef3
+                # x = ef - e2
+                # occ[i] = vol1 + x*C22*(e21 + x*(1 - x*C23))
+                # alternatively-equivalent
+                # x = e3- ef
+                # occ[i] = 1 - (vol4  + x*C22a*(e43+ x*(1- x*C23a)))
+                y = ef - Ecenter
+                occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
             else:  # c1
-                ef1 = ef - e1
-                occ[i] = ef1 ** 3 * denom1
+                occ[i] = (ef - e1) ** 3 * denom1
     elif der == 1:
         for i in range(nEF):
             ef = efall[i]
             if ef <= e1 or ef >= e4:
                 continue
             elif ef >= e3:  # c3
-                ef4 = ef - e4
-                occ[i] = 3 * ef4 ** 2 * denom3
+                occ[i] = 3 * (e4 - ef) ** 2 * denom4
             elif ef >= e2:  # c2  # e2:e3
-                x = ef - e2
-                occ[i] = (e2 - e1 + 2 * x + c12 * x ** 2) * denom_3141
-            else:  # c1
-                ef1 = ef - e1
-                occ[i] = 3 * ef1 ** 2 * denom1
+                # x = ef - e2
+                # occ[i] = C22 * (e21 + x*( 2 - C23 * x *3))
+                occ[i] = peak_height - (ef - Ecenter)**2 * coef_middle * 3
+            else:  # e1<ef < e2
+                occ[i] = 3 * (ef - e1) ** 2 * denom1
     elif der == 2:
         for i in range(nEF):
             ef = efall[i]
             if ef <= e1 or ef >= e4:
                 continue
             elif ef >= e3:  # c3
-                occ[i] = 6 * (ef - e4) * denom3
+                occ[i] = -6 * (e4 - ef) * denom4
             elif ef >= e2:  # c2  # e2:e3
-                occ[i] = 2 * (1 + c12 * (ef - e2)) * denom_3141
+                # occ[i] = C22*(2 - 6 * C23 * (ef - e2))
+                occ[i] = -6 * (ef - Ecenter) * coef_middle
             else:  # c1
                 occ[i] = 6 * (ef - e1) * denom1
     elif der == 3:
-        factor_23 = 2 * c12 * denom_3141
-        factor_34 = 6 * denom3
+        # factor_23 = -6 * C22* C23
+        factor_23 = -6 * coef_middle
+        factor_34 = 6 * denom4
         factor_12 = 6 * denom1
         for i in range(nEF):
             ef = efall[i]

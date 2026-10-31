@@ -7,51 +7,81 @@ import pytest
 from pytest import approx
 
 
-def check_tetra_derivatives(E, Efermi=np.linspace(-0.6, 0.6, 100001), acc1=1e-5, acc2=1e-3, plot=False):
+def check_tetra_derivatives(E, Efermi=np.linspace(-0.6, 0.6, 100001), acc1=1e-5, acc2=1e-3, acc3=1e-2, plot=False):
     E = E - 0.5
-    Ecenter = E[0]
     # Ecorner = E[1:].reshape(2, 2, 2)
-    Ecorn = E[1:4]
+    E = E[:4]
 
-    occ_sea = weights_tetra(Efermi, Ecenter, Ecorn[0], Ecorn[1], Ecorn[2], der=0)
-    occ_der1 = weights_tetra(Efermi, Ecenter, Ecorn[0], Ecorn[1], Ecorn[2], der=1)
-    occ_der2 = weights_tetra(Efermi, Ecenter, Ecorn[0], Ecorn[1], Ecorn[2], der=2)
-    norm1 = np.max(occ_der1)
-    norm2 = np.max(occ_der2)
+    occ_sea = weights_tetra(Efermi, E[0], E[1], E[2], E[3], der=0)
+    occ_der1 = weights_tetra(Efermi, E[0], E[1], E[2], E[3], der=1)
+    occ_der2 = weights_tetra(Efermi, E[0], E[1], E[2], E[3], der=2)
+    occ_der3 = weights_tetra(Efermi, E[0], E[1], E[2], E[3], der=3)
+    norm1 = np.abs(occ_der1).max()
+    norm2 = np.abs(occ_der2).max()
+    norm3 = np.abs(occ_der3).max()
     occ_der1 /= norm1
     occ_der2 /= norm2
+    occ_der3 /= norm3
+
+    e1, e2, e3, e4 = sorted(E)
+    C23 = (e3 + e4 - e1 - e2) / (3 * (e4 - e2) * (e3 - e2))
+    # Ecenter = e2+1/(3*C23)
+    Ecenter = (e3 * e4 - e1 * e2) / (e3 + e4 - e1 - e2)
+    print(f"e1={e1}, e2={e2}, e3={e3}, e4={e4}, C23={C23}, Ecenter={Ecenter}")
 
     occ_der1_fd = occ_sea * 0
     occ_der1_fd[1:-1] = (occ_sea[2:] - occ_sea[:-2]) / (Efermi[2] - Efermi[0]) / norm1
     occ_der2_fd = occ_sea * 0
     occ_der2_fd[2:-2] = (occ_sea[4:] + occ_sea[:-4] - 2 * occ_sea[2:-2]) / (Efermi[2] - Efermi[0])**2 / norm2
+    occ_der3_fd = occ_sea * 0
+    occ_der3_fd[3:-3] = (occ_sea[6:] - occ_sea[:-6] - 3 * (occ_sea[4:-2] - occ_sea[2:-4])) / (Efermi[2] - Efermi[0])**3 / norm3
 
-    print(norm1, max(abs(occ_der1 - occ_der1_fd)), norm2, max(abs(occ_der2 - occ_der2_fd)))
+    for e in E:
+        idx = np.where(abs(Efermi - e) < 0.001)[0]
+        occ_der3_fd[idx] = 0
+        occ_der3[idx] = 0
+
+    print(norm1, max(abs(occ_der1 - occ_der1_fd)), norm2, max(abs(occ_der2 - occ_der2_fd)), norm3, max(abs(occ_der3 - occ_der3_fd)))
     error = None
     try:
         assert (occ_der1_fd == approx(occ_der1, abs=acc1)), (
             "finite-diff first derivative of weights_tetra did not match he analytic expression by"
-            f"{max(abs(occ_der1 - occ_der1_fd))} > {acc1}, the energies were {Ecenter}, {Ecorn}")
+            f"{max(abs(occ_der1 - occ_der1_fd))} > {acc1}, the energies were {E}")
         assert (occ_der2_fd == approx(occ_der2, abs=acc2)), (
             "finite-diff second derivative of weights_tetra did not match he analytic expression by" +
-            f"{max(abs(occ_der2 - occ_der2_fd))} > {acc2}, the energies were {Ecenter}, {Ecorn}")
+            f"{max(abs(occ_der2 - occ_der2_fd))} > {acc2}, the energies were {E}")
+        assert (occ_der3_fd == approx(occ_der3, abs=acc3)), (
+            "finite-diff third derivative of weights_tetra did not match he analytic expression by" +
+            f"{max(abs(occ_der3 - occ_der3_fd))} > {acc3}, the energies were {E}")
     except Exception as err:
         plot = True
         error = err
 
+    plot = True
     if plot:
         import matplotlib.pyplot as plt
-        plt.plot(Efermi, occ_sea, c='blue')
-        plt.scatter(Efermi, occ_der1_fd, c='green')
-        plt.scatter(Efermi, occ_der2_fd, c='red')
-        plt.plot(Efermi, occ_der1, c='yellow')
-        plt.plot(Efermi, occ_der2, c='cyan')
-
-        for x in E[1:4]:
-            plt.axvline(x, c='blue')
-        plt.axvline(Ecenter, c='red')
+        fig, axes = plt.subplots(4, 1, figsize=(15, 6), sharex=True, sharey=False)
+        axes[0].plot(Efermi, occ_sea, c='blue')
+        axes[1].scatter(Efermi, occ_der1_fd, c='green')
+        axes[2].scatter(Efermi, occ_der2_fd, c='red')
+        axes[3].scatter(Efermi, occ_der3_fd, c='purple')
+        axes[1].plot(Efermi, occ_der1, c='yellow')
+        axes[2].plot(Efermi, occ_der2, c='cyan')
+        axes[3].plot(Efermi, occ_der3, c='magenta')
+        for ax in axes:
+            ax.axvline(Ecenter, c='orange', linestyle='--')
+            for x in E:
+                ax.axvline(x, c='blue')
+        axes[0].set_title("weights_tetra and its derivatives")
+        axes[0].set_ylabel("weight")
+        axes[1].set_ylabel("first derivative")
+        axes[2].set_ylabel("second derivative")
+        axes[3].set_ylabel("third derivative")
+        axes[3].set_xlabel("Energy (eV)")
+        plt.tight_layout()
         plt.xlim(-0.6, 0.6)
-        plt.savefig("tetra_weight.pdf")
+        plt.savefig(f"tetra_weight_{E[0]}.png")
+        plt.close()
 
     if error is not None:
         raise error
@@ -76,7 +106,7 @@ def test_tetra_derivatives():
 
 
 data1 = (5.7337, 5.73353853088151321771, 5.73363955524649249185, 5.73396963801047121478, 5.74032502121022680797, -0.01272583, 0.01325275)
-data2 = (5.933275, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.5, 0.22023401)
+data2 = (5.933275, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.5,  0.220233965)
 data2b = (5.933274, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.2265625, 0.21533874)
 data2c = (5.933200, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.02734375, 0.01877191)
 data2d = (5.933, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 0.0, 0.0)
@@ -84,7 +114,7 @@ data2e = (5.934, 5.93314105, 5.93327453, 5.93327816, 5.93373734, 1.0, 1.0)
 data3 = (0.34253665432, 0.121245, 0.2356431, 0.51254, 0.614651, 0.38891045, 0.38891045)
 
 
-@pytest.mark.parametrize("data", [data1, data2, data2b, data2c, data2d, data2e, data2, data3])
+@pytest.mark.parametrize("data", [data1, data2, data2b, data2c, data2d, data2e, data3])
 def test_tetra_accurate(data):
     """testing some 'magic' values, for which the old implementation gives errors
         aso some normal inpyuts are checked
