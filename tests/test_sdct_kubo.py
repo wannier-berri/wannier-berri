@@ -108,8 +108,8 @@ def kubo(irvec, H, q, omega, ef, kBT, nk=NK, eta=ETA):
             K[i] += dia + np.einsum("nm,anm,bmn->ab", df / (w + 1j * eta + E0[:, None] - E1[None, :]), X, Y)
     # j = K A with A in units of hbar / (e Angstrom); E = i omega A
     omega = np.array(omega)
-    return (elementary_charge**2 / hbar * 1e10 * K / (len(kpoints) * VOLUME)
-            / (1j * (omega[:, None, None] + 1j * eta)) / 100)
+    return (elementary_charge**2 / hbar * 1e10 * K / (len(kpoints) * VOLUME) /
+            (1j * (omega[:, None, None] + 1j * eta)) / 100)
 
 
 def kubo_derivative(irvec, H, omega, ef, kBT):

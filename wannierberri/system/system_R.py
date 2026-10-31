@@ -9,6 +9,7 @@ from ..symmetry.point_symmetry import PointGroup
 from ..utility import clear_cached, one2three, pauli_xyz
 from .system import System, num_cart_dim
 from ..fourier.rvectors import Rvectors
+from ..factors import bohr, factor_spin
 import copy
 import logging
 logger = logging.getLogger(__name__)
@@ -763,6 +764,10 @@ class System_R(System):
         shifts_wannier = np.array([shifts[at] for at in self.wannier_to_atom_map])
         self.shift_wannier_centers(shifts_wannier)
 
+    def add_Zeeman_spin(self, B):
+        "B is in Tesla"
+        Bfield_spin = np.array(B) * factor_spin
+        self.set_R_mat('Ham', self.get_R_mat('SS') @ Bfield_spin, add=True)
 
     @property
     def wannier_shifts_from_atoms_red(self):
@@ -1208,6 +1213,19 @@ class System_R(System):
                 XX_R_new = XX_R_new.conj() * parity_TR[key]
             self.set_R_mat(key, XX_R_new, reset=True)
         return self
+
+    def set_fake_AA(self, reset=False, factor=1, exp_decay=bohr, decay_function=None):
+        if decay_function is None:
+            decay_function = lambda r: r * np.exp(-r / exp_decay)
+        Ham = self.get_R_mat('Ham')
+        weights = factor * decay_function(np.linalg.norm(self.rvec.cRvec_shifted, axis=-1)) * np.abs(Ham) / np.max(np.abs(Ham))
+        onsite = self.get_R_mat('Ham')[self.rvec.iR0, self.range_wann, self.range_wann]
+        fakeAA = self.rvec.cRvec_shifted * (onsite[None, :, None, None] - onsite[None, None, :, None]) * weights[:, :, :, None]
+        fakeAA_conj = self.rvec.conj_XX_R(fakeAA)
+        # fakeAA = 0.5 * (fakeAA + fakeAA_conj)
+        assert np.allclose(fakeAA_conj, fakeAA), "fakeAA is not hermitian"
+        self.set_R_mat('AA', fakeAA, reset=reset)
+        self.force_internal_terms_only = False
 
 
 def get_nonperiodic_normal(real_lattice):
