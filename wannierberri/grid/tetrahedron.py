@@ -12,7 +12,7 @@ def ones(n):
     return np.ones(n)
 
 
-# @njit
+@njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0):
     """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
     tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
