@@ -694,18 +694,17 @@ class LFAHE_spin_fsea(StaticCalculator):
     """
 
     def __init__(self, **kwargs):
-        "describe input parameters here"
         self.Formula = frml_pert.PertOmegaZeemanSpin
         self.fder = 0
         super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
 
 
-class LFAHE_spin(StaticCalculator):
+class LFAHE_spin(Calculator):
     r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
     """
 
     def __init__(self, **kwargs):
-        "describe input parameters here"
+        super().__init__()
         self.fsea = LFAHE_spin_fsea(**kwargs)
         self.fsurf = LFAHE_spin_fsurf(**kwargs)
 
