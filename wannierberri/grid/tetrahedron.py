@@ -13,11 +13,105 @@ def ones(n):
 
 
 @njit
+def weights_tetra_accurate(efall, e0, e1, e2, e3, der=0):
+    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
+    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
+    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
+    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
+    e = np.array(sorted([e0, e1, e2, e3]))
+    # a dirty trick to avoid divisions by zero
+    diff_min = 1e-12
+    for i in range(3):
+        if e[i + 1] - e[i] < diff_min:
+            e[i + 1] = e[i] + diff_min
+    e1, e2, e3, e4 = e
+
+    nEF = len(efall)
+    occ = np.zeros(nEF)
+
+    denom3 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+
+    denom_2324 = 1. / ((e3 - e2) * (e4 - e2))
+    denom_131424 = 1. / ((e3 - e1) * (e4 - e1) * (e4 - e2))
+    denom_132423 = 1. / ((e3 - e1) * (e4 - e2) * (e3 - e2))
+
+    if der > 0:
+        c12 = - (e3 - e1 + e4 - e2) / ((e3 - e2) * (e4 - e2))
+        denom_3141 = 3. / ((e3 - e1) * (e4 - e1))
+
+    if der == 0:
+        for i in range(nEF):
+            ef = efall[i]
+            if ef >= e4:
+                occ[i] = 1.
+            elif ef < e1:
+                continue
+            elif ef >= e3:  # c3
+                ef4 = ef - e4
+                occ[i] = 1 + ef4 ** 3 * denom3
+            elif ef >= e2:  # c2  # e2:e3
+                ef1, ef2, ef3, ef4 = ef - e
+                # due to e4 and e3 being negative, all terms in the denominators are positive, so we do not loose precision
+                occ[i] = ef2**2 * denom_2324 - denom_131424 * ef1 * ef1 * ef4 - denom_132423 * ef1 * ef2 * ef3
+            else:  # c1
+                ef1 = ef - e1
+                occ[i] = ef1 ** 3 * denom1
+    elif der == 1:
+        for i in range(nEF):
+            ef = efall[i]
+            if ef <= e1 or ef >= e4:
+                continue
+            elif ef >= e3:  # c3
+                ef4 = ef - e4
+                occ[i] = 3 * ef4 ** 2 * denom3
+            elif ef >= e2:  # c2  # e2:e3
+                x = ef - e2
+                occ[i] = (e2 - e1 + 2 * x + c12 * x ** 2) * denom_3141
+            else:  # c1
+                ef1 = ef - e1
+                occ[i] = 3 * ef1 ** 2 * denom1
+    elif der == 2:
+        for i in range(nEF):
+            ef = efall[i]
+            if ef <= e1 or ef >= e4:
+                continue
+            elif ef >= e3:  # c3
+                occ[i] = 6 * (ef - e4) * denom3
+            elif ef >= e2:  # c2  # e2:e3
+                occ[i] = 2 * (1 + c12 * (ef - e2)) * denom_3141
+            else:  # c1
+                occ[i] = 6 * (ef - e1) * denom1
+    elif der == 3:
+        # factor_23 = -6*(e3+e4-e2-e1) / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+        factor_23 = 2 * c12 * denom_3141
+        factor_34 = 6 * denom3
+        factor_12 = 6 * denom1
+        for i in range(nEF):
+            ef = efall[i]
+            if ef <= e1 or ef >= e4:
+                continue
+            elif ef >= e3:  # c3
+                occ[i] = factor_34
+            elif ef >= e2:  # c2  # e2:e3
+                occ[i] = factor_23
+            else:  # c1
+                occ[i] = factor_12
+    else:
+        raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
+
+    return occ
+
+
+
+@njit
 def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
     """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
     tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
     the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
     method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
+    if accurate:
+        return weights_tetra_accurate(efall, e0, e1, e2, e3, der=der)
     e = np.array(sorted([e0, e1, e2, e3]))
     # a dirty trick to avoid divisions by zero
     diff_min = 1e-12
@@ -108,6 +202,19 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0, accurate=True):
                 occ[i] = c20 + ef * (c21 + ef * (c22 + c23 * ef))
             else:  # c1
                 occ[i] = c10 + ef * (c11 + ef * (c12 + c13 * ef))
+    elif der == 1:
+        for i in range(nEF):
+            ef = efall[i]
+            if ef >= e4:
+                occ[i] = 0.
+            elif ef < e1:
+                occ[i] = 0.
+            elif ef >= e3:  # c3
+                occ[i] = c31 + ef * (2 * c32 + 3 * c33 * ef)
+            elif ef >= e2:  # c2
+                occ[i] = c21 + ef * (2 * c22 + 3 * c23 * ef)
+            else:  # c1
+                occ[i] = c11 + ef * (2 * c12 + 3 * c13 * ef)
     elif der == 2:
         for i in range(nEF):
             ef = efall[i]

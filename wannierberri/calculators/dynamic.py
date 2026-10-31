@@ -93,9 +93,9 @@ class DynamicCalculator(Calculator, abc.ABC):
             w = np.asarray(omega, dtype=float).reshape(-1)
             nmin = 2 if tetra_delta_average else 1
             if len(w) < nmin or not np.all(np.isfinite(w)) or np.any(np.diff(w) <= 0):
-                raise ValueError("with the tetrahedron method (tetra_delta=True), omega must be finite and increasing"
-                                 + (", with at least two values for tetra_delta_average=True" if tetra_delta_average
-                                    else "") + f"; got {omega}")
+                raise ValueError("with the tetrahedron method (tetra_delta=True), omega must be finite and increasing" +
+                                 (", with at least two values for tetra_delta_average=True" if tetra_delta_average
+                                  else "") + f"; got {omega}")
             if tetra_delta_average:
                 # the edges of the intervals around the frequencies, at the midpoints between them
                 self.omega_edges = omega_intervals(w)

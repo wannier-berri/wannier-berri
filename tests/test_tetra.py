@@ -99,6 +99,30 @@ def test_tetra_accurate(data):
     assert weight_acc[0] == approx(data[6], abs=1e-8)
 
 
+@pytest.mark.parametrize("der", [0, 1, 2, 3])
+def test_tetra_accurate_vs_old(der):
+    """testing some 'magic' values, for which the old implementation gives errors
+        aso some normal inpyuts are checked
+        data is (ef,e1,e2,e3,e4,w_old,w_acc)
+    """
+    e = sorted(np.random.rand(4))
+    for i in range(1, 4):
+        e[i] = max(e[i], e[i - 1] + 0.1)  # make smake sure energies are not too close to each other, so that there are grid points in between
+    e1, e2, e3, e4 = e
+    ef = np.linspace(-0.1, 1.5, 161)
+    weight_old = weights_tetra(ef, e1, e2, e3, e4, der=der, accurate=False)
+    weight_acc = weights_tetra(ef, e1, e2, e3, e4, der=der, accurate=True)
+    diff = abs(weight_old - weight_acc)
+    if not np.max(diff) < 1e-8:
+        idiff = np.where(diff > 1e-8)[0]
+        msg = f"weights (old/acc) for der={der} do not match:\n"
+        msg += f"{e1=}, {e2=}, {e3=}, {e4=}\n"
+        for i in idiff:
+            msg += f"  at index {i}: ef={ef[i]}, old={weight_old[i]}, acc={weight_acc[i]}\n"
+        print(msg)
+    assert np.allclose(weight_old, weight_acc, atol=1e-8), f"weights (old/acc) for der={der} do not match: {weight_old} vs {weight_acc}"
+    assert weight_old == approx(weight_acc, abs=1e-8)
+
 
 @pytest.mark.parametrize("kpoint_type", ["tetra", "parallel"])
 def test_tetra_corners_k(kpoint_type, system_kp_mass_aniso_0):
