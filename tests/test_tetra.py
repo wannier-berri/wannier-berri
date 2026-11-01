@@ -1,6 +1,6 @@
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import weights_tetra
+from wannierberri.grid.tetrahedron import weights_tetra, weights_tetra_reactive
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
 import pytest
@@ -160,3 +160,30 @@ def check_tetra_corners(system, kpoint_type):
         E_corners = data_k.E_K_corners_tetra()
         E_corners_test = data_k.E_K_corners_tetra_test()
     assert E_corners == approx(E_corners_test, abs=1e-8), f"for kpoint type {kpoint_type}, got \n{E_corners} vs {E_corners_test}"
+
+
+def test_tetra_reactive():
+    nomegap = 1000
+    nomega_cut = nomegap // 2
+    omega = np.linspace(-2, 2, 2 * nomegap + 1)
+    for i in range(10):
+        E = np.random.random((4,)) - 0.5
+        tetra_absorptive = weights_tetra(omega, *E, der=1)
+        tetra_reactive = weights_tetra_reactive(omega, *E)
+        assert tetra_absorptive.shape == omega.shape
+        assert tetra_reactive.shape == omega.shape
+        inv_omega = 1 / omega
+        inv_omega[abs(omega) < 1e-3] = 0
+        reactive_numerical = np.zeros_like(omega)
+        for j in range(-nomegap, nomegap + 1):
+            if j > 0:
+                reactive_numerical[nomegap + j] = np.sum(tetra_absorptive[j:] * inv_omega[:-j])
+            elif j < 0:
+                reactive_numerical[nomegap + j] = np.sum(tetra_absorptive[:j] * inv_omega[-j:])
+            else:
+                reactive_numerical[nomegap + j] = np.sum(tetra_absorptive * inv_omega)
+        reactive_numerical *= (omega[1] - omega[0])
+        reactive_numerical = reactive_numerical[nomega_cut:-nomega_cut]
+        tetra_reactive = tetra_reactive[nomega_cut:-nomega_cut]
+        atol = np.max(np.abs(tetra_reactive)) * 0.03
+        assert reactive_numerical == approx(tetra_reactive, abs=atol), f"reactive does not match for E={E}, diff={np.max(np.abs(reactive_numerical - tetra_reactive))}"

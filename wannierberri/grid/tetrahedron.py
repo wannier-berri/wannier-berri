@@ -13,38 +13,10 @@ def ones(n):
 
 
 @njit
-def weights_tetra(efall, e0, e1, e2, e3, der=0):
-    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
-    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
-    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
-    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
-    e = np.array(sorted([e0, e1, e2, e3]))
-    # a dirty trick to avoid divisions by zero
-    diff_min = 1e-12
-    for i in range(3):
-        if e[i + 1] - e[i] < diff_min:
-            e[i + 1] = e[i] + diff_min
-    e1, e2, e3, e4 = e
-
-    nEF = len(efall)
-    occ = np.zeros(nEF)
-
+def weights_tetra_der0(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
     denom4 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    # denom2 = 1./ (((e4-e2) * (e3-e2) * (e2-e1)))
-    # denom3 = 1./ (((e4-e3) * (e3-e2) * (e3-e1)))
-
-    # vol1 = (e2-e1)**2/((e3-e1)*(e4-e1))
-    # C22 = 3. / ((e3 - e1) * (e4 - e1))
-    # C23 = (e3+e4-e1-e2)/(3*(e4-e2)*(e3-e2))
-    # e21 = e2 - e1
-    # for an alternative formula for the middle region
-    # e43 = e4 - e3
-    # vol4 = (e4-e3)**2/((e4-e1)*(e4-e2))
-    # C22a = 3. / ((e4 - e2) * (e4 - e1))
-    # C23a = (e4+e3-e2-e1)/(3*(e3-e1)*(e3-e2))
-
-    # symmetric expression, using the peak of der=1
     S = e3 + e4 - e1 - e2
     Ecenter = (e3 * e4 - e1 * e2) / S
     coef_middle = S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
@@ -52,70 +24,130 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
     peak_height = 3 / S
 
 
-    if der == 0:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef >= e4:
-                occ[i] = 1.
-            elif ef < e1:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = 1 - (e4 - ef) ** 3 * denom4
-            elif ef >= e2:  # c2  # e2:e3
-                # x = ef - e2
-                # occ[i] = vol1 + x*C22*(e21 + x*(1 - x*C23))
-                # alternatively-equivalent
-                # x = e3- ef
-                # occ[i] = 1 - (vol4  + x*C22a*(e43+ x*(1- x*C23a)))
-                y = ef - Ecenter
-                occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
-            else:  # c1
-                occ[i] = (ef - e1) ** 3 * denom1
-    elif der == 1:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef <= e1 or ef >= e4:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = 3 * (e4 - ef) ** 2 * denom4
-            elif ef >= e2:  # c2  # e2:e3
-                # x = ef - e2
-                # occ[i] = C22 * (e21 + x*( 2 - C23 * x *3))
-                occ[i] = peak_height - (ef - Ecenter)**2 * coef_middle * 3
-            else:  # e1<ef < e2
-                occ[i] = 3 * (ef - e1) ** 2 * denom1
-    elif der == 2:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef <= e1 or ef >= e4:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = -6 * (e4 - ef) * denom4
-            elif ef >= e2:  # c2  # e2:e3
-                # occ[i] = C22*(2 - 6 * C23 * (ef - e2))
-                occ[i] = -6 * (ef - Ecenter) * coef_middle
-            else:  # c1
-                occ[i] = 6 * (ef - e1) * denom1
-    elif der == 3:
-        # factor_23 = -6 * C22* C23
-        factor_23 = -6 * coef_middle
-        factor_34 = 6 * denom4
-        factor_12 = 6 * denom1
-        for i in range(nEF):
-            ef = efall[i]
-            if ef <= e1 or ef >= e4:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = factor_34
-            elif ef >= e2:  # c2  # e2:e3
-                occ[i] = factor_23
-            else:  # c1
-                occ[i] = factor_12
-    else:
-        raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
+    for i, ef in enumerate(efall):
+        if ef >= e4:
+            occ[i] = 1.
+        elif ef < e1:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = 1 - (e4 - ef) ** 3 * denom4
+        elif ef >= e2:  # c2  # e2:e3
+            y = ef - Ecenter
+            occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
+        else:  # c1
+            occ[i] = (ef - e1) ** 3 * denom1
     return occ
 
+
+@njit
+def weights_tetra_der1(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
+    denom4 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = e3 + e4 - e1 - e2
+    Ecenter = (e3 * e4 - e1 * e2) / S
+    coef_middle = 3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    peak_height = 3 / S
+    for i, ef in enumerate(efall):
+        if ef <= e1 or ef >= e4:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = (e4 - ef) ** 2 * denom4
+        elif ef >= e2:  # c2  # e2:e3
+            occ[i] = peak_height - (ef - Ecenter)**2 * coef_middle
+        else:  # c1
+            occ[i] = (ef - e1) ** 2 * denom1
+    return occ
+
+
+@njit
+def weights_tetra_der2(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
+    denom4 = -6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = e3 + e4 - e1 - e2
+    Ecenter = (e3 * e4 - e1 * e2) / S
+    coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    for i, ef in enumerate(efall):
+        if ef <= e1 or ef >= e4:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = (e4 - ef) * denom4
+        elif ef >= e2:  # c2  # e2:e3
+            occ[i] = (ef - Ecenter) * coef_middle
+        else:  # c1
+            occ[i] = (ef - e1) * denom1
+    return occ
+
+
+@njit
+def weights_tetra_der3(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
+    denom4 = 6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = e3 + e4 - e1 - e2
+    coef_middle = 6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    for i, ef in enumerate(efall):
+        if ef <= e1 or ef >= e4:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = denom4
+        elif ef >= e2:  # c2  # e2:e3
+            occ[i] = coef_middle
+        else:  # c1
+            occ[i] = denom1
+    return occ
+
+
+@njit
+def weights_tetra(efall, e1, e2, e3, e4, der=0):
+    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
+    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
+    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
+    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
+    e = np.array(sorted([e1, e2, e3, e4]))
+    # a dirty trick to avoid divisions by zero
+    diff_min = 1e-12
+    for i in range(3):
+        if e[i + 1] - e[i] < diff_min:
+            e[i + 1] = e[i] + diff_min
+    e1, e2, e3, e4 = e
+
+    if der == 0:
+        return weights_tetra_der0(efall, e1, e2, e3, e4)
+    elif der == 1:
+        return weights_tetra_der1(efall, e1, e2, e3, e4)
+    elif der == 2:
+        return weights_tetra_der2(efall, e1, e2, e3, e4)
+    elif der == 3:
+        return weights_tetra_der3(efall, e1, e2, e3, e4)
+    else:
+        raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
+
 # @njit
+
+
+@njit(cache=True)
+def KramersKronigParabola(w, a, b, x0, c, d):
+    """
+    Evaluates the principal value integral 
+    \int_a^b (c*(x-x0) + d)/(x-w) dx
+    """
+    return c * (b - a) * ((a + b) / 2 + w - 2 * x0) + (c * (w - x0) ** 2 + d) * np.log(np.abs((b - w) / (a - w)))
+
+
+@njit(cache=True)
+def weights_tetra_reactive(omega, e1, e2, e3, e4):
+    e1, e2, e3, e4 = sorted([e1, e2, e3, e4])
+    c3 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    c1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = e3 + e4 - e1 - e2
+    e0 = (e3 * e4 - e1 * e2) / S
+    c2 = -3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    peak_height = 3 / S
+    return (KramersKronigParabola(omega, e1, e2, e1, c=c1, d=0) +
+            KramersKronigParabola(omega, e2, e3, e0, c=c2, d=peak_height) +
+            KramersKronigParabola(omega, e3, e4, e4, c=c3, d=0))
 
 
 def get_borders(A, degen_thresh, degen_Kramers=False):
