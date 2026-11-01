@@ -76,9 +76,16 @@ class DynamicCalculator(Calculator, abc.ABC):
 
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1,
                  max_smear_arg=None, smr_type='Lorentzian',
-                 kwargs_formula=None, dtype=complex, tetra_delta=False, tetra_delta_average=False,
+                 kwargs_formula=None, dtype=complex, 
+                 tetra=False,
+                 tetra_delta=False, tetra_delta_average=False,
                  tetra_reactive=False, **kwargs):
 
+        if tetra:
+            if self.allow_tetra_delta:
+                tetra_delta = True
+            if self.allow_tetra_reactive:
+                tetra_reactive = True
 
         if kwargs_formula is None:
             kwargs_formula = {}
@@ -332,8 +339,8 @@ class OpticalConductivity(DynamicCalculator):
             cfac.imag = np.pi * tetra_delta_21
         elif self.smr_type != 'Lorentzian':
             cfac.imag = np.pi * self.smear(delta_arg_12)
-        if tetra_reactive_21 is not None:
-            cfac.real = tetra_reactive_21
+        # if tetra_reactive_21 is not None:
+        #     cfac.real = tetra_reactive_21
         return (E2 - E1) * cfac
 
 

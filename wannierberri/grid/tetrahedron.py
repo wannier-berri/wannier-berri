@@ -100,18 +100,24 @@ def weights_tetra_der3(efall, e1, e2, e3, e4):
 
 
 @njit
-def weights_tetra(efall, e1, e2, e3, e4, der=0):
-    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
-    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
-    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
-    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
+def space_e1234(e1, e2, e3, e4):
     e = np.array(sorted([e1, e2, e3, e4]))
     # a dirty trick to avoid divisions by zero
     diff_min = 1e-12
     for i in range(3):
         if e[i + 1] - e[i] < diff_min:
             e[i + 1] = e[i] + diff_min
-    e1, e2, e3, e4 = e
+    return e[0], e[1], e[2], e[3]
+
+
+@njit
+def weights_tetra(efall, e1, e2, e3, e4, der=0):
+    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
+    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
+    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
+    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
+    
+    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4)
 
     if der == 0:
         return weights_tetra_der0(efall, e1, e2, e3, e4)
@@ -125,7 +131,7 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
         raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def KramersKronigParabola(w, a, b, x0, c, d):
     r"""
     Evaluates the principal value integral 
@@ -134,9 +140,9 @@ def KramersKronigParabola(w, a, b, x0, c, d):
     return c * (b - a) * ((a + b) / 2 + w - 2 * x0) + (c * (w - x0) ** 2 + d) * np.log(np.abs((b - w) / (a - w)))
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def weights_tetra_reactive(omega, e1, e2, e3, e4):
-    e1, e2, e3, e4 = sorted([e1, e2, e3, e4])
+    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4)
     c3 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     c1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
     S = e3 + e4 - e1 - e2

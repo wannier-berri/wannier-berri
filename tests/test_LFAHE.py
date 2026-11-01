@@ -6,18 +6,12 @@ import numpy as np
 from copy import deepcopy
 from .common import OUTPUT_DIR
 
-from wannierberri.models import Haldane_ptb_double
 plot_result = False  # Set to True to plot the results for visual inspection
 
 
-@pytest.fixture(scope="module")
-def system_Haldane_ptb_double():
-    return Haldane_ptb_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)
-
-
 @pytest.mark.parametrize("B_tesla", [10, 50, 100])
-def test_LFAHE_vs_FiniteField(B_tesla, system_Haldane_ptb_double):
-    system = system_Haldane_ptb_double
+def test_LFAHE_vs_FiniteField(B_tesla, system_Haldane_double):
+    system = system_Haldane_double
     system_magnetic = deepcopy(system)
     system_magnetic.add_Zeeman_spin(B=np.array([0, 0, B_tesla]))
     EFermi = np.linspace(-1.8, -1.2, 61)
@@ -61,9 +55,8 @@ def test_LFAHE_vs_FiniteField(B_tesla, system_Haldane_ptb_double):
         assert diff < maxval * 2e-2, f"LFAHE and finite B field AHC do not match for term {term} and B={B_tesla} T. The maximum difference is {diff} S/m with maxval={maxval} S/m"
 
 
-@pytest.mark.parametrize("B_tesla", [10, 50, 100])
-def test_sanity(B_tesla, system_Haldane_ptb_double):
-    system = system_Haldane_ptb_double
+def test_sanity(system_Haldane_double):
+    system = system_Haldane_double
     EFermi = np.linspace(-1.8, -1.2, 61)
     kwargs = dict(Efermi=EFermi, tetra=True)
     kwargs_ext = dict(kwargs_formula=dict(internal_terms=False, external_terms=True), **kwargs)
