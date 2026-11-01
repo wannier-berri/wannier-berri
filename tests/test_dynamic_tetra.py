@@ -590,7 +590,7 @@ def test_against_dense_smearing(calculator, parameters, tolerance):
     omega = np.arange(0.005, 20, domega)
     kwargs = dict(Efermi=[0.0], omega=omega, **parameters)
     reference = run(system, {"x": calculator(smr_type="Gaussian", smr_fixed_width=0.05, **kwargs)}, NK=[120, 120, 1])["x"]
-    tetra = run(system, {"x": calculator(tetra_delta=True, **kwargs)}, NK=[32, 32, 1])["x"]
+    tetra = run(system, {"x": calculator(tetra_delta=True, tetra_reactive=True, **kwargs)}, NK=[32, 32, 1])["x"]
 
     def binned(x):
         return x[0].reshape(-1, 50, *x.shape[2:]).mean(axis=1)

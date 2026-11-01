@@ -124,19 +124,17 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
     else:
         raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
 
-# @njit
 
-
-@njit(cache=True)
+# @njit(cache=True)
 def KramersKronigParabola(w, a, b, x0, c, d):
-    """
+    r"""
     Evaluates the principal value integral 
     \int_a^b (c*(x-x0) + d)/(x-w) dx
     """
     return c * (b - a) * ((a + b) / 2 + w - 2 * x0) + (c * (w - x0) ** 2 + d) * np.log(np.abs((b - w) / (a - w)))
 
 
-@njit(cache=True)
+# @njit(cache=True)
 def weights_tetra_reactive(omega, e1, e2, e3, e4):
     e1, e2, e3, e4 = sorted([e1, e2, e3, e4])
     c3 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
@@ -424,6 +422,33 @@ class TetraWeights:
         np.add.at(res, np.array(group), self._delta_weights_bands(ik, np.array(band_i), np.array(band_j), omega, edges))
         nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
         return res / nband_pairs[:, None]
+
+    def reactive_weights(self, ik, pairs, omega):
+        """weights of the Kramers-Kronig integral of delta(E_i - E_j - omega) at the k-point ik, for pairs of band
+        groups ((i1, i2), (j1, j2)), averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the
+        given increasing omega. Returns an array (len(pairs), len(omega))"""
+        omega = np.asarray(omega, dtype=float)
+        band_i, band_j, group = [], [], []
+        for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
+            for i in range(i1, i2):
+                for j in range(j1, j2):
+                    band_i.append(i)
+                    band_j.append(j)
+                    group.append(ig)
+        res = np.zeros((len(pairs), len(omega)))
+        if len(group) == 0 or self.null:
+            return res
+        np.add.at(res, np.array(group), self._reactive_weights_bands(ik, np.array(band_i), np.array(band_j), omega))
+        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
+        return res / nband_pairs[:, None]
+
+    def _reactive_weights_bands(self, ik, band_i, band_j, omega):
+        res = 0
+        for vertices in self.all_tetrahedra_vertices:
+            dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
+            for dEi in dE:
+                res = res + weights_tetra_reactive(omega, dEi[0], dEi[1], dEi[2], dEi[3])
+        return res * self.factor_num_tetra
 
     def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
         res = 0
