@@ -44,9 +44,11 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
     # C22a = 3. / ((e4 - e2) * (e4 - e1))
     # C23a = (e4+e3-e2-e1)/(3*(e3-e1)*(e3-e2))
 
-    # symmetric expression, using the peak of der=1
-    S = e3 + e4 - e1 - e2
-    Ecenter = (e3 * e4 - e1 * e2) / S
+    # symmetric expression, using the peak of der=1 at (e3 e4 - e1 e2) / S, here taken relative to e1 (center1):
+    # S and the peak computed from the differences of the energies do not lose precision when the spread of the
+    # energies is small compared with their values
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
     coef_middle = S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     vol_middle = ((e2 - e1) * S + 2 * (e3 - e2) * (e4 - e2)) / S**2
     peak_height = 3 / S
@@ -67,7 +69,7 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
                 # alternatively-equivalent
                 # x = e3- ef
                 # occ[i] = 1 - (vol4  + x*C22a*(e43+ x*(1- x*C23a)))
-                y = ef - Ecenter
+                y = (ef - e1) - center1
                 occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
             else:  # c1
                 occ[i] = (ef - e1) ** 3 * denom1
@@ -81,7 +83,7 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
             elif ef >= e2:  # c2  # e2:e3
                 # x = ef - e2
                 # occ[i] = C22 * (e21 + x*( 2 - C23 * x *3))
-                occ[i] = peak_height - (ef - Ecenter)**2 * coef_middle * 3
+                occ[i] = peak_height - ((ef - e1) - center1)**2 * coef_middle * 3
             else:  # e1<ef < e2
                 occ[i] = 3 * (ef - e1) ** 2 * denom1
     elif der == 2:
@@ -93,7 +95,7 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
                 occ[i] = -6 * (e4 - ef) * denom4
             elif ef >= e2:  # c2  # e2:e3
                 # occ[i] = C22*(2 - 6 * C23 * (ef - e2))
-                occ[i] = -6 * (ef - Ecenter) * coef_middle
+                occ[i] = -6 * ((ef - e1) - center1) * coef_middle
             else:  # c1
                 occ[i] = 6 * (ef - e1) * denom1
     elif der == 3:
