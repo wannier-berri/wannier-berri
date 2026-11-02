@@ -246,26 +246,22 @@ class DynamicCalculator(Calculator, abc.ABC):
                     react12 = weights(type="reactive")
                 if self.tetra_reactive and self.use_tetra_reactive_21:
                     react21 = weights(type="reactive", reverse=True)
-            elif self.tetra_delta:
+            elif self.tetra_delta or self.tetra_reactive:
+                weights_tetra = data_K.tetraWeights.dynamic_weights
                 # pairs with no occupation factor (e.g. a group with itself) do not contribute
-                group_pairs_delta = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
+                group_pairs_tetra = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
                                      for pair, fE in zip(degen_group_pairs, factor_Efermi)]
-                weights = data_K.tetraWeights.dynamic_weights
-                if self.use_tetra_delta_12:
-                    delta12 = weights(ik, group_pairs_delta, self.omega, self.omega_edges, type="delta")
-                if self.use_tetra_delta_21:
-                    reverse_pairs = [(b, a) for a, b in group_pairs_delta]
-                    delta21 = weights(ik, reverse_pairs, self.omega, self.omega_edges, type="delta")
-            if self.tetra_reactive and not self.tetra_occupation:
-                # pairs with no occupation factor (e.g. a group with itself) do not contribute
-                group_pairs_reactive = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
-                                        for pair, fE in zip(degen_group_pairs, factor_Efermi)]
-                weights = data_K.tetraWeights.dynamic_weights
-                if self.use_tetra_reactive_12:
-                    react12 = weights(ik, group_pairs_reactive, self.omega, type="reactive")
-                if self.use_tetra_reactive_21:
-                    reverse_pairs = [(b, a) for a, b in group_pairs_reactive]
-                    react21 = weights(ik, reverse_pairs, self.omega, type="reactive")
+                group_pairs_tetra_reverse = [(b, a) for a, b in group_pairs_tetra]
+                if self.tetra_delta:
+                    if self.use_tetra_delta_12:
+                        delta12 = weights_tetra(ik, group_pairs_tetra, self.omega, self.omega_edges, type="delta")
+                    if self.use_tetra_delta_21:
+                        delta21 = weights_tetra(ik, group_pairs_tetra_reverse, self.omega, self.omega_edges, type="delta")
+                if self.tetra_reactive:
+                    if self.use_tetra_reactive_12:
+                        react12 = weights_tetra(ik, group_pairs_tetra, self.omega, type="reactive")
+                    if self.use_tetra_reactive_21:
+                        react21 = weights_tetra(ik, group_pairs_tetra_reverse, self.omega, type="reactive")
             kwargs_list = []
             for ipair, pair in enumerate(degen_group_pairs):
                 kwargs = dict(E1=pair[2], E2=pair[3])

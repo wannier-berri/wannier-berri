@@ -142,68 +142,82 @@ PRINCIPAL_FAR = 0.25
 
 
 @njit
-def _add_principal(res, omega, weight, e0, e1, e2, e3):
+def _get_moments(e, mean):
+    # the moments of x = dE - mean over the tetrahedron: <x^n> = 6 / ((n+1) (n+2) (n+3)) h_n(d), with h_n the
+    # complete homogeneous symmetric polynomial of the deviations d of the corner values from the mean
+    moments = np.zeros(PRINCIPAL_ORDER + 1)
+    moments[0] = 1.
+    for k in range(4):
+        for l in range(1, PRINCIPAL_ORDER + 1):
+            moments[l] += (e[k] - mean) * moments[l - 1]
+    n = np.arange(PRINCIPAL_ORDER + 1)
+    return 6. / ((n + 1) * (n + 2) * (n + 3)) * moments
+
+
+@njit
+def _get_c_matrix(e1, e2, e3, e4):
+    e21, e31, e41, e32, e42, e43 = e2 - e1, e3 - e1, e4 - e1, e3 - e2, e4 - e2, e4 - e3
+    c = np.zeros((3, 3))  # the density on each interval, sum_n c[k, n] * u ** n, with u = dE - e[k]
+    c[0, 2] = 3 / (e21 * e31 * e41)
+    c[1, 0] = 3 * e21 / (e31 * e41)
+    c[1, 1] = 6 / (e31 * e41)
+    c[1, 2] = -3 * (e31 + e42) / (e32 * e42 * e31 * e41)
+    a = 3 / (e41 * e42 * e43)
+    c[2, 0] = a * e43 ** 2
+    c[2, 1] = -2 * a * e43
+    c[2, 2] = a
+    return c
+
+
+@njit
+def _get_polynomial(moments, y):
+    value = 0.
+    for n in range(PRINCIPAL_ORDER, -1, -1):
+        value = value * y + moments[n]
+    return value
+
+
+@njit
+def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
     """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
     e = np.array(sorted([float(e0), float(e1), float(e2), float(e3)]))
     shift = e[0]
     e = e - shift
-    mean = (e[0] + e[1] + e[2] + e[3]) / 4
+    mean = np.sum(e) / 4
     spread = e[3] - e[0]
-    # the moments of x = dE - mean over the tetrahedron: <x^n> = 6 / ((n+1) (n+2) (n+3)) h_n(d), with h_n the
-    # complete homogeneous symmetric polynomial of the deviations d of the corner values from the mean
-    h = np.zeros(PRINCIPAL_ORDER + 1)
-    h[0] = 1.
-    for k in range(4):
-        for n in range(1, PRINCIPAL_ORDER + 1):
-            h[n] += (e[k] - mean) * h[n - 1]
-    moments = np.empty(PRINCIPAL_ORDER + 1)
-    for n in range(PRINCIPAL_ORDER + 1):
-        moments[n] = 6. / ((n + 1) * (n + 2) * (n + 3)) * h[n]
+
+    moments = _get_moments(e, mean)
     gap = 1e-7 * spread
     for i in range(3):
-        if e[i + 1] - e[i] < gap:
-            e[i + 1] = e[i] + gap
+        e[i + 1] = max(e[i + 1], e[i] + gap)
     e1, e2, e3, e4 = e
-    e21, e31, e41, e32, e42, e43 = e2 - e1, e3 - e1, e4 - e1, e3 - e2, e4 - e2, e4 - e3
-    c = np.zeros((3, 3))  # the density on each interval, sum_n c[k, n] * u ** n, with u = dE - e[k]
+
     if spread > 0:
-        c[0, 2] = 3 / (e21 * e31 * e41)
-        c[1, 0] = 3 * e21 / (e31 * e41)
-        c[1, 1] = 6 / (e31 * e41)
-        c[1, 2] = -3 * (e31 + e42) / (e32 * e42 * e31 * e41)
-        a = 3 / (e41 * e42 * e43)
-        c[2, 0] = a * e43 ** 2
-        c[2, 1] = -2 * a * e43
-        c[2, 2] = a
+        c = _get_c_matrix(e1, e2, e3, e4)
+
     for i in range(omega.shape[0]):
         D = mean - (omega[i] - shift)
         if spread <= PRINCIPAL_FAR * abs(D):
             if D != 0:  # with all values equal to omega, the principal part is zero
                 # <1/(D + x)> = sum_n (-1)^n <x^n> / D^(n+1)
-                y = -1 / D
-                value = 0.
-                for n in range(PRINCIPAL_ORDER, -1, -1):
-                    value = value * y + moments[n]
-                res[i] += weight * value / D
-            continue
-        w0 = omega[i] - shift
-        # the logarithms of the distances to the corners; at omega equal to a corner value, the two terms with it, of
-        # the neighbouring intervals, cancel (the density is continuous there), so that it is left out
-        logs = np.zeros(4)
-        for k in range(4):
-            if w0 != e[k]:
-                logs[k] = np.log(abs(w0 - e[k]))
-        value = 0.
-        for k in range(3):
-            w, h_k = w0 - e[k], e[k + 1] - e[k]
-            pw = c[k, 0] + w * (c[k, 1] + w * c[k, 2])
-            if abs(h_k) < 0.5 * abs(w):  # omega far from the interval: log|1 - h/w| without cancellation
-                log = np.log1p(-h_k / w)
-            else:  # near the interval: the logarithms of the distances to the corners, which cancel exactly between
-                # neighbouring intervals at a corner value shared by them
-                log = logs[k + 1] - logs[k]
-            value += pw * log + c[k, 1] * h_k + c[k, 2] * (h_k ** 2 / 2 + w * h_k)
-        res[i] += weight * value
+                res[i] += weight * _get_polynomial(moments, -1 / D) / D
+        else:
+            w0 = omega[i] - shift
+            # the logarithms of the distances to the corners; at omega equal to a corner value, the two terms with it, of
+            # the neighbouring intervals, cancel (the density is continuous there), so that it is left out
+            logs = np.log(np.abs(w0 - e) + 1e-300)
+            wk = w0 - e[:3]
+            hk = e[1:] - e[:3]
+            pwk = c[:, 0] + wk * (c[:, 1] + wk * c[:, 2])
+            value = np.sum(hk * (c[:, 1] + c[:, 2] * (hk / 2 + wk)))
+            for w, h, pw, log1, log2 in zip(wk, hk, pwk, logs[1:], logs[:-1]):
+                if abs(h) < 0.5 * abs(w):  # omega far from the interval: log|1 - h/w| without cancellation
+                    value += pw * np.log1p(-h / w)
+                else:
+                    # near the interval: the logarithms of the distances to the corners, which cancel exactly between
+                    # neighbouring intervals at a corner value shared by them
+                    value += pw * (log1 - log2)
+            res[i] += weight * value
 
 
 @njit
@@ -220,7 +234,7 @@ def weights_tetra_reactive(omega, e0, e1, e2, e3):
     jumps there, and the principal part diverges logarithmically as omega approaches it; at that value, the result
     is finite but set by the separation of the values."""
     res = np.zeros(omega.shape[0])
-    _add_principal(res, omega, 1., e0, e1, e2, e3)
+    _add_principal(res, omega, e0, e1, e2, e3)
     return res
 
 
@@ -230,11 +244,12 @@ def reactive_values_tetra(omega, dE):
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
-    for i in range(dE.shape[0]):
-        _add_principal(res[i], omega, 1., dE[i, 0], dE[i, 1], dE[i, 2], dE[i, 3])
+    for i, dEi in enumerate(dE):
+        _add_principal(res[i], omega, dEi[0], dEi[1], dEi[2], dEi[3])
     return res
 
 
+# @njit
 def get_borders(A, degen_thresh, degen_Kramers=False):
     borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
     if degen_Kramers:
@@ -258,6 +273,7 @@ def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, 
     return bands
 
 
+# @njit
 def get_bands_below_range(emin, Eband, Ebandmax=None):
     if Ebandmax is None:
         Ebandmax = Eband
@@ -268,6 +284,7 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
         return 0
 
 
+# @njit
 def get_bands_above_range(emax, Eband, Ebandmin=None):
     if Ebandmin is None:
         Ebandmin = Eband
@@ -427,7 +444,7 @@ def _add_kernel(res, omega, edges, intervals, kind, weight, d0, d1, d2, d3):
     elif kind == 1:
         res += weight * delta_weights_tetra(edges, np.array([[d0, d1, d2, d3]]))[0]
     else:
-        _add_principal(res, omega, weight, d0, d1, d2, d3)
+        _add_principal(res, omega, d0, d1, d2, d3, weight)
 
 
 @njit
