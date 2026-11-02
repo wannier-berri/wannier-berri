@@ -1,6 +1,7 @@
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import weights_tetra, weights_tetra_reactive, TetraWeights, delta_tetra, PRINCIPAL_FAR
+from wannierberri.grid.tetrahedron import (weights_tetra, weights_tetra_reactive, TetraWeights, delta_tetra, PRINCIPAL_FAR,
+                                           _separate_values)
 from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
@@ -249,12 +250,27 @@ def test_principal_values(dE):
                 reference += quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
             else:
                 reference += quad(lambda x: density(x) / (x - w), a, b, limit=200)[0]
-        assert value == pytest.approx(reference, rel=1e-5, abs=1e-6)
+        assert value == pytest.approx(reference, rel=1e-7, abs=1e-9)
     for node in nodes:
         if np.sum(dE == node) < 3:  # continuous unless three corners have the same value
             near = weights_tetra_reactive(node + np.array([-1e-7, 0, 1e-7]), *dE)
             assert np.all(np.isfinite(near))
             assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
+
+
+@pytest.mark.parametrize("values, separated", [
+    ([0, 0, 10, 20], [-0.5, 0.5, 10, 20]), ([0, 10, 10, 20], [0, 9.5, 10.5, 20]), ([0, 0, 0, 10], [-1, 0, 1, 10]),
+    ([0, 0, 10, 10], [-0.5, 0.5, 9.5, 10.5]), ([0, 0, 0, 0], [-1.5, -0.5, 0.5, 1.5]),
+    ([0, 0.3, 0.6, 10], [-0.7, 0.3, 1.3, 10]), ([0, 0, 1, 10], [-2 / 3, 1 / 3, 4 / 3, 10]),
+    ([0, 0.3, 10, 20], [-0.35, 0.65, 10, 20]), ([0, 3, 10, 20], [0, 3, 10, 20]), ([0, 0, 1, 2], [-0.75, 0.25, 1.25, 2.25])])
+def test_separate_values(values, separated):
+    """with the gap 1: values closer than the gap are spread symmetrically around their mean, groups that come closer
+    than the gap are merged, and the other values are unchanged"""
+    for function in (_separate_values, _separate_values.py_func):
+        e = np.array(values, dtype=float)
+        function(e, 1.0)
+        np.testing.assert_allclose(e, separated, rtol=0, atol=1e-14)
+        assert e.sum() == pytest.approx(sum(values), abs=1e-13)
 
 
 @pytest.mark.parametrize("dE", [[1.0, 1.0, 1.0, 1.0], [3.0, 3.0 + 1e-6, 3.0 + 2e-6, 3.0 + 4e-6]])
