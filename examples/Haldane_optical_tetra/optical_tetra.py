@@ -51,7 +51,6 @@ axes[0].plot(omega, data_smr[:, *component].real, label=f"{key}_{component_str}_
 axes[0].plot(omega, data_tetra[:, *component].real, label=f"{key}_{component_str}_real_tetra", linestyle="--")
 axes[1].plot(omega, data_smr[:, *component].imag, label=f"{key}_{component_str}_imag")
 axes[1].plot(omega, data_tetra[:, *component].imag, label=f"{key}_{component_str}_imag_tetra", linestyle="--")
-axes[1].plot(omega, data_tetra[:, *component].imag / 2, label=f"{key}_{component_str}_imag_tetra /2", linestyle="--")
 axes[0].set_ylabel(f"Re Sigma")
 axes[1].set_ylabel(f"Im Sigma")
 axes[1].set_xlabel("omega")
