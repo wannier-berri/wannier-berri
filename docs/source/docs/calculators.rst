@@ -36,6 +36,12 @@ Dynamic (dependent on Fermi level and frequency)
    :show-inheritance:
    :exclude-members: DynamicCalculator
 
+Finite wave vector
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. autoclass:: wannierberri.calculators.finite_q.OpticalConductivity_q
+   :show-inheritance:
+
 Tabulating
 +++++++++++++++++++++++++++++++++++++++++++++++++
 

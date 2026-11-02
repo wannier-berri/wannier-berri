@@ -125,6 +125,8 @@ class SystemSOC(System_R):
         # if not self.silent:
         logger.info(f"Saving SystemSOC to {path}")
         super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        if R_matrices is not None:
+            R_matrices = set(R_matrices) - set(["overlap_up_down"])
         self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
         if self.nspin == 2:
             self.system_down.to_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
@@ -268,8 +270,42 @@ class SystemSOC(System_R):
         return system_soc
 
     def get_system_R(self):
-        from ..fourier.rvectors import merge_Rvectors
 
+
+        atoms_up = self.system_up.atom_centers_red
+        atoms_down = self.system_down.atom_centers_red
+        if atoms_up is not None and atoms_down is not None:
+            from ..symmetry.unique_list import UniqueListMod1
+            atoms_centers_red_merged = UniqueListMod1(atoms_up) + UniqueListMod1(atoms_down)
+            print(f"atoms_centers_red_merged = {atoms_centers_red_merged}, len = {len(atoms_centers_red_merged)}")
+            map_up_to_merged = []
+            map_down_to_merged = []
+            shifts_atom_up = []
+            shifts_atom_down = []
+            for atom in atoms_up:
+                idx = atoms_centers_red_merged.index(atom)
+                map_up_to_merged.append(idx)
+                shifts_atom_up.append(atoms_centers_red_merged[idx] - atom)
+            for atom in atoms_down:
+                idx = atoms_centers_red_merged.index(atom)
+                map_down_to_merged.append(idx)
+                shifts_atom_down.append(atoms_centers_red_merged[idx] - atom)
+            map_wan_to_atoms_merged = []
+            shifts_wan_merged = []
+            for i, (at_up, at_dw) in enumerate(zip(self.system_up.wannier_to_atom_map, self.system_down.wannier_to_atom_map)):
+                map_wan_to_atoms_merged.append(map_up_to_merged[at_up])
+                map_wan_to_atoms_merged.append(map_down_to_merged[at_dw])
+                shifts_wan_merged.append(shifts_atom_up[at_up])
+                shifts_wan_merged.append(shifts_atom_down[at_dw])
+            map_wan_to_atoms_merged = np.array(map_wan_to_atoms_merged, dtype=int)
+            shifts_wan_merged = np.round(shifts_wan_merged).astype(int)
+        else:
+            atoms_centers_red_merged = None
+            map_wan_to_atoms_merged = None
+            shifts_wan_merged = None
+
+
+        from ..fourier.rvectors import merge_Rvectors
         rvectors_merged, rvectors_map_list = merge_Rvectors([self.system_up.rvec, self.system_down.rvec, self.rvec, self.rvec.get_reversed()])
         shifts_red = np.zeros((self.num_wann, 3))
         shifts_red[::2] = self.rvec.shifts_left_red
@@ -277,7 +313,24 @@ class SystemSOC(System_R):
         rvectors_merged.shifts_left_red = shifts_red
         rvectors_merged.shifts_right_red = shifts_red
 
-        system_R = System_R()
+
+        wannames_up = self.system_up.wannier_names
+        wannames_down = self.system_down.wannier_names
+        if wannames_up is not None and wannames_down is not None:
+            wannames_merged = []
+            for n1, n2 in zip(wannames_up, wannames_down):
+                wannames_merged.append(n1 + "_up")
+                wannames_merged.append(n2 + "_down")
+        else:
+            wannames_merged = None
+        system_R = System_R(
+            wannier_names=wannames_merged,
+            atom_centers=atoms_centers_red_merged,
+            wannier_to_atom_map=map_wan_to_atoms_merged,
+        )
+
+
+
         system_R.rvec = rvectors_merged
         system_R.is_phonon = self.is_phonon
         system_R.num_wann = self.num_wann
@@ -289,6 +342,8 @@ class SystemSOC(System_R):
         system_R.cell = self.cell.copy() if self.cell is not None else None
 
         for key in list(self.system_up._XX_R.keys()) + ["SS"]:
+            if key == "dV_soc":
+                continue
             if key != "SS":
                 shape = self.system_up._XX_R[key].shape[3:]
                 # shape = tuple()
@@ -315,8 +370,8 @@ class SystemSOC(System_R):
                 SSk[iR0, rng + 1, rng + 1, :] = self.pauli_rotated[1, 1, None, None, :]
                 if self.nspin == 2:
                     overlap = self.get_R_mat('overlap_up_down')[:, :, :, None]
-                    SSk[rvectors_map_list[1], 0::2, 1::2, :] = overlap * self.pauli_rotated[None, 0, 1, None, None, :]
-                    SSk[rvectors_map_list[2], 1::2, 0::2, :] = overlap.conj().swapaxes(1, 2) * self.pauli_rotated[None, 1, 0, None, None, :]
+                    SSk[rvectors_map_list[2], 0::2, 1::2, :] = overlap * self.pauli_rotated[None, 0, 1, None, None, :]
+                    SSk[rvectors_map_list[3], 1::2, 0::2, :] = overlap.conj().swapaxes(1, 2) * self.pauli_rotated[None, 1, 0, None, None, :]
                 else:
                     SSk[iR0, rng, rng + 1, :] = self.pauli_rotated[0, 1, None, None, :]
                     SSk[iR0, rng + 1, rng, :] = self.pauli_rotated[1, 0, None, None, :]
@@ -325,4 +380,26 @@ class SystemSOC(System_R):
                 matrix[rvectors_map_list[0], ::2, ::2] += self.system_up.get_R_mat(key)
                 matrix[rvectors_map_list[1], 1::2, 1::2] += self.system_down.get_R_mat(key)
             system_R.set_R_mat(key, matrix)
+
+        def interleave(a, b):
+            res = []
+            for i in range(max(len(a), len(b))):
+                if i < len(a):
+                    res.append(a[i])
+                if i < len(b):
+                    res.append(b[i])
+            return np.array(res)
+
+        if shifts_wan_merged is not None:
+            system_R.shift_wannier_centers(shifts=shifts_wan_merged)
+            map_up = map_wan_to_atoms_merged[::2]
+            map_down = map_wan_to_atoms_merged[1::2]
+            nat = len(atoms_centers_red_merged)
+            new_wann_indices = []
+            for i in range(nat):
+                wann_up = np.where(map_up == i)[0] * 2
+                wann_down = np.where(map_down == i)[0] * 2 + 1
+                new_wann_indices.append(interleave(wann_up, wann_down))
+            new_wann_indices = np.concatenate(new_wann_indices)
+            system_R.reorder(new_wann_indices)
         return system_R
