@@ -10,10 +10,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-
-logger = logging.getLogger(__name__)
-
-
 class GridAbstract(abc.ABC):
 
     @abc.abstractmethod

@@ -11,6 +11,7 @@ from math import ceil
 from copy import copy
 from ..formula import covariant as frml
 from ..formula import basic as frml_basic
+from ..formula import perturbation as frml_pert
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
@@ -702,10 +703,50 @@ class AHC_Zeeman_spin(StaticCalculator):
         | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
 
-    def __init__(self, constant_factor=factors.fac_spin_Z * factors.factor_ahc, **kwargs):
+    def __init__(self, **kwargs):
+        raise RuntimeError("This calculator is deprecated, it had a wrong sign. Please use LFAHE_spin_fsurf instead. Also note the new "
+        "LFAHE_spin_fsea calculator that takes into ")
+
+
+
+
+class LFAHE_spin_fsurf(StaticCalculator):
+    r"""AHC conductivity Zeeman correction term spin part (:math:`S/m/T`)
+
+        | With Fermi surface integral.
+        | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
+
+    def __init__(self, constant_factor=-factors.fac_spin_Z * factors.factor_ahc, **kwargs):
         self.Formula = frml.OmegaS
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+
+class LFAHE_spin_fsea(StaticCalculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml_pert.PertOmegaZeemanSpin
+        self.fder = 0
+        super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
+
+
+class LFAHE_spin(Calculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.fsea = LFAHE_spin_fsea(**kwargs)
+        self.fsurf = LFAHE_spin_fsurf(**kwargs)
+
+    def __call__(self, data_K):
+        fsea_res = self.fsea(data_K)
+        fsurf_res = self.fsurf(data_K)
+        return fsea_res + fsurf_res
 
 
 class OmegaOmega(StaticCalculator):
@@ -745,11 +786,33 @@ class SHC(StaticCalculator):
         | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`__
         | Simple type : with kwargs_formula={'spin_current_type':'siple'}. simplified description of spin-velocity, needs only the SS_R matrix elements
         | Output: :math:`\sigma_{\alpha\beta} = -e^2/\hbar \int [dk] Im(j_{nm,\alpha} v_{mn,\beta})/(\epsilon_n - \epsilon_m)^2 f`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`
+        | This is the part of the spin conductivity that is even under time reversal (independent of the relaxation
+          time). Without time-reversal symmetry, the odd part is given by :class:`SpinOhmic_FermiSurf`."""
 
     def __init__(self, constant_factor=-factors.factor_ahc / 2, **kwargs):
         self.Formula = frml.SpinOmega
         self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class SpinOhmic_FermiSurf(StaticCalculator):
+    r"""Ohmic spin conductivity (:math:`S/m`), the part of the spin conductivity that is odd under time reversal
+
+        | With Fermi surface integral. The intraband (Drude-like) term of the Kubo formula for the spin current,
+          linear in the relaxation time :math:`\tau`. It vanishes with time-reversal symmetry, and adds to
+          :class:`SHC`, which gives the part that is even under time reversal. It includes the spin-polarized
+          longitudinal current of a ferromagnet and the magnetic spin Hall effect.
+        | The spin current is defined as in :class:`SHC`, with the same ``kwargs_formula``: in the simple type,
+          :math:`j^\gamma_\alpha = \{s_\gamma, v_\alpha\}/2` with the Pauli matrices :math:`s_\gamma` (``SS``).
+        | Output: :math:`\sigma_{\alpha\beta}^{\gamma} = e^2/(2\hbar) \tau \int [dk] j^\gamma_{\alpha} v_\beta f'`,
+          as ``[alpha, beta, gamma]``, as for :class:`SHC` (the factor 1/2 as in :class:`SHC`; with
+          :math:`s_\gamma` replaced by the identity, this is -1/2 of :class:`Ohmic_FermiSurf`)
+        | Instruction: :math:`j^\gamma_\alpha = \sigma_{\alpha\beta}^{\gamma} E_\beta`"""
+
+    def __init__(self, constant_factor=-factors.factor_ohmic / 2, **kwargs):
+        self.Formula = frml.SpinVelVel
+        self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
 
 

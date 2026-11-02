@@ -32,15 +32,18 @@ class K__Result(Result, abc.ABC):
 
     @classmethod
     def from_npz(cls, file_npz, void_if_missing=False):
-        if void_if_missing and not os.path.isfile(file_npz):
-            logger.info(f"File {file_npz} does not exist, returning VoidResult.")
-            return VoidResult()
-        res = np.load(open(file_npz, "rb"), allow_pickle=True)
-        return cls(
-            data=res['data'],
-            transformTR=transform_from_dict(res, 'transformTR'),
-            transformInv=transform_from_dict(res, 'transformInv'),
-        )
+        try:
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
+            return cls(
+                data=res['data'],
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
+            )
+        except FileNotFoundError as err:
+            if void_if_missing:
+                return VoidResult()
+            else:
+                raise err
 
 
     def get_rank(self):

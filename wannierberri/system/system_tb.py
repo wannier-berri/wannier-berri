@@ -130,14 +130,13 @@ def write_tb_file(system, tb_file=None, seedname=None, use_convention_II=True):
     Write the system in the format of the wannier90_tb.dat file
     Note : it is written in phase convention II (as inb wannier90), unless use_convention_II=False
     """
-    logfile = system.logfile
     if tb_file is None:
         if seedname is None:
             seedname = system.seedname
         tb_file = seedname + "_tb.dat"
     f = open(tb_file, "w")
     f.write("written by wannier-berri form the chk file\n")
-    logfile.write(f"writing TB file {tb_file}\n")
+    logger.info(f"writing TB file {tb_file}\n")
     np.savetxt(f, system.real_lattice)
     f.write(f"{system.num_wann}\n")
     f.write(f"{system.rvec.nRvec}\n")
