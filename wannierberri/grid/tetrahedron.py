@@ -103,10 +103,9 @@ def weights_tetra_der3(efall, e1, e2, e3, e4):
 def space_e1234(e1, e2, e3, e4):
     e = np.array(sorted([e1, e2, e3, e4]))
     # a dirty trick to avoid divisions by zero
-    diff_min = 1e-12
+    diff_min = 1e-7
     for i in range(3):
-        if e[i + 1] - e[i] < diff_min:
-            e[i + 1] = e[i] + diff_min
+        e[i + 1] = max(e[i + 1], e[i] + diff_min)
     return e[0], e[1], e[2], e[3]
 
 
@@ -116,9 +115,8 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
     tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
     the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
     method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
-    
-    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4)
 
+    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4)
     if der == 0:
         return weights_tetra_der0(efall, e1, e2, e3, e4)
     elif der == 1:
@@ -406,7 +404,8 @@ class TetraWeights:
             res.append(weights)
         return res
 
-    def delta_weights(self, ik, pairs, omega, edges=None):
+
+    def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
         """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
         averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
         if edges are given, the averages over the intervals of omega between them. Returns an array
@@ -425,40 +424,16 @@ class TetraWeights:
         if edges is not None:
             edges = np.asarray(edges, dtype=float)
             assert len(edges) == len(omega) + 1
-        np.add.at(res, np.array(group), self._delta_weights_bands(ik, np.array(band_i), np.array(band_j), omega, edges))
-        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
-        return res / nband_pairs[:, None]
-
-    def reactive_weights(self, ik, pairs, omega):
-        """weights of the Kramers-Kronig integral of delta(E_i - E_j - omega) at the k-point ik, for pairs of band
-        groups ((i1, i2), (j1, j2)), averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the
-        given increasing omega. Returns an array (len(pairs), len(omega))"""
-        omega = np.asarray(omega, dtype=float)
-        band_i, band_j, group = [], [], []
-        for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
-            for i in range(i1, i2):
-                for j in range(j1, j2):
-                    band_i.append(i)
-                    band_j.append(j)
-                    group.append(ig)
-        res = np.zeros((len(pairs), len(omega)))
-        if len(group) == 0 or self.null:
-            return res
-        np.add.at(res, np.array(group), self._reactive_weights_bands(ik, np.array(band_i), np.array(band_j), omega))
-        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
-        return res / nband_pairs[:, None]
-
-    def _reactive_weights_bands(self, ik, band_i, band_j, omega):
-        res = 0
+        addition = 0
+        assert type in ("delta", "reactive"), f"Unknown type: {type}"
         for vertices in self.all_tetrahedra_vertices:
             dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
-            for dEi in dE:
-                res = res + weights_tetra_reactive(omega, dEi[0], dEi[1], dEi[2], dEi[3])
-        return res * self.factor_num_tetra
-
-    def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
-        res = 0
-        for vertices in self.all_tetrahedra_vertices:
-            dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
-            res = res + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
-        return res * self.factor_num_tetra
+            if type == "delta":
+                addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
+            elif type == "reactive":
+                for dEi in dE:
+                    assert dEi.shape == (4,)
+                    addition = addition + weights_tetra_reactive(omega, *dEi)
+        np.add.at(res, np.array(group), addition)
+        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
+        return res * self.factor_num_tetra / nband_pairs[:, None]

@@ -187,3 +187,13 @@ def test_tetra_reactive():
         tetra_reactive = tetra_reactive[nomega_cut:-nomega_cut]
         atol = np.max(np.abs(tetra_reactive)) * 0.03
         assert reactive_numerical == approx(tetra_reactive, abs=atol), f"reactive does not match for E={E}, diff={np.max(np.abs(reactive_numerical - tetra_reactive))}"
+
+
+def test_tetra_reactive_asymptotic():
+    E = np.random.random((4,)) - 0.5
+    omega1 = np.linspace(1000, 1010, 11)
+    omega2 = np.linspace(-1010, -1000, 11)
+    tetra_reactive1 = weights_tetra_reactive(omega1, *E)
+    tetra_reactive2 = weights_tetra_reactive(omega2, *E)
+    assert tetra_reactive1 == approx(-1 / omega1, rel=1e-3)
+    assert tetra_reactive2 == approx(-1 / omega2, rel=1e-3)

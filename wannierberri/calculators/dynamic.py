@@ -76,7 +76,7 @@ class DynamicCalculator(Calculator, abc.ABC):
 
     def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1,
                  max_smear_arg=None, smr_type='Lorentzian',
-                 kwargs_formula=None, dtype=complex, 
+                 kwargs_formula=None, dtype=complex,
                  tetra=False,
                  tetra_delta=False, tetra_delta_average=False,
                  tetra_reactive=False, **kwargs):
@@ -199,21 +199,20 @@ class DynamicCalculator(Calculator, abc.ABC):
                 # pairs with no occupation factor (e.g. a group with itself) do not contribute
                 group_pairs_delta = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
                             for pair, fE in zip(degen_group_pairs, factor_Efermi)]
-                weights = data_K.tetraWeights.delta_weights
-
+                weights = data_K.tetraWeights.dynamic_weights
                 if self.use_tetra_delta_12:
-                    delta12 = weights(ik, group_pairs_delta, self.omega, self.omega_edges)
+                    delta12 = weights(ik, group_pairs_delta, self.omega, self.omega_edges, type="delta")
                 if self.use_tetra_delta_21:
                     reverse_pairs = [(b, a) for a, b in group_pairs_delta]
-                    delta21 = weights(ik, reverse_pairs, self.omega, self.omega_edges)
+                    delta21 = weights(ik, reverse_pairs, self.omega, self.omega_edges, type="delta")
             if self.tetra_reactive:
                 group_pairs_reactive = [(pair[0], pair[1]) for pair in degen_group_pairs]
-                weights = data_K.tetraWeights.reactive_weights
+                weights = data_K.tetraWeights.dynamic_weights
                 if self.use_tetra_reactive_12:
-                    react12 = weights(ik, group_pairs_delta, self.omega)
+                    react12 = weights(ik, group_pairs_reactive, self.omega, type="reactive")
                 if self.use_tetra_reactive_21:
                     reverse_pairs = [(b, a) for a, b in group_pairs_reactive]
-                    react21 = weights(ik, reverse_pairs, self.omega)
+                    react21 = weights(ik, reverse_pairs, self.omega, type="reactive")
             kwargs_list = []
             for ipair, pair in enumerate(degen_group_pairs):
                 kwargs = dict(E1=pair[2], E2=pair[3])
@@ -339,8 +338,8 @@ class OpticalConductivity(DynamicCalculator):
             cfac.imag = np.pi * tetra_delta_21
         elif self.smr_type != 'Lorentzian':
             cfac.imag = np.pi * self.smear(delta_arg_12)
-        # if tetra_reactive_21 is not None:
-        #     cfac.real = tetra_reactive_21
+        if tetra_reactive_21 is not None:
+            cfac.real = tetra_reactive_21
         return (E2 - E1) * cfac
 
 
@@ -385,8 +384,8 @@ class SHC(DynamicCalculator):
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 
-    def factor_omega(self, E1, E2, tetra_delta_12=None, tetra_delta_21=None,
-                     tetra_reactive_12=None, tetra_reactive_21=None):
+    def factor_omega(self, E1, E2, tetra_delta_12=None,
+                     tetra_reactive_12=None):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         cfac = 1. / (delta_arg_12 - 1j * self.smr_fixed_width)
         if tetra_delta_12 is not None:

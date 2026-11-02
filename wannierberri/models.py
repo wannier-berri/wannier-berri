@@ -104,7 +104,7 @@ def Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)
     my_model.set_hop(soc_term, 0, 1, [0, 0, 0])
     my_model.set_hop(soc_term, 2, 3, [0, 0, 0])
 
-            
+
     for i, _t2 in enumerate([t2, t2c]):
         _t2c = _t2.conjugate()
         my_model.set_hop(hop1, 0 + i, 2 + i, [0, 0, 0])

@@ -103,7 +103,7 @@ def parallel_delta(omega, center, corners, edges=None):
     eCenter = np.array([[0.0, center]])
     eCorners = np.stack([np.zeros((2, 2, 2)), corners], axis=-1)[None]
     weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
-    return weights.delta_weights(0, [((1, 2), (0, 1))], omega, edges)[0]
+    return weights.dynamic_weights(0, [((1, 2), (0, 1))], omega, edges, type="delta")[0]
 
 
 def parallelepiped_tetrahedra(center, corners):
@@ -196,12 +196,12 @@ def test_delta_weights_groups(kind, average):
         edges = None
     pairs = [((2, 4), (0, 2)), ((0, 2), (2, 4)), ((3, 4), (1, 2)), ((1, 3), (1, 3))]
     weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
-    result = weights.delta_weights(0, pairs, omega, edges)
+    result = weights.dynamic_weights(0, pairs, omega, edges, type="delta")
     # empty pairs (used for the pairs that do not contribute) give zeros, and do not change the others
-    with_empty = weights.delta_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges)
+    with_empty = weights.dynamic_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges, type="delta")
     np.testing.assert_array_equal(with_empty[0], 0)
     np.testing.assert_allclose(with_empty[1:], result, rtol=0, atol=1e-14)
-    np.testing.assert_array_equal(weights.delta_weights(0, [((0, 0), (0, 0))], omega, edges), 0)
+    np.testing.assert_array_equal(weights.dynamic_weights(0, [((0, 0), (0, 0))], omega, edges, type="delta"), 0)
 
     def one(i, j):
         if kind == "single":
@@ -590,7 +590,7 @@ def test_against_dense_smearing(calculator, parameters, tolerance):
     omega = np.arange(0.005, 20, domega)
     kwargs = dict(Efermi=[0.0], omega=omega, **parameters)
     reference = run(system, {"x": calculator(smr_type="Gaussian", smr_fixed_width=0.05, **kwargs)}, NK=[120, 120, 1])["x"]
-    tetra = run(system, {"x": calculator(tetra_delta=True, tetra_reactive=True, **kwargs)}, NK=[32, 32, 1])["x"]
+    tetra = run(system, {"x": calculator(tetra_delta=True, **kwargs)}, NK=[32, 32, 1])["x"]
 
     def binned(x):
         return x[0].reshape(-1, 50, *x.shape[2:]).mean(axis=1)
