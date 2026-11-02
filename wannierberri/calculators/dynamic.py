@@ -198,7 +198,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             if self.tetra_delta:
                 # pairs with no occupation factor (e.g. a group with itself) do not contribute
                 group_pairs_delta = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
-                            for pair, fE in zip(degen_group_pairs, factor_Efermi)]
+                                     for pair, fE in zip(degen_group_pairs, factor_Efermi)]
                 weights = data_K.tetraWeights.dynamic_weights
                 if self.use_tetra_delta_12:
                     delta12 = weights(ik, group_pairs_delta, self.omega, self.omega_edges, type="delta")
@@ -206,7 +206,9 @@ class DynamicCalculator(Calculator, abc.ABC):
                     reverse_pairs = [(b, a) for a, b in group_pairs_delta]
                     delta21 = weights(ik, reverse_pairs, self.omega, self.omega_edges, type="delta")
             if self.tetra_reactive:
-                group_pairs_reactive = [(pair[0], pair[1]) for pair in degen_group_pairs]
+                # pairs with no occupation factor (e.g. a group with itself) do not contribute
+                group_pairs_reactive = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
+                                        for pair, fE in zip(degen_group_pairs, factor_Efermi)]
                 weights = data_K.tetraWeights.dynamic_weights
                 if self.use_tetra_reactive_12:
                     react12 = weights(ik, group_pairs_reactive, self.omega, type="reactive")
