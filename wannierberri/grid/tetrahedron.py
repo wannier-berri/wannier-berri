@@ -13,36 +13,10 @@ def ones(n):
 
 
 @njit
-def weights_tetra(efall, e0, e1, e2, e3, der=0):
-    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
-    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
-    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
-    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
-    e = np.array(sorted([e0, e1, e2, e3]))
-    # a dirty trick to avoid divisions by zero
-    diff_min = 1e-12
-    for i in range(3):
-        if e[i + 1] - e[i] < diff_min:
-            e[i + 1] = e[i] + diff_min
-    e1, e2, e3, e4 = e
-
-    nEF = len(efall)
-    occ = np.zeros(nEF)
-
+def weights_tetra_der0(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
     denom4 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    # denom2 = 1./ (((e4-e2) * (e3-e2) * (e2-e1)))
-    # denom3 = 1./ (((e4-e3) * (e3-e2) * (e3-e1)))
-
-    # vol1 = (e2-e1)**2/((e3-e1)*(e4-e1))
-    # C22 = 3. / ((e3 - e1) * (e4 - e1))
-    # C23 = (e3+e4-e1-e2)/(3*(e4-e2)*(e3-e2))
-    # e21 = e2 - e1
-    # for an alternative formula for the middle region
-    # e43 = e4 - e3
-    # vol4 = (e4-e3)**2/((e4-e1)*(e4-e2))
-    # C22a = 3. / ((e4 - e2) * (e4 - e1))
-    # C23a = (e4+e3-e2-e1)/(3*(e3-e1)*(e3-e2))
 
     # symmetric expression, using the peak of der=1 at (e3 e4 - e1 e2) / S, here taken relative to e1 (center1):
     # S and the peak computed from the differences of the energies do not lose precision when the spread of the
@@ -54,72 +28,228 @@ def weights_tetra(efall, e0, e1, e2, e3, der=0):
     peak_height = 3 / S
 
 
-    if der == 0:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef >= e4:
-                occ[i] = 1.
-            elif ef < e1:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = 1 - (e4 - ef) ** 3 * denom4
-            elif ef >= e2:  # c2  # e2:e3
-                # x = ef - e2
-                # occ[i] = vol1 + x*C22*(e21 + x*(1 - x*C23))
-                # alternatively-equivalent
-                # x = e3- ef
-                # occ[i] = 1 - (vol4  + x*C22a*(e43+ x*(1- x*C23a)))
-                y = (ef - e1) - center1
-                occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
-            else:  # c1
-                occ[i] = (ef - e1) ** 3 * denom1
-    elif der == 1:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef <= e1 or ef >= e4:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = 3 * (e4 - ef) ** 2 * denom4
-            elif ef >= e2:  # c2  # e2:e3
-                # x = ef - e2
-                # occ[i] = C22 * (e21 + x*( 2 - C23 * x *3))
-                occ[i] = peak_height - ((ef - e1) - center1)**2 * coef_middle * 3
-            else:  # e1<ef < e2
-                occ[i] = 3 * (ef - e1) ** 2 * denom1
-    elif der == 2:
-        for i in range(nEF):
-            ef = efall[i]
-            if ef <= e1 or ef >= e4:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = -6 * (e4 - ef) * denom4
-            elif ef >= e2:  # c2  # e2:e3
-                # occ[i] = C22*(2 - 6 * C23 * (ef - e2))
-                occ[i] = -6 * ((ef - e1) - center1) * coef_middle
-            else:  # c1
-                occ[i] = 6 * (ef - e1) * denom1
-    elif der == 3:
-        # factor_23 = -6 * C22* C23
-        factor_23 = -6 * coef_middle
-        factor_34 = 6 * denom4
-        factor_12 = 6 * denom1
-        for i in range(nEF):
-            ef = efall[i]
-            if ef <= e1 or ef >= e4:
-                continue
-            elif ef >= e3:  # c3
-                occ[i] = factor_34
-            elif ef >= e2:  # c2  # e2:e3
-                occ[i] = factor_23
-            else:  # c1
-                occ[i] = factor_12
-    else:
-        raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
+    for i, ef in enumerate(efall):
+        ef = efall[i]
+        if ef >= e4:
+            occ[i] = 1.
+        elif ef < e1:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = 1 - (e4 - ef) ** 3 * denom4
+        elif ef >= e2:  # c2  # e2:e3
+            y = (ef - e1) - center1
+            occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
+        else:  # c1
+            occ[i] = (ef - e1) ** 3 * denom1
     return occ
 
+
+@njit
+def weights_tetra_der1(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
+    denom4 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
+    coef_middle = 3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    peak_height = 3 / S
+    for i, ef in enumerate(efall):
+        if ef <= e1 or ef >= e4:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = (e4 - ef) ** 2 * denom4
+        elif ef >= e2:  # c2  # e2:e3
+            y = (ef - e1) - center1
+            occ[i] = peak_height - y**2 * coef_middle
+        else:  # c1
+            occ[i] = (ef - e1) ** 2 * denom1
+    return occ
+
+
+@njit
+def weights_tetra_der2(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
+    denom4 = -6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
+    coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    for i, ef in enumerate(efall):
+        if ef <= e1 or ef >= e4:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = (e4 - ef) * denom4
+        elif ef >= e2:  # c2  # e2:e3
+            y = (ef - e1) - center1
+            occ[i] = y * coef_middle
+        else:  # c1
+            occ[i] = (ef - e1) * denom1
+    return occ
+
+
+@njit
+def weights_tetra_der3(efall, e1, e2, e3, e4):
+    occ = np.zeros_like(efall)
+    denom4 = 6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
+    denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
+    S = (e3 - e1) + (e4 - e2)
+    coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    for i, ef in enumerate(efall):
+        if ef <= e1 or ef >= e4:
+            continue
+        elif ef >= e3:  # c3
+            occ[i] = denom4
+        elif ef >= e2:  # c2  # e2:e3
+            occ[i] = coef_middle
+        else:  # c1
+            occ[i] = denom1
+    return occ
+
+
+@njit
+def space_e1234(e1, e2, e3, e4, diff_min=1e-12):
+    e = np.array(sorted([e1, e2, e3, e4]))
+    # a dirty trick to avoid divisions by zero
+    for i in range(3):
+        e[i + 1] = max(e[i + 1], e[i] + diff_min)
+    return e[0], e[1], e[2], e[3]
+
+
+@njit
+def weights_tetra(efall, e1, e2, e3, e4, der=0):
+    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
+    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
+    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
+    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
+
+    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4, diff_min=1e-12)
+    if der == 0:
+        return weights_tetra_der0(efall, e1, e2, e3, e4)
+    elif der == 1:
+        return weights_tetra_der1(efall, e1, e2, e3, e4)
+    elif der == 2:
+        return weights_tetra_der2(efall, e1, e2, e3, e4)
+    elif der == 3:
+        return weights_tetra_der3(efall, e1, e2, e3, e4)
+    else:
+        raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
+
+
+# the expansion of the principal part far from the values of dE: its order, and the largest ratio of the spread of
+# the values to the distance of omega from their mean where it is used (the terms decrease by at least 3/4 of it)
+PRINCIPAL_ORDER = 16
+PRINCIPAL_FAR = 0.25
+
+
+@njit
+def _get_moments(e, mean):
+    # the moments of x = dE - mean over the tetrahedron: <x^n> = 6 / ((n+1) (n+2) (n+3)) h_n(d), with h_n the
+    # complete homogeneous symmetric polynomial of the deviations d of the corner values from the mean
+    moments = np.zeros(PRINCIPAL_ORDER + 1)
+    moments[0] = 1.
+    for k in range(4):
+        for l in range(1, PRINCIPAL_ORDER + 1):
+            moments[l] += (e[k] - mean) * moments[l - 1]
+    n = np.arange(PRINCIPAL_ORDER + 1)
+    return 6. / ((n + 1) * (n + 2) * (n + 3)) * moments
+
+
+@njit
+def _get_c_matrix(e1, e2, e3, e4):
+    e21, e31, e41, e32, e42, e43 = e2 - e1, e3 - e1, e4 - e1, e3 - e2, e4 - e2, e4 - e3
+    c = np.zeros((3, 3))  # the density on each interval, sum_n c[k, n] * u ** n, with u = dE - e[k]
+    c[0, 2] = 3 / (e21 * e31 * e41)
+    c[1, 0] = 3 * e21 / (e31 * e41)
+    c[1, 1] = 6 / (e31 * e41)
+    c[1, 2] = -3 * (e31 + e42) / (e32 * e42 * e31 * e41)
+    a = 3 / (e41 * e42 * e43)
+    c[2, 0] = a * e43 ** 2
+    c[2, 1] = -2 * a * e43
+    c[2, 2] = a
+    return c
+
+
+@njit
+def _get_polynomial(moments, y):
+    value = 0.
+    for n in range(PRINCIPAL_ORDER, -1, -1):
+        value = value * y + moments[n]
+    return value
+
+
+@njit
+def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
+    """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
+    e = np.array(sorted([float(e0), float(e1), float(e2), float(e3)]))
+    shift = e[0]
+    e = e - shift
+    mean = np.sum(e) / 4
+    spread = e[3] - e[0]
+
+    moments = _get_moments(e, mean)
+    gap = 1e-7 * spread
+    for i in range(3):
+        e[i + 1] = max(e[i + 1], e[i] + gap)
+    e1, e2, e3, e4 = e
+
+    if spread > 0:
+        c = _get_c_matrix(e1, e2, e3, e4)
+
+    for i in range(omega.shape[0]):
+        D = mean - (omega[i] - shift)
+        if spread <= PRINCIPAL_FAR * abs(D):
+            if D != 0:  # with all values equal to omega, the principal part is zero
+                # <1/(D + x)> = sum_n (-1)^n <x^n> / D^(n+1)
+                res[i] += weight * _get_polynomial(moments, -1 / D) / D
+        else:
+            w0 = omega[i] - shift
+            # the logarithms of the distances to the corners; at omega equal to a corner value, the two terms with it, of
+            # the neighbouring intervals, cancel (the density is continuous there), so that it is left out
+            logs = np.log(np.abs(w0 - e) + 1e-300)
+            wk = w0 - e[:3]
+            hk = e[1:] - e[:3]
+            pwk = c[:, 0] + wk * (c[:, 1] + wk * c[:, 2])
+            value = np.sum(hk * (c[:, 1] + c[:, 2] * (hk / 2 + wk)))
+            for w, h, pw, log1, log2 in zip(wk, hk, pwk, logs[1:], logs[:-1]):
+                if abs(h) < 0.5 * abs(w):  # omega far from the interval: log|1 - h/w| without cancellation
+                    value += pw * np.log1p(-h / w)
+                else:
+                    # near the interval: the logarithms of the distances to the corners, which cancel exactly between
+                    # neighbouring intervals at a corner value shared by them
+                    value += pw * (log1 - log2)
+            res[i] += weight * value
+
+
+@njit
+def weights_tetra_reactive(omega, e0, e1, e2, e3):
+    """the average of P 1/(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its
+    corners, at each of the given values of omega (the principal part that goes with `delta_tetra`).
+
+    It is the integral of the density of dE (piecewise quadratic, see `delta_tetra`) times 1/(dE - omega), done
+    analytically on each interval between the sorted values. If omega is far from the values compared with their
+    spread (more than 1/PRINCIPAL_FAR times), the expansion in the spread over the distance is used instead, to the
+    order PRINCIPAL_ORDER, with the moments of dE over the tetrahedron; this also covers nearly equal values. Values
+    closer than 1e-7 times the spread are separated. The values and omega are taken relative to the smallest value,
+    so that this works also for a small spread far from zero. If three corners have the same value, the density
+    jumps there, and the principal part diverges logarithmically as omega approaches it; at that value, the result
+    is finite but set by the separation of the values."""
+    res = np.zeros(omega.shape[0])
+    _add_principal(res, omega, e0, e1, e2, e3)
+    return res
+
+
+@njit
+def reactive_values_tetra(omega, dE):
+    """values of the average of P 1/(dE - omega) over a tetrahedron (see `weights_tetra_reactive`) at the given omega
+
+    omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
+    res = np.zeros((dE.shape[0], omega.shape[0]))
+    for i, dEi in enumerate(dE):
+        _add_principal(res[i], omega, dEi[0], dEi[1], dEi[2], dEi[3])
+    return res
+
+
 # @njit
-
-
 def get_borders(A, degen_thresh, degen_Kramers=False):
     borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
     if degen_Kramers:
@@ -143,6 +273,7 @@ def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, 
     return bands
 
 
+# @njit
 def get_bands_below_range(emin, Eband, Ebandmax=None):
     if Ebandmax is None:
         Ebandmax = Eband
@@ -153,6 +284,7 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
         return 0
 
 
+# @njit
 def get_bands_above_range(emax, Eband, Ebandmin=None):
     if Ebandmin is None:
         Ebandmin = Eband
@@ -372,7 +504,8 @@ class TetraWeights:
             res.append(weights)
         return res
 
-    def delta_weights(self, ik, pairs, omega, edges=None):
+
+    def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
         """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
         averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
         if edges are given, the averages over the intervals of omega between them. Returns an array
@@ -391,13 +524,14 @@ class TetraWeights:
         if edges is not None:
             edges = np.asarray(edges, dtype=float)
             assert len(edges) == len(omega) + 1
-        np.add.at(res, np.array(group), self._delta_weights_bands(ik, np.array(band_i), np.array(band_j), omega, edges))
-        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
-        return res / nband_pairs[:, None]
-
-    def _delta_weights_bands(self, ik, band_i, band_j, omega, edges):
-        res = 0
+        addition = 0
+        assert type in ("delta", "reactive"), f"Unknown type: {type}"
         for vertices in self.all_tetrahedra_vertices:
             dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
-            res = res + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
-        return res * self.factor_num_tetra
+            if type == "delta":
+                addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
+            elif type == "reactive":
+                addition = addition + reactive_values_tetra(omega, dE)
+        np.add.at(res, np.array(group), addition)
+        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
+        return res * self.factor_num_tetra / nband_pairs[:, None]

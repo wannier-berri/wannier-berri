@@ -1,4 +1,4 @@
-from wannierberri.models import Haldane_ptb_double
+from wannierberri.models import Haldane_double
 from matplotlib import pyplot as plt
 import ray
 from wannierberri.calculators.static import LFAHE_spin_fsea, LFAHE_spin_fsurf, AHC
@@ -14,7 +14,7 @@ ray.init(num_cpus=16)
 
 
 
-system = Haldane_ptb_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)
+system = Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)
 B_tesla = 100
 
 system_magnetic = deepcopy(system)

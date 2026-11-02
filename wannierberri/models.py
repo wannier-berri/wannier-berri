@@ -82,7 +82,7 @@ def Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     return my_model
 
 
-def Haldane_ptb_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3):
+def Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3):
     from wannierberri.system import System_R
     """same as :func:`~wannierberri.models.Haldane_tbm`, but uses `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
 
@@ -96,15 +96,17 @@ def Haldane_ptb_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=
     lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
     my_model = pythtb.TBModel(lattice)
     delta = 0.2
+    my_model.set_onsite([-delta, -delta, delta, delta])
+
     t2 = hop2 * np.exp(1.j * phi)
     t2c = t2.conjugate()
 
     my_model.set_hop(soc_term, 0, 1, [0, 0, 0])
     my_model.set_hop(soc_term, 2, 3, [0, 0, 0])
 
+
     for i, _t2 in enumerate([t2, t2c]):
         _t2c = _t2.conjugate()
-        my_model.set_onsite([-delta, -delta, delta, delta])
         my_model.set_hop(hop1, 0 + i, 2 + i, [0, 0, 0])
         my_model.set_hop(hop1, 2 + i, 0 + i, [1, 0, 0])
         my_model.set_hop(hop1, 2 + i, 0 + i, [0, 1, 0])

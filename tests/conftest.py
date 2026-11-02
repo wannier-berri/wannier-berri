@@ -78,6 +78,7 @@ from .common_systems import (
     system_random_GaAs,
     system_random_GaAs_load_bare,
     system_random_GaAs_load_sym,
+    system_Haldane_double,
 )
 
 # Comparers for tests

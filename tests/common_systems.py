@@ -954,3 +954,8 @@ def system_Te_QE():
     system = System_R.from_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"), legacy=True)
     system.set_pointgroup(symmetries_Te)
     return system
+
+
+@pytest.fixture(scope="session")
+def system_Haldane_double():
+    return wb_models.Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)

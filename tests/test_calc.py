@@ -16,7 +16,7 @@ from .test_formula import get_datak
 from wannierberri.calculators.dynamic import JDOS
 from pytest import approx
 from wannierberri.system.system_kp import SystemKP
-
+from wannierberri.grid.Kpoint import KpointBZparallel
 
 
 datak_Fe = datak_Fe_
@@ -37,7 +37,9 @@ def check_calculator(compare_any_result):
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_k_class = wberri.data_K.get_data_k_class_from_system(system)
-        data_K = data_k_class(system, dK=dK, grid=grid, **param_K)
+        kpoint = KpointBZparallel(K=dK, dK=np.array([1 / 4, 1 / 4, 1 / 4]), NKFFT=NKFFT, factor=factor, pointgroup=None)
+
+        data_K = data_k_class(system, dK=dK, grid=grid, Kpoint=kpoint, **param_K)
         result = calc(data_K)
         print(f"result = {result}")
         result = result * factor
@@ -388,3 +390,22 @@ def test_LFAHE_tb(system_Chiral_left, check_calculator):
         results[name] = check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False)
     isfit, msg = results["surf"].fit(results["fsea"], return_message=True)
     assert isfit, f"LFAHE_spin_fsurf and LFAHE_spin_fsea should not fit each other, but {msg}"
+
+
+def test_dynamic_tetra(system_Haldane_double, check_calculator):
+    system = system_Haldane_double
+    from wannierberri.calculators.dynamic import JDOS, OpticalConductivity, SHC
+    calculators = {}
+    Efermi = np.array([-2, 0, 2.5])
+    omega = np.linspace(0, 5, 11)
+    calculators["JDOS"] = JDOS(Efermi=Efermi, omega=omega, tetra=True)
+    calculators["OpticalConductivity"] = OpticalConductivity(Efermi=Efermi, omega=omega, tetra=True)
+    calculators["SHC"] = SHC(Efermi=Efermi, omega=omega, tetra=True, SHC_type="simple")
+    err_list = []
+    for name, calc in calculators.items():
+        try:
+            check_calculator(system, calc, f"Haldane_double_dynamic_{name}", void_if_missing=False)
+        except Exception as e:
+            err_list.append(f"Error in {name}: {e}")
+    if err_list:
+        raise AssertionError("Errors occurred in dynamic tetra tests:\n" + "\n".join(err_list))
