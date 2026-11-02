@@ -454,7 +454,9 @@ def _add_occupied(res, occupied, dE, efermi, omega, edges, intervals, kind, weig
     bary, volume = occupied_tetrahedra(occupied, efermi)
     for t in range(3):
         if volume[t] > 0:
-            d = bary[t] @ dE
+            # relative to a corner value, so that a constant dE stays exactly constant (P 1/(dE - omega) is zero for
+            # a constant dE equal to omega, but large for values that differ by rounding)
+            d = dE[0] + bary[t] @ (dE - dE[0])
             _add_kernel(res, omega, edges, intervals, kind, weight * volume[t], d[0], d[1], d[2], d[3])
 
 
