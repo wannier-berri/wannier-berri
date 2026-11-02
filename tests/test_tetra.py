@@ -1,6 +1,7 @@
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import weights_tetra, weights_tetra_reactive
+from wannierberri.grid.tetrahedron import weights_tetra, weights_tetra_reactive, TetraWeights, delta_tetra, PRINCIPAL_FAR
+from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
 import pytest
@@ -168,14 +169,18 @@ def test_tetra_reactive():
     nomegap = 1000
     nomega_cut = nomegap // 2
     omega = np.linspace(-2, 2, 2 * nomegap + 1)
+    rng = np.random.default_rng(0)
     for i in range(10):
-        E = np.random.random((4,)) - 0.5
+        E = rng.random((4,)) - 0.5
+        while np.diff(np.sort(E)).min() < 0.02:  # the numerical convolution does not resolve nearly equal values
+            E = rng.random((4,)) - 0.5
         tetra_absorptive = weights_tetra(omega, *E, der=1)
         tetra_reactive = weights_tetra_reactive(omega, *E)
         assert tetra_absorptive.shape == omega.shape
         assert tetra_reactive.shape == omega.shape
-        inv_omega = 1 / omega
-        inv_omega[abs(omega) < 1e-3] = 0
+        inv_omega = np.zeros_like(omega)
+        select = abs(omega) >= 1e-3
+        inv_omega[select] = 1 / omega[select]
         reactive_numerical = np.zeros_like(omega)
         for j in range(-nomegap, nomegap + 1):
             if j > 0:
@@ -199,3 +204,144 @@ def test_tetra_reactive_asymptotic():
     tetra_reactive2 = weights_tetra_reactive(omega2, *E)
     assert tetra_reactive1 == approx(-1 / omega1, rel=1e-3)
     assert tetra_reactive2 == approx(-1 / omega2, rel=1e-3)
+
+
+@pytest.mark.parametrize("kind", ["single", "parallelepiped"])
+def test_dynamic_weights_reactive_pairs(kind):
+    """each pair of band groups gets the average of the principal parts of its own pairs of bands"""
+    rng = np.random.default_rng(1)
+    nk, nb = 3, 4
+    eCenter = rng.random((nk, nb)) * 2
+    eCorners = rng.random((nk, 4, nb) if kind == "single" else (nk, 2, 2, 2, nb)) * 2
+    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    omega = np.linspace(-3, 3, 31)
+    pairs = [((0, 1), (2, 3)), ((2, 3), (0, 1)), ((0, 0), (0, 0)), ((0, 2), (3, 4)), ((3, 4), (0, 2))]
+    for ik in range(nk):
+        result = tetra.dynamic_weights(ik, pairs, omega, type="reactive")
+        assert result.shape == (len(pairs), len(omega))
+        for ipair, ((i1, i2), (j1, j2)) in enumerate(pairs):
+            expected = np.zeros_like(omega)
+            for vertices in tetra.all_tetrahedra_vertices:
+                for i in range(i1, i2):
+                    for j in range(j1, j2):
+                        expected += weights_tetra_reactive(omega, *(vertices[ik][:, i] - vertices[ik][:, j]))
+            expected *= tetra.factor_num_tetra / max((i2 - i1) * (j2 - j1), 1)  # an empty pair gives 0
+            assert result[ipair] == approx(expected, rel=1e-10, abs=1e-12), f"pair {pairs[ipair]} at ik={ik}"
+
+
+@pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 0.0, 1.0, 2.0], [0.0, 1.0, 1.0, 2.0], [0.0, 1.0, 2.0, 2.0],
+                                [0.0, 0.0, 0.0, 1.0], [0.0, 1.0, 1.0, 1.0], [0.0, 1e-9, 1.0, 2.0]])
+def test_principal_values(dE):
+    """the principal part against the numerical principal-value integral of the density of dE (`delta_tetra`), at
+    frequencies inside and outside the range of dE and far from it; at the corner values, it is continuous"""
+    dE = np.array(dE)
+    nodes = np.unique(dE)
+    omega = np.concatenate([np.linspace(nodes[0] - 3, nodes[-1] + 3, 37) + 0.0123, [-200.0, 300.0]])
+    values = weights_tetra_reactive(omega, *dE)
+
+    def density(x):
+        return delta_tetra(np.array([x]), *dE)[0]
+
+    for w, value in zip(omega, values):
+        reference = 0
+        for a, b in zip(nodes[:-1], nodes[1:]):
+            if a < w < b:
+                reference += quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
+            else:
+                reference += quad(lambda x: density(x) / (x - w), a, b, limit=200)[0]
+        assert value == pytest.approx(reference, rel=1e-5, abs=1e-6)
+    for node in nodes:
+        if np.sum(dE == node) < 3:  # continuous unless three corners have the same value
+            near = weights_tetra_reactive(node + np.array([-1e-7, 0, 1e-7]), *dE)
+            assert np.all(np.isfinite(near))
+            assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
+
+
+@pytest.mark.parametrize("dE", [[1.0, 1.0, 1.0, 1.0], [3.0, 3.0 + 1e-6, 3.0 + 2e-6, 3.0 + 4e-6]])
+def test_principal_values_flat(dE):
+    """for (nearly) equal values, 1/(dE - omega), and zero at omega equal to all of them"""
+    omega = np.array([-2.0, 0.5, 2.9, 3.1, 10.0])
+    np.testing.assert_allclose(weights_tetra_reactive(omega, *dE), 1 / (np.mean(dE) - omega), rtol=1e-9)
+    assert weights_tetra_reactive(np.array([1.0]), 1.0, 1.0, 1.0, 1.0)[0] == 0
+
+
+@pytest.mark.parametrize("offset", [1.0, 10.0])
+def test_principal_values_narrow(offset):
+    """a small spread (3e-8) far from zero, also with omega at the corner values: the same as near zero, and finite"""
+    e = np.array([0, 1e-8, 2e-8, 3e-8])
+    omega = np.array([0, 1e-8, 1.5e-8, 3e-8, 1e-6, -1e-6])
+    near_zero = weights_tetra_reactive(omega, *e)
+    far = weights_tetra_reactive(omega + offset, *(e + offset))
+    assert np.all(np.isfinite(far))
+    np.testing.assert_allclose(far, near_zero, rtol=0, atol=1e-6 * np.abs(near_zero).max())  # 0 at the middle
+
+
+@pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 1.0, 1.5, 2.0]])
+def test_principal_expansion_continuity(dE):
+    """continuous where the expansion far from the values (at 1/PRINCIPAL_FAR times their spread from their mean)
+    takes over from the integral over the intervals"""
+    dE = np.array(dE)
+    mean, spread = dE.mean(), np.ptp(dE)
+    for side in (-1, 1):
+        omega = mean + side * spread / PRINCIPAL_FAR * np.array([1 - 1e-9, 1 + 1e-9])
+        inside, outside = weights_tetra_reactive(omega, *dE)
+        assert outside == pytest.approx(inside, rel=1e-7)
+
+
+@pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 0.0, 0.1, 2.0], [0.0, 1.9, 2.0, 2.0], [0.0, 1.0, 1.0, 1.0]])
+def test_principal_expansion_accuracy(dE):
+    """the expansion far from the values, just beyond where it takes over, on both sides, against the numerical
+    principal-value integral of the density (also for asymmetric and repeated corner values)"""
+    dE = np.array(dE)
+    nodes = np.unique(dE)
+    mean, spread = dE.mean(), np.ptp(dE)
+
+    def density(x):
+        return delta_tetra(np.array([x]), *dE)[0]
+
+    for side in (-1, 1):
+        w = mean + side * spread / PRINCIPAL_FAR * (1 + 1e-6)
+        reference = sum(quad(lambda x: density(x) / (x - w), a, b, epsabs=1e-14, epsrel=1e-12, limit=200)[0]
+                        for a, b in zip(nodes[:-1], nodes[1:]))
+        assert weights_tetra_reactive(np.array([w]), *dE)[0] == pytest.approx(reference, rel=1e-9)
+
+
+def test_principal_values_near_corner():
+    """omega within a few units of rounding of an interior corner value: continuous (the logarithms of the two
+    intervals at the corner cancel)"""
+    e = (0.0, 0.13, 0.4, 1.0)
+    at = weights_tetra_reactive(np.array([0.4]), *e)[0]
+    for d in (1e-16, 1e-15, 1e-14, 1e-13, 1e-12):
+        near = weights_tetra_reactive(np.array([0.4 - d, 0.4 + d]), *e)
+        np.testing.assert_allclose(near, at, rtol=1e-8)
+
+
+def test_principal_values_at_corner():
+    """omega exactly at a corner value of a cluster of nearly equal values, and corner values given as integers: the
+    same as just beside it"""
+    for e, w in (((0., 1., 1. + 1e-6, 1. + 2e-6), 1.), ((0., 0.3, 0.3 + 1e-9, 1.), 0.3), ((0, 0, 1, 2), 1.)):
+        values = weights_tetra_reactive(np.array([w - 1e-15, w, w + 1e-15]), *e)
+        np.testing.assert_allclose(values, values[0], rtol=1e-9)
+
+
+@pytest.mark.parametrize("kind", ["single", "parallelepiped"])
+def test_dynamic_weights_kramers_kronig(kind):
+    """the reactive weights are the principal-value integrals of the delta weights over the frequency, for pairs of
+    band groups: computed from the averages of the delta weights over fine intervals, with 1/(x - omega) integrated
+    exactly over each interval"""
+    rng = np.random.default_rng(2)
+    nk, nb = 2, 4
+    eCenter = rng.random((nk, nb)) * 2
+    eCorners = rng.random((nk, 4, nb) if kind == "single" else (nk, 2, 2, 2, nb)) * 2
+    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    pairs = [((0, 1), (2, 3)), ((2, 4), (0, 2)), ((1, 2), (3, 4))]
+    edges = np.linspace(-3, 3, 60001)
+    omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals
+    for ik in range(nk):
+        delta = tetra.dynamic_weights(ik, pairs, (edges[1:] + edges[:-1]) / 2, edges, type="delta")
+        reactive = tetra.dynamic_weights(ik, pairs, omega, type="reactive")
+        for w, values in zip(omega, reactive.T):
+            with np.errstate(divide="ignore"):
+                kernel = np.log(np.abs((edges[1:] - w) / (edges[:-1] - w)))
+            kernel[~np.isfinite(kernel)] = 0
+            np.testing.assert_allclose(values, delta @ kernel, rtol=1e-3, atol=1e-4)

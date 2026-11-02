@@ -93,7 +93,7 @@ def weights_tetra_der3(efall, e1, e2, e3, e4):
     denom4 = 6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
     S = (e3 - e1) + (e4 - e2)
-    coef_middle = 6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
+    coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     for i, ef in enumerate(efall):
         if ef <= e1 or ef >= e4:
             continue
@@ -135,34 +135,104 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
         raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
 
 
-@njit(cache=True)
-def KramersKronigParabola(w, a, b, c, d):
-    r"""
-    Evaluates the principal value integral 
-    \int_a^b (c*x**2 + d)/(x-w) dx
-    """
-    return c * (b - a) * ((a + b) / 2 + w) + (c * w ** 2 + d) * np.log(np.abs((b - w) / (a - w)))
+# the expansion of the principal part far from the values of dE: its order, and the largest ratio of the spread of
+# the values to the distance of omega from their mean where it is used (the terms decrease by at least 3/4 of it)
+PRINCIPAL_ORDER = 16
+PRINCIPAL_FAR = 0.25
 
 
+@njit
+def _add_principal(res, omega, weight, e0, e1, e2, e3):
+    """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
+    e = np.array(sorted([float(e0), float(e1), float(e2), float(e3)]))
+    shift = e[0]
+    e = e - shift
+    mean = (e[0] + e[1] + e[2] + e[3]) / 4
+    spread = e[3] - e[0]
+    # the moments of x = dE - mean over the tetrahedron: <x^n> = 6 / ((n+1) (n+2) (n+3)) h_n(d), with h_n the
+    # complete homogeneous symmetric polynomial of the deviations d of the corner values from the mean
+    h = np.zeros(PRINCIPAL_ORDER + 1)
+    h[0] = 1.
+    for k in range(4):
+        for n in range(1, PRINCIPAL_ORDER + 1):
+            h[n] += (e[k] - mean) * h[n - 1]
+    moments = np.empty(PRINCIPAL_ORDER + 1)
+    for n in range(PRINCIPAL_ORDER + 1):
+        moments[n] = 6. / ((n + 1) * (n + 2) * (n + 3)) * h[n]
+    gap = 1e-7 * spread
+    for i in range(3):
+        if e[i + 1] - e[i] < gap:
+            e[i + 1] = e[i] + gap
+    e1, e2, e3, e4 = e
+    e21, e31, e41, e32, e42, e43 = e2 - e1, e3 - e1, e4 - e1, e3 - e2, e4 - e2, e4 - e3
+    c = np.zeros((3, 3))  # the density on each interval, sum_n c[k, n] * u ** n, with u = dE - e[k]
+    if spread > 0:
+        c[0, 2] = 3 / (e21 * e31 * e41)
+        c[1, 0] = 3 * e21 / (e31 * e41)
+        c[1, 1] = 6 / (e31 * e41)
+        c[1, 2] = -3 * (e31 + e42) / (e32 * e42 * e31 * e41)
+        a = 3 / (e41 * e42 * e43)
+        c[2, 0] = a * e43 ** 2
+        c[2, 1] = -2 * a * e43
+        c[2, 2] = a
+    for i in range(omega.shape[0]):
+        D = mean - (omega[i] - shift)
+        if spread <= PRINCIPAL_FAR * abs(D):
+            if D != 0:  # with all values equal to omega, the principal part is zero
+                # <1/(D + x)> = sum_n (-1)^n <x^n> / D^(n+1)
+                y = -1 / D
+                value = 0.
+                for n in range(PRINCIPAL_ORDER, -1, -1):
+                    value = value * y + moments[n]
+                res[i] += weight * value / D
+            continue
+        w0 = omega[i] - shift
+        # the logarithms of the distances to the corners; at omega equal to a corner value, the two terms with it, of
+        # the neighbouring intervals, cancel (the density is continuous there), so that it is left out
+        logs = np.zeros(4)
+        for k in range(4):
+            if w0 != e[k]:
+                logs[k] = np.log(abs(w0 - e[k]))
+        value = 0.
+        for k in range(3):
+            w, h_k = w0 - e[k], e[k + 1] - e[k]
+            pw = c[k, 0] + w * (c[k, 1] + w * c[k, 2])
+            if abs(h_k) < 0.5 * abs(w):  # omega far from the interval: log|1 - h/w| without cancellation
+                log = np.log1p(-h_k / w)
+            else:  # near the interval: the logarithms of the distances to the corners, which cancel exactly between
+                # neighbouring intervals at a corner value shared by them
+                log = logs[k + 1] - logs[k]
+            value += pw * log + c[k, 1] * h_k + c[k, 2] * (h_k ** 2 / 2 + w * h_k)
+        res[i] += weight * value
 
-# @njit(cache=True)
-def weights_tetra_reactive(omega, e1, e2, e3, e4):
-    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4, diff_min=1e-7)
-    c3 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-    c1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = (e3 - e1) + (e4 - e2)
-    center1 = (e3 - e1) * (e4 - e1) / S
-    e0 = (e3 * e4 - e1 * e2) / S
-    assert abs(e1 + center1 - e0) < 1e-12, f"{e0=} != {e2+center1=}, {e1=}, {e2=}, {e3=}, {e4=}"
-    c2 = -3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
-    peak_height = 3 / S
 
-    return  (
-             KramersKronigParabola(omega-e1, 0, e2-e1, c=c1, d=0) +
-           KramersKronigParabola(omega-e1-center1, e2-e1-center1, e3-e1-center1, c=c2, d=peak_height) +
-           KramersKronigParabola(omega-e4, e3-e4, 0, c=c3, d=0)
-    )
+@njit
+def weights_tetra_reactive(omega, e0, e1, e2, e3):
+    """the average of P 1/(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its
+    corners, at each of the given values of omega (the principal part that goes with `delta_tetra`).
 
+    It is the integral of the density of dE (piecewise quadratic, see `delta_tetra`) times 1/(dE - omega), done
+    analytically on each interval between the sorted values. If omega is far from the values compared with their
+    spread (more than 1/PRINCIPAL_FAR times), the expansion in the spread over the distance is used instead, to the
+    order PRINCIPAL_ORDER, with the moments of dE over the tetrahedron; this also covers nearly equal values. Values
+    closer than 1e-7 times the spread are separated. The values and omega are taken relative to the smallest value,
+    so that this works also for a small spread far from zero. If three corners have the same value, the density
+    jumps there, and the principal part diverges logarithmically as omega approaches it; at that value, the result
+    is finite but set by the separation of the values."""
+    res = np.zeros(omega.shape[0])
+    _add_principal(res, omega, 1., e0, e1, e2, e3)
+    return res
+
+
+@njit
+def reactive_values_tetra(omega, dE):
+    """values of the average of P 1/(dE - omega) over a tetrahedron (see `weights_tetra_reactive`) at the given omega
+
+    omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
+    res = np.zeros((dE.shape[0], omega.shape[0]))
+    for i in range(dE.shape[0]):
+        _add_principal(res[i], omega, 1., dE[i, 0], dE[i, 1], dE[i, 2], dE[i, 3])
+    return res
 
 
 def get_borders(A, degen_thresh, degen_Kramers=False):
@@ -444,9 +514,7 @@ class TetraWeights:
             if type == "delta":
                 addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
             elif type == "reactive":
-                for dEi in dE:
-                    assert dEi.shape == (4,)
-                    addition = addition + weights_tetra_reactive(omega, *dEi)
+                addition = addition + reactive_values_tetra(omega, dE)
         np.add.at(res, np.array(group), addition)
         nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
         return res * self.factor_num_tetra / nband_pairs[:, None]

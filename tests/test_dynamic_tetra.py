@@ -734,3 +734,22 @@ def test_single_frequency():
 
 if __name__ == "__main__":
     np.savez_compressed(REFERENCE_FILE, **stored_results())
+
+
+def test_reactive_far_from_transitions():
+    """with tetra=True, the result of OpticalConductivity and SHC of a 2D model with degenerate bands (Haldane_double)
+    is finite, also at omega = 0, and far above the transitions it agrees with the Lorentzian smearing (whose width
+    hardly matters there), for Fermi levels in different bands"""
+    system = wberri.models.Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)
+    Efermi = np.array([-2, 0, 2.5])
+    omega = np.array([0., 12, 16, 20])
+    calculators = {}
+    for name, calculator, parameters in (("opt", dynamic.OpticalConductivity, {}),
+                                         ("shc", dynamic.SHC, dict(SHC_type="simple"))):
+        calculators[name + "_smr"] = calculator(Efermi=Efermi, omega=omega, smr_fixed_width=0.05, **parameters)
+        calculators[name + "_tetra"] = calculator(Efermi=Efermi, omega=omega, tetra=True, **parameters)
+    result = run(system, calculators, NK=(12, 12, 1), parallel=False)
+    for name, tolerance in (("opt", 0.01), ("shc", 0.03)):
+        smr, tetra = result[name + "_smr"][:, 1:], result[name + "_tetra"]
+        assert np.all(np.isfinite(tetra))
+        np.testing.assert_allclose(tetra[:, 1:], smr, rtol=0, atol=tolerance * np.abs(smr).max())
