@@ -142,7 +142,7 @@ PRINCIPAL_FAR = 0.25
 
 
 @njit
-def _add_principal(res, omega, weight, e0, e1, e2, e3):
+def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
     """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
     e = np.array(sorted([float(e0), float(e1), float(e2), float(e3)]))
     shift = e[0]
@@ -191,7 +191,7 @@ def _add_principal(res, omega, weight, e0, e1, e2, e3):
         # the neighbouring intervals, cancel (the density is continuous there), so that it is left out
         logs = np.zeros(4)
         for k in range(4):
-            if w0 != e[k]:
+            if abs(w0 - e[k]) > 1e-12:
                 logs[k] = np.log(abs(w0 - e[k]))
         value = 0.
         for k in range(3):
@@ -220,7 +220,7 @@ def weights_tetra_reactive(omega, e0, e1, e2, e3):
     jumps there, and the principal part diverges logarithmically as omega approaches it; at that value, the result
     is finite but set by the separation of the values."""
     res = np.zeros(omega.shape[0])
-    _add_principal(res, omega, 1., e0, e1, e2, e3)
+    _add_principal(res, omega, e0, e1, e2, e3)
     return res
 
 
@@ -230,8 +230,8 @@ def reactive_values_tetra(omega, dE):
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
-    for i in range(dE.shape[0]):
-        _add_principal(res[i], omega, 1., dE[i, 0], dE[i, 1], dE[i, 2], dE[i, 3])
+    for i, dEi in enumerate(dE):
+        _add_principal(res[i], omega, dEi[0], dEi[1], dEi[2], dEi[3])
     return res
 
 
