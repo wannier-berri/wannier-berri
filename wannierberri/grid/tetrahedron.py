@@ -17,14 +17,19 @@ def weights_tetra_der0(efall, e1, e2, e3, e4):
     occ = np.zeros_like(efall)
     denom4 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = e3 + e4 - e1 - e2
-    Ecenter = (e3 * e4 - e1 * e2) / S
+
+    # symmetric expression, using the peak of der=1 at (e3 e4 - e1 e2) / S, here taken relative to e1 (center1):
+    # S and the peak computed from the differences of the energies do not lose precision when the spread of the
+    # energies is small compared with their values
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
     coef_middle = S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     vol_middle = ((e2 - e1) * S + 2 * (e3 - e2) * (e4 - e2)) / S**2
     peak_height = 3 / S
 
 
     for i, ef in enumerate(efall):
+        ef = efall[i]
         if ef >= e4:
             occ[i] = 1.
         elif ef < e1:
@@ -32,7 +37,7 @@ def weights_tetra_der0(efall, e1, e2, e3, e4):
         elif ef >= e3:  # c3
             occ[i] = 1 - (e4 - ef) ** 3 * denom4
         elif ef >= e2:  # c2  # e2:e3
-            y = ef - Ecenter
+            y = (ef - e1) - center1
             occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
         else:  # c1
             occ[i] = (ef - e1) ** 3 * denom1
@@ -44,8 +49,8 @@ def weights_tetra_der1(efall, e1, e2, e3, e4):
     occ = np.zeros_like(efall)
     denom4 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = e3 + e4 - e1 - e2
-    Ecenter = (e3 * e4 - e1 * e2) / S
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
     coef_middle = 3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     peak_height = 3 / S
     for i, ef in enumerate(efall):
@@ -54,7 +59,8 @@ def weights_tetra_der1(efall, e1, e2, e3, e4):
         elif ef >= e3:  # c3
             occ[i] = (e4 - ef) ** 2 * denom4
         elif ef >= e2:  # c2  # e2:e3
-            occ[i] = peak_height - (ef - Ecenter)**2 * coef_middle
+            y = (ef - e1) - center1
+            occ[i] = peak_height - y**2 * coef_middle
         else:  # c1
             occ[i] = (ef - e1) ** 2 * denom1
     return occ
@@ -65,8 +71,8 @@ def weights_tetra_der2(efall, e1, e2, e3, e4):
     occ = np.zeros_like(efall)
     denom4 = -6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = e3 + e4 - e1 - e2
-    Ecenter = (e3 * e4 - e1 * e2) / S
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
     coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     for i, ef in enumerate(efall):
         if ef <= e1 or ef >= e4:
@@ -74,7 +80,8 @@ def weights_tetra_der2(efall, e1, e2, e3, e4):
         elif ef >= e3:  # c3
             occ[i] = (e4 - ef) * denom4
         elif ef >= e2:  # c2  # e2:e3
-            occ[i] = (ef - Ecenter) * coef_middle
+            y = (ef - e1) - center1
+            occ[i] = y * coef_middle
         else:  # c1
             occ[i] = (ef - e1) * denom1
     return occ
@@ -85,7 +92,7 @@ def weights_tetra_der3(efall, e1, e2, e3, e4):
     occ = np.zeros_like(efall)
     denom4 = 6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = e3 + e4 - e1 - e2
+    S = (e3 - e1) + (e4 - e2)
     coef_middle = 6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     for i, ef in enumerate(efall):
         if ef <= e1 or ef >= e4:
@@ -100,10 +107,9 @@ def weights_tetra_der3(efall, e1, e2, e3, e4):
 
 
 @njit
-def space_e1234(e1, e2, e3, e4):
+def space_e1234(e1, e2, e3, e4, diff_min=1e-12):
     e = np.array(sorted([e1, e2, e3, e4]))
     # a dirty trick to avoid divisions by zero
-    diff_min = 1e-7
     for i in range(3):
         e[i + 1] = max(e[i + 1], e[i] + diff_min)
     return e[0], e[1], e[2], e[3]
@@ -116,7 +122,7 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
     the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
     method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
 
-    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4)
+    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4, diff_min=1e-12)
     if der == 0:
         return weights_tetra_der0(efall, e1, e2, e3, e4)
     elif der == 1:
@@ -130,26 +136,33 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
 
 
 @njit(cache=True)
-def KramersKronigParabola(w, a, b, x0, c, d):
+def KramersKronigParabola(w, a, b, c, d):
     r"""
     Evaluates the principal value integral 
-    \int_a^b (c*(x-x0) + d)/(x-w) dx
+    \int_a^b (c*x**2 + d)/(x-w) dx
     """
-    return c * (b - a) * ((a + b) / 2 + w - 2 * x0) + (c * (w - x0) ** 2 + d) * np.log(np.abs((b - w) / (a - w)))
+    return c * (b - a) * ((a + b) / 2 + w) + (c * w ** 2 + d) * np.log(np.abs((b - w) / (a - w)))
 
 
-@njit(cache=True)
+
+# @njit(cache=True)
 def weights_tetra_reactive(omega, e1, e2, e3, e4):
-    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4)
+    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4, diff_min=1e-7)
     c3 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
     c1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = e3 + e4 - e1 - e2
+    S = (e3 - e1) + (e4 - e2)
+    center1 = (e3 - e1) * (e4 - e1) / S
     e0 = (e3 * e4 - e1 * e2) / S
+    assert abs(e1 + center1 - e0) < 1e-12, f"{e0=} != {e2+center1=}, {e1=}, {e2=}, {e3=}, {e4=}"
     c2 = -3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
     peak_height = 3 / S
-    return (KramersKronigParabola(omega, e1, e2, e1, c=c1, d=0) +
-            KramersKronigParabola(omega, e2, e3, e0, c=c2, d=peak_height) +
-            KramersKronigParabola(omega, e3, e4, e4, c=c3, d=0))
+
+    return  (
+             KramersKronigParabola(omega-e1, 0, e2-e1, c=c1, d=0) +
+           KramersKronigParabola(omega-e1-center1, e2-e1-center1, e3-e1-center1, c=c2, d=peak_height) +
+           KramersKronigParabola(omega-e4, e3-e4, 0, c=c3, d=0)
+    )
+
 
 
 def get_borders(A, degen_thresh, degen_Kramers=False):

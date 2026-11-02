@@ -231,21 +231,40 @@ def test_delta_values(dE):
     assert np.all(values >= 0)
 
 
-@pytest.mark.parametrize("offset, spread", [(5.0, 1e-3), (10.0, 1e-4), (20.0, 1e-2)])
-def test_density_small_spread(offset, spread):
-    """the density (`weights_tetra` with der=1, used by `delta_tetra` and by the Fermi-surface quantities) for
-    values with a small spread far from zero, against the derivative of the occupation (der=0). A polynomial in the
-    absolute energies would lose precision here (by 0.2, 4e3 and 3e-3 relative)."""
+def tetra_reference(x, e, der):
+    """the occupied fraction (der=0) of a tetrahedron with the sorted corner values e, and its derivatives, written
+    in the differences from the corner values, expanded about e1, e2 and e4 (Bloechl et al.)"""
+    e1, e2, e3, e4 = e
+    e21, e31, e41, e32, e42, e43 = e2 - e1, e3 - e1, e4 - e1, e3 - e2, e4 - e2, e4 - e3
+    q = (e31 + e42) / (e32 * e42)
+    res = np.zeros(len(x)) if der > 0 else (x >= e4).astype(float)
+    a, u, b = x - e1, x - e2, e4 - x
+    c1, c2, c4 = 1 / (e21 * e31 * e41), 1 / (e31 * e41), 1 / (e41 * e42 * e43)
+    pieces = {0: (a ** 3 * c1, (e21 ** 2 + 3 * e21 * u + 3 * u ** 2 - q * u ** 3) * c2, 1 - b ** 3 * c4),
+              1: (3 * a ** 2 * c1, (3 * e21 + 6 * u - 3 * q * u ** 2) * c2, 3 * b ** 2 * c4),
+              2: (6 * a * c1, (6 - 6 * q * u) * c2, -6 * b * c4),
+              3: (6 * c1 + 0 * x, -6 * q * c2 + 0 * x, 6 * c4 + 0 * x)}[der]
+    for (lo, hi), piece in zip(((e1, e2), (e2, e3), (e3, e4)), pieces):
+        inside = (x > lo) & (x < hi)
+        res[inside] = piece[inside]
+    return res
+
+
+@pytest.mark.parametrize("offset, spread", [(0.0, 1.0), (5.0, 1e-3), (10.0, 1e-4), (20.0, 1e-2), (5.0, 3e-7)])
+def test_weights_small_spread(offset, spread):
+    """the occupation and its derivatives (`weights_tetra`, used by `delta_tetra` and by the Fermi-surface quantities)
+    for values with a small spread far from zero, against `tetra_reference`, to 1e-12 relative. Expressions with the
+    absolute energies would lose precision here (e.g. by 6e-5 for a spread of 1e-4 eV at 10 eV)."""
     rng = np.random.default_rng(7)
     for _ in range(20):
-        e = offset + rng.random(4) * spread
-        w = np.linspace(e.min(), e.max(), 1003)[1:-1]
-        h = 1e-7 * spread
-        reference = (weights_tetra(w + h, *e, der=0) - weights_tetra(w - h, *e, der=0)) / (2 * h)
-        away = np.min(np.abs(w[:, None] - e[None]), axis=1) > 1e-5 * spread  # not at the kinks
-        values = weights_tetra(w, *e, der=1)
-        np.testing.assert_allclose(values[away], reference[away], rtol=0, atol=1e-4 * np.abs(reference).max())
-        np.testing.assert_array_equal(delta_tetra(w, *e), values)
+        e = np.sort(offset + rng.random(4) * spread)
+        w = np.linspace(e[0], e[3], 1003)[1:-1]
+        w = w[np.min(np.abs(w[:, None] - e[None]), axis=1) > 1e-3 * spread]  # not at the kinks
+        for der in range(4):
+            reference = tetra_reference(w, e, der)
+            np.testing.assert_allclose(weights_tetra(w, *e, der=der), reference, rtol=0,
+                                       atol=1e-12 * np.abs(reference).max(), err_msg=f"der={der}")
+        np.testing.assert_array_equal(delta_tetra(w, *e), weights_tetra(w, *e, der=1))
 
 
 @pytest.mark.parametrize("dE", [[1.0, 1.2, 1.4, 2.0], [-3.0, -2.0, -1.0, 0.5], [3.5, 4.0, 4.5, 6.0],
