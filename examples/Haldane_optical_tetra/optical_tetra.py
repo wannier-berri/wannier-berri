@@ -7,11 +7,11 @@ from wannierberri.calculators.static import DOS
 from wannierberri import Grid, run
 from wannierberri import configure_logging
 import ray
-# ray.init(num_cpus=16)
+ray.init(num_cpus=16)
 configure_logging()
 
-model = Chiral()
-# model = Haldane_ptb()
+# model = Chiral()
+model = Haldane_ptb()
 system = System_R.from_pythtb(model)
 system.set_pointgroup(["C3z"])
 
@@ -24,14 +24,14 @@ kwargs_shc = dict(Efermi=Efermi0, omega=omega, SHC_type="simple")
 calculators = {
     # "jdos": JDOS(Efermi=Efermi0, omega=omega, kBT=0.001, smr_fixed_width=0.005),
     # "jdos_tetra": JDOS(Efermi=Efermi0, omega=omega, tetra_delta=True),
-    "optical": OpticalConductivity(Efermi=Efermi0, omega=omega, smr_fixed_width=0.3),
+    "optical": OpticalConductivity(Efermi=Efermi0, omega=omega, smr_fixed_width=0.01),
     "optical_tetra": OpticalConductivity(Efermi=Efermi0, omega=omega, tetra_delta=True, tetra_reactive=True),
     # "SHC": SHC(**kwargs_shc, smr_fixed_width=0.05),
     # "SHC_tetra": SHC(**kwargs_shc, tetra=True),
     # "dos": DOS(Efermi=Efermi, tetra=True),
 }
 
-grid = Grid(system, NK=6)
+grid = Grid(system, NK=120)
 
 results = run(system, grid=grid, calculators=calculators)  # , use_irred_kpt=False, symmetrize=False)  # do not use symmetry because tetrahedron is not very symmetric
 

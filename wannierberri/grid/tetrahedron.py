@@ -249,7 +249,7 @@ def reactive_values_tetra(omega, dE):
     return res
 
 
-@njit
+# @njit
 def get_borders(A, degen_thresh, degen_Kramers=False):
     borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
     if degen_Kramers:
@@ -257,7 +257,7 @@ def get_borders(A, degen_thresh, degen_Kramers=False):
     return [[ib1, ib2] for ib1, ib2 in zip(borders, borders[1:])]
 
 
-@njit
+# @njit
 def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, Ebandmin=None, Ebandmax=None, select_bands=None):
     if Ebandmin is None:
         Ebandmin = Eband
@@ -273,7 +273,7 @@ def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, 
     return bands
 
 
-@njit
+# @njit
 def get_bands_below_range(emin, Eband, Ebandmax=None):
     if Ebandmax is None:
         Ebandmax = Eband
@@ -284,7 +284,7 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
         return 0
 
 
-@njit
+# @njit
 def get_bands_above_range(emax, Eband, Ebandmin=None):
     if Ebandmin is None:
         Ebandmin = Eband
