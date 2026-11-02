@@ -33,6 +33,10 @@ class Calculator:
     def allow_grid(self):
         return True  # change for those who can be calculated ONLY on a path
 
+    @property
+    def allow_symmetrize(self):
+        return True  # change for those whose result is not symmetric under the point group
+
     def _set_comment(self, print_comment=True):
         if not hasattr(self, 'comment'):
             if self.__doc__ is not None:

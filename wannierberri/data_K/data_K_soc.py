@@ -41,25 +41,23 @@ class Data_K_soc(Data_K_R):
         H += self.Hsoc()
         return H
 
-    def Xbar(self, name, der=0):
-        key = (name, der)
-        if key not in self._bar_quantities:
-            if name == "SS":
-                Xbar = self.SS_W(der=der)
-            elif name.startswith("S"):
-                raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
-                                          "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
-            else:  # other not spin-related operators
-                hermitian = (name in ['AA', 'OO', 'rotAA'])
-                shape = (self.nk, ) + (self.num_wann, ) * 2 + (3,) * (der + num_cart_dim(name))
-                Xbar = np.zeros(shape, dtype=complex)
-                for i, datak in enumerate([self.data_K_up, self.data_K_down]):
-                    Xbar[:, i::2, i::2] = datak.get_k_mat(name, hermitian=hermitian, der=der)
-                if name == "Ham" and self.has_soc:
-                    Xbar += self.Hsoc(der=der)
-            Xbar = self._rotate(Xbar)
-            self._bar_quantities[key] = Xbar
-        return self._bar_quantities[key]
+    def getXbar(self, name, der=0, select_WF=None):
+        if select_WF is not None:
+            raise NotImplementedError("select_WF is not implemented for Data_K_soc.")
+        if name == "SS":
+            Xbar = self.SS_W(der=der)
+        elif name.startswith("S"):
+            raise NotImplementedError(f"SHC-related operator {name} is not implemented for Data_K_soc., "
+                                      "please, use kwargs_formula={'spin_current_type':'siple'} in the SHC calculator.")
+        else:  # other not spin-related operators
+            hermitian = (name in ['AA', 'OO', 'rotAA'])
+            shape = (self.nk, ) + (self.num_wann, ) * 2 + (3,) * (der + num_cart_dim(name))
+            Xbar = np.zeros(shape, dtype=complex)
+            for i, datak in enumerate([self.data_K_up, self.data_K_down]):
+                Xbar[:, i::2, i::2] = datak.get_k_mat(name, hermitian=hermitian, der=der)
+            if name == "Ham" and self.has_soc:
+                Xbar += self.Hsoc(der=der)
+        return self._rotate(Xbar, select_WF=select_WF)
 
 
     def Hsoc(self, der=0):
@@ -104,7 +102,7 @@ class Data_K_soc(Data_K_R):
     def E_K_corners_tetra(self):
         # raise NotImplementedError("E_K_corners_tetra is not implemented for Data_K_soc. ")
         expdK_up = self.data_K_up.expdK_corners_tetra
-        expdK_down = self.data_K_up.expdK_corners_tetra
+        expdK_down = self.data_K_down.expdK_corners_tetra
         expdK_soc = self.expdK_corners_tetra if self.has_soc else None
         Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
         for iv in range(4):

@@ -18,14 +18,14 @@ ray.init()
 
 def get_wannierised(prefix, spin_channel, spinor=False, save_name=None):
     bandstructure = BandStructure.from_gpaw(
-                              calculator_gpaw=calc_gpaw,
-                                Ecut=200,
-                                normalize=True,
-                                spinor=spinor,
-                                spin_channel=spin_channel,
-                                include_TR=True,
-                                magmom=[[0, 0, 1]] if spinor else None
-                                )
+        calculator_gpaw=calc_gpaw,
+        Ecut=200,
+        normalize=True,
+        spinor=spinor,
+        spin_channel=spin_channel,
+        include_TR=True,
+        magmom=[[0, 0, 1]] if spinor else None
+    )
     sg = bandstructure.spacegroup
     proj_sp3d2 = Projection(position_num=[[0, 0, 0]], orbital='sp3d2', spacegroup=sg)
     proj_t2g = Projection(position_num=[[0, 0, 0]], orbital='t2g', spacegroup=sg)

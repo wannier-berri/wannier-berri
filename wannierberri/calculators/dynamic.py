@@ -2,6 +2,7 @@ import numpy as np
 import abc
 import functools
 from ..utility import Gaussian, Lorentzian, FermiDirac, cached_einsum
+from ..grid.tetrahedron import omega_intervals
 from ..result import EnergyResult
 from .calculator import Calculator
 from ..formula.covariant import SpinVelocity
@@ -24,9 +25,67 @@ eV_au = physical_constants['electron volt-hartree relationship'][0]
 
 
 class DynamicCalculator(Calculator, abc.ABC):
+    """
+    Base class for calculators, which depend on Fermi level and frequency (omega). 
 
-    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian',
-                 kwargs_formula=None, dtype=complex, **kwargs):
+    Parameters
+    ----------
+    Efermi : array_like
+        Fermi level(s) in eV.
+    omega : array_like
+        Frequencies in eV.
+    kBT : float
+        Temperature in eV.
+    smr_fixed_width : float
+        Fixed smearing width in eV.
+    smr_type : str
+        Type of smearing function. Can be 'Lorentzian' or 'Gaussian'.
+    max_smear_arg : float
+        For efficiency, when the argument of the smearing function is larger than max_smear_arg * smr_fixed_width, 
+        the corresponding pairs of bands are ignored. If None, it is set to 100 for Lorentzian and 5 for Gaussian.
+    tetra_delta : bool
+        Evaluate the delta functions delta(E_n - E_m -/+ omega) by the linear tetrahedron method instead of the
+        smearing, for the calculators that allow it (`JDOS`, `OpticalConductivity`, `SHC`, `ShiftCurrent`,
+        `InjectionCurrent`). Only the delta functions: the principal-value (real) part of `OpticalConductivity` and
+        `SHC` still uses the Lorentzian of width ``smr_fixed_width``, as with ``smr_type='Gaussian'``. The band
+        energies are interpolated linearly between the corners of the parallelepiped (or tetrahedron) around each
+        k-point, while the matrix elements and the occupation factors are taken at the k-point itself. ``omega``
+        must be finite and increasing. Requires a grid (not a path). For a band pair whose energy difference is
+        constant within a tetrahedron (to 1e-3 of the spacing of ``omega``), the delta function cannot be sampled
+        at the frequencies, and its weight is put into the interval around the nearest frequency, as with
+        ``tetra_delta_average=True``. As for the static calculators with the tetrahedron method, the cells are not
+        symmetric under the point group, so the results with ``use_irred_kpt=True`` or ``symmetrize=True`` differ
+        from those on the full grid without symmetrization, by the error of the discretization.
+    tetra_delta_average : bool
+        With ``tetra_delta=True``, give at each frequency the average of the delta function over the interval
+        between the midpoints to the neighbouring frequencies (``omega`` then needs at least two values), instead of
+        its value at that frequency. The integral of the delta function over these intervals is then kept, also for
+        features narrower than the intervals (e.g. band gaps that are nearly constant within a cell), but the
+        result depends on the frequency grid.
+    kwargs_formula : dict
+        Additional keyword arguments for the formula class.
+    """
+
+    # if True, only the pair of each band group with itself is taken (terms with a single band index)
+    self_pairs_only = False
+
+    use_tetra_delta_12 = False  # if True, factor_omega uses delta(E1 - E2 - omega) from the tetrahedron method (tetra_delta=True)
+    use_tetra_delta_21 = False  # if True, factor_omega uses delta(E2 - E1 - omega) from the tetrahedron method (tetra_delta=True)
+    use_tetra_reactive_12 = False  # if True, factor_omega uses the principal-value part of 1/(E1 - E2 - omega) from the tetrahedron method (tetra_delta=True)
+    use_tetra_reactive_21 = False  # if True, factor_omega uses the principal-value part of 1/(E2 - E1 - omega) from the tetrahedron method (tetra_delta=True)
+
+    def __init__(self, Efermi=None, omega=None, kBT=0, smr_fixed_width=0.1,
+                 max_smear_arg=None, smr_type='Lorentzian',
+                 kwargs_formula=None, dtype=complex,
+                 tetra=False,
+                 tetra_delta=False, tetra_delta_average=False,
+                 tetra_reactive=False, **kwargs):
+
+        if tetra:
+            if self.allow_tetra_delta:
+                tetra_delta = True
+            if self.allow_tetra_reactive:
+                tetra_reactive = True
 
         if kwargs_formula is None:
             kwargs_formula = {}
@@ -36,6 +95,25 @@ class DynamicCalculator(Calculator, abc.ABC):
         self.kBT = kBT
         self.smr_fixed_width = smr_fixed_width
         self.smr_type = smr_type
+        if tetra_delta and not self.allow_tetra_delta:
+            raise ValueError(f"the tetrahedron method (tetra_delta=True) is not implemented for {type(self).__name__}")
+        if tetra_reactive and not self.allow_tetra_reactive:
+            raise ValueError(f"the tetrahedron method for the principal-value part (tetra_reactive=True) is not implemented for {type(self).__name__}")
+        self.tetra_delta = tetra_delta
+        self.tetra_reactive = tetra_reactive
+        self.omega_edges = None
+        if tetra_delta:
+            w = np.asarray(omega, dtype=float).reshape(-1)
+            nmin = 2 if tetra_delta_average else 1
+            if len(w) < nmin or not np.all(np.isfinite(w)) or np.any(np.diff(w) <= 0):
+                raise ValueError("with the tetrahedron method (tetra_delta=True), omega must be finite and increasing" +
+                                 (", with at least two values for tetra_delta_average=True" if tetra_delta_average
+                                  else "") + f"; got {omega}")
+            if tetra_delta_average:
+                # the edges of the intervals around the frequencies, at the midpoints between them
+                self.omega_edges = omega_intervals(w)
+        elif tetra_delta_average:
+            raise ValueError("tetra_delta_average=True requires tetra_delta=True")
         self.kwargs_formula = copy(kwargs_formula)
         self.Formula = None
         self.constant_factor = 1.
@@ -49,15 +127,32 @@ class DynamicCalculator(Calculator, abc.ABC):
 
         if self.smr_type == 'Lorentzian':
             self.smear = functools.partial(Lorentzian, width=self.smr_fixed_width)
+            if max_smear_arg is None:
+                max_smear_arg = 100
         elif self.smr_type == 'Gaussian':
             self.smear = functools.partial(Gaussian, width=self.smr_fixed_width, adpt_smr=False)
+            if max_smear_arg is None:
+                max_smear_arg = 5
         else:
             raise ValueError("Invalid smearing type {self.smr_type}")
+        self.max_smear_width = max_smear_arg * self.smr_fixed_width
         self.FermiDirac = functools.partial(FermiDirac, mu=self.Efermi, kBT=self.kBT)
+
+    @property
+    def allow_tetra_delta(self):
+        return self.use_tetra_delta_12 or self.use_tetra_delta_21
+
+    @property
+    def allow_tetra_reactive(self):
+        return self.use_tetra_reactive_12 or self.use_tetra_reactive_21
 
     @abc.abstractmethod
     def factor_omega(self, E1, E2):
-        """determines a frequency-dependent factor for bands with energies E1 and E2"""
+        """determines a frequency-dependent factor for bands with energies E1 and E2
+
+        Calculators with ``allow_tetra == True`` take additional arguments ``tetra_delta_12`` and ``tetra_delta_21``: with tetra_delta=True, the pair
+        of arrays (delta(E1 - E2 - omega), delta(E2 - E1 - omega)) from the tetrahedron method (None for the one
+        not used), otherwise None."""
 
     def factor_Efermi(self, E1, E2):
         return self.FermiDirac(E2) - self.FermiDirac(E1)
@@ -81,10 +176,14 @@ class DynamicCalculator(Calculator, abc.ABC):
                 ik, -np.inf, np.inf, degen_thresh=self.degen_thresh, degen_Kramers=self.degen_Kramers)
             # now find needed pairs:
             # as a dictionary {((ibm1,ibm2),(ibn1,ibn2)):(Em,En)}
-            degen_group_pairs = [
-                (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
-                if self.nonzero(Em, En)
-            ]
+            if self.self_pairs_only:
+                degen_group_pairs = [
+                    (ibm, ibm, Em, Em) for ibm, Em in degen_groups.items()
+                    if self.nonzero(Em, Em)]
+            else:
+                degen_group_pairs = [
+                    (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
+                    if self.nonzero(Em, En)]
             npair = len(degen_group_pairs)
             if npair == 0:
                 continue
@@ -92,8 +191,39 @@ class DynamicCalculator(Calculator, abc.ABC):
             matrix_elements = np.array(
                 [formula.trace_ln(ik, np.arange(*pair[0]), np.arange(*pair[1])) for pair in degen_group_pairs])
             factor_Efermi = np.array([self.factor_Efermi(pair[2], pair[3]) for pair in degen_group_pairs])
-            factor_omega = np.array([self.factor_omega(pair[2], pair[3]) for pair in degen_group_pairs]).T
-            # raise ValueError(f"{factor_omega.shape=}, {factor_Efermi.shape=}, {matrix_elements.shape=}")
+            delta12 = None
+            delta21 = None
+            react12 = None
+            react21 = None
+            if self.tetra_delta or self.tetra_reactive:
+                weights_tetra = data_K.tetraWeights.dynamic_weights
+                # pairs with no occupation factor (e.g. a group with itself) do not contribute
+                group_pairs_tetra = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
+                                     for pair, fE in zip(degen_group_pairs, factor_Efermi)]
+                group_pairs_tetra_reverse = [(b, a) for a, b in group_pairs_tetra]
+                if self.tetra_delta:
+                    if self.use_tetra_delta_12:
+                        delta12 = weights_tetra(ik, group_pairs_tetra, self.omega, self.omega_edges, type="delta")
+                    if self.use_tetra_delta_21:
+                        delta21 = weights_tetra(ik, group_pairs_tetra_reverse, self.omega, self.omega_edges, type="delta")
+                if self.tetra_reactive:
+                    if self.use_tetra_reactive_12:
+                        react12 = weights_tetra(ik, group_pairs_tetra, self.omega, type="reactive")
+                    if self.use_tetra_reactive_21:
+                        react21 = weights_tetra(ik, group_pairs_tetra_reverse, self.omega, type="reactive")
+            kwargs_list = []
+            for ipair, pair in enumerate(degen_group_pairs):
+                kwargs = dict(E1=pair[2], E2=pair[3])
+                if delta12 is not None:
+                    kwargs['tetra_delta_12'] = delta12[ipair]
+                if delta21 is not None:
+                    kwargs['tetra_delta_21'] = delta21[ipair]
+                if react12 is not None:
+                    kwargs['tetra_reactive_12'] = react12[ipair]
+                if react21 is not None:
+                    kwargs['tetra_reactive_21'] = react21[ipair]
+                kwargs_list.append(kwargs)
+            factor_omega = np.array([self.factor_omega(**kwargs) for kwargs in kwargs_list]).T  #
             restot += factor_omega @ (factor_Efermi[:, :, None] *
                                       matrix_elements.reshape(npair, -1)[:, None, :]).reshape(npair, -1)
         restot = restot.reshape(restot_shape).swapaxes(0, 1)  # swap the axes to get EF,omega,a,b,...
@@ -154,18 +284,24 @@ class JDOS(DynamicCalculator):
         self.Formula = Formula_dyn_ident
         self.dtype = float
 
-    def factor_omega(self, E1, E2):
+    use_tetra_delta_12 = True
+
+    def factor_omega(self, E1, E2, tetra_delta_12=None):
+        if tetra_delta_12 is not None:
+            return tetra_delta_12
         return self.smear(E1 - E2 - self.omega)
 
     def nonzero(self, E1, E2):
-        return (E1 < self.Efermi.max()) and (E2 > self.Efermi.min()) and (
-            self.omega.min() - 5 * self.smr_fixed_width < E1 - E2 < self.omega.max() + 5 * self.smr_fixed_width)
+        if not super().nonzero(E1, E2):
+            return False
+        if self.tetra_delta:  # the energies at the corners may differ from E1, E2
+            return True
+        return self.omega.min() - self.max_smear_width < E1 - E2 < self.omega.max() + self.max_smear_width
 
 
 ################################
 #    Optical Conductivity      #
 ################################
-
 
 class Formula_OptCond(Formula):
 
@@ -183,16 +319,25 @@ class Formula_OptCond(Formula):
 
 class OpticalConductivity(DynamicCalculator):
 
+    use_tetra_delta_21 = True
+    use_tetra_reactive_21 = True
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = Formula_OptCond
         self.constant_factor = factors.factor_opt
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2,
+                     tetra_delta_21=None,
+                     tetra_reactive_21=None):
         delta_arg_12 = E2 - E1 - self.omega  # argument of delta function [iw, n, m]
         cfac = 1. / (delta_arg_12 - 1j * self.smr_fixed_width)
-        if self.smr_type != 'Lorentzian':
+        if tetra_delta_21 is not None:
+            cfac.imag = np.pi * tetra_delta_21
+        elif self.smr_type != 'Lorentzian':
             cfac.imag = np.pi * self.smear(delta_arg_12)
+        if tetra_reactive_21 is not None:
+            cfac.real = tetra_reactive_21
         return (E2 - E1) * cfac
 
 
@@ -222,6 +367,14 @@ class Formula_SHC(Formula):
 
 
 class SHC(DynamicCalculator):
+    r"""Spin Hall conductivity at finite frequency (:math:`S/m`), from the interband terms of the spin current and
+    the Berry connection. It is symmetrized as a quantity even under time reversal.
+
+    Without time-reversal symmetry, the intraband (relaxation-time) term is not included. Its static limit is given
+    by :class:`~wannierberri.calculators.static.SpinOhmic_FermiSurf`."""
+
+    use_tetra_delta_12 = True
+    use_tetra_reactive_12 = True
 
     def __init__(self, SHC_type="ryoo", shc_abc=None, **kwargs):
         super().__init__(**kwargs)
@@ -229,11 +382,16 @@ class SHC(DynamicCalculator):
         self.Formula = Formula_SHC
         self.constant_factor = factors.factor_shc
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, tetra_delta_12=None,
+                     tetra_reactive_12=None):
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         cfac = 1. / (delta_arg_12 - 1j * self.smr_fixed_width)
-        if self.smr_type != 'Lorentzian':
+        if tetra_delta_12 is not None:
+            cfac.imag = np.pi * tetra_delta_12
+        elif self.smr_type != 'Lorentzian':
             cfac.imag = np.pi * self.smear(delta_arg_12)
+        if tetra_reactive_12 is not None:
+            cfac.real = tetra_reactive_12
         return cfac / 2
 
 
@@ -307,13 +465,18 @@ class ShiftCurrentFormula(Formula):
 
 class ShiftCurrent(DynamicCalculator):
 
+    use_tetra_delta_12 = True
+    use_tetra_delta_21 = True
+
     def __init__(self, sc_eta, **kwargs):
         super().__init__(dtype=float, **kwargs)
         self.kwargs_formula.update(dict(sc_eta=sc_eta))
         self.Formula = ShiftCurrentFormula
         self.constant_factor = factors.factor_shift_current
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, tetra_delta_12=None, tetra_delta_21=None):
+        if tetra_delta_12 is not None and tetra_delta_21 is not None:
+            return tetra_delta_12 + tetra_delta_21
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         delta_arg_21 = E2 - E1 - self.omega
         return self.smear(delta_arg_12) + self.smear(delta_arg_21)
@@ -348,6 +511,8 @@ class InjectionCurrentFormula(Formula):
 
 class InjectionCurrent(DynamicCalculator):
 
+    use_tetra_delta_12 = True
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.Formula = InjectionCurrentFormula
@@ -355,6 +520,8 @@ class InjectionCurrent(DynamicCalculator):
         self.transformInv = transform_odd
         self.constant_factor = factors.factor_injection_current
 
-    def factor_omega(self, E1, E2):
+    def factor_omega(self, E1, E2, tetra_delta_12=None):
+        if tetra_delta_12 is not None:
+            return tetra_delta_12
         delta_arg_12 = E1 - E2 - self.omega  # argument of delta function [iw, n, m]
         return self.smear(delta_arg_12)

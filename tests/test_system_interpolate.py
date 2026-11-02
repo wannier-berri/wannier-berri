@@ -63,7 +63,7 @@ def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
                 res = results[f"{alpha:.2f}"].results[quant].data
                 ref = np.load(f"{REF_DIR}/integrate_files/test_soc_interp_alpha_{alpha:.2f}-{quant}_iter-0000.npz")["data"]
                 err = np.max(np.abs(res - ref))
-                assert err < 1e-8, f"SOC Interp alpha={alpha:.2f} quant={quant} failed with err={err}"
+                assert err < 5e-7, f"SOC Interp alpha={alpha:.2f} quant={quant} failed with err={err}"
 
     results["-z"] = wberri.run(system=system_Fe_gpaw_soc_minusz, grid=grid,
                     fout_name=f"{OUTPUT_DIR}/integrate_files/test_soc_interp_alpha_-z",

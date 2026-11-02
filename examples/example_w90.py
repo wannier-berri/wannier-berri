@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
+import os
+import ray
+import numpy as np
+from wannierberri.system import System_R
+from wannierberri.symmetry import point_symmetry as SYM
+import wannierberri.calculators as calculators
 import wannierberri as wberri
-    
+
 wberri.configure_logging()
 
 
-import wannierberri.calculators as calculators
-from wannierberri.symmetry import point_symmetry as SYM
-from wannierberri.system import System_R
-import numpy as np
-import ray
 
 
-import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 ray.init(num_cpus=4)

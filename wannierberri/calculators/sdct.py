@@ -117,7 +117,19 @@ class SDCT_asym_sea_II(_SDCT_term):
 class _SDCT_surf_term(_SDCT_term):
 
     def factor_Efermi(self, E1, E2):
-        return -self.FermiDirac(E1)**2 * np.exp((E1 - self.Efermi) / self.kBT) / self.kBT
+        # df/dE at E1, written so that it does not overflow far from the Fermi level
+        f = self.FermiDirac(E1)
+        return -f * (1 - f) / self.kBT
+
+
+class _SDCT_surf_II_term(_SDCT_surf_term):
+    """The Fermi-surface II terms depend on one band only (see `Formula_SDCT_surf_II.trace_ln`),
+    so only the pair of a band group with itself is taken, within the occupation window."""
+
+    self_pairs_only = True
+
+    def nonzero(self, E1, E2):
+        return self.eocc1max <= E1 <= self.eocc0min
 
 
 class SDCT_sym_surf_I(_SDCT_surf_term):
@@ -140,7 +152,7 @@ class SDCT_asym_surf_I(_SDCT_surf_term):
         return omega * (E2 - E1) * Zfac
 
 
-class SDCT_sym_surf_II(_SDCT_surf_term):
+class SDCT_sym_surf_II(_SDCT_surf_II_term):
 
     def __init__(self, **kwargs):
         super().__init__(formula=Formula_SDCT_surf_II, sym=True, **kwargs)
@@ -150,7 +162,7 @@ class SDCT_sym_surf_II(_SDCT_surf_term):
         return -1.j / omega**2
 
 
-class SDCT_asym_surf_II(_SDCT_surf_term):
+class SDCT_asym_surf_II(_SDCT_surf_II_term):
 
     def __init__(self, **kwargs):
         super().__init__(formula=Formula_SDCT_surf_II, sym=False, **kwargs)

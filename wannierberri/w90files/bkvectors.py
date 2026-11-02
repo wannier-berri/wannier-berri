@@ -47,6 +47,13 @@ class BKVectors(W90_file):
             f"MMN wk should have shape (NNB,), got {self.wk.shape}"
         self.NNB = len(self.wk)
 
+    def write_epw(self, filename):
+        """Write EPW .bvec (Angstrom^-1, Angstrom^2), in the matching MMN neighbour order; full k grid only."""
+        with open(filename, "w") as io:
+            io.write(f"WannierBerri b-vectors\n{self.NK} {self.NNB}\n")
+            for ik in range(self.NK):
+                np.savetxt(io, np.column_stack((self.bk_cart, self.wk)), fmt="%.18e")
+
     def select_bands(self, selected_bands, **kwargs):
         # this class has no information on the bands, so nothing to do
         pass

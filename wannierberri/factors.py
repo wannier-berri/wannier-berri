@@ -65,3 +65,7 @@ m_spin_prefactor_SI = -0.5 * electron_g_factor * hbar / electron_mass
 # hbar*1e20/elementary_charge ~= 65821.19569
 #
 m_spin_prefactor = m_spin_prefactor_SI * (hbar * 1e20 / elementary_charge)
+
+factor_lfahe_spin = factor_ahc * hbar / (2 * electron_mass)
+
+factor_spin = (hbar / (2 * electron_mass))

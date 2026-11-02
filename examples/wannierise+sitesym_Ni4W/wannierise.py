@@ -32,9 +32,9 @@ if sitesym:
         print(f"SAWF file not found ({e}), creating it")
         from irrep.bandstructure import BandStructure
         bandstructure = BandStructure.from_espresso(
-                                    prefix=os.path.join(path_data, "Ni4W"),
-                                    Ecut=100,
-                                    normalize=False, include_TR=includeTR)
+            prefix=os.path.join(path_data, "Ni4W"),
+            Ecut=100,
+            normalize=False, include_TR=includeTR)
         symmetrizer = SAWF.from_irrep(bandstructure)
         spacegroup = symmetrizer.spacegroup
 

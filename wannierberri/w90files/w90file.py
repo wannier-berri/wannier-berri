@@ -35,6 +35,26 @@ class W90_file(SavableNPZ):
 
 
     @classmethod
+    def get_name(cls, name, ignore_extension=False):
+        """
+        if name contains extension return name, else return name + extension
+        """
+        if ignore_extension:
+            return name
+        if name.endswith("." + cls.extension):
+            return name
+        else:
+            return name + "." + cls.extension
+
+    @classmethod
+    def open_file(cls, seedname, mode, ignore_extension=False):
+        """
+        open the file with the given seedname and mode
+        """
+        name = cls.get_name(seedname, ignore_extension=ignore_extension)
+        return open(name, mode)
+
+    @classmethod
     def from_w90_file(cls, **kwargs):
         """
         abstract method to read the necessary data from Wannier90 file
