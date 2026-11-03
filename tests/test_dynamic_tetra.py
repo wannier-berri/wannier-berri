@@ -8,6 +8,7 @@ import warnings
 
 import numpy as np
 import pytest
+from scipy.integrate import quad
 
 import wannierberri as wberri
 from wannierberri.calculators import dynamic
@@ -821,6 +822,61 @@ def test_occupied_flat_at_fermi_level():
     omega = np.array([0.0, 1.0, 2.0, 3.0])
     np.testing.assert_allclose(occupied_kernel(np.ones(4), np.ones(4), np.array([1.0]), omega, np.zeros(1), 0)[0],
                                [0, 1, 0, 0])
+
+
+@pytest.mark.parametrize("sign", [1.0, -1.0])
+def test_occupation_kernel_flat_transition(sign):
+    """bands with a constant difference, one of them cut by the Fermi level: within the parts of the tetrahedron, the
+    difference stays exactly constant, so that the principal part is zero at omega equal to it (as for the whole
+    tetrahedron) and (occupied fraction) / (dE - omega) beside it"""
+    Ej = np.array([[-1.0, 2.0, 3.0, 4.0]])
+    Ei = Ej + 3
+    omega = sign * np.array([3 - 1e-9, 3, 3 + 1e-9, 2.5, 3.5])
+    fraction = 1 / 60  # where Ej < 0: the corner tetrahedron with the edges cut at 1/3, 1/4 and 1/5
+    expected = np.zeros(len(omega))
+    expected[[0, 2, 3, 4]] = fraction / (sign * 3 - omega[[0, 2, 3, 4]])
+    for kernel in (occupation_kernel_tetra, occupation_kernel_tetra.py_func):
+        result = kernel(Ei, Ej, sign, np.array([0.0]), omega, np.zeros(1), 2)[0, 0]
+        np.testing.assert_allclose(result, expected, rtol=1e-6, atol=0)
+
+
+@pytest.mark.parametrize("occupied, dE", [([0.3, -1.2, 2.0, 0.7], [1.1, -0.4, 2.5, 0.2]),
+                                          ([0.0, 0.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
+                                          ([0.0, 1.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
+                                          ([0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 0.5, 1.5])])
+def test_occupied_kernel_principal_inside(occupied, dE):
+    """the principal part over the occupied parts at frequencies within the range of dE, against the numerical
+    principal-value integral of the density of dE (`delta_tetra`) over each part, with Fermi levels between and at
+    the corner values; at the corner values of dE on the parts, it is continuous. Equal corner values (here where dE
+    has equal values at two corners) are separated by 1e-7 of the spread, which changes the result by about 1e-5 of
+    its scale"""
+    occupied, dE = np.array(occupied), np.array(dE)
+    efermi = np.array([-0.5, 0.0, 0.5, 1.0, 1.7])
+    omega = np.linspace(dE.min() - 0.5, dE.max() + 0.5, 23) + 0.0123
+    result = occupied_kernel(occupied, dE, efermi, omega, np.zeros(1), 2)
+    tolerance = 1e-5 * np.abs(result).max()
+    for ief, ef in enumerate(efermi):
+        bary, volume = occupied_tetrahedra(occupied, ef)
+        parts = [bary[t] @ dE for t in range(3) if volume[t] > 0]
+        for w, value in zip(omega, result[ief]):
+            reference = 0
+            for v, d in zip(volume[volume > 0], parts):
+                nodes = np.unique(d)
+                for a, b in zip(nodes[:-1], nodes[1:]):
+                    def density(x):
+                        return delta_tetra(np.array([x]), *d)[0]
+                    if a < w < b:
+                        reference += v * quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
+                    else:
+                        reference += v * quad(lambda x: density(x) / (x - w), a, b, limit=200)[0]
+            assert value == pytest.approx(reference, rel=1e-5, abs=tolerance)
+        for d in parts:
+            for node in np.unique(d):
+                if np.sum(np.abs(d - node) < 1e-12) < 3:  # continuous unless three corners have the same value
+                    near = occupied_kernel(occupied, dE, efermi[ief:ief + 1], node + np.array([-1e-7, 0, 1e-7]),
+                                           np.zeros(1), 2)[0]
+                    assert np.all(np.isfinite(near))
+                    assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
 
 
 def test_occupied_kernel_monte_carlo():
