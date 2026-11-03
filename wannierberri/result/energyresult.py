@@ -168,23 +168,41 @@ class EnergyResult(Result):
     def __truediv__(self, number):
         return self * (1. / number)
 
+    def fit(self, other, return_message=False):
+        msg = ""
+        if (self.transformTR is not None) and (other.transformTR is not None):
+            if self.transformTR != other.transformTR:
+                msg += f"TR transformations do not match: {self.transformTR} and {other.transformTR}; "
+        if (self.transformInv is not None) and (other.transformInv is not None):
+            if self.transformInv != other.transformInv:
+                msg += f"Inv transformations do not match: {self.transformInv} and {other.transformInv}; "
+        elif self.rank != other.rank:
+            msg += f"Ranks do not match: {self.rank} and {other.rank}"
+        for i in range(self.N_energies):
+            if np.linalg.norm(self.Energies[i] - other.Energies[i]) > 1e-8:
+                msg += f"Energy levels do not match: {self.Energies[i]} and {other.Energies[i]}; "
+            if self.smoothers[i] != other.smoothers[i]:
+                msg += f"Smoothers do not match: {self.smoothers[i]} and {other.smoothers[i]}; "
+        if len(msg) == 0:
+            if return_message:
+                return True, "all good"
+            else:
+                return True
+        if return_message:
+            return False, msg
+        else:
+            return False
+
     def __add__(self, other):
         if other == 0 or other is None or (isinstance(other, VoidResult)):
             return self
-        if (self.transformTR is not None) and (other.transformTR is not None):
-            assert self.transformTR == other.transformTR, f"TR transformations do not match: {self.transformTR} and {other.transformTR}"
-        if (self.transformInv is not None) and (other.transformInv is not None):
-            assert self.transformInv == other.transformInv
+        isfit = self.fit(other, return_message=True)
+        if not isfit[0]:
+            raise RuntimeError("Results do not fit, cannot add them : " + isfit[1])
         if len(self.comment) > len(other.comment):
             comment = self.comment
         else:
             comment = other.comment
-        for i in range(self.N_energies):
-            if np.linalg.norm(self.Energies[i] - other.Energies[i]) > 1e-8:
-                raise RuntimeError(f"Adding results with different energies {i} ({self.E_titles[i]}) - not allowed")
-            if self.smoothers[i] != other.smoothers[i]:
-                raise RuntimeError(
-                    f"Adding results with different smoothers [{i}]: {self.smoothers[i]} and {other.smoothers[i]}")
         return self.__class__(
             Energies=self.Energies,
             data=self.data + other.data,

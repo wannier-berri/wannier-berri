@@ -11,6 +11,7 @@ from math import ceil
 from copy import copy
 from ..formula import covariant as frml
 from ..formula import basic as frml_basic
+from ..formula import perturbation as frml_pert
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
@@ -667,10 +668,50 @@ class AHC_Zeeman_spin(StaticCalculator):
         | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
 
-    def __init__(self, constant_factor=factors.fac_spin_Z * factors.factor_ahc, **kwargs):
+    def __init__(self, **kwargs):
+        raise RuntimeError("This calculator is deprecated, it had a wrong sign. Please use LFAHE_spin_fsurf instead. Also note the new "
+        "LFAHE_spin_fsea calculator that takes into ")
+
+
+
+
+class LFAHE_spin_fsurf(StaticCalculator):
+    r"""AHC conductivity Zeeman correction term spin part (:math:`S/m/T`)
+
+        | With Fermi surface integral.
+        | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
+
+    def __init__(self, constant_factor=-factors.fac_spin_Z * factors.factor_ahc, **kwargs):
         self.Formula = frml.OmegaS
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+
+class LFAHE_spin_fsea(StaticCalculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml_pert.PertOmegaZeemanSpin
+        self.fder = 0
+        super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
+
+
+class LFAHE_spin(Calculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.fsea = LFAHE_spin_fsea(**kwargs)
+        self.fsurf = LFAHE_spin_fsurf(**kwargs)
+
+    def __call__(self, data_K):
+        fsea_res = self.fsea(data_K)
+        fsurf_res = self.fsurf(data_K)
+        return fsea_res + fsurf_res
 
 
 class OmegaOmega(StaticCalculator):

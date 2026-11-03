@@ -72,7 +72,7 @@ def get_system_tb_py(model,
             positions = np.array(sum(([p, p] for p in positions), []))
         else:
             raise Exception("\n\nWrong value of nspin!")
-        logger.info("number of wannier functions:", system.num_wann)
+        logger.info(f"number of wannier functions: {system.num_wann}")
         if version1:
             iRvec = [hop[-1] for hop in hoppings]
         else:

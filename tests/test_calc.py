@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from .test_formula import datak_Fe_Gamma as datak_Fe_
 import wannierberri as wberri
 from wannierberri.calculators import static
@@ -9,12 +11,12 @@ from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
-from .common_systems import Efermi_Fe, Efermi_Si
+from .common_systems import Efermi_Chiral, Efermi_Fe, Efermi_Si
 from .test_formula import get_datak
 from wannierberri.calculators.dynamic import JDOS
 from pytest import approx
 from wannierberri.system.system_kp import SystemKP
-
+from wannierberri.grid.Kpoint import KpointBZparallel
 
 
 datak_Fe = datak_Fe_
@@ -31,10 +33,13 @@ def check_calculator(compare_any_result):
                factor=1,
                transformTR=None,
                transformInv=None,
+               void_if_missing=True
                 ):
         grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
         data_k_class = wberri.data_K.get_data_k_class_from_system(system)
-        data_K = data_k_class(system, dK=dK, grid=grid, **param_K)
+        kpoint = KpointBZparallel(K=dK, dK=np.array([1 / 4, 1 / 4, 1 / 4]), NKFFT=NKFFT, factor=factor, pointgroup=None)
+
+        data_K = data_k_class(system, dK=dK, grid=grid, Kpoint=kpoint, **param_K)
         result = calc(data_K)
         print(f"result = {result}")
         result = result * factor
@@ -54,7 +59,8 @@ def check_calculator(compare_any_result):
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
             print(f"Comparing with reference file {path_filename_ref}")
-            result_ref = result_type.from_npz(path_filename_ref)
+            result_ref = result_type.from_npz(path_filename_ref, void_if_missing=void_if_missing)
+            print(f"result_ref = {result_ref}")
         if transformTR is not None:
             result_ref.transformTR = transformTR
         if transformInv is not None:
@@ -350,3 +356,56 @@ def test_jdos():
         result = JDOS(Efermi=[0.0], omega=np.array(omega), smr_fixed_width=0.1,
                       smr_type=smr_type, kBT=0)(datak).data[0]
         assert result == approx(expected, abs=1e-8), f"jdos({omega}, '{smr_type}') = {result}, expected {expected}"
+
+
+@pytest.mark.parametrize("ext_terms", [True, False])
+@pytest.mark.parametrize("int_terms", [True, False])
+@pytest.mark.parametrize("fermi", ["sea", "surf"])
+def test_LFAHE(system_Fe_W90, check_calculator, ext_terms, int_terms, fermi):
+    system = deepcopy(system_Fe_W90)
+    if fermi == "sea":
+        calc = static.LFAHE_spin_fsea
+    else:
+        calc = static.LFAHE_spin_fsurf
+    ext_terms_str = "ext" if ext_terms else "noext"
+    int_terms_str = "int" if int_terms else "noint"
+    calc_name = f"{calc.__name__}_{ext_terms_str}_{int_terms_str}"
+    calculator = calc(Efermi=Efermi_Fe,
+                      kwargs_formula={"external_terms": ext_terms,
+                                      "internal_terms": int_terms})
+    check_calculator(system, calculator, calc_name, void_if_missing=False,
+                     compare_zero=not (ext_terms or int_terms))
+
+
+def test_LFAHE_tb(system_Chiral_left, check_calculator):
+    system = deepcopy(system_Chiral_left)
+
+    from wannierberri.calculators.static import LFAHE_spin_fsea, LFAHE_spin_fsurf
+    kwargs = dict(Efermi=Efermi_Chiral)
+    calculators = dict(surf=LFAHE_spin_fsurf(**kwargs),
+                       fsea=LFAHE_spin_fsea(**kwargs),
+                       )
+    results = {}
+    for name, calc in calculators.items():
+        results[name] = check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False)
+    isfit, msg = results["surf"].fit(results["fsea"], return_message=True)
+    assert isfit, f"LFAHE_spin_fsurf and LFAHE_spin_fsea should not fit each other, but {msg}"
+
+
+def test_dynamic_tetra(system_Haldane_double, check_calculator):
+    system = system_Haldane_double
+    from wannierberri.calculators.dynamic import JDOS, OpticalConductivity, SHC
+    calculators = {}
+    Efermi = np.array([-2, 0, 2.5])
+    omega = np.linspace(0, 5, 11)
+    calculators["JDOS"] = JDOS(Efermi=Efermi, omega=omega, tetra=True)
+    calculators["OpticalConductivity"] = OpticalConductivity(Efermi=Efermi, omega=omega, tetra=True)
+    calculators["SHC"] = SHC(Efermi=Efermi, omega=omega, tetra=True, SHC_type="simple")
+    err_list = []
+    for name, calc in calculators.items():
+        try:
+            check_calculator(system, calc, f"Haldane_double_dynamic_{name}", void_if_missing=False)
+        except Exception as e:
+            err_list.append(f"Error in {name}: {e}")
+    if err_list:
+        raise AssertionError("Errors occurred in dynamic tetra tests:\n" + "\n".join(err_list))

@@ -166,7 +166,8 @@ calculators_Te_all = {
     'eMChA_FermiSurf': calc.static.eMChA_FermiSurf,
     'NLDrude_Zeeman_spin': calc.static.NLDrude_Zeeman_spin,
     'NLDrude_Zeeman_orb': calc.static.NLDrude_Zeeman_orb,
-    'AHC_Zeeman_spin': calc.static.AHC_Zeeman_spin,
+    'LFAHE_spin_fsea': calc.static.LFAHE_spin_fsea,
+    'LFAHE_spin_fsurf': calc.static.LFAHE_spin_fsurf,
 }
 
 

@@ -76,3 +76,6 @@ m_spin_prefactor = m_spin_prefactor_SI * (hbar * 1e20 / elementary_charge)
 # so e/hbar =  1.519267447e15 A*s^2/kg*m^2 = 1.519267447e15 1/(Tesla*m^2) = 1.519267447e-5 1/(Tesla*Angstrom^2)
 # Tesla is SI is kg/(A*s^2),
 factor_peierls = 1j * elementary_charge / hbar * 1e-20
+factor_lfahe_spin = factor_ahc * hbar / (2 * electron_mass)
+
+factor_spin = (hbar / (2 * electron_mass))
