@@ -338,7 +338,7 @@ def test_dynamic_weights_kramers_kronig(kind):
     edges = np.linspace(-3, 3, 60001)
     omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals
     for ik in range(nk):
-        delta = tetra.dynamic_weights(ik, pairs, (edges[1:] + edges[:-1]) / 2, edges, type="delta")
+        delta = tetra.dynamic_weights(ik, pairs, (edges[1:] + edges[:-1]) / 2, edges=edges, type="delta")
         reactive = tetra.dynamic_weights(ik, pairs, omega, type="reactive")
         for w, values in zip(omega, reactive.T):
             with np.errstate(divide="ignore"):

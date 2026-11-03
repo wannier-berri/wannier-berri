@@ -105,7 +105,7 @@ def parallel_delta(omega, center, corners, edges=None):
     eCenter = np.array([[0.0, center]])
     eCorners = np.stack([np.zeros((2, 2, 2)), corners], axis=-1)[None]
     weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
-    return weights.dynamic_weights(0, [((1, 2), (0, 1))], omega, edges, type="delta")[0]
+    return weights.dynamic_weights(0, [((1, 2), (0, 1))], omega, edges=edges, type="delta")[0]
 
 
 def parallelepiped_tetrahedra(center, corners):
@@ -206,12 +206,12 @@ def test_delta_weights_groups(kind, average):
         edges = None
     pairs = [((2, 4), (0, 2)), ((0, 2), (2, 4)), ((3, 4), (1, 2)), ((1, 3), (1, 3))]
     weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
-    result = weights.dynamic_weights(0, pairs, omega, edges, type="delta")
+    result = weights.dynamic_weights(0, pairs, omega, edges=edges, type="delta")
     # empty pairs (used for the pairs that do not contribute) give zeros, and do not change the others
-    with_empty = weights.dynamic_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges, type="delta")
+    with_empty = weights.dynamic_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges=edges, type="delta")
     np.testing.assert_array_equal(with_empty[0], 0)
     np.testing.assert_allclose(with_empty[1:], result, rtol=0, atol=1e-14)
-    np.testing.assert_array_equal(weights.dynamic_weights(0, [((0, 0), (0, 0))], omega, edges, type="delta"), 0)
+    np.testing.assert_array_equal(weights.dynamic_weights(0, [((0, 0), (0, 0))], omega, edges=edges, type="delta"), 0)
 
     def one(i, j):
         if kind == "single":
@@ -808,8 +808,8 @@ def test_occupation_kernel_against_occupied_kernel(kind):
         result = occupation_kernel_tetra(Ei, Ej, sign, efermi, omega, edges, kind)
         for i in range(len(Ei)):
             dE = sign * (Ei[i] - Ej[i])
-            expected = (occupied_kernel(Ej[i], dE, efermi, omega, edges, kind)
-                        - occupied_kernel(Ei[i], dE, efermi, omega, edges, kind))
+            expected = (occupied_kernel(Ej[i], dE, efermi, omega, edges, kind) -
+                        occupied_kernel(Ei[i], dE, efermi, omega, edges, kind))
             np.testing.assert_allclose(result[i], expected, rtol=0, atol=1e-12 * max(np.abs(expected).max(), 1))
         assert np.abs(result).max() > 0
 
@@ -989,8 +989,8 @@ def test_occupation_weights_groups(kind):
     for ik in range(nk):
         for type, use_edges, code in (("delta", False, 0), ("delta", True, 1), ("reactive", False, 2)):
             for reverse in (False, True):
-                result = tetra.occupation_weights(ik, pairs, omega, efermi, type=type, reverse=reverse,
-                                                  edges=edges if use_edges else None)
+                result = tetra.dynamic_weights(ik, pairs, omega, efermi=efermi, type=type, reverse=reverse,
+                                               edges=edges if use_edges else None)
                 assert result.shape == (len(pairs), len(efermi), len(omega))
                 np.testing.assert_array_equal(result[1], 0)
                 for ipair, ((i1, i2), (j1, j2)) in enumerate(pairs):
