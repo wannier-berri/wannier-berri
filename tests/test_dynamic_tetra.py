@@ -86,13 +86,15 @@ def random_system(num_wann=3, seed=1, copies=1, two_dimensional=False):
     return system
 
 
-def run(system, calculators, NK=10, grid=None, parallel=True):
+def run(system, calculators, NK=10, grid=None, parallel=True, use_tetra_in_low_D=True):
     """NK : int or list of 3 ints, the FFT grid"""
     if grid is None:
         grid = wberri.Grid(system, NKFFT=NK, NKdiv=1)
     with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
         result = wberri.run(system, grid=grid, parallel=parallel, calculators=calculators,
-                            fout_name=os.path.join(tmp, "x"))
+                            fout_name=os.path.join(tmp, "x"),
+                            parameters_K={"use_tetra_in_low_D": use_tetra_in_low_D}
+                            )
     return {key: result.results[key].data for key in calculators}
 
 

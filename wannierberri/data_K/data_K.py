@@ -80,7 +80,7 @@ class Data_K(System, abc.ABC):
                  random_gauge=False,
                  degen_thresh_random_gauge=1e-4,
                  k_list=None,
-                 use_tetra_in_low_D=True  # so far for testing the old cases
+                 use_tetra_in_low_D=False  # so far for testing the old cases
                  ):
         if k_list is None:
             if isinstance(Kpoint, KpointBZpath):
@@ -182,12 +182,22 @@ class Data_K(System, abc.ABC):
             raise TypeError(f"Unknown Kpoint type {type(self.Kpoint)}")
 
     @cached_property
+    def tetraWeights2D(self):
+        from ..grid.triangle import TriangleWeights
+        scal_prod = np.dot(*self.recip_lattice[self.periodic_directions])
+        if scal_prod > 0:
+            kind = "0101"
+        else:
+            kind = "0011"
+        return TriangleWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind=kind)
+
+    @cached_property
     def tetraWeights(self):
         if self.ndim == 3:
             return self.tetraWeights3D
         elif self.ndim == 2:
-            from ..grid.triangle import Triangle_weights
-            return Triangle_weights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="0011")
+            from ..grid.triangle import TriangleWeights
+            return TriangleWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="0011")
         else:
             raise NotImplementedError(f"tetraWeights is not implemented for ndim={self.ndim}")
 

@@ -1,3 +1,7 @@
+import contextlib
+import os
+import tempfile
+import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.tetrahedron import weights_tetra, weights_tetra_reactive, TetraWeights, delta_tetra, PRINCIPAL_FAR
@@ -6,6 +10,8 @@ from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
 import pytest
 from pytest import approx
+
+from wannierberri.run_grid import run
 
 
 def check_tetra_derivatives(E, Efermi=np.linspace(-0.6, 0.6, 100001), acc1=1e-5, acc2=1e-3, acc3=1e-2, plot=False):
@@ -346,3 +352,27 @@ def test_dynamic_weights_kramers_kronig(kind):
                 kernel = np.log(np.abs((edges[1:] - w) / (edges[:-1] - w)))
             kernel[~np.isfinite(kernel)] = 0
             np.testing.assert_allclose(values, delta @ kernel, rtol=1e-3, atol=1e-4)
+
+
+def test_tetra_2D(system_Haldane_PythTB):
+    from wannierberri.calculators.static import DOS, CumDOS
+    system = system_Haldane_PythTB
+    Efermi = np.linspace(-5, 5, 1000)
+    acc = 0.01
+    calculators = {
+        "dos": DOS(Efermi=Efermi, tetra=True),
+        "cdos": CumDOS(Efermi=Efermi, tetra=True),
+    }
+    grid = Grid(system, NK=60)
+    
+
+    with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+        kwargs = dict(system=system, grid=grid, calculators=calculators, fout_name=os.path.join(tmp, "x"))
+        results_tetra = run(**kwargs, parameters_K={"use_tetra_in_low_D": True})  # , use_irred_kpt=False, symmetrize=False)  # do not use symmetry because tetrahedron is not very symmetric
+        results_triangle = run(**kwargs, parameters_K={"use_tetra_in_low_D": False})  # , use_irred_kpt=False, symmetrize=False)  # do not use symmetry because tetrahedron is not very symmetric
+    for key, acc in [("dos", 0.05), ("cdos", 0.01)]:
+        res_tetra = results_tetra.results[key].data
+        res_triangle = results_triangle.results[key].data
+        maxval = max(np.abs(res_tetra).max(), np.abs(res_triangle).max())
+        diff = np.abs(res_tetra - res_triangle).max()
+        assert diff <= maxval * acc, f"results for {key} differ by {diff} > {maxval * acc} between tetrahedron and triangle methods"
