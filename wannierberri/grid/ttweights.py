@@ -134,9 +134,10 @@ class TTWeights:
         for vertices in self.all_tetrahedra_vertices:
             dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
             if type == "delta":
-                addition = addition + (delta_values_tetra(omega, dE, dim=self.dim) if edges is None else delta_weights_tetra(edges, dE, dim=self.dim))
+                addition = addition + (delta_values_tetra(omega, dE)
+                                       if edges is None else delta_weights_tetra(edges, dE))
             elif type == "reactive":
-                addition = addition + reactive_values_tetra(omega, dE, dim=self.dim)
+                addition = addition + reactive_values_tetra(omega, dE)
         np.add.at(res, np.array(group), addition)
         nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
         return res * self.factor_num_tetra / nband_pairs[:, None]

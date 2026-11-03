@@ -95,7 +95,7 @@ FLAT_FRACTION = 1e-3
 
 
 @njit
-def _add_delta_values(res, omega, edges, weight, dE, dim=3):
+def _add_delta_values(res, omega, edges, weight, dE):
     """add weight * delta(dE - omega) over a tetrahedron (see `delta_tetra`) at the values omega to res. If dE is
     flat (its spread below FLAT_FRACTION of the interval of omega around it), its values cannot be sampled at
     the frequencies, and its weight is put into that interval, as with the averages over the intervals."""
@@ -107,16 +107,17 @@ def _add_delta_values(res, omega, edges, weight, dE, dim=3):
         return
     lo, hi = _omega_in_range(omega, emin, emax)
     if hi > lo:
-        if dim == 3:
+
+        if dE.shape[0] == 4:
             res[lo:hi] += weight * weights_tetra(omega[lo:hi], dE[0], dE[1], dE[2], dE[3], der=1)
-        elif dim == 2:
+        elif dE.shape[0] == 3:
             res[lo:hi] += weight * weights_triangle(omega[lo:hi], dE[0], dE[1], dE[2], der=1)
         else:
-            raise ValueError(f"dim={dim} not supported")
+            raise ValueError(f"dim={dE.shape[0] - 1} not supported")
 
 
 @njit
-def delta_values_tetra(omega, dE, dim=3):
+def delta_values_tetra(omega, dE):
     """values of delta(dE - omega) over a tetrahedron (see `delta_tetra`, and `_add_delta_values` for a flat dE) at
     the given increasing values of omega
 
@@ -124,7 +125,7 @@ def delta_values_tetra(omega, dE, dim=3):
     res = np.zeros((dE.shape[0], omega.shape[0]))
     edges = omega_intervals(omega)
     for i in range(dE.shape[0]):
-        _add_delta_values(res[i], omega, edges, 1., dE[i], dim=dim)
+        _add_delta_values(res[i], omega, edges, 1., dE[i])
     return res
 
 
@@ -168,11 +169,12 @@ def delta_weights_tetra(edges, dE):
 
 
 @njit
-def reactive_values_tetra(omega, dE, dim=3):
+def reactive_values_tetra(omega, dE):
     """values of the average of P 1/(dE - omega) over a tetrahedron (see `weights_tetra_reactive`) at the given omega
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
+    dim = dE.shape[1] - 1
     for i, dEi in enumerate(dE):
         if dim == 3:
             _add_principal_3d(res[i], omega, dEi[0], dEi[1], dEi[2], dEi[3])
