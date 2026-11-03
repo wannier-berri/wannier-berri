@@ -179,6 +179,37 @@ def _get_polynomial(moments, y):
 
 
 @njit
+def _separate_values(e, gap):
+    """separate the 4 sorted values e closer than gap (in place), for the density on the intervals between them:
+    each group of such values is spread symmetrically around its mean, with the gap between them; groups that come
+    closer than gap are merged. The principal part is a symmetric function of the values, so that for equal values its
+    change is of second order in the gap (shifting only the upper values changes it in first order, by about 1e-5 of
+    its scale for a gap of 1e-7 of the spread). With omega within about the gap from three nearly equal values, where
+    the principal part diverges logarithmically for equal ones, the result depends on the separation."""
+    original = e.copy()
+    starts = np.ones(4, dtype=np.bool_)  # whether a group starts at each value
+    for i in range(1, 4):
+        starts[i] = original[i] - original[i - 1] >= gap
+    while True:
+        start = 0
+        for i in range(1, 5):
+            if i == 4 or starts[i]:
+                m = i - start
+                center = np.sum(original[start:i]) / m
+                for k in range(m):
+                    e[start + k] = center + (k - (m - 1) / 2) * gap
+                start = i
+        merged = False
+        for i in range(1, 4):
+            if starts[i] and e[i] - e[i - 1] < gap:
+                starts[i] = False
+                merged = True
+                break
+        if not merged:
+            return
+
+
+@njit
 def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
     """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
     e = np.array(sorted([float(e0), float(e1), float(e2), float(e3)]))
@@ -188,9 +219,7 @@ def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
     spread = e[3] - e[0]
 
     moments = _get_moments(e, mean)
-    gap = 1e-7 * spread
-    for i in range(3):
-        e[i + 1] = max(e[i + 1], e[i] + gap)
+    _separate_values(e, 1e-7 * spread)
     e1, e2, e3, e4 = e
 
     if spread > 0:
