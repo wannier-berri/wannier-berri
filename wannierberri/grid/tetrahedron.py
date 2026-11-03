@@ -425,6 +425,8 @@ class TetraWeights:
             self.Emin = Eall.min(axis=1)
             self.Emax = Eall.max(axis=1)
 
+        self.weights_function = weights_tetra
+
     def weight_1k1b(self, ief, ik, ib, der):
         if self.null:
             return 0.
@@ -440,7 +442,7 @@ class TetraWeights:
         occ = np.zeros(eFermi.shape, dtype=float)
         for tetrahedron in self.all_tetrahedra_vertices:
             evert = tetrahedron[ik, :, ib]
-            occ += weights_tetra(eFermi, evert[0], evert[1], evert[2], evert[3], der=der)
+            occ += self.weights_function(eFermi, *evert, der=der)
         return occ * self.factor_num_tetra
 
     def __weight_1b(self, ief, ik, ib, der):

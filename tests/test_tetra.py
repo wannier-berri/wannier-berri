@@ -162,6 +162,7 @@ def check_tetra_corners(system, kpoint_type):
     elif kpoint_type == "tetra":
         E_corners = data_k.E_K_corners_tetra()
         E_corners_test = data_k.E_K_corners_tetra_test()
+    assert E_corners.shape == E_corners_test.shape, f"for kpoint type {kpoint_type}, got shape {E_corners.shape} vs {E_corners_test.shape}"
     assert E_corners == approx(E_corners_test, abs=1e-8), f"for kpoint type {kpoint_type}, got \n{E_corners} vs {E_corners_test}"
 
 

@@ -80,6 +80,7 @@ class Data_K(System, abc.ABC):
                  random_gauge=False,
                  degen_thresh_random_gauge=1e-4,
                  k_list=None,
+                 use_tetra_in_low_D=True  # so far for testing the old cases
                  ):
         if k_list is None:
             if isinstance(Kpoint, KpointBZpath):
@@ -104,6 +105,10 @@ class Data_K(System, abc.ABC):
         self.real_lattice = system.real_lattice
         self.num_wann = self.system.num_wann
         self.Kpoint = Kpoint
+        if use_tetra_in_low_D:
+            self.periodic_directions = np.array([0, 1, 2])
+        else:
+            self.periodic_directions = np.where(self.system.periodic)[0]
 
         self._bar_quantities = {}
         self._covariant_quantities = {}
@@ -163,7 +168,11 @@ class Data_K(System, abc.ABC):
             return len(self.k_list)
 
     @cached_property
-    def tetraWeights(self):
+    def ndim(self):
+        return len(self.periodic_directions)
+
+    @cached_property
+    def tetraWeights3D(self):
         from ..grid.tetrahedron import TetraWeights
         if isinstance(self.Kpoint, KpointBZparallel):
             return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="parallelepiped")
@@ -171,6 +180,18 @@ class Data_K(System, abc.ABC):
             return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra(), kind="single")
         else:
             raise TypeError(f"Unknown Kpoint type {type(self.Kpoint)}")
+
+    @cached_property
+    def tetraWeights(self):
+        if self.ndim == 3:
+            return self.tetraWeights3D
+        elif self.ndim == 2:
+            from ..grid.triangle import Triangle_weights
+            return Triangle_weights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="0011")
+        else:
+            raise NotImplementedError(f"tetraWeights is not implemented for ndim={self.ndim}")
+
+
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
                                      Emin=-np.inf, Emax=np.inf, select_bands=None):

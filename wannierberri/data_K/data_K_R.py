@@ -103,13 +103,14 @@ class Data_K_R(Data_K, System_R):
     def E_K_corners_tetra(self):
         _ = self.E_K  # to ensure that the bands are selected
         expdK = self.expdK_corners_tetra
-        _Ecorners = np.zeros((self.nk, 4, self.num_wann), dtype=float)
+        ncorners = expdK.shape[0]  # account for 2D case - triangles
+        _Ecorners = np.zeros((self.nk, ncorners, self.num_wann), dtype=float)
         for iv, _exp in enumerate(expdK):
             _Ham_R = self.Ham_R[:, :, :] * _exp[:, None, None]
             _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
             _Ecorners[:, iv, :] = np.linalg.eigvalsh(_HH_K)
         self.select_bands(_Ecorners)
-        Ecorners = np.zeros((self.nk_selected, 4, self.nb_selected), dtype=float)
+        Ecorners = np.zeros((self.nk_selected, ncorners, self.nb_selected), dtype=float)
         for iv, _exp in enumerate(expdK):
             Ecorners[:, iv, :] = _Ecorners[:, iv, :][self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
@@ -125,14 +126,13 @@ class Data_K_R(Data_K, System_R):
     def E_K_corners_parallel(self):
         _ = self.E_K  # to ensure that the bands are selected
         expdK = self.expdK_corners_parallel
-        Ecorners = np.zeros((self.nk_selected, 2, 2, 2, self.nb_selected), dtype=float)
-        for ix in 0, 1:
-            for iy in 0, 1:
-                for iz in 0, 1:
-                    _expdK = expdK[ix, :, 0] * expdK[iy, :, 1] * expdK[iz, :, 2]
-                    _Ham_R = self.Ham_R[:, :, :] * _expdK[:, None, None]
-                    _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
-                    E = np.linalg.eigvalsh(_HH_K)
-                    Ecorners[:, ix, iy, iz, :] = E[self.select_K, :][:, self.select_B]
+        Ecorners = np.zeros((self.nk_selected, *(2,) * self.ndim + (self.nb_selected,)), dtype=float)
+        for ixyz in np.ndindex(*(2,) * self.ndim):
+            _expdK_list = np.array([expdK[ix, :, dr] for ix, dr in zip(ixyz, self.periodic_directions)])
+            _expdK = np.prod(_expdK_list, axis=0)
+            _Ham_R = self.Ham_R[:, :, :] * _expdK[:, None, None]
+            _HH_K = self.rvec.R_to_k(_Ham_R, hermitian=True)
+            E = np.linalg.eigvalsh(_HH_K)
+            Ecorners[:, *ixyz, :] = E[self.select_K, :][:, self.select_B]
         Ecorners = self.phonon_freq_from_square(Ecorners)
         return Ecorners
