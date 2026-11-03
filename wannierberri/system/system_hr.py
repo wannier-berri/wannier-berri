@@ -53,6 +53,8 @@ def get_system_hr(seedname, wannier_centers_cart=None, real_lattice=None, **para
         Ndegen += f.readline().split()
     Ndegen = np.array(Ndegen, dtype=int)
 
+    system.hr_degeneracies = Ndegen.copy()
+    
     iRvec = []
 
     Ham_R = np.zeros((nRvec, system.num_wann, system.num_wann), dtype=complex)
@@ -254,6 +256,7 @@ def get_system_hr_from_FHI(path="./", positions=None, real_lattice=None,
             raise ValueError(f'Only Ham available; requested {key}')
     system = System_R(**parameters)
     system.real_lattice = lattice
+    system.hr_degeneracies = np.ones(n)
     system.num_wann = n
     system.set_R_mat('Ham', Ham_out)
     system.wannier_centers_cart = centers
@@ -323,3 +326,120 @@ def read_WCC_WT_format(seedname):
 def read_real_lattice_win(seedname):
     from ..w90files.win import WIN
     return WIN.from_w90_file(seedname=seedname)["unit_cell_cart"]
+
+def get_hopping_block(
+    system,
+    orbitals,
+    atom1,
+    atom2,
+    R=(0, 0, 0),
+    R_list=None,
+    raw=True,
+):
+    HR = system.get_R_mat("Ham")
+    Rvec = system.rvec.iRvec
+
+    rows = np.asarray(orbitals[atom1], dtype=int)
+    cols = np.asarray(orbitals[atom2], dtype=int)
+
+    if R_list is None:
+        R_list = [R]
+
+    block = np.zeros((len(rows), len(cols)), dtype=complex)
+
+    for r in R_list:
+        r = np.asarray(r, dtype=int)
+
+        matches = np.where(np.all(Rvec == r, axis=1))[0]
+
+        if len(matches) == 0:
+            raise ValueError(f"R = {tuple(r)} not found")
+
+        ir = matches[0]
+
+        hopping = HR[ir][np.ix_(rows, cols)]
+
+        if raw:
+            hopping = hopping * system.hr_degeneracies[ir]
+
+        block += hopping
+
+    return block
+
+
+def plot_hopping_block(
+    system,
+    orbitals,
+    orbital_labels,
+    atom1,
+    atom2,
+    R=(0, 0, 0),
+    R_list=None,
+    component="abs",
+    raw=True,
+    ax=None,
+):
+    block = get_hopping_block(
+        system,
+        orbitals,
+        atom1,
+        atom2,
+        R=R,
+        R_list=R_list,
+        raw=raw,
+    )
+    import matplotlib.pyplot as plt
+    if component == "abs":
+        data = np.abs(block)
+        cmap = "viridis"
+        vmin = 0
+        vmax = max(data.max(), 1e-12)
+
+    elif component in ("real", "imag"):
+        data = block.real if component == "real" else block.imag
+        cmap = "RdBu_r"
+        vmax = max(np.abs(data).max(), 1e-12)
+        vmin = -vmax
+
+    else:
+        raise ValueError("Invalid component")
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7, 6))
+
+    im = ax.imshow(
+        data,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        aspect="equal",
+    )
+
+    ax.set_xticks(np.arange(block.shape[1]))
+    ax.set_yticks(np.arange(block.shape[0]))
+
+    ax.set_xticklabels(
+        orbital_labels[atom2],
+        rotation=45,
+        ha="right",
+    )
+    ax.set_yticklabels(orbital_labels[atom1])
+
+    ax.set_xlabel(f"{atom2} orbitals")
+    ax.set_ylabel(f"{atom1} orbitals")
+
+    title_R = R_list if R_list is not None else R
+    ax.set_title(f"{atom1}–{atom2}, R={title_R}")
+
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            ax.text(
+                j, i, f"{data[i, j]:.3f}",
+                ha="center",
+                va="center",
+                fontsize=8,
+            )
+
+    plt.colorbar(im, ax=ax, label="Hopping (eV)")
+
+    return ax
