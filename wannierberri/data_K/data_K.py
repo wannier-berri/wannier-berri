@@ -171,9 +171,9 @@ class Data_K(System, abc.ABC):
     def ndim(self):
         return len(self.periodic_directions)
 
-    @cached_property
+    @property
     def tetraWeights3D(self):
-        from ..grid.tetrahedron import TetraWeights
+        from ..grid.ttweights import TetraWeights
         if isinstance(self.Kpoint, KpointBZparallel):
             return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="parallelepiped")
         elif isinstance(self.Kpoint, KpointBZtetra):
@@ -181,9 +181,9 @@ class Data_K(System, abc.ABC):
         else:
             raise TypeError(f"Unknown Kpoint type {type(self.Kpoint)}")
 
-    @cached_property
+    @property
     def tetraWeights2D(self):
-        from ..grid.triangle import TriangleWeights
+        from ..grid.ttweights import TriangleWeights
         scal_prod = np.dot(*self.recip_lattice[self.periodic_directions])
         if scal_prod > 0:
             kind = "0101"
@@ -196,16 +196,13 @@ class Data_K(System, abc.ABC):
         if self.ndim == 3:
             return self.tetraWeights3D
         elif self.ndim == 2:
-            from ..grid.triangle import TriangleWeights
-            return TriangleWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="0011")
-        else:
-            raise NotImplementedError(f"tetraWeights is not implemented for ndim={self.ndim}")
+            return self.tetraWeights2D
 
 
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
                                      Emin=-np.inf, Emax=np.inf, select_bands=None):
-        from ..grid.tetrahedron import get_bands_in_range, get_bands_below_range
+        from ..grid.tetratriangle import get_bands_in_range, get_bands_below_range
         bands_in_range = get_bands_in_range(
             emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers, select_bands=select_bands)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}

@@ -1,4 +1,3 @@
-from .tetrahedron import TetraWeights
 from numba import njit
 import numpy as np
 
@@ -76,50 +75,3 @@ def weights_triangle(efall, e0, e1, e2, der=0):
         return np.zeros_like(efall)
     else:
         raise NotImplementedError(f"der={der} not implemented in weights_triangle")
-
-
-
-
-class TriangleWeights(TetraWeights):
-
-
-    def __init__(self, eCenter, eCorners, kind="0011"):
-        self.eCenter = eCenter
-        self.nk, self.nb = self.eCenter.shape
-        assert eCorners.shape[0] == self.nk, f"nk mismatch: {eCorners.shape[0]} != {self.nk}"
-        assert eCorners.shape[-1] == self.nb, f"nb mismatch: {eCorners.shape[-1]} != {self.nb}"
-        if kind == "single":
-            assert eCorners.shape == (self.nk, 4, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 4, self.nb)}"
-            self.all_tetrahedra_vertices = [eCorners.copy()]
-        elif kind == "0011":
-            assert eCorners.shape == (self.nk, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
-            self.all_tetrahedra_vertices = []
-            E1 = eCorners[:, 0, 0]
-            E3 = eCorners[:, 1, 1]
-            for E2 in (eCorners[:, 0, 1], eCorners[:, 1, 0]):
-                self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
-        elif kind == "0101":
-            assert eCorners.shape == (self.nk, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
-            self.all_tetrahedra_vertices = []
-            E1 = eCorners[:, 0, 1]
-            E3 = eCorners[:, 1, 0]
-            for E2 in (eCorners[:, 0, 0], eCorners[:, 1, 1]):
-                self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
-        else:
-            raise ValueError(f"Unknown kind of triangles: {kind}")
-
-        self.eFermis = []
-        self.eFermi = None
-        if self.nk == 0:
-            self.null = True
-        else:
-            self.null = False
-            self.weights = []
-            Eall = np.concatenate((self.eCenter[:, None, :], eCorners.reshape(self.nk, -1, self.nb)), axis=1)
-            self.Emin = Eall.min(axis=1)
-            self.Emax = Eall.max(axis=1)
-        self.weights_function = weights_triangle
-
-
-    def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
-        raise NotImplementedError("dynamic_weights is not implemented for 2D triangles.")

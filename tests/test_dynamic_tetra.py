@@ -13,10 +13,10 @@ from wannierberri.calculators import dynamic
 from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetrahedron import (FLAT_FRACTION, TetraWeights, _edges_in_range,
-                                           _omega_in_range,
-                                           delta_tetra, delta_values_tetra, delta_weights_tetra,
-                                           weights_tetra)
+from wannierberri.grid.tetrahedron import weights_tetra
+from wannierberri.grid.tetratriangle import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
+                                           delta_tetra, delta_values_tetra, delta_weights_tetra)
+from wannierberri.grid.ttweights import TetraWeights
 from wannierberri.system import System_R
 
 S0 = np.eye(2, dtype=complex)

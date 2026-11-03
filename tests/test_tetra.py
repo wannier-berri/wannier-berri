@@ -4,8 +4,10 @@ import tempfile
 import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import (weights_tetra, weights_tetra_reactive, TetraWeights, delta_tetra, PRINCIPAL_FAR,
+from wannierberri.grid.tetrahedron import (weights_tetra, weights_tetra_reactive, PRINCIPAL_FAR,
                                            _separate_values)
+from wannierberri.grid.ttweights import TetraWeights
+from wannierberri.grid.tetratriangle import delta_tetra
 from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
@@ -380,7 +382,7 @@ def test_tetra_2D(system_Haldane_PythTB):
         "cdos": CumDOS(Efermi=Efermi, tetra=True),
     }
     grid = Grid(system, NK=60)
-    
+
 
     with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
         kwargs = dict(system=system, grid=grid, calculators=calculators, fout_name=os.path.join(tmp, "x"))
