@@ -121,7 +121,6 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
     tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
     the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
     method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
-
     e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4, diff_min=1e-12)
     if der == 0:
         return weights_tetra_der0(efall, e1, e2, e3, e4)
@@ -131,8 +130,10 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
         return weights_tetra_der2(efall, e1, e2, e3, e4)
     elif der == 3:
         return weights_tetra_der3(efall, e1, e2, e3, e4)
+    elif der > 3:
+        return np.zeros_like(efall)
     else:
-        raise NotImplementedError(f"der={der} not implemented in weights_tetra_accurate")
+        raise ValueError(f"der={der} not supported")
 
 
 # the expansion of the principal part far from the values of dE: its order, and the largest ratio of the spread of

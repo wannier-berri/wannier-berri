@@ -55,11 +55,6 @@ def weights_triangle_der2(efall, e0, e1, e2):
 
 
 @njit
-def weights_triangle_der3(efall, e0, e1, e2):
-    return np.zeros_like(efall)
-
-
-@njit
 def space_e1234(e0, e1, e2, diff_min=1e-12):
     e = np.array(sorted([e0, e1, e2]))
     # a dirty trick to avoid divisions by zero
