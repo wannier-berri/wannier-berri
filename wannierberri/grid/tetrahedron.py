@@ -4,7 +4,7 @@ from numba import njit
 
 from functools import cached_property, lru_cache
 
-from ..utility import weight_select_bands
+from ..utility import cached_einsum, weight_select_bands
 
 
 @lru_cache
@@ -178,6 +178,37 @@ def _get_polynomial(moments, y):
 
 
 @njit
+def _separate_values(e, gap):
+    """separate the 4 sorted values e closer than gap (in place), for the density on the intervals between them:
+    each group of such values is spread symmetrically around its mean, with the gap between them; groups that come
+    closer than gap are merged. The principal part is a symmetric function of the values, so that for equal values its
+    change is of second order in the gap (shifting only the upper values changes it in first order, by about 1e-5 of
+    its scale for a gap of 1e-7 of the spread). With omega within about the gap from three nearly equal values, where
+    the principal part diverges logarithmically for equal ones, the result depends on the separation."""
+    original = e.copy()
+    starts = np.ones(4, dtype=np.bool_)  # whether a group starts at each value
+    for i in range(1, 4):
+        starts[i] = original[i] - original[i - 1] >= gap
+    while True:
+        start = 0
+        for i in range(1, 5):
+            if i == 4 or starts[i]:
+                m = i - start
+                center = np.sum(original[start:i]) / m
+                for k in range(m):
+                    e[start + k] = center + (k - (m - 1) / 2) * gap
+                start = i
+        merged = False
+        for i in range(1, 4):
+            if starts[i] and e[i] - e[i - 1] < gap:
+                starts[i] = False
+                merged = True
+                break
+        if not merged:
+            return
+
+
+@njit
 def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
     """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
     e = np.array(sorted([float(e0), float(e1), float(e2), float(e3)]))
@@ -187,9 +218,7 @@ def _add_principal(res, omega, e0, e1, e2, e3, weight=1.):
     spread = e[3] - e[0]
 
     moments = _get_moments(e, mean)
-    gap = 1e-7 * spread
-    for i in range(3):
-        e[i + 1] = max(e[i + 1], e[i] + gap)
+    _separate_values(e, 1e-7 * spread)
     e1, e2, e3, e4 = e
 
     if spread > 0:
@@ -389,6 +418,133 @@ def delta_values_tetra(omega, dE):
     return res
 
 
+@njit
+def occupied_tetrahedra(energies, efermi):
+    """the part of a tetrahedron where a linear function is below efermi, divided into at most 3 tetrahedra
+
+    energies : the values at the 4 corners. Returns (bary, volume): bary is an array (3, 4, 4), the barycentric
+    coordinates of the corners of each tetrahedron (rows), and volume (3,) their volumes as fractions of the whole
+    (zero for the unused ones)"""
+    order = np.argsort(energies)
+    a = energies[order]
+    corner = np.zeros((4, 4))
+    for k in range(4):
+        corner[k, order[k]] = 1.
+
+    def point(k, l):
+        t = (efermi - a[k]) / (a[l] - a[k])
+        return (1 - t) * corner[k] + t * corner[l]
+
+    bary = np.zeros((3, 4, 4))
+    n = 0
+    if efermi >= a[3]:  # also a flat band at the Fermi level, as with the occupations at kBT = 0 (E <= mu)
+        bary[0] = np.eye(4)
+        n = 1
+    elif efermi <= a[0]:
+        pass
+    elif efermi <= a[1]:
+        bary[0, 0], bary[0, 1], bary[0, 2], bary[0, 3] = corner[0], point(0, 1), point(0, 2), point(0, 3)
+        n = 1
+    elif efermi <= a[2]:  # a prism, with the triangles (0, p02, p03) and (1, p12, p13) at its ends
+        p02, p03, p12, p13 = point(0, 2), point(0, 3), point(1, 2), point(1, 3)
+        bary[0, 0], bary[0, 1], bary[0, 2], bary[0, 3] = corner[0], p02, p03, corner[1]
+        bary[1, 0], bary[1, 1], bary[1, 2], bary[1, 3] = p02, p03, corner[1], p12
+        bary[2, 0], bary[2, 1], bary[2, 2], bary[2, 3] = p03, corner[1], p12, p13
+        n = 3
+    else:  # a prism, with the triangles (0, 1, 2) and (p03, p13, p23) at its ends
+        p03, p13, p23 = point(0, 3), point(1, 3), point(2, 3)
+        bary[0, 0], bary[0, 1], bary[0, 2], bary[0, 3] = corner[0], corner[1], corner[2], p03
+        bary[1, 0], bary[1, 1], bary[1, 2], bary[1, 3] = corner[1], corner[2], p03, p13
+        bary[2, 0], bary[2, 1], bary[2, 2], bary[2, 3] = corner[2], p03, p13, p23
+        n = 3
+    volume = np.zeros(3)
+    for i in range(n):
+        volume[i] = abs(np.linalg.det(bary[i]))
+    return bary, volume
+
+
+@njit
+def _add_kernel(res, omega, edges, intervals, kind, weight, d0, d1, d2, d3):
+    """add weight times a function of dE - omega over a tetrahedron, with the values d0, ..., d3 of dE at its corners,
+    to res: delta(dE - omega) (kind 0: the values at omega, with the intervals around them for a flat dE; kind 1:
+    the averages over the intervals between the edges of omega) or P 1/(dE - omega) (kind 2)"""
+    if kind == 0:
+        _add_delta_values(res, omega, intervals, weight, d0, d1, d2, d3)
+    elif kind == 1:
+        res += weight * delta_weights_tetra(edges, np.array([[d0, d1, d2, d3]]))[0]
+    else:
+        _add_principal(res, omega, d0, d1, d2, d3, weight)
+
+
+@njit
+def _add_occupied(res, occupied, dE, efermi, omega, edges, intervals, kind, weight):
+    """add weight times the integral over a tetrahedron of theta(efermi - occupied) times the function of dE - omega
+    given by `kind` (see `_add_kernel`) to res"""
+    bary, volume = occupied_tetrahedra(occupied, efermi)
+    for t in range(3):
+        if volume[t] > 0:
+            # relative to a corner value, so that a constant dE stays exactly constant (P 1/(dE - omega) is zero for
+            # a constant dE equal to omega, but large for values that differ by rounding)
+            d = dE[0] + bary[t] @ (dE - dE[0])
+            _add_kernel(res, omega, edges, intervals, kind, weight * volume[t], d[0], d[1], d[2], d[3])
+
+
+@njit
+def occupied_kernel(occupied, dE, efermi, omega, edges, kind):
+    """the integral over a tetrahedron of theta(efermi - occupied) times a function of dE - omega: delta(dE - omega)
+    (kind 0: the values at omega; kind 1: the averages over the intervals between the edges of omega) or
+    P 1/(dE - omega) (kind 2), as fractions of the volume of the tetrahedron.
+
+    occupied, dE : the values of the two linear functions at the 4 corners; returns an array (nefermi, nomega)"""
+    res = np.zeros((efermi.shape[0], omega.shape[0]))
+    intervals = omega_intervals(omega)
+    for ief in range(efermi.shape[0]):
+        _add_occupied(res[ief], occupied, dE, efermi[ief], omega, edges, intervals, kind, 1.)
+    return res
+
+
+@njit
+def _occupation_state(energies, efermi):
+    """1 if the band is occupied in the whole tetrahedron (as in `occupied_tetrahedra`), 0 if it is empty, 2 if the
+    Fermi level cuts it"""
+    if efermi >= energies.max():
+        return 1
+    if efermi <= energies.min():
+        return 0
+    return 2
+
+
+@njit
+def occupation_kernel_tetra(Ei, Ej, sign, efermi, omega, edges, kind):
+    """the integral over a tetrahedron of [theta(efermi - Ej) - theta(efermi - Ei)] times the function of
+    sign * (Ei - Ej) - omega given by `kind` (see `occupied_kernel`)
+
+    Ei, Ej : arrays (npair, 4), the band energies at the corners; returns an array (npair, nefermi, nomega).
+    Only the bands that the Fermi level cuts within the tetrahedron are divided: a band occupied in the whole
+    tetrahedron gives the integral over all of it, computed once for all the Fermi levels."""
+    res = np.zeros((Ei.shape[0], efermi.shape[0], omega.shape[0]))
+    intervals = omega_intervals(omega)
+    whole = np.zeros(omega.shape[0])
+    for i in range(Ei.shape[0]):
+        dE = sign * (Ei[i] - Ej[i])
+        have_whole = False
+        for ief in range(efermi.shape[0]):
+            ef = efermi[ief]
+            state_i, state_j = _occupation_state(Ei[i], ef), _occupation_state(Ej[i], ef)
+            if state_i == state_j and state_i != 2:  # both occupied or both empty
+                continue
+            for state, occupied, weight in ((state_j, Ej[i], 1.), (state_i, Ei[i], -1.)):
+                if state == 1:
+                    if not have_whole:
+                        whole[:] = 0
+                        _add_kernel(whole, omega, edges, intervals, kind, 1., dE[0], dE[1], dE[2], dE[3])
+                        have_whole = True
+                    res[i, ief] += weight * whole
+                elif state == 2:
+                    _add_occupied(res[i, ief], occupied, dE, ef, omega, edges, intervals, kind, weight)
+    return res
+
+
 class TetraWeights:
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
@@ -505,12 +661,30 @@ class TetraWeights:
         return res
 
 
-    def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
-        """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
-        averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
-        if edges are given, the averages over the intervals of omega between them. Returns an array
-        (len(pairs), len(omega))"""
+    def dynamic_weights(self, ik, pairs, omega, efermi=None, type="delta", reverse=False, edges=None):
+        """the integrals over the cells around the k-point ik of [theta(efermi - E_j) - theta(efermi - E_i)] times
+        delta(E_i - E_j - omega) (type 'delta'; the averages over the intervals between the edges of omega if they are
+        given) or P 1/(E_i - E_j - omega) (type 'reactive'), with E_j - E_i instead of E_i - E_j if reverse, for
+        pairs of band groups ((i1, i2), (j1, j2)), averaged over the pairs of bands as `dynamic_weights`. Returns an
+        array (len(pairs), len(efermi), len(omega))"""
+        occupation_mode = (efermi is not None)
         omega = np.asarray(omega, dtype=float)
+        if occupation_mode:
+            efermi = np.asarray(efermi, dtype=float).reshape(-1)
+            if type == "reactive":
+                code = 2
+            elif type == "delta":
+                code = 0 if edges is None else 1
+            else:
+                raise ValueError(f"Unknown type: {type}")
+        if edges is not None:
+            edges = np.asarray(edges, dtype=float)
+            assert len(edges) == len(omega) + 1
+        elif occupation_mode:
+            edges = np.zeros(1)
+
+        sign = -1. if reverse else 1.
+
         band_i, band_j, group = [], [], []
         for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
             for i in range(i1, i2):
@@ -518,20 +692,24 @@ class TetraWeights:
                     band_i.append(i)
                     band_j.append(j)
                     group.append(ig)
-        res = np.zeros((len(pairs), len(omega)))
+        if occupation_mode:
+            res = np.zeros((len(pairs), len(efermi), len(omega)))
+        else:
+            res = np.zeros((len(pairs), len(omega)))
         if len(group) == 0 or self.null:
             return res
-        if edges is not None:
-            edges = np.asarray(edges, dtype=float)
-            assert len(edges) == len(omega) + 1
         addition = 0
-        assert type in ("delta", "reactive"), f"Unknown type: {type}"
         for vertices in self.all_tetrahedra_vertices:
-            dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
-            if type == "delta":
-                addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
-            elif type == "reactive":
-                addition = addition + reactive_values_tetra(omega, dE)
+            if occupation_mode:
+                Ei = np.ascontiguousarray(vertices[ik][:, band_i].T)
+                Ej = np.ascontiguousarray(vertices[ik][:, band_j].T)
+                addition = addition + occupation_kernel_tetra(Ei, Ej, sign, efermi, omega, edges, code)
+            else:
+                dE = np.ascontiguousarray(sign * (vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
+                if type == "delta":
+                    addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
+                elif type == "reactive":
+                    addition = addition + reactive_values_tetra(omega, dE)
         np.add.at(res, np.array(group), addition)
-        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
-        return res * self.factor_num_tetra / nband_pairs[:, None]
+        nband_pairs_inv = 1. / np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
+        return self.factor_num_tetra * cached_einsum("i...,i->i...", res, nband_pairs_inv)
