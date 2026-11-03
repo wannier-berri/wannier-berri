@@ -3,7 +3,7 @@ import multiprocessing
 import numpy as np
 from ..symmetry.projections import ProjectionsSet
 
-from ..symmetry.orbitals import Bessel_j_radial_int, Projector
+from ..symmetry.orbitals import Bessel_j_radial_int
 from .w90file import W90_file, auto_kptirr, check_shape
 import logging
 logger = logging.getLogger(__name__)
@@ -48,18 +48,27 @@ class AMN(W90_file):
                  radial_nodes_list=None,
                  basis_list=None,
                  spread_list=None,
+                 orb_info=None,
                  wannier_names=None,
                  atom_centers_red=None,
                  wannier_to_atom_map=None,
                  spinor=None):
         super().__init__(data=data, NK=NK)
-        self.NB, self.NW = check_shape(self.data)
+        if orb_info is not None:
+            positions = orb_info.positions
+            orbitals = orb_info.orbitals
+            radial_nodes_list = orb_info.radial_nodes
+            basis_list = orb_info.basises
+            spread_list = orb_info.spread_factors
+            spinor = orb_info.spinor
         self.positions = positions
         self.orbitals = orbitals
         self.radial_nodes_list = radial_nodes_list
         self.basis_list = basis_list
         self.spread_list = spread_list
         self.spinor = spinor
+        self.NB, self.NW = check_shape(self.data)
+
         self.wannier_names = wannier_names
         self.atom_centers_red = atom_centers_red
         self.wannier_to_atom_map = wannier_to_atom_map
@@ -132,10 +141,11 @@ class AMN(W90_file):
         normalize : bool
             if True, the wavefunctions are normalised
         """
-
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
+        orb_info = projections.get_orbitals_info()
+        spinor = orb_info.spinor
 
         positions = []
         orbitals = []
@@ -164,15 +174,11 @@ class AMN(W90_file):
         if verbose:
             logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
-        pos = np.array(positions)
-        rec_latt = bandstructure.RecLattice
-        unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
         bessel = Bessel_j_radial_int()
 
         for ikirr in kptirr:
             kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             igk = kp.ig[:, :3] + kp.k[None, :]
-            expgk = np.exp(-2j * np.pi * (pos @ igk.T))
             wf = kp.WF
             wf = wf.conj()
             if normalize:
@@ -182,15 +188,8 @@ class AMN(W90_file):
                 wf_up = wf[:, :, 0]
                 wf_down = wf[:, :, 1]
 
-            gk = igk @ rec_latt
-            prj = []
-            projector_dict = {}
-            for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
-                if spread_factor not in projector_dict:
-                    projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
-                projector = projector_dict[spread_factor]
-                prj.append(projector(orb, basis, radial_nodes))
-            proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
+            proj_gk = projections.get_proj_gk(igk, bessel=bessel)
+
             if spinor:
                 proj_up = wf_up @ proj_gk.T
                 proj_down = wf_down @ proj_gk.T

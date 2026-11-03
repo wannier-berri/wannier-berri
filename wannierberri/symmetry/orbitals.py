@@ -481,3 +481,37 @@ class SphericalHarmonics:
                         return sq(15 / (16 * pi)) * self.sin2theta * self.sinphi
                     case _:
                         raise ValueError(f"orbital {orbital} not implemented")
+
+
+class OrbitalsInfo:
+
+    def __init__(self,
+                 positions=None,
+                 orbitals=None,
+                 radial_nodes=None,
+                 basises=None,
+                 spread_factors=None,
+                 spinor=False):
+        assert (positions is None) == (orbitals is None) == (radial_nodes is None) == (basises is None) == (spread_factors is None), "either all of positions, orbitals, radial_nodes, basises, spread_factors should be provided or all should be None"
+        if positions is None:
+            positions = np.zeros((0, 3))
+            orbitals = np.zeros((0,), dtype=object)
+            radial_nodes = np.zeros((0,))
+            basises = np.zeros((0, 3, 3))
+            spread_factors = np.zeros((0,))
+        self.spinor = spinor
+        self.positions = np.array(positions)
+        self.orbitals = np.array(orbitals)
+        self.radial_nodes = np.array(radial_nodes)
+        self.basises = np.array(basises)
+        self.spread_factors = np.array(spread_factors)
+
+    def __add__(self, other):
+        assert self.spinor == other.spinor, "spinor should be the same for both OrbitalsInfo objects"
+        new_obj = OrbitalsInfo(spinor=self.spinor)
+        new_obj.positions = np.concatenate([self.positions, other.positions])
+        new_obj.orbitals = np.concatenate([self.orbitals, other.orbitals])
+        new_obj.radial_nodes = np.concatenate([self.radial_nodes, other.radial_nodes])
+        new_obj.basises = np.concatenate([self.basises, other.basises])
+        new_obj.spread_factors = np.concatenate([self.spread_factors, other.spread_factors])
+        return new_obj
