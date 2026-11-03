@@ -1,10 +1,10 @@
+import abc
+
 import numpy as np
 from functools import cached_property, lru_cache
 from collections import defaultdict
 from .tetratriangle import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
-                            get_bands_above_range, reactive_values_tetra, occupation_kernel)
-from .triangle import weights_triangle
-from .tetrahedron import weights_tetra
+                            get_bands_above_range, reactive_values_tetra, occupation_kernel, weights_general)
 from ..utility import cached_einsum, weight_select_bands
 
 
@@ -13,7 +13,7 @@ def ones(n):
     return np.ones(n)
 
 
-class TTWeights:
+class TTWeights(abc.ABC):
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        the Fermi level list remains the same throughout calculation"""
 
@@ -35,6 +35,10 @@ class TTWeights:
             self.Emin = Eall.min(axis=1)
             self.Emax = Eall.max(axis=1)
 
+    @abc.abstractmethod
+    def set_kind(self, kind, eCorners, eCenter):
+        """set the kind of tetrahedra or triangles and store the vertices in self.all_tetrahedra_vertices"""
+        pass
 
     def weight_1k1b(self, ief, ik, ib, der):
         if self.null:
@@ -51,7 +55,7 @@ class TTWeights:
         occ = np.zeros(eFermi.shape, dtype=float)
         for tetrahedron in self.all_tetrahedra_vertices:
             evert = tetrahedron[ik, :, ib]
-            occ += self.function_weights(eFermi, *evert, der=der)
+            occ += weights_general(eFermi, evert, der=der)
         return occ * self.factor_num_tetra
 
     def __weight_1b(self, ief, ik, ib, der):
@@ -114,39 +118,6 @@ class TTWeights:
 
             res.append(weights)
         return res
-
-
-    # def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
-    #     """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
-    #     averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
-    #     if edges are given, the averages over the intervals of omega between them. Returns an array
-    #     (len(pairs), len(omega))"""
-    #     omega = np.asarray(omega, dtype=float)
-    #     band_i, band_j, group = [], [], []
-    #     for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
-    #         for i in range(i1, i2):
-    #             for j in range(j1, j2):
-    #                 band_i.append(i)
-    #                 band_j.append(j)
-    #                 group.append(ig)
-    #     res = np.zeros((len(pairs), len(omega)))
-    #     if len(group) == 0 or self.null:
-    #         return res
-    #     if edges is not None:
-    #         edges = np.asarray(edges, dtype=float)
-    #         assert len(edges) == len(omega) + 1
-    #     addition = 0
-    #     assert type in ("delta", "reactive"), f"Unknown type: {type}"
-    #     for vertices in self.all_tetrahedra_vertices:
-    #         dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
-    #         if type == "delta":
-    #             addition = addition + (delta_values_tetra(omega, dE)
-    #                                    if edges is None else delta_weights_tetra(edges, dE))
-    #         elif type == "reactive":
-    #             addition = addition + reactive_values_tetra(omega, dE)
-    #     np.add.at(res, np.array(group), addition)
-    #     nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
-    #     return res * self.factor_num_tetra / nband_pairs[:, None]
 
 
     def dynamic_weights(self, ik, pairs, omega, efermi=None, type="delta", reverse=False, edges=None):
@@ -227,8 +198,6 @@ class TriangleWeights(TTWeights):
                 self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
         else:
             raise ValueError(f"Unknown kind of triangles: {kind}")
-        self.function_weights = weights_triangle
-        self.dim = 2
 
 
 class TetraWeights(TTWeights):
@@ -251,5 +220,3 @@ class TetraWeights(TTWeights):
                         self.all_tetrahedra_vertices.append(np.array([E0, E1, E2, E3]).swapaxes(0, 1))
         else:
             raise ValueError(f"Unknown kind of tetrahedra: {kind}")
-        self.function_weights = weights_tetra
-        self.dim = 3

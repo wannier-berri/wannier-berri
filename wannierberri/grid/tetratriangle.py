@@ -6,6 +6,32 @@ from .triangle import weights_triangle, _add_principal_2d, occupied_triangles
 from .tetrahedron import weights_tetra, _add_principal_3d, occupied_tetrahedra
 
 
+@njit
+def weights_general(efall, dE, der):
+    if dE.shape[0] == 4:
+        return weights_tetra(efall, dE[0], dE[1], dE[2], dE[3], der=der)
+    elif dE.shape[0] == 3:
+        return weights_triangle(efall, dE[0], dE[1], dE[2], der=der)
+
+
+@njit
+def _add_principal(res, omega, dE, weight=1):
+    if dE.shape[0] == 4:
+        _add_principal_3d(res, omega, e=dE, weight=weight)
+    elif dE.shape[0] == 3:
+        _add_principal_2d(res, omega, e=dE, weight=weight)
+    else:
+        raise NotImplementedError(f"dim={dE.shape[0] - 1} not supported")
+
+
+@njit
+def occupied_pieces(occupied, efermi):
+    if occupied.shape[0] == 4:
+        return occupied_tetrahedra(occupied, efermi)
+    elif occupied.shape[0] == 3:
+        return occupied_triangles(occupied, efermi)
+
+
 def get_borders(A, degen_thresh, degen_Kramers=False):
     borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
     if degen_Kramers:
@@ -97,13 +123,7 @@ def _add_delta_values(res, omega, edges, weight, dE):
         return
     lo, hi = _omega_in_range(omega, emin, emax)
     if hi > lo:
-
-        if dE.shape[0] == 4:
-            res[lo:hi] += weight * weights_tetra(omega[lo:hi], dE[0], dE[1], dE[2], dE[3], der=1)
-        elif dE.shape[0] == 3:
-            res[lo:hi] += weight * weights_triangle(omega[lo:hi], dE[0], dE[1], dE[2], der=1)
-        else:
-            raise ValueError(f"dim={dE.shape[0] - 1} not supported")
+        res[lo:hi] += weight * weights_general(omega[lo:hi], dE, der=1)
 
 
 @njit
@@ -142,20 +162,11 @@ def delta_weights_tetra(edges, dE):
     the widths of the intervals sum to the fraction of the tetrahedron where edges[0] < dE < edges[-1]"""
     width = edges[1:] - edges[:-1]
     res = np.zeros((dE.shape[0], width.shape[0]))
-    if dE.shape[1] == 4:
-        dim = 3
-    elif dE.shape[1] == 3:
-        dim = 2
-    else:
-        raise ValueError(f"dim={dE.shape[1] - 1} not supported")
     for i in range(dE.shape[0]):
         lo, hi = _edges_in_range(edges, dE[i].min(), dE[i].max())
         if hi <= lo:
             continue
-        if dim == 3:
-            occ = weights_tetra(edges[lo:hi + 1], dE[i, 0], dE[i, 1], dE[i, 2], dE[i, 3], 0)
-        elif dim == 2:
-            occ = weights_triangle(edges[lo:hi + 1], dE[i, 0], dE[i, 1], dE[i, 2], 0)
+        occ = weights_general(edges[lo:hi + 1], dE[i], der=0)
         res[i, lo:hi] = (occ[1:] - occ[:-1]) / width[lo:hi]
     return res
 
@@ -170,15 +181,6 @@ def reactive_values_tetra(omega, dE):
         _add_principal(res[i], omega, dEi)
     return res
 
-
-@njit
-def _add_principal(res, omega, dE, weight=1):
-    if dE.shape[0] == 4:
-        _add_principal_3d(res, omega, e=dE, weight=weight)
-    elif dE.shape[0] == 3:
-        _add_principal_2d(res, omega, e=dE, weight=weight)
-    else:
-        raise NotImplementedError(f"dim={dE.shape[0] - 1} not supported")
 
 
 @njit
@@ -209,10 +211,8 @@ def _add_kernel(res, omega, edges, intervals, kind, weight, dE):
 def _add_occupied(res, occupied, dE, efermi, omega, edges, intervals, kind, weight):
     """add weight times the integral over a tetrahedron of theta(efermi - occupied) times the function of dE - omega
     given by `kind` (see `_add_kernel`) to res"""
-    if dE.shape[0] == 4:
-        bary, volume = occupied_tetrahedra(occupied, efermi)
-    elif dE.shape[0] == 3:
-        bary, volume = occupied_triangles(occupied, efermi)
+    bary, volume = occupied_pieces(occupied, efermi)
+
     for t in range(3):
         if volume[t] > 0:
             # relative to a corner value, so that a constant dE stays exactly constant (P 1/(dE - omega) is zero for

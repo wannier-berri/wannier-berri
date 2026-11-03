@@ -83,6 +83,7 @@ def _run_spin_bcd_pair(system, efermi, grid, use_symmetry=False):
         symmetrize=use_symmetry,
         dump_results=False,
         fout_name=f"{OUTPUT_DIR_RUN}/SpinBCD-pair",
+        parameters_K={"use_tetra_in_low_D": True},
     )
 
 
@@ -135,6 +136,7 @@ def test_spin_bcd_calculator_reference(check_run, system_model):
         grid=grid,
         fout_name="SpinBCD",
         precision=-1e-10,
+        parameters_K={"use_tetra_in_low_D": True},
     )
 
 
