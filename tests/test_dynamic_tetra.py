@@ -4,9 +4,11 @@ import contextlib
 import io
 import os
 import tempfile
+import warnings
 
 import numpy as np
 import pytest
+from scipy.integrate import quad
 
 import wannierberri as wberri
 from wannierberri.calculators import dynamic
@@ -16,6 +18,7 @@ from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.grid.tetrahedron import (FLAT_FRACTION, TetraWeights, _edges_in_range,
                                            _omega_in_range,
                                            delta_tetra, delta_values_tetra, delta_weights_tetra,
+                                           occupation_kernel_tetra, occupied_kernel, occupied_tetrahedra,
                                            weights_tetra)
 from wannierberri.system import System_R
 
@@ -103,7 +106,7 @@ def parallel_delta(omega, center, corners, edges=None):
     eCenter = np.array([[0.0, center]])
     eCorners = np.stack([np.zeros((2, 2, 2)), corners], axis=-1)[None]
     weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
-    return weights.dynamic_weights(0, [((1, 2), (0, 1))], omega, edges, type="delta")[0]
+    return weights.dynamic_weights(0, [((1, 2), (0, 1))], omega, edges=edges, type="delta")[0]
 
 
 def parallelepiped_tetrahedra(center, corners):
@@ -178,6 +181,14 @@ def test_python_versions():
         assert _omega_in_range.py_func(edges, emin, emax) == _omega_in_range(edges, emin, emax)
     np.testing.assert_allclose(delta_values_tetra.py_func(edges, dE), delta_values_tetra(edges, dE), rtol=0, atol=1e-12)
     np.testing.assert_allclose(delta_tetra.py_func(edges, *dE[0]), delta_tetra(edges, *dE[0]), rtol=0, atol=1e-12)
+    efermi = np.array([-1.0, 0.5])
+    for code in (0, 1, 2):
+        args = (dE[:3], dE[3:6], 1., efermi, edges[:-1] + 0.25, edges, code)
+        np.testing.assert_allclose(occupation_kernel_tetra.py_func(*args), occupation_kernel_tetra(*args),
+                                   rtol=1e-10, atol=1e-10)
+    for ef in (-5.0, -1.0, 0.0, 1.0, 5.0):
+        for result, compiled in zip(occupied_tetrahedra.py_func(dE[0], ef), occupied_tetrahedra(dE[0], ef)):
+            np.testing.assert_allclose(result, compiled, rtol=0, atol=1e-14)
 
 
 @pytest.mark.parametrize("average", [False, True])
@@ -196,12 +207,12 @@ def test_delta_weights_groups(kind, average):
         edges = None
     pairs = [((2, 4), (0, 2)), ((0, 2), (2, 4)), ((3, 4), (1, 2)), ((1, 3), (1, 3))]
     weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
-    result = weights.dynamic_weights(0, pairs, omega, edges, type="delta")
+    result = weights.dynamic_weights(0, pairs, omega, edges=edges, type="delta")
     # empty pairs (used for the pairs that do not contribute) give zeros, and do not change the others
-    with_empty = weights.dynamic_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges, type="delta")
+    with_empty = weights.dynamic_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges=edges, type="delta")
     np.testing.assert_array_equal(with_empty[0], 0)
     np.testing.assert_allclose(with_empty[1:], result, rtol=0, atol=1e-14)
-    np.testing.assert_array_equal(weights.dynamic_weights(0, [((0, 0), (0, 0))], omega, edges, type="delta"), 0)
+    np.testing.assert_array_equal(weights.dynamic_weights(0, [((0, 0), (0, 0))], omega, edges=edges, type="delta"), 0)
 
     def one(i, j):
         if kind == "single":
@@ -732,6 +743,326 @@ def test_single_frequency():
     assert dynamic.JDOS(Efermi=EFERMI, omega=np.array([0.5]), tetra_delta=True).omega_edges is None
 
 
+@pytest.mark.parametrize("calculator, parameters, tolerance, occupation", [
+    (dynamic.OpticalConductivity, {}, 0.015, False),
+    (dynamic.SHC, {"SHC_type": "simple"}, 0.05, False),
+    (dynamic.SHC, {"SHC_type": "simple"}, 0.05, True),
+    (dynamic.OpticalConductivity, {}, 0.015, True),
+])
+def test_kramers_kronig(calculator, parameters, tolerance, occupation):
+    """with the principal-value part by the tetrahedron method (tetra_reactive=True), the result is the boundary value
+    of a function analytic in the upper half plane of the frequency, so it is its own Hilbert transform:
+    R(w) = P int R(w') / (w' - w) dw' / (i pi). The integral is done numerically, on a dense grid up to 60 eV and a
+    sparse one up to 4000 eV (the result decays as 1/w). With the Lorentzian for the principal part, the difference is larger than the result itself. This holds
+    also with the occupations within the tetrahedra (the model is a metal)."""
+    system = random_system()
+    domega = 0.02
+    outer = np.geomspace(60, 4000, 400)[1:]
+    omega = np.concatenate([-outer[::-1], np.arange(-60, 60, domega) + domega / 2, outer])
+    kwargs = dict(Efermi=EFERMI, omega=omega, tetra_delta=True, **parameters)
+    results = run(system, {str(principal): calculator(tetra_reactive=principal, tetra_occupation=occupation, **kwargs)
+                           for principal in (True, False)}, NK=4)
+    inner = np.abs(omega) < 30
+    distance = omega[None, :] - omega[inner][:, None]
+    distance[distance == 0] = np.inf
+    for principal, result in results.items():
+        result = result[0].reshape(len(omega), -1)
+        hilbert = (np.gradient(omega)[None, :] / distance) @ result / (1j * np.pi)
+        difference = np.abs(hilbert - result[inner]).max() / np.abs(result).max()
+        if principal == "True":
+            assert difference < tolerance
+        else:
+            assert difference > 0.5
+
+
+@pytest.mark.parametrize("energies", [[0.3, -1.2, 2.0, 0.7], [0.0, 0.0, 1.0, 2.0], [0.0, 1.0, 1.0, 2.0], [0.0, 1.0, 2.0, 2.0],
+                                      [1.0, 1.0, 1.0, 1.0]])
+def test_occupied_tetrahedra(energies):
+    """the part of a tetrahedron below the Fermi level: the volumes are the occupation of `weights_tetra`, and the
+    values at the corners of the parts are below the Fermi level"""
+    energies = np.array(energies)
+    for efermi in np.linspace(-2, 3, 51):
+        bary, volume = occupied_tetrahedra(energies, efermi)
+        if np.all(energies == efermi):  # flat at the Fermi level: occupied (see test_occupied_flat_at_fermi_level)
+            assert volume.sum() == 1
+            continue
+        assert volume.sum() == pytest.approx(weights_tetra(np.array([efermi]), *energies, der=0)[0], abs=1e-12)
+        for b, v in zip(bary, volume):
+            if v > 0:
+                assert np.all(b @ energies <= efermi + 1e-12)
+                np.testing.assert_allclose(b.sum(axis=1), 1, rtol=0, atol=1e-14)
+
+
+@pytest.mark.parametrize("kind", [0, 1, 2])
+def test_occupation_kernel_against_occupied_kernel(kind):
+    """the kernel for pairs of bands, which skips the parts that are not cut and computes the whole tetrahedron once,
+    equals the difference of the integrals over the occupied parts of the two bands, for several pairs (with
+    different whole tetrahedra), both directions, Fermi levels at and between the corner values, and a flat band"""
+    rng = np.random.default_rng(8)
+    Ei = rng.normal(size=(4, 4)) + 1.5
+    Ej = rng.normal(size=(4, 4)) - 1.5
+    Ei[2] = 0.5  # flat
+    efermi = np.array([1.0, -3.0, Ei[0, 1], Ej[1, 2], 0.5, 0.0, 4.0, -1.0])
+    edges = np.linspace(-8, 8, 161)
+    omega = (edges[1:] + edges[:-1]) / 2
+    for sign in (1.0, -1.0):
+        result = occupation_kernel_tetra(Ei, Ej, sign, efermi, omega, edges, kind)
+        for i in range(len(Ei)):
+            dE = sign * (Ei[i] - Ej[i])
+            expected = (occupied_kernel(Ej[i], dE, efermi, omega, edges, kind) -
+                        occupied_kernel(Ei[i], dE, efermi, omega, edges, kind))
+            np.testing.assert_allclose(result[i], expected, rtol=0, atol=1e-12 * max(np.abs(expected).max(), 1))
+        assert np.abs(result).max() > 0
+
+
+def test_occupied_flat_at_fermi_level():
+    """a band flat at the Fermi level is occupied, as with the occupations at kBT = 0 (E <= mu)"""
+    bary, volume = occupied_tetrahedra(np.ones(4), 1.0)
+    assert volume.sum() == 1
+    omega = np.array([0.0, 1.0, 2.0, 3.0])
+    np.testing.assert_allclose(occupied_kernel(np.ones(4), np.ones(4), np.array([1.0]), omega, np.zeros(1), 0)[0],
+                               [0, 1, 0, 0])
+
+
+@pytest.mark.parametrize("sign", [1.0, -1.0])
+def test_occupation_kernel_flat_transition(sign):
+    """bands with a constant difference, one of them cut by the Fermi level: within the parts of the tetrahedron, the
+    difference stays exactly constant, so that the principal part is zero at omega equal to it (as for the whole
+    tetrahedron) and (occupied fraction) / (dE - omega) beside it"""
+    Ej = np.array([[-1.0, 2.0, 3.0, 4.0]])
+    Ei = Ej + 3
+    omega = sign * np.array([3 - 1e-9, 3, 3 + 1e-9, 2.5, 3.5])
+    fraction = 1 / 60  # where Ej < 0: the corner tetrahedron with the edges cut at 1/3, 1/4 and 1/5
+    expected = np.zeros(len(omega))
+    expected[[0, 2, 3, 4]] = fraction / (sign * 3 - omega[[0, 2, 3, 4]])
+    for kernel in (occupation_kernel_tetra, occupation_kernel_tetra.py_func):
+        result = kernel(Ei, Ej, sign, np.array([0.0]), omega, np.zeros(1), 2)[0, 0]
+        np.testing.assert_allclose(result, expected, rtol=1e-6, atol=0)
+
+
+@pytest.mark.parametrize("occupied, dE", [([0.3, -1.2, 2.0, 0.7], [1.1, -0.4, 2.5, 0.2]),
+                                          ([0.0, 0.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
+                                          ([0.0, 1.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
+                                          ([0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 0.5, 1.5])])
+def test_occupied_kernel_principal_inside(occupied, dE):
+    """the principal part over the occupied parts at frequencies within the range of dE, against the numerical
+    principal-value integral of the density of dE (`delta_tetra`) over each part, with Fermi levels between and at
+    the corner values; at the corner values of dE on the parts, it is continuous. Equal corner values (here where dE
+    has equal values at two corners) are separated by 1e-7 of the spread, which changes the result by about 1e-5 of
+    its scale"""
+    occupied, dE = np.array(occupied), np.array(dE)
+    efermi = np.array([-0.5, 0.0, 0.5, 1.0, 1.7])
+    omega = np.linspace(dE.min() - 0.5, dE.max() + 0.5, 23) + 0.0123
+    result = occupied_kernel(occupied, dE, efermi, omega, np.zeros(1), 2)
+    tolerance = 1e-5 * np.abs(result).max()
+    for ief, ef in enumerate(efermi):
+        bary, volume = occupied_tetrahedra(occupied, ef)
+        parts = [bary[t] @ dE for t in range(3) if volume[t] > 0]
+        for w, value in zip(omega, result[ief]):
+            reference = 0
+            for v, d in zip(volume[volume > 0], parts):
+                nodes = np.unique(d)
+                for a, b in zip(nodes[:-1], nodes[1:]):
+                    def density(x):
+                        return delta_tetra(np.array([x]), *d)[0]
+                    if a < w < b:
+                        reference += v * quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
+                    else:
+                        reference += v * quad(lambda x: density(x) / (x - w), a, b, limit=200)[0]
+            assert value == pytest.approx(reference, rel=1e-5, abs=tolerance)
+        for d in parts:
+            for node in np.unique(d):
+                if np.sum(np.abs(d - node) < 1e-12) < 3:  # continuous unless three corners have the same value
+                    near = occupied_kernel(occupied, dE, efermi[ief:ief + 1], node + np.array([-1e-7, 0, 1e-7]),
+                                           np.zeros(1), 2)[0]
+                    assert np.all(np.isfinite(near))
+                    assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
+
+
+def test_occupied_kernel_monte_carlo():
+    """the integrals of theta(efermi - occupied) times the delta function and the principal part of dE - omega over a
+    tetrahedron, against Monte Carlo integration"""
+    rng = np.random.default_rng(6)
+    x = rng.dirichlet(np.ones(4), size=400000)
+    edges = np.linspace(-4, 4, 21)
+    omega = (edges[1:] + edges[:-1]) / 2
+    efermi = np.array([-0.5, 0.2, 1.0])
+    for _ in range(3):
+        occupied, dE = rng.normal(size=4), rng.normal(size=4) * 1.5
+        averages = occupied_kernel(occupied, dE, efermi, omega, edges, 1)
+        # the values at the frequencies, averaged over the intervals on a fine grid
+        fine = np.linspace(-4, 4, 4001)[:-1] + 0.001
+        values = occupied_kernel(occupied, dE, efermi, fine, edges, 0).reshape(3, len(omega), -1).mean(axis=2)
+        np.testing.assert_allclose(values, averages, rtol=0, atol=3e-3 * np.abs(averages).max())
+        far = np.array([dE.max() + 0.7, dE.min() - 1.3])
+        principal = occupied_kernel(occupied, dE, efermi, far, edges, 2)
+        sample_occupied, sample_dE = x @ occupied, x @ dE
+        for ief, ef in enumerate(efermi):
+            inside = sample_occupied < ef
+            histogram = np.histogram(sample_dE[inside], bins=edges)[0] / len(x) / np.diff(edges)
+            np.testing.assert_allclose(averages[ief], histogram, rtol=0, atol=0.02 * np.abs(averages).max())
+            mc = [np.mean(inside / (sample_dE - w)) for w in far]
+            np.testing.assert_allclose(principal[ief], mc, rtol=0, atol=2e-3)
+
+
+@pytest.mark.parametrize("calculator, parameters", [c for c in CALCULATORS if c[0] is not dynamic.SHC])
+def test_occupation_insulator(calculator, parameters):
+    """for an insulator, the occupations within the tetrahedra are those at the k-points, for several Fermi levels in
+    the gap (the two-band model has no spin operator, so SHC is not included)"""
+    system = two_band_system()
+    omega = np.arange(0.005, 14, 0.05)
+    kwargs = dict(Efermi=[0.0, 0.3, 0.5], omega=omega, tetra_delta=True, **parameters)
+    if calculator is dynamic.OpticalConductivity:
+        kwargs["tetra_reactive"] = True
+    result = run(system, {"k": calculator(**kwargs), "cells": calculator(tetra_occupation=True, **kwargs)}, NK=6)
+    assert np.abs(result["k"]).max() > 0
+    np.testing.assert_allclose(result["cells"], result["k"], rtol=0, atol=1e-12 * np.abs(result["k"]).max())
+
+
+@pytest.mark.parametrize("average", [False, True])
+def test_occupation_without_reactive(average):
+    """with the occupations within the tetrahedra but the Lorentzian for the principal part, which keeps the
+    occupations at the k-points: for an insulator (the optical conductivity), the same as with the occupations at
+    the k-points; for a metal (the spin Hall conductivity, whose matrix elements are real, so that the real part of
+    the result is the principal part), the real part is the same, the imaginary part is not. Also with the averages
+    over the intervals."""
+    omega = np.arange(0.005, 14, 0.05)
+    for system, efermi, metal, calculator, parameters in (
+            (two_band_system(), EFERMI, False, dynamic.OpticalConductivity, {}),
+            (random_system(), [0.0, 0.5], True, dynamic.SHC, {"SHC_type": "simple"})):
+        kwargs = dict(Efermi=efermi, omega=omega, tetra_delta=True, tetra_delta_average=average, **parameters)
+        with pytest.warns(UserWarning, match="tetra_reactive=True"):
+            cells = calculator(tetra_occupation=True, **kwargs)
+        result = run(system, {"k": calculator(**kwargs), "cells": cells}, NK=4)
+        scale = np.abs(result["k"]).max()
+        np.testing.assert_allclose(result["cells"].real, result["k"].real, rtol=0, atol=1e-12 * scale)
+        difference = np.abs(result["cells"].imag - result["k"].imag).max()
+        if metal:
+            assert difference > 0.01 * scale
+        else:
+            assert difference < 1e-12 * scale
+
+
+@pytest.mark.parametrize("average", [False, True])
+def test_occupation_metal_jdos(average):
+    """JDOS of the two-band model with the Fermi level in the upper band, against a histogram of the band gaps
+    weighted by the occupations on a 160^3 grid: closer with the occupations within the tetrahedra than with those at
+    the k-points"""
+    system = two_band_system()
+    efermi = 2.0
+    Elow, Ehigh = two_band_energies(160)
+    bins = np.arange(0.0, 14.0 + 1e-9, 0.25)
+    occupation = (Elow < efermi).astype(float) - (Ehigh < efermi)
+    reference = np.histogram(Ehigh - Elow, bins=bins, weights=occupation)[0] / Elow.size / (bins[1] - bins[0]) / A ** 3
+    domega = 0.005
+    omega = np.arange(bins[0], bins[-1], domega) + domega / 2
+    kwargs = dict(Efermi=[efermi], omega=omega, tetra_delta=True)
+    kwargs["tetra_delta_average"] = average
+    result = run(system, {"k": dynamic.JDOS(**kwargs), "cells": dynamic.JDOS(tetra_occupation=True, **kwargs)}, NK=16)
+
+    def error(jdos):
+        return np.abs(jdos[0].reshape(len(bins) - 1, -1).mean(axis=1) - reference).sum() / np.abs(reference).sum()
+
+    assert error(result["cells"]) < 0.012
+    assert error(result["cells"]) < 0.7 * error(result["k"])
+
+
+@pytest.mark.parametrize("average", [False, True])
+def test_occupation_jdos_degenerate_at_kpoints(average):
+    """JDOS of the bands -/+ |sin k_x|, which touch at the k-points k_x = 0 and pi, with the Fermi level between them:
+    the lower band is occupied and the upper one empty everywhere, so the frequency integral is 1/V. Around the
+    k-points where they touch, the two bands are one group of degenerate bands, whose pair with itself contributes
+    within the cells (without it, 2 of the 8 layers of cells would be missing)."""
+    hoppings = {(0, 0, 0): 0 * S0, (1, 0, 0): SIGMA[2] / 2j, (-1, 0, 0): -SIGMA[2] / 2j}
+    system = make_system(hoppings, 2)
+    domega = 0.01
+    omega = np.arange(domega / 2, 2.5, domega)
+    jdos = run(system, {"x": dynamic.JDOS(Efermi=[0.0], omega=omega, tetra_delta=True, tetra_occupation=True,
+                                          tetra_delta_average=average)}, NK=[8, 2, 2])["x"][0]
+    assert jdos.sum() * domega == pytest.approx(1 / A ** 3, rel=1e-10 if average else 1e-2)
+
+
+@pytest.mark.parametrize("calculator, parameters", CALCULATORS)
+def test_occupation_nkdiv_fermi_levels(calculator, parameters):
+    """with the occupations within the tetrahedra (a metal), NKdiv = 2 gives the same result as the full FFT grid,
+    several Fermi levels the same as separate calculations, and the occupations change the result"""
+    system = random_system()
+    omega = np.arange(0.005, 40, 0.1)
+    kwargs = dict(omega=omega, tetra_delta=True, tetra_occupation=True, **parameters)
+    if calculator in (dynamic.OpticalConductivity, dynamic.SHC):
+        kwargs["tetra_reactive"] = True
+    efermi = [0.0, 0.5]
+    divided = run(system, {"x": calculator(Efermi=efermi, **kwargs)}, grid=wberri.Grid(system, NKFFT=3, NKdiv=2))["x"]
+    full = run(system, {"x": calculator(Efermi=efermi, **kwargs)}, NK=6)["x"]
+    scale = np.abs(full).max()
+    np.testing.assert_allclose(divided, full, rtol=0, atol=1e-10 * scale)
+    for i, ef in enumerate(efermi):
+        single = run(system, {"x": calculator(Efermi=[ef], **kwargs)}, NK=6)["x"]
+        np.testing.assert_allclose(full[i], single[0], rtol=0, atol=1e-12 * scale)
+    kwargs["tetra_occupation"] = False
+    at_k = run(system, {"x": calculator(Efermi=efermi, **kwargs)}, NK=6)["x"]
+    assert np.abs(full - at_k).max() > 0.05 * scale
+
+
+def test_tetra_occupation_errors():
+    with pytest.raises(ValueError, match="requires kBT=0"):
+        dynamic.JDOS(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra_delta=True, tetra_occupation=True, kBT=0.01)
+    with pytest.raises(ValueError, match="tetra_occupation=True requires tetra_delta=True"):
+        dynamic.JDOS(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra_occupation=True)
+    assert not dynamic.JDOS(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra=True).tetra_occupation
+
+    class SelfPairs(dynamic.JDOS):
+        self_pairs_only = True
+
+    with pytest.raises(ValueError, match="tetra_occupation=True is not implemented"):
+        SelfPairs(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra_delta=True, tetra_occupation=True)
+    kwargs = dict(Efermi=EFERMI, omega=np.linspace(0.1, 1, 3), tetra_delta=True, tetra_occupation=True)
+    for calculator, parameters in ((dynamic.OpticalConductivity, {}), (dynamic.SHC, {"SHC_type": "simple"})):
+        with pytest.warns(UserWarning, match="tetra_reactive=True"):
+            calculator(**kwargs, **parameters)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            calculator(tetra_reactive=True, **kwargs, **parameters)
+
+
+@pytest.mark.parametrize("kind", ["single", "parallelepiped"])
+def test_occupation_weights_groups(kind):
+    """`TetraWeights.occupation_weights` for pairs of band groups of different sizes, with an empty pair among them,
+    both directions, and the three kernels: the average over the pairs of bands of the sums of
+    `occupation_kernel_tetra` over the tetrahedra"""
+    rng = np.random.default_rng(9)
+    nk, nb = 2, 4
+    eCenter = rng.normal(size=(nk, nb)) * 2
+    if kind == "single":
+        eCorners = eCenter[:, None, :] + rng.normal(size=(nk, 4, nb))
+    else:
+        eCorners = eCenter[:, None, None, None, :] + rng.normal(size=(nk, 2, 2, 2, nb))
+    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    efermi = np.array([-0.5, 0.3])
+    edges = np.linspace(-6, 6, 25)
+    omega = (edges[1:] + edges[:-1]) / 2
+    pairs = [((0, 1), (2, 4)), ((0, 0), (0, 0)), ((2, 4), (0, 2)), ((3, 4), (1, 2))]
+    for ik in range(nk):
+        for type, use_edges, code in (("delta", False, 0), ("delta", True, 1), ("reactive", False, 2)):
+            for reverse in (False, True):
+                result = tetra.dynamic_weights(ik, pairs, omega, efermi=efermi, type=type, reverse=reverse,
+                                               edges=edges if use_edges else None)
+                assert result.shape == (len(pairs), len(efermi), len(omega))
+                np.testing.assert_array_equal(result[1], 0)
+                for ipair, ((i1, i2), (j1, j2)) in enumerate(pairs):
+                    if ipair == 1:
+                        continue
+                    expected = 0
+                    for vertices in tetra.all_tetrahedra_vertices:
+                        for i in range(i1, i2):
+                            for j in range(j1, j2):
+                                expected = expected + occupation_kernel_tetra(
+                                    vertices[ik][:, i][None], vertices[ik][:, j][None], -1. if reverse else 1., efermi,
+                                    omega, edges, code)[0]
+                    expected = expected * tetra.factor_num_tetra / ((i2 - i1) * (j2 - j1))
+                    np.testing.assert_allclose(result[ipair], expected, rtol=1e-12, atol=1e-14)
+
+
 if __name__ == "__main__":
     np.savez_compressed(REFERENCE_FILE, **stored_results())
 
@@ -753,3 +1084,32 @@ def test_reactive_far_from_transitions():
         smr, tetra = result[name + "_smr"][:, 1:], result[name + "_tetra"]
         assert np.all(np.isfinite(tetra))
         np.testing.assert_allclose(tetra[:, 1:], smr, rtol=0, atol=tolerance * np.abs(smr).max())
+
+
+def random_insulator():
+    """`random_system` with the hoppings reduced and the on-site energies split, so that there are gaps between the
+    three bands, around -3.5 and 3.8 eV, and no symmetry (the shift and injection currents do not vanish)"""
+    system = random_system()
+    hoppings = {R: 0.2 * h for R, h in system.test_hoppings.items()}
+    hoppings[(0, 0, 0)] = hoppings[(0, 0, 0)] + np.diag([-6., 0., 6.])
+    insulator = make_system(hoppings, 3)
+    SS = np.zeros((insulator.rvec.nRvec, 3, 3, 3), dtype=complex)
+    SS[insulator.rvec.iR0] = system.test_spin
+    insulator.set_R_mat("SS", SS)
+    return insulator
+
+
+@pytest.mark.parametrize("calculator, parameters", CALCULATORS)
+def test_occupation_insulator_all(calculator, parameters):
+    """for an insulator without symmetry, with the Fermi levels in the two gaps, the occupations within the
+    tetrahedra are those at the k-points, for all the calculators. Negative frequencies are included: there, the
+    pairs that contribute have the opposite occupation factor"""
+    omega = np.arange(-20, 20, 0.1) + 0.05
+    kwargs = dict(Efermi=[-3.5, 3.8], omega=omega, tetra_delta=True, **parameters)
+    if calculator in (dynamic.OpticalConductivity, dynamic.SHC):
+        kwargs["tetra_reactive"] = True
+    system = random_insulator()
+    result = run(system, {"k": calculator(**kwargs), "cells": calculator(tetra_occupation=True, **kwargs)}, NK=4)
+    scale = np.abs(result["k"]).max()
+    assert scale > 1e-6
+    np.testing.assert_allclose(result["cells"], result["k"], rtol=0, atol=1e-12 * scale)
