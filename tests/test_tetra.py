@@ -4,8 +4,8 @@ import tempfile
 import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import (weights_tetra, weights_tetra_reactive, PRINCIPAL_FAR,
-                                           _separate_values)
+from wannierberri.grid.tetrahedron import (weights_tetra, PRINCIPAL_FAR,
+                                           _separate_values, _add_principal_3d)
 from wannierberri.grid.ttweights import TetraWeights
 from wannierberri.grid.tetratriangle import delta_tetra
 from scipy.integrate import quad
@@ -15,6 +15,12 @@ import pytest
 from pytest import approx
 
 from wannierberri.run_grid import run
+
+
+def weights_tetra_reactive(omega, E):
+    res = np.zeros(omega.shape[0])
+    _add_principal_3d(res, omega, E)
+    return res
 
 
 def check_tetra_derivatives(E, Efermi=np.linspace(-0.6, 0.6, 100001), acc1=1e-5, acc2=1e-3, acc3=1e-2, plot=False):
@@ -185,7 +191,7 @@ def test_tetra_reactive():
         while np.diff(np.sort(E)).min() < 0.02:  # the numerical convolution does not resolve nearly equal values
             E = rng.random((4,)) - 0.5
         tetra_absorptive = weights_tetra(omega, *E, der=1)
-        tetra_reactive = weights_tetra_reactive(omega, *E)
+        tetra_reactive = weights_tetra_reactive(omega, E)
         assert tetra_absorptive.shape == omega.shape
         assert tetra_reactive.shape == omega.shape
         inv_omega = np.zeros_like(omega)
@@ -210,8 +216,8 @@ def test_tetra_reactive_asymptotic():
     E = np.random.random((4,)) - 0.5
     omega1 = np.linspace(1000, 1010, 11)
     omega2 = np.linspace(-1010, -1000, 11)
-    tetra_reactive1 = weights_tetra_reactive(omega1, *E)
-    tetra_reactive2 = weights_tetra_reactive(omega2, *E)
+    tetra_reactive1 = weights_tetra_reactive(omega1, E)
+    tetra_reactive2 = weights_tetra_reactive(omega2, E)
     assert tetra_reactive1 == approx(-1 / omega1, rel=1e-3)
     assert tetra_reactive2 == approx(-1 / omega2, rel=1e-3)
 
@@ -234,7 +240,7 @@ def test_dynamic_weights_reactive_pairs(kind):
             for vertices in tetra.all_tetrahedra_vertices:
                 for i in range(i1, i2):
                     for j in range(j1, j2):
-                        expected += weights_tetra_reactive(omega, *(vertices[ik][:, i] - vertices[ik][:, j]))
+                        expected += weights_tetra_reactive(omega, (vertices[ik][:, i] - vertices[ik][:, j]))
             expected *= tetra.factor_num_tetra / max((i2 - i1) * (j2 - j1), 1)  # an empty pair gives 0
             assert result[ipair] == approx(expected, rel=1e-10, abs=1e-12), f"pair {pairs[ipair]} at ik={ik}"
 
@@ -247,7 +253,7 @@ def test_principal_values(dE):
     dE = np.array(dE)
     nodes = np.unique(dE)
     omega = np.concatenate([np.linspace(nodes[0] - 3, nodes[-1] + 3, 37) + 0.0123, [-200.0, 300.0]])
-    values = weights_tetra_reactive(omega, *dE)
+    values = weights_tetra_reactive(omega, dE)
 
     def density(x):
         return delta_tetra(np.array([x]), *dE)[0]
@@ -262,7 +268,7 @@ def test_principal_values(dE):
         assert value == pytest.approx(reference, rel=1e-7, abs=1e-9)
     for node in nodes:
         if np.sum(dE == node) < 3:  # continuous unless three corners have the same value
-            near = weights_tetra_reactive(node + np.array([-1e-7, 0, 1e-7]), *dE)
+            near = weights_tetra_reactive(node + np.array([-1e-7, 0, 1e-7]), dE)
             assert np.all(np.isfinite(near))
             assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
 
@@ -286,8 +292,8 @@ def test_separate_values(values, separated):
 def test_principal_values_flat(dE):
     """for (nearly) equal values, 1/(dE - omega), and zero at omega equal to all of them"""
     omega = np.array([-2.0, 0.5, 2.9, 3.1, 10.0])
-    np.testing.assert_allclose(weights_tetra_reactive(omega, *dE), 1 / (np.mean(dE) - omega), rtol=1e-9)
-    assert weights_tetra_reactive(np.array([1.0]), 1.0, 1.0, 1.0, 1.0)[0] == 0
+    np.testing.assert_allclose(weights_tetra_reactive(omega, dE), 1 / (np.mean(dE) - omega), rtol=1e-9)
+    assert weights_tetra_reactive(np.array([1.0]), dE)[0] == 0
 
 
 @pytest.mark.parametrize("offset", [1.0, 10.0])
@@ -295,8 +301,8 @@ def test_principal_values_narrow(offset):
     """a small spread (3e-8) far from zero, also with omega at the corner values: the same as near zero, and finite"""
     e = np.array([0, 1e-8, 2e-8, 3e-8])
     omega = np.array([0, 1e-8, 1.5e-8, 3e-8, 1e-6, -1e-6])
-    near_zero = weights_tetra_reactive(omega, *e)
-    far = weights_tetra_reactive(omega + offset, *(e + offset))
+    near_zero = weights_tetra_reactive(omega, e)
+    far = weights_tetra_reactive(omega + offset, e + offset)
     assert np.all(np.isfinite(far))
     np.testing.assert_allclose(far, near_zero, rtol=0, atol=1e-6 * np.abs(near_zero).max())  # 0 at the middle
 
@@ -309,7 +315,7 @@ def test_principal_expansion_continuity(dE):
     mean, spread = dE.mean(), np.ptp(dE)
     for side in (-1, 1):
         omega = mean + side * spread / PRINCIPAL_FAR * np.array([1 - 1e-9, 1 + 1e-9])
-        inside, outside = weights_tetra_reactive(omega, *dE)
+        inside, outside = weights_tetra_reactive(omega, dE)
         assert outside == pytest.approx(inside, rel=1e-7)
 
 
@@ -328,16 +334,16 @@ def test_principal_expansion_accuracy(dE):
         w = mean + side * spread / PRINCIPAL_FAR * (1 + 1e-6)
         reference = sum(quad(lambda x: density(x) / (x - w), a, b, epsabs=1e-14, epsrel=1e-12, limit=200)[0]
                         for a, b in zip(nodes[:-1], nodes[1:]))
-        assert weights_tetra_reactive(np.array([w]), *dE)[0] == pytest.approx(reference, rel=1e-9)
+        assert weights_tetra_reactive(np.array([w]), dE)[0] == pytest.approx(reference, rel=1e-9)
 
 
 def test_principal_values_near_corner():
     """omega within a few units of rounding of an interior corner value: continuous (the logarithms of the two
     intervals at the corner cancel)"""
     e = (0.0, 0.13, 0.4, 1.0)
-    at = weights_tetra_reactive(np.array([0.4]), *e)[0]
+    at = weights_tetra_reactive(np.array([0.4]), e)[0]
     for d in (1e-16, 1e-15, 1e-14, 1e-13, 1e-12):
-        near = weights_tetra_reactive(np.array([0.4 - d, 0.4 + d]), *e)
+        near = weights_tetra_reactive(np.array([0.4 - d, 0.4 + d]), e)
         np.testing.assert_allclose(near, at, rtol=1e-8)
 
 
@@ -345,7 +351,7 @@ def test_principal_values_at_corner():
     """omega exactly at a corner value of a cluster of nearly equal values, and corner values given as integers: the
     same as just beside it"""
     for e, w in (((0., 1., 1. + 1e-6, 1. + 2e-6), 1.), ((0., 0.3, 0.3 + 1e-9, 1.), 0.3), ((0, 0, 1, 2), 1.)):
-        values = weights_tetra_reactive(np.array([w - 1e-15, w, w + 1e-15]), *e)
+        values = weights_tetra_reactive(np.array([w - 1e-15, w, w + 1e-15]), e)
         np.testing.assert_allclose(values, values[0], rtol=1e-9)
 
 

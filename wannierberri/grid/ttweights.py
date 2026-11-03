@@ -1,10 +1,16 @@
 import numpy as np
-from functools import cached_property
+from functools import cached_property, lru_cache
 from collections import defaultdict
-from .tetratriangle import delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range, get_bands_above_range, ones, reactive_values_tetra
+from .tetratriangle import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
+                            get_bands_above_range, reactive_values_tetra, occupation_kernel)
 from .triangle import weights_triangle
 from .tetrahedron import weights_tetra
-from ..utility import weight_select_bands
+from ..utility import cached_einsum, weight_select_bands
+
+
+@lru_cache
+def ones(n):
+    return np.ones(n)
 
 
 class TTWeights:
@@ -110,12 +116,63 @@ class TTWeights:
         return res
 
 
-    def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
-        """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
-        averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
-        if edges are given, the averages over the intervals of omega between them. Returns an array
-        (len(pairs), len(omega))"""
+    # def dynamic_weights(self, ik, pairs, omega, edges=None, type="delta"):
+    #     """weights of delta(E_i - E_j - omega) at the k-point ik, for pairs of band groups ((i1, i2), (j1, j2)),
+    #     averaged over the pairs of bands i1 <= i < i2, j1 <= j < j2. The values at the given increasing omega, or,
+    #     if edges are given, the averages over the intervals of omega between them. Returns an array
+    #     (len(pairs), len(omega))"""
+    #     omega = np.asarray(omega, dtype=float)
+    #     band_i, band_j, group = [], [], []
+    #     for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
+    #         for i in range(i1, i2):
+    #             for j in range(j1, j2):
+    #                 band_i.append(i)
+    #                 band_j.append(j)
+    #                 group.append(ig)
+    #     res = np.zeros((len(pairs), len(omega)))
+    #     if len(group) == 0 or self.null:
+    #         return res
+    #     if edges is not None:
+    #         edges = np.asarray(edges, dtype=float)
+    #         assert len(edges) == len(omega) + 1
+    #     addition = 0
+    #     assert type in ("delta", "reactive"), f"Unknown type: {type}"
+    #     for vertices in self.all_tetrahedra_vertices:
+    #         dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
+    #         if type == "delta":
+    #             addition = addition + (delta_values_tetra(omega, dE)
+    #                                    if edges is None else delta_weights_tetra(edges, dE))
+    #         elif type == "reactive":
+    #             addition = addition + reactive_values_tetra(omega, dE)
+    #     np.add.at(res, np.array(group), addition)
+    #     nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
+    #     return res * self.factor_num_tetra / nband_pairs[:, None]
+
+
+    def dynamic_weights(self, ik, pairs, omega, efermi=None, type="delta", reverse=False, edges=None):
+        """the integrals over the cells around the k-point ik of [theta(efermi - E_j) - theta(efermi - E_i)] times
+        delta(E_i - E_j - omega) (type 'delta'; the averages over the intervals between the edges of omega if they are
+        given) or P 1/(E_i - E_j - omega) (type 'reactive'), with E_j - E_i instead of E_i - E_j if reverse, for
+        pairs of band groups ((i1, i2), (j1, j2)), averaged over the pairs of bands as `dynamic_weights`. Returns an
+        array (len(pairs), len(efermi), len(omega))"""
+        occupation_mode = (efermi is not None)
         omega = np.asarray(omega, dtype=float)
+        if occupation_mode:
+            efermi = np.asarray(efermi, dtype=float).reshape(-1)
+            if type == "reactive":
+                code = 2
+            elif type == "delta":
+                code = 0 if edges is None else 1
+            else:
+                raise ValueError(f"Unknown type: {type}")
+        if edges is not None:
+            edges = np.asarray(edges, dtype=float)
+            assert len(edges) == len(omega) + 1
+        elif occupation_mode:
+            edges = np.zeros(1)
+
+        sign = -1. if reverse else 1.
+
         band_i, band_j, group = [], [], []
         for ig, ((i1, i2), (j1, j2)) in enumerate(pairs):
             for i in range(i1, i2):
@@ -123,24 +180,28 @@ class TTWeights:
                     band_i.append(i)
                     band_j.append(j)
                     group.append(ig)
-        res = np.zeros((len(pairs), len(omega)))
+        if occupation_mode:
+            res = np.zeros((len(pairs), len(efermi), len(omega)))
+        else:
+            res = np.zeros((len(pairs), len(omega)))
         if len(group) == 0 or self.null:
             return res
-        if edges is not None:
-            edges = np.asarray(edges, dtype=float)
-            assert len(edges) == len(omega) + 1
         addition = 0
-        assert type in ("delta", "reactive"), f"Unknown type: {type}"
         for vertices in self.all_tetrahedra_vertices:
-            dE = np.ascontiguousarray((vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
-            if type == "delta":
-                addition = addition + (delta_values_tetra(omega, dE)
-                                       if edges is None else delta_weights_tetra(edges, dE))
-            elif type == "reactive":
-                addition = addition + reactive_values_tetra(omega, dE)
+            if occupation_mode:
+                Ei = np.ascontiguousarray(vertices[ik][:, band_i].T)
+                Ej = np.ascontiguousarray(vertices[ik][:, band_j].T)
+                addition = addition + occupation_kernel(Ei, Ej, sign, efermi, omega, edges, code)
+            else:
+                dE = np.ascontiguousarray(sign * (vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
+                if type == "delta":
+                    addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
+                elif type == "reactive":
+                    addition = addition + reactive_values_tetra(omega, dE)
         np.add.at(res, np.array(group), addition)
-        nband_pairs = np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
-        return res * self.factor_num_tetra / nband_pairs[:, None]
+        nband_pairs_inv = 1. / np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
+        return self.factor_num_tetra * cached_einsum("i...,i->i...", res, nband_pairs_inv)
+
 
 
 class TriangleWeights(TTWeights):

@@ -54,7 +54,7 @@ def weights_triangle_der2(efall, e0, e1, e2):
 
 
 @njit
-def space_e1234(e0, e1, e2, diff_min=1e-12):
+def space_e123(e0, e1, e2, diff_min=1e-12):
     e = np.array(sorted([e0, e1, e2]))
     # a dirty trick to avoid divisions by zero
     for i in range(2):
@@ -64,7 +64,7 @@ def space_e1234(e0, e1, e2, diff_min=1e-12):
 
 @njit
 def weights_triangle(efall, e0, e1, e2, der=0):
-    e0, e1, e2 = space_e1234(e0, e1, e2, diff_min=1e-12)
+    e0, e1, e2 = space_e123(e0, e1, e2, diff_min=1e-12)
     if der == 0:
         return weights_triangle_der0(efall, e0, e1, e2)
     elif der == 1:
@@ -75,3 +75,15 @@ def weights_triangle(efall, e0, e1, e2, der=0):
         return np.zeros_like(efall)
     else:
         raise NotImplementedError(f"der={der} not implemented in weights_triangle")
+
+
+@njit
+def _add_principal_2d(res, omega, e, weight=1):
+    raise NotImplementedError("principal value integration not implemented for 2D triangles")
+
+
+@njit
+def occupied_triangles(occupied, efermi):
+    """return the barycentric coordinates and areas of the occupied triangles in a triangle defined by `occupied`"""
+    # raise ValueError("occupied_triangles not implemented yet")  # makes problems in njit compilation, so we just return zeros for now
+    return np.zeros((3, 3, 3)), np.zeros(3)

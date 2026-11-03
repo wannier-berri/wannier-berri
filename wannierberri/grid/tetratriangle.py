@@ -2,17 +2,10 @@
 import numpy as np
 from numba import njit
 
-from functools import lru_cache
-from .triangle import weights_triangle
-from .tetrahedron import weights_tetra, _add_principal_3d
+from .triangle import weights_triangle, _add_principal_2d, occupied_triangles
+from .tetrahedron import weights_tetra, _add_principal_3d, occupied_tetrahedra
 
 
-@lru_cache
-def ones(n):
-    return np.ones(n)
-
-
-# @njit
 def get_borders(A, degen_thresh, degen_Kramers=False):
     borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
     if degen_Kramers:
@@ -20,7 +13,6 @@ def get_borders(A, degen_thresh, degen_Kramers=False):
     return [[ib1, ib2] for ib1, ib2 in zip(borders, borders[1:])]
 
 
-# @njit
 def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, Ebandmin=None, Ebandmax=None, select_bands=None):
     if Ebandmin is None:
         Ebandmin = Eband
@@ -36,7 +28,6 @@ def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, 
     return bands
 
 
-# @njit
 def get_bands_below_range(emin, Eband, Ebandmax=None):
     if Ebandmax is None:
         Ebandmax = Eband
@@ -47,7 +38,6 @@ def get_bands_below_range(emin, Eband, Ebandmax=None):
         return 0
 
 
-# @njit
 def get_bands_above_range(emax, Eband, Ebandmin=None):
     if Ebandmin is None:
         Ebandmin = Eband
@@ -125,7 +115,7 @@ def delta_values_tetra(omega, dE):
     res = np.zeros((dE.shape[0], omega.shape[0]))
     edges = omega_intervals(omega)
     for i in range(dE.shape[0]):
-        _add_delta_values(res[i], omega, edges, 1., dE[i])
+        _add_delta_values(res=res[i], omega=omega, edges=edges, weight=1., dE=dE[i])
     return res
 
 
@@ -156,6 +146,8 @@ def delta_weights_tetra(edges, dE):
         dim = 3
     elif dE.shape[1] == 3:
         dim = 2
+    else:
+        raise ValueError(f"dim={dE.shape[1] - 1} not supported")
     for i in range(dE.shape[0]):
         lo, hi = _edges_in_range(edges, dE[i].min(), dE[i].max())
         if hi <= lo:
@@ -174,10 +166,87 @@ def reactive_values_tetra(omega, dE):
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
-    dim = dE.shape[1] - 1
     for i, dEi in enumerate(dE):
-        if dim == 3:
-            _add_principal_3d(res[i], omega, dEi[0], dEi[1], dEi[2], dEi[3])
-        else:
-            raise NotImplementedError(f"dim={dim} not supported")
+        _add_principal(res[i], omega, dEi)
+    return res
+
+
+@njit
+def _add_principal(res, omega, dE, weight=1):
+    if dE.shape[0] == 4:
+        _add_principal_3d(res, omega, e=dE, weight=weight)
+    elif dE.shape[0] == 3:
+        _add_principal_2d(res, omega, e=dE, weight=weight)
+    else:
+        raise NotImplementedError(f"dim={dE.shape[0] - 1} not supported")
+
+
+@njit
+def _occupation_state(energies, efermi):
+    """1 if the band is occupied in the whole tetrahedron (as in `occupied_tetrahedra`), 0 if it is empty, 2 if the
+    Fermi level cuts it"""
+    if efermi >= energies.max():
+        return 1
+    if efermi <= energies.min():
+        return 0
+    return 2
+
+
+@njit
+def _add_kernel(res, omega, edges, intervals, kind, weight, dE):
+    """add weight times a function of dE - omega over a tetrahedron, with the values d0, ..., d3 of dE at its corners,
+    to res: delta(dE - omega) (kind 0: the values at omega, with the intervals around them for a flat dE; kind 1:
+    the averages over the intervals between the edges of omega) or P 1/(dE - omega) (kind 2)"""
+    if kind == 0:
+        _add_delta_values(res=res, omega=omega, edges=intervals, weight=weight, dE=dE)
+    elif kind == 1:
+        res += weight * delta_weights_tetra(edges=edges, dE=dE.reshape(1, -1))[0]
+    else:
+        _add_principal(res=res, omega=omega, dE=dE, weight=weight)
+
+
+@njit
+def _add_occupied(res, occupied, dE, efermi, omega, edges, intervals, kind, weight):
+    """add weight times the integral over a tetrahedron of theta(efermi - occupied) times the function of dE - omega
+    given by `kind` (see `_add_kernel`) to res"""
+    if dE.shape[0] == 4:
+        bary, volume = occupied_tetrahedra(occupied, efermi)
+    elif dE.shape[0] == 3:
+        bary, volume = occupied_triangles(occupied, efermi)
+    for t in range(3):
+        if volume[t] > 0:
+            # relative to a corner value, so that a constant dE stays exactly constant (P 1/(dE - omega) is zero for
+            # a constant dE equal to omega, but large for values that differ by rounding)
+            d = dE[0] + bary[t] @ (dE - dE[0])
+            _add_kernel(res=res, omega=omega, edges=edges, intervals=intervals, kind=kind, weight=weight * volume[t], dE=d)
+
+
+@njit
+def occupation_kernel(Ei, Ej, sign, efermi, omega, edges, kind):
+    """the integral over a tetrahedron of [theta(efermi - Ej) - theta(efermi - Ei)] times the function of
+    sign * (Ei - Ej) - omega given by `kind` (see `occupied_kernel`)
+
+    Ei, Ej : arrays (npair, 4), the band energies at the corners; returns an array (npair, nefermi, nomega).
+    Only the bands that the Fermi level cuts within the tetrahedron are divided: a band occupied in the whole
+    tetrahedron gives the integral over all of it, computed once for all the Fermi levels."""
+    res = np.zeros((Ei.shape[0], efermi.shape[0], omega.shape[0]))
+    intervals = omega_intervals(omega)
+    whole = np.zeros(omega.shape[0])
+    for i in range(Ei.shape[0]):
+        dE = sign * (Ei[i] - Ej[i])
+        have_whole = False
+        for ief in range(efermi.shape[0]):
+            ef = efermi[ief]
+            state_i, state_j = _occupation_state(energies=Ei[i], efermi=ef), _occupation_state(energies=Ej[i], efermi=ef)
+            if state_i == state_j and state_i != 2:  # both occupied or both empty
+                continue
+            for state, occupied, weight in ((state_j, Ej[i], 1.), (state_i, Ei[i], -1.)):
+                if state == 1:
+                    if not have_whole:
+                        whole[:] = 0
+                        _add_kernel(res=whole, omega=omega, edges=edges, intervals=intervals, kind=kind, weight=1., dE=dE)
+                        have_whole = True
+                    res[i, ief] += weight * whole
+                elif state == 2:
+                    _add_occupied(res=res[i, ief], occupied=occupied, dE=dE, efermi=ef, omega=omega, edges=edges, intervals=intervals, kind=kind, weight=weight)
     return res
