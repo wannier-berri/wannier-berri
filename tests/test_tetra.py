@@ -6,7 +6,9 @@ import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.tetrahedron import (weights_tetra, PRINCIPAL_FAR,
                                            _separate_values, _add_principal_3d)
-from wannierberri.grid.ttweights import TetraWeights
+from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
+from wannierberri.grid.triangle import (weights_triangle, _add_principal_2d, occupied_triangles,
+                                        PRINCIPAL_FAR as PRINCIPAL_FAR_2D)
 from wannierberri.grid.tetratriangle import delta_tetra
 from scipy.integrate import quad
 from wannierberri.grid import Grid
@@ -20,6 +22,12 @@ from wannierberri.run_grid import run
 def weights_tetra_reactive(omega, E):
     res = np.zeros(omega.shape[0])
     _add_principal_3d(res, omega, E)
+    return res
+
+
+def weights_triangle_reactive(omega, E):
+    res = np.zeros(omega.shape[0])
+    _add_principal_2d(res, omega, E)
     return res
 
 
@@ -293,7 +301,7 @@ def test_principal_values_flat(dE):
     """for (nearly) equal values, 1/(dE - omega), and zero at omega equal to all of them"""
     omega = np.array([-2.0, 0.5, 2.9, 3.1, 10.0])
     np.testing.assert_allclose(weights_tetra_reactive(omega, dE), 1 / (np.mean(dE) - omega), rtol=1e-9)
-    assert weights_tetra_reactive(np.array([1.0]), dE)[0] == 0
+    assert weights_tetra_reactive(np.array([1.0]), [1.0, 1.0, 1.0, 1.0])[0] == 0
 
 
 @pytest.mark.parametrize("offset", [1.0, 10.0])
@@ -400,3 +408,162 @@ def test_tetra_2D(system_Haldane_PythTB):
         maxval = max(np.abs(res_tetra).max(), np.abs(res_triangle).max())
         diff = np.abs(res_tetra - res_triangle).max()
         assert diff <= maxval * acc, f"results for {key} differ by {diff} > {maxval * acc} between tetrahedron and triangle methods"
+
+
+def test_triangle_occupation_metal_jdos(system_Haldane_PythTB):
+    """2D: JDOS of the Haldane model with the Fermi level in the upper band, with the triangles, against a histogram of
+    the band gaps weighted by the occupations on a 400^2 grid: closer with the occupations within the triangles than
+    with those at the k-points"""
+    from wannierberri.calculators.dynamic import JDOS
+    system = system_Haldane_PythTB
+    efermi = 1.0
+    n = 400
+    k = np.stack(np.meshgrid(np.arange(n) / n, np.arange(n) / n, [0]), axis=-1).reshape(-1, 3)
+    E = np.linalg.eigvalsh(np.einsum("kr,rab->kab", np.exp(2j * np.pi * k @ system.rvec.iRvec.T), system.Ham_R))
+    bins = np.arange(0.0, 8.0 + 1e-9, 0.25)
+    occupation = (E[:, 0] < efermi).astype(float) - (E[:, 1] < efermi)
+    reference = np.histogram(E[:, 1] - E[:, 0], bins=bins, weights=occupation)[0] / len(E) / 0.25 / system.cell_volume
+    domega = 0.005
+    kwargs = dict(Efermi=[efermi], omega=np.arange(bins[0], bins[-1], domega) + domega / 2, tetra_delta=True)
+    with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+        result = run(system=system, grid=Grid(system, NK=(24, 24, 1)), fout_name=os.path.join(tmp, "x"),
+                     calculators={"k": JDOS(**kwargs), "cells": JDOS(tetra_occupation=True, **kwargs)}).results
+
+    def error(key):
+        jdos = result[key].data[0].reshape(len(bins) - 1, -1).mean(axis=1)
+        return np.abs(jdos - reference).sum() / np.abs(reference).sum()
+
+    assert error("cells") < 0.025
+    assert error("cells") < 0.6 * error("k")
+
+
+def triangle_principal_reference(e, w):
+    """the average of P 1/(dE - omega) over a triangle, by the numerical principal-value integral of the density of dE"""
+    e = np.sort(np.array(e, dtype=float))
+    result = 0
+    for a, b in zip(e[:-1], e[1:]):
+        if b > a:
+            def density(x):
+                return weights_triangle(np.array([x]), *e, der=1)[0]
+            if a < w < b:
+                result += quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
+            else:
+                result += quad(lambda x: density(x) / (x - w), a, b, limit=200)[0]
+    return result
+
+
+@pytest.mark.parametrize("e", [[0.3, -1.2, 2.0], [0.0, 1.0, 3.0], [-1.0, 0.5, 0.5 + 1e-3], [2.0, 2.0 + 1e-4, 5.0]])
+def test_principal_values_2d(e):
+    """the principal part over a triangle against the numerical principal-value integral of the density, at
+    frequencies within and beyond the range of the values and on both sides of where the expansion far from the values
+    takes over; at the corner values, it is continuous"""
+    e = np.array(e)
+    mean, spread = e.mean(), np.ptp(e)
+    omega = np.concatenate([np.linspace(e.min() - 1, e.max() + 1, 17) + 0.0123,
+                            mean + spread / PRINCIPAL_FAR_2D * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
+    for function in (_add_principal_2d, _add_principal_2d.py_func):
+        res = np.zeros(len(omega))
+        function(res, omega, e)
+        for w, value in zip(omega, res):
+            assert value == pytest.approx(triangle_principal_reference(e, w), rel=1e-7, abs=1e-9)
+    step = 1e-9 * np.diff(np.sort(e)).min()  # small compared with the distance to the other values
+    for node in e:
+        near = weights_triangle_reactive(node + np.array([-step, 0, step]), e)
+        assert np.abs(np.diff(near)).max() < 1e-6 * (1 + np.abs(near).max())
+
+
+@pytest.mark.parametrize("w", [-1.0, 0.25, 0.5, 0.999, 1.5, 3.0])
+def test_principal_values_2d_equal(w):
+    """equal corner values, without separating them: the closed forms for two equal values (the density 2 (1 - x)
+    on [0, 1], or 2 x), also given as integers, and for three equal values (1/(dE - omega), and zero at omega equal
+    to them)"""
+    lower = 2 * ((1 - w) * np.log(np.abs((1 - w) / w)) - 1)  # P int_0^1 2 (1 - x) / (x - w) dx
+    upper = 2 * (1 + w * np.log(np.abs((1 - w) / w)))  # P int_0^1 2 x / (x - w) dx
+    for e, expected in (([0.0, 0.0, 1.0], lower), ((0, 1, 0), lower), ([1.0, 0.0, 1.0], upper),
+                        ([7.0, 7.0, 7.0], 1 / (7 - w))):
+        assert weights_triangle_reactive(np.array([w]), np.array(e))[0] == pytest.approx(expected, rel=1e-12)
+    assert weights_triangle_reactive(np.array([7.0]), np.array([7.0, 7.0, 7.0]))[0] == 0
+
+
+def test_principal_values_2d_at_corner():
+    """omega exactly at the corner values: 2 log 2, 0 and -2 log 2 for the values 0, 1, 2 (the density is continuous
+    there). At two equal values, where the principal part diverges logarithmically: the closed forms of
+    test_principal_values_2d_equal (shifted and scaled) at the neighbouring floating-point numbers and below, and at
+    the value itself the closed form at a distance of the machine epsilon times the scale of the values"""
+    e = np.array([0.0, 1.0, 2.0])
+    np.testing.assert_allclose(weights_triangle_reactive(e, e), [2 * np.log(2), 0, -2 * np.log(2)], rtol=1e-14,
+                               atol=1e-15)
+
+    def lower(w):  # without overflow for the smallest w
+        return 2 * ((1 - w) * (np.log(np.abs(1 - w)) - np.log(np.abs(w))) - 1)
+
+    # (values, node, closed form in the distance of omega from the node; for the upper values, the closed form of
+    # test_principal_values_2d_equal with 1 - w = -d / 5 without cancellation)
+    for e, node, expected in (([0.0, 0.0, 1.0], 0.0, lower), ([5.0, 5.0, 6.0], 5.0, lower),
+                              ([-3.0, 2.0, 2.0], 2.0,
+                               lambda d: 2 * (1 + (1 + d / 5) * np.log(np.abs(d / 5 / (1 + d / 5)))) / 5)):
+        e = np.array(e)
+        # the neighbouring floating-point numbers, and distances down to 1e-20 (resolvable near zero)
+        omega = np.array([np.nextafter(node, -np.inf), np.nextafter(node, np.inf), node + 1e-20, node - 1e-20,
+                          node + 1e-10, node - 1e-6])
+        omega = omega[omega != node]
+        for function in (_add_principal_2d, _add_principal_2d.py_func):
+            res = np.zeros(len(omega) + 1)
+            function(res, np.append(omega, node), e)
+            np.testing.assert_allclose(res[:-1], expected(omega - node), rtol=1e-8)
+            at_zero = 2.2e-16 * (np.ptp(e) + np.abs(e).max())  # the distance taken at the node
+            assert res[-1] == pytest.approx(expected(at_zero), rel=1e-8)
+
+
+@pytest.mark.parametrize("offset", [1.0, 10.0])
+def test_principal_values_2d_narrow(offset):
+    """a small spread (2e-8) far from zero, also with omega at the corner values: the same as near zero, and finite"""
+    e = np.array([0, 1e-8, 2e-8])
+    omega = np.array([0, 1e-8, 1.5e-8, 2e-8, 1e-6, -1e-6])
+    near_zero = weights_triangle_reactive(omega, e)
+    far = weights_triangle_reactive(omega + offset, e + offset)
+    assert np.all(np.isfinite(far))
+    np.testing.assert_allclose(far, near_zero, rtol=0, atol=1e-6 * np.abs(near_zero).max())
+
+
+@pytest.mark.parametrize("energies", [[0.3, -1.2, 2.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+def test_occupied_triangles(energies):
+    """the part of a triangle below the Fermi level: the areas are the occupation of `weights_triangle`, and the values
+    at the corners of the parts are below the Fermi level; a flat band at the Fermi level is occupied"""
+    energies = np.array(energies)
+    for efermi in np.linspace(-2, 3, 51):
+        for function in (occupied_triangles, occupied_triangles.py_func):
+            bary, area = function(energies, efermi)
+            if np.all(energies == efermi):
+                assert area.sum() == 1
+                continue
+            # (weights_triangle separates equal values by 1e-12)
+            assert area.sum() == pytest.approx(weights_triangle(np.array([efermi]), *energies, der=0)[0], abs=1e-11)
+            for b, a in zip(bary, area):
+                if a > 0:
+                    assert np.all(b @ energies <= efermi + 1e-12)
+                    np.testing.assert_allclose(b.sum(axis=1), 1, rtol=0, atol=1e-14)
+    assert occupied_triangles(np.ones(3), 1.0)[1].sum() == 1
+
+
+@pytest.mark.parametrize("kind", ["0011", "0101"])
+def test_triangle_weights_kramers_kronig(kind):
+    """for triangles: the reactive weights are the principal-value integrals of the delta weights over the frequency,
+    for pairs of band groups (as in test_dynamic_weights_kramers_kronig)"""
+    rng = np.random.default_rng(3)
+    nk, nb = 2, 4
+    eCenter = rng.random((nk, nb)) * 2
+    eCorners = rng.random((nk, 2, 2, nb)) * 2
+    triangles = TriangleWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    pairs = [((0, 1), (2, 3)), ((2, 4), (0, 2)), ((1, 2), (3, 4))]
+    edges = np.linspace(-3, 3, 60001)
+    omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals
+    for ik in range(nk):
+        delta = triangles.dynamic_weights(ik, pairs, (edges[1:] + edges[:-1]) / 2, edges=edges, type="delta")
+        reactive = triangles.dynamic_weights(ik, pairs, omega, type="reactive")
+        assert np.abs(reactive).max() > 0
+        for w, values in zip(omega, reactive.T):
+            with np.errstate(divide="ignore"):
+                kernel = np.log(np.abs((edges[1:] - w) / (edges[:-1] - w)))
+            kernel[~np.isfinite(kernel)] = 0
+            np.testing.assert_allclose(values, delta @ kernel, rtol=1e-3, atol=1e-4)
