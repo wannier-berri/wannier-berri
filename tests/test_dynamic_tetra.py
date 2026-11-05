@@ -16,7 +16,7 @@ from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.grid.tetratriangle import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
-                                             omega_intervals, _add_occupied, occupation_kernel,
+                                             omega_intervals, _add_occupied, occupation_kernel, occupied_pieces,
                                            delta_tetra, delta_values_tetra, delta_weights_tetra)
 from wannierberri.grid.ttweights import TetraWeights
 from wannierberri.grid.tetrahedron import weights_tetra, occupied_tetrahedra
@@ -841,23 +841,38 @@ def test_occupation_kernel_flat_transition(sign):
         np.testing.assert_allclose(result, expected, rtol=1e-6, atol=0)
 
 
+def test_occupation_kernel_flat_transition_triangle():
+    """as test_occupation_kernel_flat_transition, for a triangle: the part where Ej < 0, with the edges cut at 1/3 and
+    1/4, is 1/12 of it"""
+    Ej = np.array([[-1.0, 2.0, 3.0]])
+    Ei = Ej + 3
+    omega = np.array([3 - 1e-9, 3, 3 + 1e-9, 2.5, 3.5])
+    expected = np.zeros(len(omega))
+    expected[[0, 2, 3, 4]] = 1 / 12 / (3 - omega[[0, 2, 3, 4]])
+    for kernel in (occupation_kernel, occupation_kernel.py_func):
+        result = kernel(Ei, Ej, 1.0, np.array([0.0]), omega, np.zeros(1), 2)[0, 0]
+        np.testing.assert_allclose(result, expected, rtol=1e-6, atol=0)
+
+
 @pytest.mark.parametrize("occupied, dE", [([0.3, -1.2, 2.0, 0.7], [1.1, -0.4, 2.5, 0.2]),
                                           ([0.0, 0.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
                                           ([0.0, 1.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
-                                          ([0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 0.5, 1.5])])
+                                          ([0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 0.5, 1.5]),
+                                          ([0.3, -1.2, 2.0], [1.1, -0.4, 2.5]),
+                                          ([0.0, 1.0, 2.0], [1.0, 2.0, 0.5])])
 def test_occupied_kernel_principal_inside(occupied, dE):
     """the principal part over the occupied parts at frequencies within the range of dE, against the numerical
     principal-value integral of the density of dE (`delta_tetra`) over each part, with Fermi levels between and at
     the corner values; at the corner values of dE on the parts, it is continuous. Equal corner values (here where dE
     has equal values at two corners) are separated by 1e-7 of the spread, which changes the result by about 1e-5 of
-    its scale"""
+    its scale. Also for triangles (3 corners)"""
     occupied, dE = np.array(occupied), np.array(dE)
     efermi = np.array([-0.5, 0.0, 0.5, 1.0, 1.7])
     omega = np.linspace(dE.min() - 0.5, dE.max() + 0.5, 23) + 0.0123
     result = occupied_kernel(occupied, dE, efermi, omega, np.zeros(1), 2)
     tolerance = 1e-5 * np.abs(result).max()
     for ief, ef in enumerate(efermi):
-        bary, volume = occupied_tetrahedra(occupied, ef)
+        bary, volume = occupied_pieces(occupied, ef)
         parts = [bary[t] @ dE for t in range(3) if volume[t] > 0]
         for w, value in zip(omega, result[ief]):
             reference = 0
@@ -873,23 +888,25 @@ def test_occupied_kernel_principal_inside(occupied, dE):
             assert value == pytest.approx(reference, rel=1e-5, abs=tolerance)
         for d in parts:
             for node in np.unique(d):
-                if np.sum(np.abs(d - node) < 1e-12) < 3:  # continuous unless three corners have the same value
+                # continuous unless three corners (two for a triangle) have the same value
+                if np.sum(np.abs(d - node) < 1e-12) < len(d) - 1:
                     near = occupied_kernel(occupied, dE, efermi[ief:ief + 1], node + np.array([-1e-7, 0, 1e-7]),
                                            np.zeros(1), 2)[0]
                     assert np.all(np.isfinite(near))
                     assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
 
 
-def test_occupied_kernel_monte_carlo():
+@pytest.mark.parametrize("ncorners", [4, 3])
+def test_occupied_kernel_monte_carlo(ncorners):
     """the integrals of theta(efermi - occupied) times the delta function and the principal part of dE - omega over a
-    tetrahedron, against Monte Carlo integration"""
+    tetrahedron (or a triangle), against Monte Carlo integration"""
     rng = np.random.default_rng(6)
-    x = rng.dirichlet(np.ones(4), size=400000)
+    x = rng.dirichlet(np.ones(ncorners), size=400000)
     edges = np.linspace(-4, 4, 21)
     omega = (edges[1:] + edges[:-1]) / 2
     efermi = np.array([-0.5, 0.2, 1.0])
     for _ in range(3):
-        occupied, dE = rng.normal(size=4), rng.normal(size=4) * 1.5
+        occupied, dE = rng.normal(size=ncorners), rng.normal(size=ncorners) * 1.5
         averages = occupied_kernel(occupied, dE, efermi, omega, edges, 1)
         # the values at the frequencies, averaged over the intervals on a fine grid
         fine = np.linspace(-4, 4, 4001)[:-1] + 0.001

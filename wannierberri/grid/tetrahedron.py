@@ -210,7 +210,7 @@ def _separate_values(e, gap):
 @njit
 def _add_principal_3d(res, omega, e, weight=1.):
     """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
-    e = np.array(sorted(e))
+    e = np.sort(np.asarray(e, dtype=np.float64))
     shift = e[0]
     e = e - shift
     mean = np.sum(e) / 4
