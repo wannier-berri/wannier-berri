@@ -3,7 +3,7 @@ import abc
 import functools
 import warnings
 from ..utility import Gaussian, Lorentzian, FermiDirac, cached_einsum
-from ..grid.tetrahedron import omega_intervals
+from ..grid.tetratriangle import omega_intervals
 from ..result import EnergyResult
 from .calculator import Calculator
 from ..formula.covariant import SpinVelocity

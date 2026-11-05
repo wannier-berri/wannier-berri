@@ -15,17 +15,30 @@ from wannierberri.calculators import dynamic
 from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetrahedron import (FLAT_FRACTION, TetraWeights, _edges_in_range,
-                                           _omega_in_range,
-                                           delta_tetra, delta_values_tetra, delta_weights_tetra,
-                                           occupation_kernel_tetra, occupied_kernel, occupied_tetrahedra,
-                                           weights_tetra)
+from wannierberri.grid.tetratriangle import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
+                                             omega_intervals, _add_occupied, occupation_kernel, occupied_pieces,
+                                           delta_tetra, delta_values_tetra, delta_weights_tetra)
+from wannierberri.grid.ttweights import TetraWeights
+from wannierberri.grid.tetrahedron import weights_tetra, occupied_tetrahedra
 from wannierberri.system import System_R
 
 S0 = np.eye(2, dtype=complex)
 SIGMA = [np.array([[0, 1], [1, 0]], dtype=complex), np.array([[0, -1j], [1j, 0]]), np.diag([1., -1]).astype(complex)]
 A, M, T0, ALPHA = 3.0, 3.5, 0.1, 0.2  # lattice constant (Angstrom), and the parameters of the two-band model (eV)
 EFERMI = [0.3]
+
+
+def occupied_kernel(occupied, dE, efermi, omega, edges, kind):
+    """the integral over a tetrahedron of theta(efermi - occupied) times a function of dE - omega: delta(dE - omega)
+    (kind 0: the values at omega; kind 1: the averages over the intervals between the edges of omega) or
+    P 1/(dE - omega) (kind 2), as fractions of the volume of the tetrahedron.
+
+    occupied, dE : the values of the two linear functions at the 4 corners; returns an array (nefermi, nomega)"""
+    res = np.zeros((efermi.shape[0], omega.shape[0]))
+    intervals = omega_intervals(omega)
+    for ief in range(efermi.shape[0]):
+        _add_occupied(res[ief], occupied, dE, efermi[ief], omega, edges, intervals, kind, 1.)
+    return res
 
 
 def make_system(hoppings, num_wann):
@@ -89,13 +102,15 @@ def random_system(num_wann=3, seed=1, copies=1, two_dimensional=False):
     return system
 
 
-def run(system, calculators, NK=10, grid=None, parallel=True):
+def run(system, calculators, NK=10, grid=None, parallel=True, use_tetra_in_low_D=True):
     """NK : int or list of 3 ints, the FFT grid"""
     if grid is None:
         grid = wberri.Grid(system, NKFFT=NK, NKdiv=1)
     with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
         result = wberri.run(system, grid=grid, parallel=parallel, calculators=calculators,
-                            fout_name=os.path.join(tmp, "x"))
+                            fout_name=os.path.join(tmp, "x"),
+                            parameters_K={"use_tetra_in_low_D": use_tetra_in_low_D}
+                            )
     return {key: result.results[key].data for key in calculators}
 
 
@@ -184,7 +199,7 @@ def test_python_versions():
     efermi = np.array([-1.0, 0.5])
     for code in (0, 1, 2):
         args = (dE[:3], dE[3:6], 1., efermi, edges[:-1] + 0.25, edges, code)
-        np.testing.assert_allclose(occupation_kernel_tetra.py_func(*args), occupation_kernel_tetra(*args),
+        np.testing.assert_allclose(occupation_kernel.py_func(*args), occupation_kernel(*args),
                                    rtol=1e-10, atol=1e-10)
     for ef in (-5.0, -1.0, 0.0, 1.0, 5.0):
         for result, compiled in zip(occupied_tetrahedra.py_func(dE[0], ef), occupied_tetrahedra(dE[0], ef)):
@@ -661,20 +676,6 @@ def test_narrow_window(average):
     np.testing.assert_allclose(result["window"], result["full"][:, window], rtol=1e-10, atol=0)
 
 
-# def test_parallel():
-#     """the same result with ray workers as in serial"""
-#     ray = pytest.importorskip("ray")
-#     if not ray.is_initialized():
-#         pytest.skip("ray is not initialized")
-#     system = random_system()
-#     omega = np.arange(0.005, 40, 0.05)
-#     calculator = dict(Efermi=EFERMI, omega=omega, tetra_delta=True)
-#     grid = wberri.Grid(system, NKFFT=4, NKdiv=2)
-#     serial = run(system, {"x": dynamic.OpticalConductivity(**calculator)}, grid=grid)["x"]
-#     parallel = run(system, {"x": dynamic.OpticalConductivity(**calculator)}, grid=grid, parallel=True)["x"]
-#     np.testing.assert_allclose(parallel, serial, rtol=0, atol=1e-10 * np.abs(serial).max())
-
-
 def test_nkdiv_fermi_levels_temperature():
     """the grid divided into shifted subgrids (NKdiv) gives the same result as the full FFT grid, and several Fermi
     levels at a finite temperature give the same results as separate calculations"""
@@ -806,7 +807,7 @@ def test_occupation_kernel_against_occupied_kernel(kind):
     edges = np.linspace(-8, 8, 161)
     omega = (edges[1:] + edges[:-1]) / 2
     for sign in (1.0, -1.0):
-        result = occupation_kernel_tetra(Ei, Ej, sign, efermi, omega, edges, kind)
+        result = occupation_kernel(Ei, Ej, sign, efermi, omega, edges, kind)
         for i in range(len(Ei)):
             dE = sign * (Ei[i] - Ej[i])
             expected = (occupied_kernel(Ej[i], dE, efermi, omega, edges, kind) -
@@ -835,28 +836,43 @@ def test_occupation_kernel_flat_transition(sign):
     fraction = 1 / 60  # where Ej < 0: the corner tetrahedron with the edges cut at 1/3, 1/4 and 1/5
     expected = np.zeros(len(omega))
     expected[[0, 2, 3, 4]] = fraction / (sign * 3 - omega[[0, 2, 3, 4]])
-    for kernel in (occupation_kernel_tetra, occupation_kernel_tetra.py_func):
+    for kernel in (occupation_kernel, occupation_kernel.py_func):
         result = kernel(Ei, Ej, sign, np.array([0.0]), omega, np.zeros(1), 2)[0, 0]
+        np.testing.assert_allclose(result, expected, rtol=1e-6, atol=0)
+
+
+def test_occupation_kernel_flat_transition_triangle():
+    """as test_occupation_kernel_flat_transition, for a triangle: the part where Ej < 0, with the edges cut at 1/3 and
+    1/4, is 1/12 of it"""
+    Ej = np.array([[-1.0, 2.0, 3.0]])
+    Ei = Ej + 3
+    omega = np.array([3 - 1e-9, 3, 3 + 1e-9, 2.5, 3.5])
+    expected = np.zeros(len(omega))
+    expected[[0, 2, 3, 4]] = 1 / 12 / (3 - omega[[0, 2, 3, 4]])
+    for kernel in (occupation_kernel, occupation_kernel.py_func):
+        result = kernel(Ei, Ej, 1.0, np.array([0.0]), omega, np.zeros(1), 2)[0, 0]
         np.testing.assert_allclose(result, expected, rtol=1e-6, atol=0)
 
 
 @pytest.mark.parametrize("occupied, dE", [([0.3, -1.2, 2.0, 0.7], [1.1, -0.4, 2.5, 0.2]),
                                           ([0.0, 0.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
                                           ([0.0, 1.0, 1.0, 2.0], [1.0, 2.0, 0.5, 1.5]),
-                                          ([0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 0.5, 1.5])])
+                                          ([0.3, -1.2, 2.0, 0.7], [1.0, 1.0, 0.5, 1.5]),
+                                          ([0.3, -1.2, 2.0], [1.1, -0.4, 2.5]),
+                                          ([0.0, 1.0, 2.0], [1.0, 2.0, 0.5])])
 def test_occupied_kernel_principal_inside(occupied, dE):
     """the principal part over the occupied parts at frequencies within the range of dE, against the numerical
     principal-value integral of the density of dE (`delta_tetra`) over each part, with Fermi levels between and at
     the corner values; at the corner values of dE on the parts, it is continuous. Equal corner values (here where dE
     has equal values at two corners) are separated by 1e-7 of the spread, which changes the result by about 1e-5 of
-    its scale"""
+    its scale. Also for triangles (3 corners)"""
     occupied, dE = np.array(occupied), np.array(dE)
     efermi = np.array([-0.5, 0.0, 0.5, 1.0, 1.7])
     omega = np.linspace(dE.min() - 0.5, dE.max() + 0.5, 23) + 0.0123
     result = occupied_kernel(occupied, dE, efermi, omega, np.zeros(1), 2)
     tolerance = 1e-5 * np.abs(result).max()
     for ief, ef in enumerate(efermi):
-        bary, volume = occupied_tetrahedra(occupied, ef)
+        bary, volume = occupied_pieces(occupied, ef)
         parts = [bary[t] @ dE for t in range(3) if volume[t] > 0]
         for w, value in zip(omega, result[ief]):
             reference = 0
@@ -872,23 +888,25 @@ def test_occupied_kernel_principal_inside(occupied, dE):
             assert value == pytest.approx(reference, rel=1e-5, abs=tolerance)
         for d in parts:
             for node in np.unique(d):
-                if np.sum(np.abs(d - node) < 1e-12) < 3:  # continuous unless three corners have the same value
+                # continuous unless three corners (two for a triangle) have the same value
+                if np.sum(np.abs(d - node) < 1e-12) < len(d) - 1:
                     near = occupied_kernel(occupied, dE, efermi[ief:ief + 1], node + np.array([-1e-7, 0, 1e-7]),
                                            np.zeros(1), 2)[0]
                     assert np.all(np.isfinite(near))
                     assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
 
 
-def test_occupied_kernel_monte_carlo():
+@pytest.mark.parametrize("ncorners", [4, 3])
+def test_occupied_kernel_monte_carlo(ncorners):
     """the integrals of theta(efermi - occupied) times the delta function and the principal part of dE - omega over a
-    tetrahedron, against Monte Carlo integration"""
+    tetrahedron (or a triangle), against Monte Carlo integration"""
     rng = np.random.default_rng(6)
-    x = rng.dirichlet(np.ones(4), size=400000)
+    x = rng.dirichlet(np.ones(ncorners), size=400000)
     edges = np.linspace(-4, 4, 21)
     omega = (edges[1:] + edges[:-1]) / 2
     efermi = np.array([-0.5, 0.2, 1.0])
     for _ in range(3):
-        occupied, dE = rng.normal(size=4), rng.normal(size=4) * 1.5
+        occupied, dE = rng.normal(size=ncorners), rng.normal(size=ncorners) * 1.5
         averages = occupied_kernel(occupied, dE, efermi, omega, edges, 1)
         # the values at the frequencies, averaged over the intervals on a fine grid
         fine = np.linspace(-4, 4, 4001)[:-1] + 0.001
@@ -1056,7 +1074,7 @@ def test_occupation_weights_groups(kind):
                     for vertices in tetra.all_tetrahedra_vertices:
                         for i in range(i1, i2):
                             for j in range(j1, j2):
-                                expected = expected + occupation_kernel_tetra(
+                                expected = expected + occupation_kernel(
                                     vertices[ik][:, i][None], vertices[ik][:, j][None], -1. if reverse else 1., efermi,
                                     omega, edges, code)[0]
                     expected = expected * tetra.factor_num_tetra / ((i2 - i1) * (j2 - j1))

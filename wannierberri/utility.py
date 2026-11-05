@@ -1,4 +1,5 @@
 
+import numba
 import datetime
 from collections.abc import Iterable
 import os
@@ -12,6 +13,17 @@ logger = logging.getLogger(__name__)
 
 # Global cache to store einsum paths
 EINSUM_PATH_CACHE = {}
+
+
+
+NUMBA_CACHE = True   # flip to False in one place
+
+
+def njit(*args, **kwargs):
+    kwargs.setdefault("cache", NUMBA_CACHE)
+    if len(args) == 1 and callable(args[0]):  # bare @njit
+        return numba.njit(**kwargs)(args[0])
+    return numba.njit(*args, **kwargs)        # @njit(...) or @njit("sig", ...)
 
 
 def cached_einsum(subscripts, *operands,

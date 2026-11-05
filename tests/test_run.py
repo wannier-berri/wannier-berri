@@ -692,7 +692,6 @@ def test_random_SDCT(check_run, system_random_load_bare, compare_any_result):
 def check_Haldane(check_run, system, code, use_symmetry, tetra=False, **kwargs_run):
     param = {'Efermi': Efermi_Haldane, 'tetra': tetra}
     calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
-
     check_run(
         system,
         calculators,
@@ -733,7 +732,8 @@ def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_Py
     suffix = "PythTB-adpt3" + ("-tetra" if tetra else "")
     check_Haldane(check_run, system_Haldane_PythTB, suffix, use_symmetry=True,
                   dump_results=True, adpt_mesh=3, tetra=tetra,
-                  suffix_ref=suffix + "-sym")
+                  suffix_ref=suffix + "-sym",
+                  parameters_K={'use_tetra_in_low_D': tetra},)
 
 
 
