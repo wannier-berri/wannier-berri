@@ -1,4 +1,5 @@
 import contextlib
+import decimal
 import os
 import tempfile
 import io
@@ -7,7 +8,7 @@ from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.tetrahedron import (weights_tetra, PRINCIPAL_FAR,
                                            _separate_values, _add_principal_3d)
 from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
-from wannierberri.grid.triangle import (weights_triangle, _add_principal_2d, occupied_triangles,
+from wannierberri.grid.triangle import (weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
                                         PRINCIPAL_FAR as PRINCIPAL_FAR_2D)
 from wannierberri.grid.tetratriangle import delta_tetra
 from scipy.integrate import quad
@@ -515,6 +516,20 @@ def test_principal_values_2d_at_corner():
             assert res[-1] == pytest.approx(expected(at_zero), rel=1e-8)
 
 
+def test_mean_log_series():
+    """the average of log|t| over a short interval far from zero, where the series is used (half width over the
+    distance from zero below 0.1) and around the switch, against the formula in 50-digit decimal arithmetic"""
+    for m in (1.0, -3.7, 1e3, 2e-5):
+        for r in (1e-4, 0.011, 0.05, 0.0999, 0.1, 0.1001, 0.3):
+            a, b = m - r * abs(m), m + r * abs(m)
+            with decimal.localcontext() as context:
+                context.prec = 50
+                A, B = decimal.Decimal(a), decimal.Decimal(b)
+                expected = float((B * abs(B).ln() - A * abs(A).ln()) / (B - A) - 1)
+            for function in (_mean_log, _mean_log.py_func):
+                assert function(a, b, 1.0) == pytest.approx(expected, rel=1e-14, abs=1e-15)
+
+
 @pytest.mark.parametrize("offset", [1.0, 10.0])
 def test_principal_values_2d_narrow(offset):
     """a small spread (2e-8) far from zero, also with omega at the corner values: the same as near zero, and finite"""
@@ -526,14 +541,26 @@ def test_principal_values_2d_narrow(offset):
     np.testing.assert_allclose(far, near_zero, rtol=0, atol=1e-6 * np.abs(near_zero).max())
 
 
-@pytest.mark.parametrize("energies", [[0.3, -1.2, 2.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+@pytest.mark.parametrize("energies", [[0.3, -1.2, 2.0], [2.0, -1.2, 0.3], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0],
+                                      [1.0, 1.0, 1.0]])
 def test_occupied_triangles(energies):
-    """the part of a triangle below the Fermi level: the areas are the occupation of `weights_triangle`, and the values
-    at the corners of the parts are below the Fermi level; a flat band at the Fermi level is occupied"""
+    """the part of a triangle below the Fermi level: the areas are the occupation of `weights_triangle`, the values
+    at the corners of the parts are below the Fermi level, and the integrals of the barycentric coordinates over the
+    parts are those over the region below the Fermi level, sampled at the centres of the N^2 triangles of a fine
+    subdivision; a flat band at the Fermi level is occupied"""
     energies = np.array(energies)
+    N = 200
+    i, j = np.meshgrid(np.arange(N), np.arange(N), indexing="ij")
+    lower, upper = i + j < N, i + j < N - 1
+    uv = np.concatenate([np.stack([i[lower] + 1 / 3, j[lower] + 1 / 3], axis=-1),
+                         np.stack([i[upper] + 2 / 3, j[upper] + 2 / 3], axis=-1)]) / N
+    samples = np.column_stack([1 - uv.sum(axis=1), uv])
+    values = energies[0] + uv @ (energies[1:] - energies[0])  # exact for a flat band
     for efermi in np.linspace(-2, 3, 51):
+        moment = samples[values <= efermi].sum(axis=0) / N ** 2
         for function in (occupied_triangles, occupied_triangles.py_func):
             bary, area = function(energies, efermi)
+            np.testing.assert_allclose((area[:, None] * bary.mean(axis=1)).sum(axis=0), moment, rtol=0, atol=2e-4)
             if np.all(energies == efermi):
                 assert area.sum() == 1
                 continue
