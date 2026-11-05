@@ -404,7 +404,9 @@ def test_dynamic_tetra(system_Haldane_double, check_calculator):
     err_list = []
     for name, calc in calculators.items():
         try:
-            check_calculator(system, calc, f"Haldane_double_dynamic_{name}", void_if_missing=False)
+            check_calculator(system, calc, f"Haldane_double_dynamic_{name}",
+                             param_K={"use_tetra_in_low_D": True},
+                             void_if_missing=False)
         except Exception as e:
             err_list.append(f"Error in {name}: {e}")
     if err_list:
