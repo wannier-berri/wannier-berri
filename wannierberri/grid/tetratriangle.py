@@ -1,6 +1,6 @@
 
 import numpy as np
-from numba import njit
+from ..utility import njit
 
 from .triangle import weights_triangle, _add_principal_2d, occupied_triangles
 from .tetrahedron import weights_tetra, _add_principal_3d, occupied_tetrahedra
@@ -88,6 +88,7 @@ def _edges_in_range(edges, emin, emax):
 def _omega_in_range(omega, emin, emax):
     """the slice lo:hi of the increasing values omega within [emin, emax]"""
     return np.searchsorted(omega, emin, side='left'), np.searchsorted(omega, emax + 1e-10, side='right')
+
 
 
 @njit
