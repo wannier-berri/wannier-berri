@@ -154,21 +154,6 @@ def _get_moments(e, mean):
 
 
 @njit
-def _get_c_matrix(e1, e2, e3, e4):
-    e21, e31, e41, e32, e42, e43 = e2 - e1, e3 - e1, e4 - e1, e3 - e2, e4 - e2, e4 - e3
-    c = np.zeros((3, 3))  # the density on each interval, sum_n c[k, n] * u ** n, with u = dE - e[k]
-    c[0, 2] = 3 / (e21 * e31 * e41)
-    c[1, 0] = 3 * e21 / (e31 * e41)
-    c[1, 1] = 6 / (e31 * e41)
-    c[1, 2] = -3 * (e31 + e42) / (e32 * e42 * e31 * e41)
-    a = 3 / (e41 * e42 * e43)
-    c[2, 0] = a * e43 ** 2
-    c[2, 1] = -2 * a * e43
-    c[2, 2] = a
-    return c
-
-
-@njit
 def _get_polynomial(moments, y):
     value = 0.
     for n in range(PRINCIPAL_ORDER, -1, -1):
@@ -177,51 +162,81 @@ def _get_polynomial(moments, y):
 
 
 @njit
-def _separate_values(e, gap):
-    """separate the 4 sorted values e closer than gap (in place), for the density on the intervals between them:
-    each group of such values is spread symmetrically around its mean, with the gap between them; groups that come
-    closer than gap are merged. The principal part is a symmetric function of the values, so that for equal values its
-    change is of second order in the gap (shifting only the upper values changes it in first order, by about 1e-5 of
-    its scale for a gap of 1e-7 of the spread). With omega within about the gap from three nearly equal values, where
-    the principal part diverges logarithmically for equal ones, the result depends on the separation."""
-    original = e.copy()
-    starts = np.ones(4, dtype=np.bool_)  # whether a group starts at each value
-    for i in range(1, 4):
-        starts[i] = original[i] - original[i - 1] >= gap
-    while True:
-        start = 0
-        for i in range(1, 5):
-            if i == 4 or starts[i]:
-                m = i - start
-                center = np.sum(original[start:i]) / m
-                for k in range(m):
-                    e[start + k] = center + (k - (m - 1) / 2) * gap
-                start = i
-        merged = False
-        for i in range(1, 4):
-            if starts[i] and e[i] - e[i - 1] < gap:
-                starts[i] = False
-                merged = True
-                break
-        if not merged:
-            return
+def _mean_tlog(a, b):
+    """the average of t log|t| over the interval between a and b, without cancellation for close values (a log|a|
+    for a equal to b)"""
+    if a == b:
+        return a * np.log(abs(a)) if a != 0 else 0.
+    m = (a + b) / 2
+    h = abs(b - a) / 2
+    if h >= abs(m):
+        # the interval contains or touches zero: no cancellation, with a = h alpha, b = h beta, |alpha|, |beta| <= 2,
+        # the average is m (log h - 1/2) + h (beta^2 log|beta| - alpha^2 log|alpha|) / (2 (beta - alpha)), without
+        # squares of a and b, which underflow for small values
+        alpha, beta = a / h, b / h
+        value = 0.
+        if beta != 0:
+            value += beta ** 2 * np.log(abs(beta))
+        if alpha != 0:
+            value -= alpha ** 2 * np.log(abs(alpha))
+        return m * (np.log(h) - 1 / 2) + h * value / (2 * (beta - alpha))
+    r = h / abs(m)
+    if r < 0.1:  # m log|m| + sum_j f^(2j)(m) h^2j / (2j+1)!, with f^(2j)(t) = (2j-2)! / t^(2j-1)
+        series = 0.
+        for j in range(10, 0, -1):
+            series = series * r ** 2 + 1 / ((2 * j + 1) * 2 * j * (2 * j - 1))
+        return m * (np.log(abs(m)) + series * r ** 2)
+    return m * (np.log(abs(m)) + ((1 + r) ** 2 * np.log1p(r) - (1 - r) ** 2 * np.log1p(-r)) / (4 * r) - 1 / 2)
+
+
+@njit
+def _mean_log_triangle(a, b, c, at_zero):
+    """the average of log|t| over a triangle, with the sorted values a, b, c of a linear function t at its corners,
+    without cancellation for close values (log(at_zero) for a = b = c = 0, see `_add_principal_3d`). It is twice the
+    second divided difference of t^2 log|t| / 2 - 3 t^2 / 4, i.e. 2 (T(b, c) - T(a, b)) / (c - a) - 1, with T(a, b)
+    the average of t log|t| over [a, b]. If zero is far from the values compared with their spread (more than
+    1/PRINCIPAL_FAR times from their mean), the expansion of log|m + x| in x = t - m, with m the mean, is used."""
+    if a == c:
+        return np.log(abs(a) if a != 0 else at_zero)
+    m = (a + b + c) / 3
+    if c - a <= PRINCIPAL_FAR * abs(m):
+        # the moments of y = x / m over the triangle: <y^n> = 2 / ((n+1) (n+2)) h_n(d), with h_n the complete
+        # homogeneous symmetric polynomial of the deviations d of the corner values from the mean, relative to the
+        # mean (dimensionless, so that they do not overflow or underflow), and <log|1 + y|> = sum_n (-1)^(n+1) <y^n> / n,
+        # the terms decreasing by at least 1/6
+        h = np.zeros(PRINCIPAL_ORDER + 1)
+        h[0] = 1.
+        for d in ((a - m) / m, (b - m) / m, (c - m) / m):
+            for n in range(1, PRINCIPAL_ORDER + 1):
+                h[n] += d * h[n - 1]
+        value = 0.
+        for n in range(PRINCIPAL_ORDER, 1, -1):
+            value -= (-1) ** n * 2. / ((n + 1) * (n + 2) * n) * h[n]
+        return np.log(abs(m)) + value
+    return 2 * (_mean_tlog(b, c) - _mean_tlog(a, b)) / (c - a) - 1
 
 
 @njit
 def _add_principal_3d(res, omega, e, weight=1.):
-    """add weight times the average of P 1/(dE - omega) over a tetrahedron to res (see `weights_tetra_reactive`)"""
-    e = np.sort(np.asarray(e, dtype=np.float64))
-    shift = e[0]
-    e = e - shift
+    """add weight times the average of P 1/(dE - omega) over a tetrahedron, with the values e of dE at its corners,
+    to res, at each of the given values of omega
+
+    The average is six times the third divided difference of t^2 log|t| / 2 at the values t = e - omega, i.e.
+    3 (N(t1, t2, t3) - N(t0, t1, t2)) / (t3 - t0) for the sorted values, with N the average of log|t| over the
+    triangle with the given values at its corners (`_mean_log_triangle`), so that equal values need no special
+    treatment. If omega is far from the values compared with their spread (more than 1/PRINCIPAL_FAR times), the
+    expansion in the spread over the distance is used instead, with the values and omega taken relative to the
+    smallest value, so that this works also for a small spread far from zero. If three corners have the same value,
+    the density jumps there, and the principal part diverges logarithmically as omega approaches it; exactly at that
+    value, the distance is taken as 2.2e-16 (the machine epsilon) times the magnitude of the values and their spread,
+    about the spacing of floating-point numbers near them, as for triangles (`_add_principal_2d`); so the value there,
+    unlike the values next to it, changes if all values and omega are shifted by the same amount."""
+    values = np.sort(np.asarray(e, dtype=np.float64))
+    shift = values[0]
+    e = values - shift
     mean = np.sum(e) / 4
-    spread = e[3] - e[0]
-
+    spread = e[3]
     moments = _get_moments(e, mean)
-    _separate_values(e, 1e-7 * spread)
-    e1, e2, e3, e4 = e
-
-    if spread > 0:
-        c = _get_c_matrix(e1, e2, e3, e4)
 
     for i in range(omega.shape[0]):
         D = mean - (omega[i] - shift)
@@ -230,22 +245,12 @@ def _add_principal_3d(res, omega, e, weight=1.):
                 # <1/(D + x)> = sum_n (-1)^n <x^n> / D^(n+1)
                 res[i] += weight * _get_polynomial(moments, -1 / D) / D
         else:
-            w0 = omega[i] - shift
-            # the logarithms of the distances to the corners; at omega equal to a corner value, the two terms with it, of
-            # the neighbouring intervals, cancel (the density is continuous there), so that it is left out
-            logs = np.log(np.abs(w0 - e) + 1e-300)
-            wk = w0 - e[:3]
-            hk = e[1:] - e[:3]
-            pwk = c[:, 0] + wk * (c[:, 1] + wk * c[:, 2])
-            value = np.sum(hk * (c[:, 1] + c[:, 2] * (hk / 2 + wk)))
-            for w, h, pw, log1, log2 in zip(wk, hk, pwk, logs[1:], logs[:-1]):
-                if abs(h) < 0.5 * abs(w):  # omega far from the interval: log|1 - h/w| without cancellation
-                    value += pw * np.log1p(-h / w)
-                else:
-                    # near the interval: the logarithms of the distances to the corners, which cancel exactly between
-                    # neighbouring intervals at a corner value shared by them
-                    value += pw * (log1 - log2)
-            res[i] += weight * value
+            # not relative to the smallest value: exact for omega near a value, while the relative error of the
+            # differences is about eps * |omega| / spread for a small spread far from zero, as for triangles
+            t = values - omega[i]
+            at_zero = 2.2e-16 * (spread + max(abs(values[0]), abs(values[3])))
+            res[i] += weight * 3 * (_mean_log_triangle(t[1], t[2], t[3], at_zero)
+                                    - _mean_log_triangle(t[0], t[1], t[2], at_zero)) / spread
 
 
 @njit
