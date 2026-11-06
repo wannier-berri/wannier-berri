@@ -1,10 +1,12 @@
 import logging
+import os
 
 import numpy as np
 from .result import Result, VoidResult
 import itertools
 import abc
 from ..symmetry.point_symmetry import transform_from_dict
+
 
 logger = logging.getLogger(__name__)
 

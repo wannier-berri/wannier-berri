@@ -26,6 +26,7 @@ factor_ahc = -(elementary_charge ** 2 / hbar / angstrom)  # with tau^0 E^1 B^0
 factor_ohmic = (elementary_charge ** 2 / hbar / angstrom * TAU_UNIT *  # with tau^1 E^1 B^1
                 elementary_charge / hbar)  # change velocity unit from eV*m to m/s
 factor_nlahc = elementary_charge ** 3 / hbar ** 2 * TAU_UNIT  # with tau^1 E^2 B^0
+factor_torkance_odd = -TAU_UNIT * elementary_charge / hbar  # -tau/hbar in 1/eV (fder=1 sums -f'), torkance in e*angstrom
 factor_hall_classic = -(elementary_charge ** 3 / hbar ** 2 * angstrom * TAU_UNIT ** 2 *  # with tau^2 E^1 B^1
                         elementary_charge ** 2 / hbar ** 2)  # change velocity unit from eV*m to m/s
 factor_nldrude = -(elementary_charge ** 3 / hbar ** 2 * TAU_UNIT ** 2 *  # with tau^2 E^2 B^0
