@@ -188,7 +188,8 @@ def _mean_tlog(a, b, log_a, log_b):
         for j in range(10, 0, -1):
             series = series * r2 + 1 / ((2 * j + 1) * 2 * j * (2 * j - 1))
         return m * (np.log(abs(m)) + series * r2)
-    return m * (np.log(abs(m)) + ((1 + r) ** 2 * np.log1p(r) - (1 - r) ** 2 * np.log1p(-r)) / (4 * r) - 1 / 2)
+    else:
+        return m * (np.log(abs(m)) + ((1 + r) ** 2 * np.log1p(r) - (1 - r) ** 2 * np.log1p(-r)) / (4 * r) - 1 / 2)
 
 
 @njit
@@ -202,25 +203,23 @@ def _mean_log_triangle_close(a, b, c, at_zero):
     if a == c:
         return np.log(abs(a) if a != 0 else at_zero), True
     m = (a + b + c) / 3
-    if (c - a) * PRINCIPAL_FAR > abs(m):
+    if (c - a) * PRINCIPAL_FAR <= abs(m):
+        # the moments of y = x / m over the triangle: <y^n> = 2 / ((n+1) (n+2)) h_n(d), with h_n the complete
+        # homogeneous symmetric polynomial of the deviations d of the corner values from the mean, relative to the
+        # mean (dimensionless, so that they do not overflow or underflow), and <log|1 + y|> = sum_n (-1)^(n+1) <y^n> / n,
+        # the terms decreasing by at least 1/6. As the deviations add up to zero, h_n = -e2 h_(n-2) + e3 h_(n-3), with
+        # e2, e3 their elementary symmetric polynomials
+        d1, d2, d3 = (a - m) / m, (b - m) / m, (c - m) / m
+        e2 = d1 * d2 + d1 * d3 + d2 * d3
+        e3 = d1 * d2 * d3
+        g3, g2, g1 = 0., 1., 0.
+        value = 0.
+        for n in range(2, PRINCIPAL_ORDER + 1):
+            g3, g2, g1 = g2, g1, -(e2 * g2 + e3 * g3)
+            value -= 2. / (n * (n + 1) * (n + 2)) * g1
+        return np.log(abs(m)) + value, True
+    else:
         return 0., False
-    # the moments of y = x / m over the triangle: <y^n> = 2 / ((n+1) (n+2)) h_n(d), with h_n the complete
-    # homogeneous symmetric polynomial of the deviations d of the corner values from the mean, relative to the
-    # mean (dimensionless, so that they do not overflow or underflow), and <log|1 + y|> = sum_n (-1)^(n+1) <y^n> / n,
-    # the terms decreasing by at least 1/6. As the deviations add up to zero, h_n = -e2 h_(n-2) + e3 h_(n-3), with
-    # e2, e3 their elementary symmetric polynomials
-    d1, d2, d3 = (a - m) / m, (b - m) / m, (c - m) / m
-    e2 = d1 * d2 + d1 * d3 + d2 * d3
-    e3 = d1 * d2 * d3
-    h3, h2, h1 = 0., 1., 0.  # h_(n-3), h_(n-2), h_(n-1), starting at n = 2
-    value = 0.
-    sign = 1.  # (-1)^n
-    for n in range(2, PRINCIPAL_ORDER + 1):
-        h = -e2 * h2 + e3 * h3
-        value -= sign * 2. / ((n + 1) * (n + 2) * n) * h
-        sign = -sign
-        h3, h2, h1 = h2, h1, h
-    return np.log(abs(m)) + value, True
 
 
 @njit
@@ -259,8 +258,8 @@ def _add_principal_3d(res, omega, e, weight=1.):
             # differences is about eps * |omega| / spread for a small spread far from zero, as for triangles
             t0, t1, t2, t3 = values - omega[i]
 
-            upper, upper_done = _mean_log_triangle_close(t1, t2, t3, at_zero)
-            lower, lower_done = _mean_log_triangle_close(t0, t1, t2, at_zero)
+            upper, upper_done = _mean_log_triangle_close(t1, t2, t3, at_zero=at_zero)
+            lower, lower_done = _mean_log_triangle_close(t0, t1, t2, at_zero=at_zero)
             if not (upper_done and lower_done):
                 log1 = np.log(abs(t1)) if t1 != 0 else 0.
                 log2 = np.log(abs(t2)) if t2 != 0 else 0.
