@@ -303,12 +303,12 @@ def test_principal_values_narrow(offset):
 
 @pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 1.0, 1.5, 2.0]])
 def test_principal_expansion_continuity(dE):
-    """continuous where the expansion far from the values (at 1/PRINCIPAL_FAR times their spread from their mean)
+    """continuous where the expansion far from the values (at PRINCIPAL_FAR times their spread from their mean)
     takes over from the integral over the intervals"""
     dE = np.array(dE)
     mean, spread = dE.mean(), np.ptp(dE)
     for side in (-1, 1):
-        omega = mean + side * spread / PRINCIPAL_FAR * np.array([1 - 1e-9, 1 + 1e-9])
+        omega = mean + side * spread * PRINCIPAL_FAR * np.array([1 - 1e-9, 1 + 1e-9])
         inside, outside = weights_tetra_reactive(omega, dE)
         assert outside == pytest.approx(inside, rel=1e-7)
 
@@ -325,7 +325,7 @@ def test_principal_expansion_accuracy(dE):
         return delta_tetra(np.array([x]), *dE)[0]
 
     for side in (-1, 1):
-        w = mean + side * spread / PRINCIPAL_FAR * (1 + 1e-6)
+        w = mean + side * spread * PRINCIPAL_FAR * (1 + 1e-6)
         reference = sum(quad(lambda x: density(x) / (x - w), a, b, epsabs=1e-14, epsrel=1e-12, limit=200)[0]
                         for a, b in zip(nodes[:-1], nodes[1:]))
         assert weights_tetra_reactive(np.array([w]), dE)[0] == pytest.approx(reference, rel=1e-9)
@@ -515,14 +515,14 @@ def test_mean_tlog():
 
 
 def test_mean_log_triangle():
-    """the average of log|t| over a triangle, on both sides of where the expansion far from zero takes over (spread
-    over the distance of the mean from zero PRINCIPAL_FAR), also with two nearly equal values, against twice the second
+    """the average of log|t| over a triangle, on both sides of where the expansion far from zero takes over (distance 
+    larger than PRINCIPAL_FAR times the spread), also with two nearly equal values, against twice the second
     divided difference of t^2 log|t| / 2 - 3 t^2 / 4 in 80-digit decimal arithmetic; and its limits for equal values"""
     functions = [(_mean_log_triangle_close, _mean_tlog), (_mean_log_triangle_close.py_func, _mean_tlog.py_func)]
     for m in (1.0, -3.7, 2e-5):
         for shape in ((-1, 0.2, 0.8), (-1, -1 + 1e-6, 2), (-2, 1, 1 + 1e-9)):
             shape = np.array(shape) - np.mean(shape)
-            for ratio in (1e-5, 0.1, PRINCIPAL_FAR * (1 - 1e-9), PRINCIPAL_FAR * (1 + 1e-9), 1.0, 5.0):
+            for ratio in (1e-5, 0.1, 1. / PRINCIPAL_FAR * (1 - 1e-9), 1. / PRINCIPAL_FAR * (1 + 1e-9), 1.0, 5.0):
                 values = np.sort(m + shape / np.ptp(shape) * ratio * abs(m))
                 expected = 2 * divided_difference_decimal(t2_log_minus, values)
                 for close, tlog in functions:
@@ -716,7 +716,7 @@ def test_principal_values_2d(e):
     e = np.array(e)
     mean, spread = e.mean(), np.ptp(e)
     omega = np.concatenate([np.linspace(e.min() - 1, e.max() + 1, 17) + 0.0123,
-                            mean + spread / PRINCIPAL_FAR_2D * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
+                            mean + spread * PRINCIPAL_FAR_2D * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
     for function in (_add_principal_2d, _add_principal_2d.py_func):
         res = np.zeros(len(omega))
         function(res, omega, e)

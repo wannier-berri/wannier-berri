@@ -137,7 +137,7 @@ def weights_tetra(efall, e1, e2, e3, e4, der=0):
 # the expansion of the principal part far from the values of dE: its order, and the largest ratio of the spread of
 # the values to the distance of omega from their mean where it is used (the terms decrease by at least 3/4 of it)
 PRINCIPAL_ORDER = 16
-PRINCIPAL_FAR = 0.25
+PRINCIPAL_FAR = 4
 
 
 @njit
@@ -195,14 +195,14 @@ def _mean_tlog(a, b, log_a, log_b):
 def _mean_log_triangle_close(a, b, c, at_zero):
     """the average of log|t| over a triangle, with the sorted values a, b, c of a linear function t at its corners,
     if they are equal (log(at_zero) for a = b = c = 0, see `_add_principal_3d`) or zero is far from them compared
-    with their spread (more than 1/PRINCIPAL_FAR times from their mean m), as (value, True); else (0., False), and
+    with their spread (more than PRINCIPAL_FAR times from their mean m), as (value, True); else (0., False), and
     the average is 2 (T(b, c) - T(a, b)) / (c - a) - 1, with T(a, b) the average of t log|t| over [a, b] (twice the
     second divided difference of t^2 log|t| / 2 - 3 t^2 / 4). Far from zero, the expansion of log|m + x| in
     x = t - m is used."""
     if a == c:
         return np.log(abs(a) if a != 0 else at_zero), True
     m = (a + b + c) / 3
-    if c - a > PRINCIPAL_FAR * abs(m):
+    if (c - a) * PRINCIPAL_FAR > abs(m):
         return 0., False
     # the moments of y = x / m over the triangle: <y^n> = 2 / ((n+1) (n+2)) h_n(d), with h_n the complete
     # homogeneous symmetric polynomial of the deviations d of the corner values from the mean, relative to the
@@ -233,7 +233,7 @@ def _add_principal_3d(res, omega, e, weight=1.):
     triangle with the given values at its corners (`_mean_log_triangle_close`, or from the averages T of t log|t|
     over the intervals, `_mean_tlog`, with T(t1, t2) and the logarithms of |t| shared by both triangles), so that
     equal values need no special treatment. If omega is far from the values compared with their spread (more than
-    1/PRINCIPAL_FAR times), the expansion in the spread over the distance is used instead, with the values and omega
+    PRINCIPAL_FAR times), the expansion in the spread over the distance is used instead, with the values and omega
     taken relative to the smallest value, so that this works also for a small spread far from zero. If three corners
     have the same value, the density jumps there, and the principal part diverges logarithmically as omega
     approaches it; exactly at that value, the distance is taken as 2.2e-16 (the machine epsilon) times the magnitude
@@ -250,14 +250,15 @@ def _add_principal_3d(res, omega, e, weight=1.):
 
     for i in range(omega.shape[0]):
         D = mean - (omega[i] - shift)
-        if spread <= PRINCIPAL_FAR * abs(D):
+        if spread * PRINCIPAL_FAR <= abs(D):
             if D != 0:  # with all values equal to omega, the principal part is zero
                 # <1/(D + x)> = sum_n (-1)^n <x^n> / D^(n+1)
                 res[i] += weight * _get_polynomial(moments, -1 / D) / D
         else:
             # not relative to the smallest value: exact for omega near a value, while the relative error of the
             # differences is about eps * |omega| / spread for a small spread far from zero, as for triangles
-            t0, t1, t2, t3 = values[0] - omega[i], values[1] - omega[i], values[2] - omega[i], values[3] - omega[i]
+            t0, t1, t2, t3 = values - omega[i]
+
             upper, upper_done = _mean_log_triangle_close(t1, t2, t3, at_zero)
             lower, lower_done = _mean_log_triangle_close(t0, t1, t2, at_zero)
             if not (upper_done and lower_done):
