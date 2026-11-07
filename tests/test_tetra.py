@@ -423,13 +423,13 @@ def test_weights_cached_by_value():
     # the same ends, other values between them
     between = np.concatenate([shifted[:1], np.sort(rng.uniform(shifted[0], shifted[-1], 5)), shifted[-1:]])
     third = tetra.weights_all_band_groups(between, der=1)
-    assert len(tetra.eFermis) == 3
+    assert len(tetra.eFermi_stored) == 3
     # one value changed by the smallest step: computed again
     nudged = shifted.copy()
     nudged[3] = np.nextafter(nudged[3], np.inf)
     ncomputed = len(computed)
     fourth = tetra.weights_all_band_groups(nudged, der=1)
-    assert len(computed) > ncomputed and len(tetra.eFermis) == len(tetra.weights) == 4
+    assert len(computed) > ncomputed and len(tetra.eFermi_stored) == len(tetra.weights) == 4
     # a list with the same values: nothing computed again
     ncomputed = len(computed)
     tetra.weights_all_band_groups(list(original), der=1)
@@ -465,10 +465,10 @@ def test_weights_cached_other_dtype(dtype, values, first):
                 assert w1.keys() == w2.keys()
                 for key in w1:
                     np.testing.assert_allclose(w2[key], w1[key], rtol=0, atol=1e-14)
-    assert len(tetra.eFermis) == 1
+    assert len(tetra.eFermi_stored) == 1
     with pytest.raises(ValueError):
         tetra.weights_all_band_groups(np.array(["a", "b"]), der=1)
-    assert len(tetra.eFermis) == len(tetra.weights) == 1
+    assert len(tetra.eFermi_stored) == len(tetra.weights) == 1
 
 
 def test_tetra_2D(system_Haldane_PythTB):

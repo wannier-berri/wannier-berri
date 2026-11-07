@@ -24,7 +24,7 @@ class TTWeights(abc.ABC):
         assert eCorners.shape[-1] == self.nb, f"nb mismatch: {eCorners.shape[-1]} != {self.nb}"
         self.set_kind(kind, eCorners, eCenter)
 
-        self.eFermis = []
+        self.eFermi_stored = []
         self.eFermi = None
         if self.nk == 0:
             self.null = True
@@ -45,7 +45,7 @@ class TTWeights(abc.ABC):
             return 0.
         if der == -1:
             return 1 - self.weight_1k1b(ief, ik, ib, der=0)
-        return self.weight_1k1b_priv(self.eFermis[ief], ik, ib, der=der)
+        return self.weight_1k1b_priv(self.eFermi_stored[ief], ik, ib, der=der)
 
     @cached_property
     def factor_num_tetra(self):
@@ -67,7 +67,7 @@ class TTWeights(abc.ABC):
         """the index of the stored Fermi levels equal to eFermi, or -1. They are compared by value (exactly, so that
         an array with NaN never matches), so that the weights are shared between calculators (each of which has its
         own array of the Fermi levels)"""
-        for i, eF in enumerate(self.eFermis):
+        for i, eF in enumerate(self.eFermi_stored):
             if eF is eFermi or (eF.shape == eFermi.shape and np.array_equal(eF, eFermi)):
                 return i
         return -1
@@ -85,7 +85,7 @@ class TTWeights(abc.ABC):
             stored = np.array(eFermi, dtype=np.float64)
             ief = len(self.weights)
             self.weights.append(defaultdict(lambda: defaultdict(lambda: {})))
-            self.eFermis.append(stored)
+            self.eFermi_stored.append(stored)
         res = []
         for ik in range(self.nk):
             bands_in_range = get_bands_in_range(
