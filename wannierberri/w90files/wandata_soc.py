@@ -142,7 +142,8 @@ class WannierDataSOC(WannierData):
 
         nspin = calculator.get_number_of_spins()
         cell = {}
-        magmoms_on_axis = calculator.get_magnetic_moments()
+        from irrep.parsers.gpaw import get_magnetic_moments
+        magmoms_on_axis = get_magnetic_moments(calculator)
         cell["magmoms_on_axis"] = group_numbers(magmoms_on_axis, precision=mag_symprec)
         cell["typat"] = calculator.atoms.get_atomic_numbers()
         cell["positions"] = calculator.atoms.get_scaled_positions()
