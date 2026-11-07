@@ -558,6 +558,90 @@ def test_dynamic_weights_kramers_kronig(kind):
             np.testing.assert_allclose(values, delta @ kernel, rtol=1e-3, atol=1e-4)
 
 
+def test_weights_cached_by_value():
+    """the weights for the Fermi levels are computed once for equal arrays (each calculator has its own copy), again
+    for different ones, and not mixed up when the caller changes its array afterwards"""
+    rng = np.random.default_rng(4)
+    nk, nb = 2, 3
+    eCorners = rng.random((nk, 2, 2, 2, nb))
+    tetra = TetraWeights(eCenter=rng.random((nk, nb)), eCorners=eCorners, kind="parallelepiped")
+    computed = []
+    compute = tetra.weight_1k1b_priv
+
+    def counting(eFermi, ik, ib, der):
+        computed.append((tuple(eFermi), ik, ib))
+        return compute(eFermi, ik, ib, der)
+
+    tetra.weight_1k1b_priv = counting
+    efermi = np.linspace(0.2, 0.8, 7)
+    original = efermi.copy()
+    first = tetra.weights_all_band_groups(efermi, der=1)
+    ncomputed = len(computed)
+    assert ncomputed > 0
+    second = tetra.weights_all_band_groups(efermi.copy(), der=1)
+    assert len(computed) == ncomputed  # nothing computed again
+    for w1, w2 in zip(first, second):
+        assert w1.keys() == w2.keys()
+        for key in w1:
+            np.testing.assert_array_equal(w2[key], w1[key])
+    shifted = efermi + 0.05
+    other = tetra.weights_all_band_groups(shifted, der=1)
+    assert len(computed) > ncomputed and all(e == tuple(shifted) for e, _, _ in computed[ncomputed:])
+    ncomputed = len(computed)
+    efermi[:] = shifted  # the caller changes its array: the weights are those for the new values
+    again = tetra.weights_all_band_groups(efermi, der=1)
+    assert len(computed) == ncomputed
+    # the same ends, other values between them
+    between = np.concatenate([shifted[:1], np.sort(rng.uniform(shifted[0], shifted[-1], 5)), shifted[-1:]])
+    third = tetra.weights_all_band_groups(between, der=1)
+    assert len(tetra.eFermi_stored) == 3
+    # one value changed by the smallest step: computed again
+    nudged = shifted.copy()
+    nudged[3] = np.nextafter(nudged[3], np.inf)
+    ncomputed = len(computed)
+    fourth = tetra.weights_all_band_groups(nudged, der=1)
+    assert len(computed) > ncomputed and len(tetra.eFermi_stored) == len(tetra.weights) == 4
+    # a list with the same values: nothing computed again
+    ncomputed = len(computed)
+    tetra.weights_all_band_groups(list(original), der=1)
+    assert len(computed) == ncomputed
+    # against a new instance, without the cache
+    tetra.weight_1k1b_priv = compute
+    for array, results in ((shifted, other), (shifted, again), (between, third), (nudged, fourth), (original, first)):
+        fresh = TetraWeights(eCenter=tetra.eCenter, eCorners=eCorners, kind="parallelepiped")
+        for w1, w2 in zip(fresh.weights_all_band_groups(array, der=1), results):
+            assert w1.keys() == w2.keys()
+            for key in w1:
+                np.testing.assert_array_equal(w2[key], w1[key])
+
+
+@pytest.mark.parametrize("dtype, values", [(int, [1, 2, 3]), (np.float32, [1.25, 2.5, 3.75])])
+@pytest.mark.parametrize("first", ["other", "float64"])
+def test_weights_cached_other_dtype(dtype, values, first):
+    """Fermi levels given as integers or float32 (exact in both): the weights are computed in float64 (not truncated
+    or rounded), and the same as for the equal float64 values, in either order. A failed conversion leaves the cache
+    unchanged"""
+    rng = np.random.default_rng(5)
+    eCenter, eCorners = rng.random((2, 3)) * 4, rng.random((2, 2, 2, 2, 3)) * 4
+    efermi = np.array(values, dtype=dtype)
+    reference = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    for der in (0, 1, 2, -1):
+        expected = reference.weights_all_band_groups(efermi.astype(np.float64), der=der)
+        arrays = [efermi, efermi.astype(np.float64)]
+        if first == "float64":
+            arrays.reverse()
+        for array in arrays:
+            for w1, w2 in zip(expected, tetra.weights_all_band_groups(array, der=der)):
+                assert w1.keys() == w2.keys()
+                for key in w1:
+                    np.testing.assert_allclose(w2[key], w1[key], rtol=0, atol=1e-14)
+    assert len(tetra.eFermi_stored) == 1
+    with pytest.raises(ValueError):
+        tetra.weights_all_band_groups(np.array(["a", "b"]), der=1)
+    assert len(tetra.eFermi_stored) == len(tetra.weights) == 1
+
+
 def test_tetra_2D(system_Haldane_PythTB):
     from wannierberri.calculators.static import DOS, CumDOS
     system = system_Haldane_PythTB
