@@ -30,30 +30,29 @@ class PertOmega(Formula_ln):
         # This is the formula to be implemented:
         # orange terms
         iio = (ik, inn, out)
-        indpert = "defghi"[:self.ndimPert]
         #  blue terms
         summ = np.zeros((len(inn), len(inn)) + (3,) * (self.ndimPert + 1), dtype=complex)
         summ_loc_1 = self.Sc.ln(*iio)
-        summ_loc_1 += cached_einsum(f"lpa,pn{indpert}->lna{indpert}", self.V.ll(*iio), self.T.ln(*iio))
-        summ_loc_1 += cached_einsum(f"lp{indpert},pna->lna{indpert}", self.S.ll(*iio), self.D.ln(*iio))
-        summ_loc_1 -= cached_einsum(f"lma,mn{indpert}->lna{indpert}", self.D.ln(*iio), self.S.nn(*iio))
-        summ_loc_1 -= cached_einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.V.nn(*iio))
+        summ_loc_1 += cached_einsum("lpa,pn...->lna...", self.V.ll(*iio), self.T.ln(*iio))
+        summ_loc_1 += cached_einsum("lp...,pna->lna...", self.S.ll(*iio), self.D.ln(*iio))
+        summ_loc_1 -= cached_einsum("lma,mn...->lna...", self.D.ln(*iio), self.S.nn(*iio))
+        summ_loc_1 -= cached_einsum("lm...,mna->lna...", self.T.ln(*iio), self.V.nn(*iio))
         #  green terms
         if self.external_terms:
-            summ_loc_2 = -cached_einsum(f"lpa,pn{indpert}->lna{indpert}", self.A.ll(*iio), self.T.ln(*iio))
-            summ_loc_2 += cached_einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.A.nn(*iio))
-            summ += 2 * cached_einsum(f"mla,ln{indpert}->mna{indpert}", self.O.nl(*iio), self.T.ln(*iio))
+            summ_loc_2 = -cached_einsum("lpa,pn...->lna...", self.A.ll(*iio), self.T.ln(*iio))
+            summ_loc_2 += cached_einsum("lm...,mna->lna...", self.T.ln(*iio), self.A.nn(*iio))
+            summ += 2 * cached_einsum("mla,ln...->mna...", self.O.nl(*iio), self.T.ln(*iio))
             Acal_ext = self.Acal_ext.nl(*iio)
         Acal_int = self.Acal_int.nl(*iio)
         D = self.D.nl(*iio)
         for s, a, b in (+1., alpha_A, beta_A), (-1., beta_A, alpha_A):
             #  blue terms
             if self.internal_terms:
-                summ += 2 * s * np.einsum(f"mla,lna{indpert}->mna{indpert}", Acal_int[:, :, a], summ_loc_1[:, :, b])
+                summ += 2 * s * np.einsum("mla,lna...->mna...", Acal_int[:, :, a], summ_loc_1[:, :, b])
             if self.external_terms:
-                summ += 2 * s * np.einsum(f"mla,lna{indpert}->mna{indpert}", Acal_ext[:, :, a], summ_loc_1[:, :, b])
+                summ += 2 * s * np.einsum("mla,lna...->mna...", Acal_ext[:, :, a], summ_loc_1[:, :, b])
                 #  green terms
-                summ += 2 * s * np.einsum(f"mla,lna{indpert}->mna{indpert}", D[:, :, a], summ_loc_2[:, :, b])
+                summ += 2 * s * np.einsum("mla,lna...->mna...", D[:, :, a], summ_loc_2[:, :, b])
         return summ
     ## TODO : this is probably correct only for the traces, check for the full matrices
 
