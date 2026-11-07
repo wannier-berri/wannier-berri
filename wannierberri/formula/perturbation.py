@@ -1,6 +1,6 @@
 import numpy as np
 from .formula import Formula_ln, Matrix_ln
-from ..utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A, cached_einsum
 from ..symmetry.point_symmetry import transform_ident
 
 
@@ -34,15 +34,15 @@ class PertOmega(Formula_ln):
         #  blue terms
         summ = np.zeros((len(inn), len(inn)) + (3,) * (self.ndimPert + 1), dtype=complex)
         summ_loc_1 = self.Sc.ln(*iio)
-        summ_loc_1 += np.einsum(f"lpa,pn{indpert}->lna{indpert}", self.V.ll(*iio), self.T.ln(*iio))
-        summ_loc_1 += np.einsum(f"lp{indpert},pna->lna{indpert}", self.S.ll(*iio), self.D.ln(*iio))
-        summ_loc_1 -= np.einsum(f"lma,mn{indpert}->lna{indpert}", self.D.ln(*iio), self.S.nn(*iio))
-        summ_loc_1 -= np.einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.V.nn(*iio))
+        summ_loc_1 += cached_einsum(f"lpa,pn{indpert}->lna{indpert}", self.V.ll(*iio), self.T.ln(*iio))
+        summ_loc_1 += cached_einsum(f"lp{indpert},pna->lna{indpert}", self.S.ll(*iio), self.D.ln(*iio))
+        summ_loc_1 -= cached_einsum(f"lma,mn{indpert}->lna{indpert}", self.D.ln(*iio), self.S.nn(*iio))
+        summ_loc_1 -= cached_einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.V.nn(*iio))
         #  green terms
         if self.external_terms:
-            summ_loc_2 = -np.einsum(f"lpa,pn{indpert}->lna{indpert}", self.A.ll(*iio), self.T.ln(*iio))
-            summ_loc_2 += np.einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.A.nn(*iio))
-            summ += 2 * np.einsum(f"mla,ln{indpert}->mna{indpert}", self.O.nl(*iio), self.T.ln(*iio))
+            summ_loc_2 = -cached_einsum(f"lpa,pn{indpert}->lna{indpert}", self.A.ll(*iio), self.T.ln(*iio))
+            summ_loc_2 += cached_einsum(f"lm{indpert},mna->lna{indpert}", self.T.ln(*iio), self.A.nn(*iio))
+            summ += 2 * cached_einsum(f"mla,ln{indpert}->mna{indpert}", self.O.nl(*iio), self.T.ln(*iio))
             Acal_ext = self.Acal_ext.nl(*iio)
         Acal_int = self.Acal_int.nl(*iio)
         D = self.D.nl(*iio)
