@@ -162,58 +162,65 @@ def _get_polynomial(moments, y):
 
 
 @njit
-def _mean_tlog(a, b):
-    """the average of t log|t| over the interval between a and b, without cancellation for close values (a log|a|
-    for a equal to b)"""
+def _mean_tlog(a, b, log_a, log_b):
+    """the average of t log|t| over the interval [a, b] (a <= b), without cancellation for close values (a log|a|
+    for a equal to b), with log_a = log|a| and log_b = log|b| given (not used for a zero value)"""
     if a == b:
-        return a * np.log(abs(a)) if a != 0 else 0.
+        return a * log_a if a != 0 else 0.
     m = (a + b) / 2
     h = abs(b - a) / 2
     if h >= abs(m):
         # the interval contains or touches zero: no cancellation, with a = h alpha, b = h beta, |alpha|, |beta| <= 2,
-        # the average is m (log h - 1/2) + h (beta^2 log|beta| - alpha^2 log|alpha|) / (2 (beta - alpha)), without
-        # squares of a and b, which underflow for small values
+        # beta - alpha = 2, the average is h (beta^2 log|b| - alpha^2 log|a| - alpha - beta) / 4 (the last terms are
+        # -m / 2), without squares of a and b, which underflow for small values, and with the dimensionless factor
+        # computed first, so that it does not overflow before the result does for large ones
         alpha, beta = a / h, b / h
-        value = 0.
-        if beta != 0:
-            value += beta ** 2 * np.log(abs(beta))
-        if alpha != 0:
-            value -= alpha ** 2 * np.log(abs(alpha))
-        return m * (np.log(h) - 1 / 2) + h * value / (2 * (beta - alpha))
+        value = -(alpha + beta)
+        if b != 0:
+            value += beta * beta * log_b
+        if a != 0:
+            value -= alpha * alpha * log_a
+        return h * (value / 4)
     r = h / abs(m)
     if r < 0.1:  # m log|m| + sum_j f^(2j)(m) h^2j / (2j+1)!, with f^(2j)(t) = (2j-2)! / t^(2j-1)
+        r2 = r * r
         series = 0.
         for j in range(10, 0, -1):
-            series = series * r ** 2 + 1 / ((2 * j + 1) * 2 * j * (2 * j - 1))
-        return m * (np.log(abs(m)) + series * r ** 2)
+            series = series * r2 + 1 / ((2 * j + 1) * 2 * j * (2 * j - 1))
+        return m * (np.log(abs(m)) + series * r2)
     return m * (np.log(abs(m)) + ((1 + r) ** 2 * np.log1p(r) - (1 - r) ** 2 * np.log1p(-r)) / (4 * r) - 1 / 2)
 
 
 @njit
-def _mean_log_triangle(a, b, c, at_zero):
+def _mean_log_triangle_close(a, b, c, at_zero):
     """the average of log|t| over a triangle, with the sorted values a, b, c of a linear function t at its corners,
-    without cancellation for close values (log(at_zero) for a = b = c = 0, see `_add_principal_3d`). It is twice the
-    second divided difference of t^2 log|t| / 2 - 3 t^2 / 4, i.e. 2 (T(b, c) - T(a, b)) / (c - a) - 1, with T(a, b)
-    the average of t log|t| over [a, b]. If zero is far from the values compared with their spread (more than
-    1/PRINCIPAL_FAR times from their mean), the expansion of log|m + x| in x = t - m, with m the mean, is used."""
+    if they are equal (log(at_zero) for a = b = c = 0, see `_add_principal_3d`) or zero is far from them compared
+    with their spread (more than 1/PRINCIPAL_FAR times from their mean m), as (value, True); else (0., False), and
+    the average is 2 (T(b, c) - T(a, b)) / (c - a) - 1, with T(a, b) the average of t log|t| over [a, b] (twice the
+    second divided difference of t^2 log|t| / 2 - 3 t^2 / 4). Far from zero, the expansion of log|m + x| in
+    x = t - m is used."""
     if a == c:
-        return np.log(abs(a) if a != 0 else at_zero)
+        return np.log(abs(a) if a != 0 else at_zero), True
     m = (a + b + c) / 3
-    if c - a <= PRINCIPAL_FAR * abs(m):
-        # the moments of y = x / m over the triangle: <y^n> = 2 / ((n+1) (n+2)) h_n(d), with h_n the complete
-        # homogeneous symmetric polynomial of the deviations d of the corner values from the mean, relative to the
-        # mean (dimensionless, so that they do not overflow or underflow), and <log|1 + y|> = sum_n (-1)^(n+1) <y^n> / n,
-        # the terms decreasing by at least 1/6
-        h = np.zeros(PRINCIPAL_ORDER + 1)
-        h[0] = 1.
-        for d in ((a - m) / m, (b - m) / m, (c - m) / m):
-            for n in range(1, PRINCIPAL_ORDER + 1):
-                h[n] += d * h[n - 1]
-        value = 0.
-        for n in range(PRINCIPAL_ORDER, 1, -1):
-            value -= (-1) ** n * 2. / ((n + 1) * (n + 2) * n) * h[n]
-        return np.log(abs(m)) + value
-    return 2 * (_mean_tlog(b, c) - _mean_tlog(a, b)) / (c - a) - 1
+    if c - a > PRINCIPAL_FAR * abs(m):
+        return 0., False
+    # the moments of y = x / m over the triangle: <y^n> = 2 / ((n+1) (n+2)) h_n(d), with h_n the complete
+    # homogeneous symmetric polynomial of the deviations d of the corner values from the mean, relative to the
+    # mean (dimensionless, so that they do not overflow or underflow), and <log|1 + y|> = sum_n (-1)^(n+1) <y^n> / n,
+    # the terms decreasing by at least 1/6. As the deviations add up to zero, h_n = -e2 h_(n-2) + e3 h_(n-3), with
+    # e2, e3 their elementary symmetric polynomials
+    d1, d2, d3 = (a - m) / m, (b - m) / m, (c - m) / m
+    e2 = d1 * d2 + d1 * d3 + d2 * d3
+    e3 = d1 * d2 * d3
+    h3, h2, h1 = 0., 1., 0.  # h_(n-3), h_(n-2), h_(n-1), starting at n = 2
+    value = 0.
+    sign = 1.  # (-1)^n
+    for n in range(2, PRINCIPAL_ORDER + 1):
+        h = -e2 * h2 + e3 * h3
+        value -= sign * 2. / ((n + 1) * (n + 2) * n) * h
+        sign = -sign
+        h3, h2, h1 = h2, h1, h
+    return np.log(abs(m)) + value, True
 
 
 @njit
@@ -223,20 +230,23 @@ def _add_principal_3d(res, omega, e, weight=1.):
 
     The average is six times the third divided difference of t^2 log|t| / 2 at the values t = e - omega, i.e.
     3 (N(t1, t2, t3) - N(t0, t1, t2)) / (t3 - t0) for the sorted values, with N the average of log|t| over the
-    triangle with the given values at its corners (`_mean_log_triangle`), so that equal values need no special
-    treatment. If omega is far from the values compared with their spread (more than 1/PRINCIPAL_FAR times), the
-    expansion in the spread over the distance is used instead, with the values and omega taken relative to the
-    smallest value, so that this works also for a small spread far from zero. If three corners have the same value,
-    the density jumps there, and the principal part diverges logarithmically as omega approaches it; exactly at that
-    value, the distance is taken as 2.2e-16 (the machine epsilon) times the magnitude of the values and their spread,
-    about the spacing of floating-point numbers near them, as for triangles (`_add_principal_2d`); so the value there,
-    unlike the values next to it, changes if all values and omega are shifted by the same amount."""
+    triangle with the given values at its corners (`_mean_log_triangle_close`, or from the averages T of t log|t|
+    over the intervals, `_mean_tlog`, with T(t1, t2) and the logarithms of |t| shared by both triangles), so that
+    equal values need no special treatment. If omega is far from the values compared with their spread (more than
+    1/PRINCIPAL_FAR times), the expansion in the spread over the distance is used instead, with the values and omega
+    taken relative to the smallest value, so that this works also for a small spread far from zero. If three corners
+    have the same value, the density jumps there, and the principal part diverges logarithmically as omega
+    approaches it; exactly at that value, the distance is taken as 2.2e-16 (the machine epsilon) times the magnitude
+    of the values and their spread, about the spacing of floating-point numbers near them, as for triangles
+    (`_add_principal_2d`); so the value there, unlike the values next to it, changes if all values and omega are
+    shifted by the same amount."""
     values = np.sort(np.asarray(e, dtype=np.float64))
     shift = values[0]
     e = values - shift
     mean = np.sum(e) / 4
     spread = e[3]
     moments = _get_moments(e, mean)
+    at_zero = 2.2e-16 * (spread + max(abs(values[0]), abs(values[3])))
 
     for i in range(omega.shape[0]):
         D = mean - (omega[i] - shift)
@@ -247,10 +257,20 @@ def _add_principal_3d(res, omega, e, weight=1.):
         else:
             # not relative to the smallest value: exact for omega near a value, while the relative error of the
             # differences is about eps * |omega| / spread for a small spread far from zero, as for triangles
-            t = values - omega[i]
-            at_zero = 2.2e-16 * (spread + max(abs(values[0]), abs(values[3])))
-            res[i] += weight * 3 * (_mean_log_triangle(t[1], t[2], t[3], at_zero)
-                                    - _mean_log_triangle(t[0], t[1], t[2], at_zero)) / spread
+            t0, t1, t2, t3 = values[0] - omega[i], values[1] - omega[i], values[2] - omega[i], values[3] - omega[i]
+            upper, upper_done = _mean_log_triangle_close(t1, t2, t3, at_zero)
+            lower, lower_done = _mean_log_triangle_close(t0, t1, t2, at_zero)
+            if not (upper_done and lower_done):
+                log1 = np.log(abs(t1)) if t1 != 0 else 0.
+                log2 = np.log(abs(t2)) if t2 != 0 else 0.
+                T12 = _mean_tlog(t1, t2, log1, log2)
+                if not upper_done:
+                    log3 = np.log(abs(t3)) if t3 != 0 else 0.
+                    upper = 2 * (_mean_tlog(t2, t3, log2, log3) - T12) / (t3 - t1) - 1
+                if not lower_done:
+                    log0 = np.log(abs(t0)) if t0 != 0 else 0.
+                    lower = 2 * (T12 - _mean_tlog(t0, t1, log0, log1)) / (t2 - t0) - 1
+            res[i] += weight * 3 * (upper - lower) / spread
 
 
 @njit

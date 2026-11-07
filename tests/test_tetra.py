@@ -6,7 +6,7 @@ import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.tetrahedron import (weights_tetra, PRINCIPAL_FAR,
-                                           _add_principal_3d, _mean_tlog, _mean_log_triangle)
+                                           _add_principal_3d, _mean_tlog, _mean_log_triangle_close)
 from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
 from wannierberri.grid.triangle import (weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
                                         PRINCIPAL_FAR as PRINCIPAL_FAR_2D)
@@ -476,6 +476,23 @@ def test_principal_values_weight():
         np.testing.assert_allclose(res, 1.5 - 2.5 * reference, rtol=1e-14)
 
 
+def log_abs(x):
+    """log|x|, and NaN for zero, which the helpers below must not use"""
+    return np.log(abs(x)) if x != 0 else np.nan
+
+
+def mean_tlog(function, a, b):
+    return function(a, b, log_abs(a), log_abs(b))
+
+
+def mean_log_triangle(close, tlog, a, b, c, at_zero):
+    """the average of log|t| over a triangle, as in `_add_principal_3d`"""
+    value, done = close(a, b, c, at_zero)
+    if done:
+        return value
+    return 2 * (mean_tlog(tlog, b, c) - mean_tlog(tlog, a, b)) / (c - a) - 1
+
+
 def test_mean_tlog():
     """the average of t log|t| over an interval, around the switches between the series (half width over the distance
     from zero below 0.1), the closed form far from zero and the one for an interval reaching zero, against the formula
@@ -485,31 +502,37 @@ def test_mean_tlog():
             a, b = m - r * abs(m), m + r * abs(m)
             expected = divided_difference_decimal(t_log_antiderivative, [a, b], prec=50)
             for function in (_mean_tlog, _mean_tlog.py_func):
-                assert function(a, b) == pytest.approx(expected, rel=1e-14, abs=1e-15 * abs(m))
+                assert mean_tlog(function, a, b) == pytest.approx(expected, rel=1e-14, abs=1e-15 * abs(m))
     for function in (_mean_tlog, _mean_tlog.py_func):
-        assert function(2.5, 2.5) == 2.5 * np.log(2.5)
-        assert function(0.0, 0.0) == 0
-        assert function(0.0, 2.0) == pytest.approx(np.log(2) - 1 / 2, rel=1e-15)
+        assert mean_tlog(function, 2.5, 2.5) == 2.5 * np.log(2.5)
+        assert mean_tlog(function, 0.0, 0.0) == 0
+        assert mean_tlog(function, 0.0, 2.0) == pytest.approx(np.log(2) - 1 / 2, rel=1e-15)
+        assert mean_tlog(function, -2.0, 0.0) == pytest.approx(-np.log(2) + 1 / 2, rel=1e-15)
+        for a, b in ((0.0, 2e305), (-2e305, 0.0), (-1e305, 1.5e305), (0.0, 5.1094810959409254e305),
+                     (-5.1094810959409254e305, 0.0)):  # finite, up to near the largest float
+            expected = divided_difference_decimal(t_log_antiderivative, [a, b], prec=50)
+            assert mean_tlog(function, a, b) == pytest.approx(expected, rel=1e-14)
 
 
 def test_mean_log_triangle():
     """the average of log|t| over a triangle, on both sides of where the expansion far from zero takes over (spread
     over the distance of the mean from zero PRINCIPAL_FAR), also with two nearly equal values, against twice the second
     divided difference of t^2 log|t| / 2 - 3 t^2 / 4 in 80-digit decimal arithmetic; and its limits for equal values"""
+    functions = [(_mean_log_triangle_close, _mean_tlog), (_mean_log_triangle_close.py_func, _mean_tlog.py_func)]
     for m in (1.0, -3.7, 2e-5):
         for shape in ((-1, 0.2, 0.8), (-1, -1 + 1e-6, 2), (-2, 1, 1 + 1e-9)):
             shape = np.array(shape) - np.mean(shape)
             for ratio in (1e-5, 0.1, PRINCIPAL_FAR * (1 - 1e-9), PRINCIPAL_FAR * (1 + 1e-9), 1.0, 5.0):
                 values = np.sort(m + shape / np.ptp(shape) * ratio * abs(m))
                 expected = 2 * divided_difference_decimal(t2_log_minus, values)
-                for function in (_mean_log_triangle, _mean_log_triangle.py_func):
-                    assert function(*values, 1.0) == pytest.approx(expected, rel=1e-12, abs=1e-14), \
+                for close, tlog in functions:
+                    assert mean_log_triangle(close, tlog, *values, 1.0) == pytest.approx(expected, rel=1e-12, abs=1e-14), \
                         f"m={m}, values={values}"
-    for function in (_mean_log_triangle, _mean_log_triangle.py_func):
-        assert function(2.5, 2.5, 2.5, 1.0) == np.log(2.5)
-        assert function(0.0, 0.0, 0.0, 1e-3) == np.log(1e-3)
-        assert function(0.0, 0.0, 1.0, 1.0) == pytest.approx(-3 / 2, rel=1e-15)  # 2 int_0^1 (1 - x) log x dx
-        assert function(0.0, 1.0, 1.0, 1.0) == pytest.approx(-1 / 2, rel=1e-15)  # 2 int_0^1 x log x dx
+    for close, tlog in functions:
+        assert close(2.5, 2.5, 2.5, 1.0) == (np.log(2.5), True)
+        assert close(0.0, 0.0, 0.0, 1e-3) == (np.log(1e-3), True)
+        assert mean_log_triangle(close, tlog, 0.0, 0.0, 1.0, 1.0) == pytest.approx(-3 / 2, rel=1e-15)  # 2 int_0^1 (1 - x) log x dx
+        assert mean_log_triangle(close, tlog, 0.0, 1.0, 1.0, 1.0) == pytest.approx(-1 / 2, rel=1e-15)  # 2 int_0^1 x log x dx
 
 
 @pytest.mark.parametrize("kind", ["single", "parallelepiped"])
