@@ -78,7 +78,7 @@ def weights_triangle(efall, e0, e1, e2, der=0):
 
 
 PRINCIPAL_ORDER = 16
-PRINCIPAL_FAR = 0.25
+PRINCIPAL_FAR = 4
 
 
 @njit
@@ -113,7 +113,7 @@ def _add_principal_2d(res, omega, e, weight=1.):
     The average is twice the second divided difference of t log|t| at the values t = e - omega, i.e.
     2 (M(t1, t2) - M(t0, t1)) / (t2 - t0) for the sorted values, with M(a, b) the average of log|t| over [a, b]
     (log|a| for a equal to b, so that equal values need no special treatment). If omega is far from the values
-    compared with their spread (more than 1/PRINCIPAL_FAR times), the expansion in the spread over the distance is used
+    compared with their spread (more than PRINCIPAL_FAR times), the expansion in the spread over the distance is used
     instead, with the values and omega taken relative to the smallest value, so that this works also for a small
     spread far from zero. If two corners have the same value, the density jumps there, and the principal part diverges
     logarithmically as omega approaches it; exactly at that value, the distance is taken as 2.2e-16 (the machine
@@ -136,7 +136,7 @@ def _add_principal_2d(res, omega, e, weight=1.):
 
     for i in range(omega.shape[0]):
         D = mean - (omega[i] - shift)
-        if spread <= PRINCIPAL_FAR * abs(D):
+        if spread * PRINCIPAL_FAR <= abs(D):
             if D != 0:  # with all values equal to omega, the principal part is zero
                 # <1/(D + x)> = sum_n (-1)^n <x^n> / D^(n+1)
                 value = 0.
