@@ -34,7 +34,7 @@ else:
 
 if do_nscf:
     sg = SpaceGroup.from_gpaw(calc)
-    kpoints_irred = sg.get_irreducible_kpoints_grid([2,2,2])
+    kpoints_irred = sg.get_irreducible_kpoints_grid([2, 2, 2])
     calc_nscf = calc.fixed_density(
         kpts=kpoints_irred,
         nbands=40,

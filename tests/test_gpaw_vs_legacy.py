@@ -19,8 +19,8 @@ def get_system(legacy=False, theta=0, phi=0):
     results = {}
 
     if legacy:
-        calc = GPAW(os.path.join(DATA_DIR, "Fe-gpaw-irred", "Fe-nscf-irred-222.gpw"), txt=None, 
-                    legacy_gpaw = True)
+        calc = GPAW(os.path.join(DATA_DIR, "Fe-gpaw-irred", "Fe-nscf-irred-222.gpw"), txt=None,
+                    legacy_gpaw=True)
     else:
         calc = GPAW(os.path.join(DATA_DIR, "Fe-gpaw-irred-new", "Fe-nscf-irred-222.gpw"), txt=None)
     sg = SpaceGroup.from_gpaw(calc, legacy_gpaw=legacy)
@@ -34,23 +34,23 @@ def get_system(legacy=False, theta=0, phi=0):
     wandata = WannierDataSOC.from_gpaw(
         calculator=calc,
         projections=proj_set,
-        mp_grid=(2,2,2),
+        mp_grid=(2, 2, 2),
         spacegroup=sg,
         legacy_gpaw=legacy,
         irreducible=True,
 
     )
     wandata.wannierise(
-            froz_min=-100,
-            froz_max=15,
-            outer_min=-100,
-            outer_max=np.inf,
-            num_iter=50,
-            print_progress_every=10,
-            sitesym=True,
-            localise=True,
-            )
-    
+        froz_min=-100,
+        froz_max=15,
+        outer_min=-100,
+        outer_max=np.inf,
+        num_iter=50,
+        print_progress_every=10,
+        sitesym=True,
+        localise=True,
+    )
+
     results["spreads_up"] = wandata.data_up.chk.wannier_spreads
     results["spreads_down"] = wandata.data_down.chk.wannier_spreads
 
@@ -71,8 +71,8 @@ def get_system(legacy=False, theta=0, phi=0):
     path_str = "GHPNGP"
     path = Path.from_nodes(real_lattice=system_soc.real_lattice,
                 nodes=[points[p] for p in path_str],
-                labels=[p for p in path_str],
-                length=1000)   # length [ Ang] ~= 2*pi/dk
+        labels=[p for p in path_str],
+        length=1000)   # length [ Ang] ~= 2*pi/dk
 
     results["bands_wannier_soc"] = system_soc.get_bandstructure(path=path).get_data("Energy")
     results["bands_wannier_up"] = system_soc.system_up.get_bandstructure(path=path).get_data("Energy")
@@ -94,7 +94,7 @@ def get_system(legacy=False, theta=0, phi=0):
             fout_name=f"{res_dir}/Fe-soc-001",
             calculators={"ahc_int": AHC(Efermi=Efermi, tetra=tetra, kwargs_formula={"external_terms": False}),
                          "ahc_ext": AHC(Efermi=Efermi, tetra=tetra, kwargs_formula={"internal_terms": False}),
-                            "spin": Spin(Efermi=Efermi, tetra=tetra)
+                         "spin": Spin(Efermi=Efermi, tetra=tetra)
                          },
             adpt_num_iter=50,
             )
@@ -105,8 +105,10 @@ def get_system(legacy=False, theta=0, phi=0):
     results["spin"] = result_run.results["spin"].data
 
     return results
-        
+
 # this test takes 5 minutes to run, so it is not included in the default test suite
+
+
 def _test_compare_legacy_and_new_gpaw():
     results_legacy = get_system(legacy=True)
     results_new = get_system(legacy=False)
@@ -127,11 +129,8 @@ def _test_compare_legacy_and_new_gpaw():
 
     def compare(a, b, atol=1e-3, name=""):
         diff = np.max(np.abs(a - b))
-        print (f"Max difference for {name}: {diff}, tolerance: {atol}, maxval a: {np.max(np.abs(a))}, maxval_b: {np.max(np.abs(b))}")
+        print(f"Max difference for {name}: {diff}, tolerance: {atol}, maxval a: {np.max(np.abs(a))}, maxval_b: {np.max(np.abs(b))}")
         assert diff < atol, f"Max difference {diff} for {name} exceeds tolerance {atol}"
 
     for key in results_legacy.keys():
         compare(results_legacy[key], results_new[key], atol=atol[key], name=key)
-
-    
-
