@@ -304,9 +304,11 @@ class WannierData:
                   use_disk=False,
                   IBstart=None,
                   IBend=None,
-                  verbosity=0,):
+                  verbosity=0,
+                  legacy_gpaw=None,):
         from irrep.bandstructure import BandStructure
         args_bandstructure = dict(calculator_gpaw=calculator,
+                                  legacy_gpaw=legacy_gpaw,
                                   Ecut=ecut_pw,
                                   select_grid=select_grid,
                                   read_paw=("mmn" in files) or return_paw,

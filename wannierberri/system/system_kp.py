@@ -105,7 +105,7 @@ class SystemKP(System_k):
         self.der3Ham_cart = lambda k: self.der3Ham(self.k_cart2red(k))
 
         self.set_pointgroup()
-        logger.info("Number of wannier functions:", self.num_wann)
+        logger.info(f"Number of wannier functions: {self.num_wann}")
 
     @property
     def NKFFT_recommended(self):

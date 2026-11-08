@@ -2,6 +2,8 @@ import numpy as np
 from .formula import Formula_ln, Matrix_ln
 from ..utility import alpha_A, beta_A, cached_einsum
 from ..symmetry.point_symmetry import transform_ident
+import logging
+logger = logging.getLogger(__name__)
 
 
 class PertOmega(Formula_ln):
@@ -67,7 +69,7 @@ class PertOmegaZeemanSpin(PertOmega):
         pertS = data_K.Xbar('SS')
         pertScomma = data_K.covariant('SS', commader=1).matrix.transpose(0, 1, 2, 4, 3)  # transpose, because the derivative is the last index, but should be the first
         if Bdirection is not None:
-            print("Bdirection is {}".format(Bdirection))
+            logger.debug("Bdirection is {}".format(Bdirection))
             Bdirection = np.array(Bdirection, dtype=float)
             Bdirection /= np.linalg.norm(Bdirection)
             pertS = pertS @ Bdirection

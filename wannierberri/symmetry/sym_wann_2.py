@@ -170,7 +170,7 @@ class SymWann:
         dict
          { (a,b):set([index of Rvecotr, if it is irreducible])}
         """
-        logger.info("searching irreducible Rvectors for pairs of a,b\n")
+        logger.info("searching irreducible Rvectors for pairs of a,b")
 
         np1 = self.num_points_list_left[block1]
         np2 = self.num_points_list_right[block2]

@@ -309,8 +309,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        # logger.info("num_wann", num_wann)
-        # logger.info("D_wann_block_indices", self.D_wann_block_indices)
+        logger.debug(f"num_wann: {num_wann}")
+        logger.debug(f"D_wann_block_indices: {self.D_wann_block_indices}")
 
 
     def symmetrize_wannier_property(self, wannier_property):

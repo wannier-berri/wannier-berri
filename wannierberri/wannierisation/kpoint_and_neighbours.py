@@ -61,6 +61,7 @@ class Kpoint_and_neighbours:
         self.data = {}
         self.frozen = frozen
         self.nfrozen = sum(frozen)
+        assert self.nfrozen <= self.num_wann, f"Number of frozen bands {self.nfrozen} exceeds number of wannier functions {self.num_wann} at irreducible k-point {ikirr}"
         self.free = free
         self.selected = frozen | free
         self.NBselected = sum(self.selected)
