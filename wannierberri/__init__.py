@@ -2,7 +2,7 @@
 wannierberri - a module for Wannier Functions and Wannier interpolation
 """
 from .logging import configure_logging
-
+configure_logging()
 
 try:
     from ._version import version as __version__
