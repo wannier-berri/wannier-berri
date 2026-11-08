@@ -13,6 +13,9 @@ jobs:
     name: "Build (${{ matrix.python-version }}, ${{ matrix.install-type }})"
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -el {0}   # login shell so the conda env is active in every step
     strategy:
       matrix:
         python-version: ['3.14']
@@ -20,26 +23,30 @@ jobs:
 
     steps:
     # Checkout full history including tags for setuptools-scm
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+    - name: Set up conda
+      uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: ${{ matrix.python-version }}
+        channels: conda-forge
+        channel-priority: strict
+        activate-environment: test
 
-    - name: Upgrade pip
-      run: python -m pip install --upgrade pip
-
-    - name: Install test dependencies
-      run: pip install pytest
+    - name: Install GPAW from conda-forge
+      run: |
+        conda install -y "gpaw>=26" pytest
+        python -c "import gpaw; print('GPAW', gpaw.__version__)"
 
     - name: Install the python project
       env:
         INSTALL_TYPE: ${{ matrix.install-type }}
       run: |
+        python -m pip install --upgrade pip
         pip install -e ".[${INSTALL_TYPE}]"
+        pip list | grep -i gpaw   # confirm pip kept the conda GPAW
 
     - name: Run tests
       run: pytest tests/test_*.py
