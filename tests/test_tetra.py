@@ -5,12 +5,11 @@ import tempfile
 import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import (weights_tetra, PRINCIPAL_FAR,
-                                           _add_principal_3d, _mean_tlog, _mean_log_triangle_close)
+from wannierberri.grid.simplex import (weights_tetra, PRINCIPAL_FAR,
+                                       _add_principal_3d, _mean_tlog, _mean_log_triangle_close,
+                                       weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
+                                       delta_tetra)
 from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
-from wannierberri.grid.triangle import (weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
-                                        PRINCIPAL_FAR as PRINCIPAL_FAR_2D)
-from wannierberri.grid.tetratriangle import delta_tetra
 from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
@@ -716,7 +715,7 @@ def test_principal_values_2d(e):
     e = np.array(e)
     mean, spread = e.mean(), np.ptp(e)
     omega = np.concatenate([np.linspace(e.min() - 1, e.max() + 1, 17) + 0.0123,
-                            mean + spread * PRINCIPAL_FAR_2D * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
+                            mean + spread * PRINCIPAL_FAR * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
     for function in (_add_principal_2d, _add_principal_2d.py_func):
         res = np.zeros(len(omega))
         function(res, omega, e)
