@@ -53,7 +53,7 @@ class GridTetra(GridAbstract):
                                    ]) - np.array([0.5, 0.5, 0.5])[None, None, :]
         else:
             tetrahedra = np.array(IBZ_tetra)
-        logger.info("using starting tetrahedra with vertices \n", tetrahedra)
+        logger.info(f"using starting tetrahedra with vertices \n{tetrahedra}")
         _weights = np.array([tetra_volume(t) for t in tetrahedra])
         logger.info(f"volumes of tetrahedra are {_weights}, total = {sum(_weights)} ")
         if weights is None:

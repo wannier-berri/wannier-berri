@@ -734,7 +734,7 @@ def data_Te_ASE():
     import ase.dft.wannier
 
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
-    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
+    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"), legacy_gpaw=True)
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
     return wan
 

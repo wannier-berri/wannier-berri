@@ -111,7 +111,7 @@ def wannierise(wandata,
 
     t0 = time()
     if froz_min > froz_max:
-        logger.info("froz_min > froz_max, nothing will be frozen")
+        logger.info(f"froz_min={froz_min} > froz_max={froz_max}, nothing will be frozen")
     assert 0 < mix_ratio_z <= 1
     NK = wandata.mmn.NK
     if sitesym:

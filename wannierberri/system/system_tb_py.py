@@ -137,8 +137,7 @@ def get_system_tb_py(model,
                 Ham_R[iR, i, j] += amplitude
                 Ham_R[inR, j, i] += np.conjugate(amplitude)
             elif model._nspin == 2:
-                logger.info("hopping :", amplitude.shape, Ham_R.shape, iR,
-                      Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape)
+                logger.info(f"hopping : {amplitude.shape}, {Ham_R.shape}, {iR}, {Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2].shape}")
                 Ham_R[iR, 2 * i:2 * i + 2, 2 * j:2 * j + 2] += amplitude
                 Ham_R[inR, 2 * j:2 * j + 2, 2 * i:2 * i + 2] += np.conjugate(amplitude.T)
 

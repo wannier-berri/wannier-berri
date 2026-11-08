@@ -21,7 +21,7 @@ class SPN(W90_file):
 
     @classmethod
     def from_w90_file(cls, seedname='wannier90', formatted=False):
-        logger.info("----------\n SPN  \n---------\n")
+        logger.info(f"reading SPN from wannier90 file: {seedname}.spn")
         if formatted:
             f_spn_in = open(seedname + ".spn", 'r')
             SPNheader = f_spn_in.readline().strip()
@@ -51,7 +51,7 @@ class SPN(W90_file):
             if check > 1e-10:
                 raise RuntimeError(f"REAL DIAG CHECK FAILED : {check}")
             data[ik] = A.transpose(1, 2, 0)
-        logger.info("----------\n SPN OK  \n---------\n")
+        logger.info("SPN OK")
         return SPN(data=data)
 
     @classmethod
