@@ -129,6 +129,7 @@ class WannierDataSOC(WannierData):
                   altermagnetic=False,
                   altermagnetic_nskip_symmetries=0,
                   use_disk=False,
+                  legacy_gpaw=None,
                   **kwargs):
         """Create Wannier90DataSOC from a GPAW calculator with SOC.
 
@@ -139,11 +140,10 @@ class WannierDataSOC(WannierData):
         if spacegroup is None:
             from irrep.spacegroup import SpaceGroup
             spacegroup = SpaceGroup.from_gpaw(calculator)
-
         nspin = calculator.get_number_of_spins()
         cell = {}
         from irrep.parsers.gpaw import get_magnetic_moments
-        magmoms_on_axis = get_magnetic_moments(calculator)
+        magmoms_on_axis = get_magnetic_moments(calculator, legacy_gpaw=legacy_gpaw)
         cell["magmoms_on_axis"] = group_numbers(magmoms_on_axis, precision=mag_symprec)
         cell["typat"] = calculator.atoms.get_atomic_numbers()
         cell["positions"] = calculator.atoms.get_scaled_positions()
@@ -160,7 +160,8 @@ class WannierDataSOC(WannierData):
                               include_paw=include_paw,
                               include_pseudo=include_pseudo,
                               files=[f for f in files if f not in ["soc", "mmn_ud"]],
-                              use_disk=use_disk)
+                              use_disk=use_disk,
+                              legacy_gpaw=legacy_gpaw)
         return_bandstructure_loc = return_bandstructure or ("mmn_ud" in files and nspin == 2) or "soc" in files
         return_paw = include_paw or ("mmn_ud" in files and nspin == 2) or "soc" in files
         kwargs_wandata.update(kwargs)
