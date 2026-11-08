@@ -185,6 +185,31 @@ def test_delta_weights_range(dE):
                                np.diff(occ) / np.diff(edges) / 12, rtol=0, atol=1e-12)
 
 
+def test_delta_on_edges():
+    """dE exactly at the edges or frequencies: a flat dE at an edge is in the interval above it (the cumulative
+    weight is that strictly below the edge), as for the values at omega (`_add_delta_values`), and the density at the
+    smallest or largest value of dE, where it jumps, is the mean of its limits"""
+    edges = np.array([0.85, 0.95, 1.05, 1.2, 1.4])
+    np.testing.assert_allclose(delta_weights_tetra(edges, np.full((1, 4), 0.95))[0], [0, 10, 0, 0])
+    np.testing.assert_allclose(delta_weights_tetra(edges, np.full((1, 4), 1.4))[0], [0, 0, 0, 0])
+    np.testing.assert_allclose(delta_weights_tetra(edges, np.full((1, 4), 0.85))[0], [10, 0, 0, 0])
+    np.testing.assert_allclose(delta_weights_tetra(edges, np.array([[0.95, 0.95, 0.95, 1.05]]))[0], [0, 10, 0, 0])
+    assert _edges_in_range(edges, 0.95, 0.95) == (1, 2)
+    assert _edges_in_range(edges, 0.95, 1.05) == (1, 3)
+    omega = np.array([0.0, 1.0, 2.0])
+    np.testing.assert_allclose(delta_values_tetra(omega, np.full((1, 4), 0.5)), [[0, 1, 0]])
+    np.testing.assert_allclose(delta_weights_tetra(omega_intervals(omega), np.full((1, 4), 0.5)), [[0, 1, 0]])
+    omega = np.array([0.0, 0.5, 1.0, 1.5, 2.0])
+    assert _omega_in_range(omega, 0.5, 1.5) == (1, 4)
+    assert _omega_in_range(omega, 0.4, 1.6) == (1, 4)
+    assert _omega_in_range(omega, 1.0, 1.0) == (2, 3)
+    # the density of [a, a, a, c] is 3 (c - x)^2 / (c - a)^3 above a, of [a, c, c, c] 3 (x - a)^2 / (c - a)^3 below c
+    a, c = 0.2, 1.2
+    omega = np.array([0.0, a, 0.7, c, 1.4])
+    np.testing.assert_allclose(delta_values_tetra(omega, np.array([[a, a, a, c], [a, c, c, c]])),
+                               [[0, 1.5, 0.75, 0, 0], [0, 0, 0.75, 1.5, 0]], rtol=1e-14, atol=1e-14)
+
+
 def test_python_versions():
     """the compiled functions give the same results as their Python versions (which the coverage report can trace)"""
     rng = np.random.default_rng(4)

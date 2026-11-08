@@ -1,5 +1,6 @@
 import contextlib
 import decimal
+import math
 import os
 import tempfile
 import io
@@ -7,7 +8,7 @@ import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.simplex import (weights_tetra, PRINCIPAL_FAR,
                                        _add_principal_3d, _mean_tlog, _mean_log_triangle_close,
-                                       weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
+                                       weights_triangle, weights_simplex, _add_principal_2d, _mean_log, occupied_triangles,
                                        delta_tetra)
 from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
 from scipy.integrate import quad
@@ -532,6 +533,168 @@ def test_mean_log_triangle():
         assert close(0.0, 0.0, 0.0, 1e-3) == (np.log(1e-3), True)
         assert mean_log_triangle(close, tlog, 0.0, 0.0, 1.0, 1.0) == pytest.approx(-3 / 2, rel=1e-15)  # 2 int_0^1 (1 - x) log x dx
         assert mean_log_triangle(close, tlog, 0.0, 1.0, 1.0, 1.0) == pytest.approx(-1 / 2, rel=1e-15)  # 2 int_0^1 x log x dx
+
+
+def simplex_weights_decimal(x, values, der, prec=100):
+    """the fraction of a simplex where a linear function with the given distinct values at its corners is below x
+    (der=0) and its derivatives: (-1)^n times the divided difference of (x - t)_+^n over the values, differentiated
+    der times with respect to x, in decimal arithmetic (the values may be decimals). At x equal to a value, where
+    the derivative of order n jumps, the mean of its limits from below and from above (the fraction is continuous
+    for distinct values)"""
+    n = len(values) - 1
+    p = n - der
+    xd = decimal.Decimal(x)
+
+    def f(t, at_x):
+        if t > xd or (t == xd and p == 0 and at_x == 0):
+            return decimal.Decimal(0)
+        return math.factorial(n) // math.factorial(p) * (xd - t) ** p if p > 0 else decimal.Decimal(math.factorial(n))
+
+    return (-1) ** n * (divided_difference_decimal(lambda t: f(t, 0), values, prec=prec)
+                        + divided_difference_decimal(lambda t: f(t, 1), values, prec=prec)) / 2
+
+
+def simplex_functions(n):
+    """weights_simplex (for sorted values) and the function for the given dimension that calls it (in any order)"""
+    functions = [lambda x, e, der: weights_simplex(x, np.sort(np.array(e, dtype=float)), der),
+                 lambda x, e, der: weights_simplex.py_func(x, np.sort(np.array(e, dtype=float)), der)]
+    if n == 2:
+        functions.append(lambda x, e, der: weights_triangle(x, *e, der=der))
+    if n == 3:
+        functions.append(lambda x, e, der: weights_tetra(x, *e, der=der))
+    return functions
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_weights_simplex_clusters(n):
+    """the fraction below x and its derivatives for random simplices, also with two or three nearly equal values (1e-6
+    to 1e-15 apart, at any position, also far from zero), at x within, next to and between them, against 100-digit
+    decimal arithmetic; relative to the largest value over x. At the values themselves, where the derivative of order n
+    jumps, the mean of its limits"""
+    rng = np.random.default_rng(n)
+    for trial in range(40):
+        e = np.sort(rng.random(n + 1))
+        size = rng.integers(1, n + 2)
+        pos = rng.integers(0, n + 2 - size)
+        gap = 10 ** rng.uniform(-15, -6)
+        for j in range(1, size):
+            e[pos + j] = e[pos] + j * gap * rng.uniform(0.5, 1.5)
+        e = np.sort(e + [0., 10.][trial % 2])
+        if len(set(e)) < len(e):
+            continue
+        x = np.concatenate([np.linspace(e[0], e[-1], 23), e, e + gap / 3, e - gap / 3, [e[0] - 1, e[-1] + 1]])
+        # within the simplex, away from the values, where the result may be much smaller than near a cluster
+        far = (np.abs(x[:, None] - e[None, :]).min(axis=1) > 1e-3) & (x > e[0]) & (x < e[-1])
+        for der in range(n + 1):
+            expected = np.array([simplex_weights_decimal(xi, e, der) for xi in x])
+            scale = np.abs(expected).max()
+            scale_far = np.abs(expected[far]).max() if far.any() else 0.
+            for function in simplex_functions(n):
+                result = function(x, rng.permutation(e) if n > 1 else e, der)
+                np.testing.assert_allclose(result, expected, rtol=0, atol=2e-15 * scale, err_msg=f"e={e!r}, der={der}")
+                np.testing.assert_allclose(result[far], expected[far], rtol=0, atol=2e-15 * scale_far,
+                                           err_msg=f"e={e!r}, der={der}, away from the values")
+
+
+EQUAL_VALUES = [  # values with equal ones on [0, 1], and the fraction below x and its derivatives
+    ([0, 0], [lambda x: 1 + 0 * x]),
+    ([0, 0, 1], [lambda x: 1 - (1 - x) ** 2, lambda x: 2 * (1 - x), lambda x: -2 + 0 * x]),
+    ([0, 1, 1], [lambda x: x ** 2, lambda x: 2 * x, lambda x: 2 + 0 * x]),
+    ([0, 0, 0, 1], [lambda x: 1 - (1 - x) ** 3, lambda x: 3 * (1 - x) ** 2, lambda x: -6 * (1 - x), lambda x: 6 + 0 * x]),
+    ([0, 1, 1, 1], [lambda x: x ** 3, lambda x: 3 * x ** 2, lambda x: 6 * x, lambda x: 6 + 0 * x]),
+    ([0, 0, 1, 1], [lambda x: 3 * x ** 2 - 2 * x ** 3, lambda x: 6 * x * (1 - x), lambda x: 6 - 12 * x,
+                    lambda x: -12 + 0 * x]),
+]
+
+
+@pytest.mark.parametrize("values, expected", EQUAL_VALUES)
+@pytest.mark.parametrize("shift, scale", [(0., 1.), (-3.7, 0.25), (100., 1e-6)])
+def test_weights_simplex_equal(values, expected, shift, scale):
+    """closed forms for equal values, also next to them (down to the neighbouring floating-point numbers) and at them,
+    where the derivatives, which may jump there, are the mean of their limits, and the fraction is that strictly
+    below (0 at the value if all values are equal); der=2, 3 are the parts without the delta functions"""
+    n = len(values) - 1
+    e = shift + scale * np.array(values, dtype=float)
+    lo, hi = e[0], e[-1]  # e has only these two values, the reference is taken relative to them
+    x = np.concatenate([np.linspace(lo - scale / 2, hi + scale / 2, 41), [np.nextafter(lo, -np.inf), lo,
+                        np.nextafter(lo, np.inf), np.nextafter(hi, -np.inf), hi, np.nextafter(hi, np.inf)]])
+    for der in range(n + 2):
+        if values == [0, 0]:
+            reference = np.where(x > lo, 1., 0.) if der == 0 else np.zeros_like(x)
+        elif der > n:
+            reference = np.zeros_like(x)
+        else:
+            t = (x - lo) / (hi - lo)
+            inside = expected[der](t) / (hi - lo) ** der
+            # the limits from above and from below, which differ at lo and hi where the result jumps
+            above = np.where((x >= lo) & (x < hi), inside, 1. if der == 0 else 0.) * (x >= lo)
+            below = np.where((x > lo) & (x <= hi), inside, 1. if der == 0 else 0.) * (x > lo)
+            reference = (above + below) / 2
+        for function in simplex_functions(n):
+            np.testing.assert_allclose(function(x, e, der), reference, rtol=1e-12, atol=1e-14 / scale ** der,
+                                       err_msg=f"der={der}")
+
+
+@pytest.mark.parametrize("values", [[0, 0, 1, 2], [0, 1, 1, 2], [0, 1, 2, 2], [0, 0, 1], [0, 1, 1]])
+def test_weights_simplex_two_equal(values):
+    """two equal values among distinct ones: the limit of distinct values, from 100-digit decimal arithmetic with the
+    equal values 1e-40 apart, away from the equal values"""
+    n = len(values) - 1
+    e = np.array(values, dtype=float)
+    knots = [decimal.Decimal(v) for v in values]
+    with decimal.localcontext() as context:
+        context.prec = 100
+        for i in range(1, n + 1):
+            if knots[i] == knots[i - 1]:
+                knots[i] += decimal.Decimal("1e-40")
+    x = np.linspace(-0.5, e[-1] + 0.5, 51)
+    x = x[np.abs(x[:, None] - e[None, :]).min(axis=1) > 1e-3]
+    for der in range(n + 1):
+        expected = np.array([simplex_weights_decimal(xi, knots, der) for xi in x])
+        for function in simplex_functions(n):
+            np.testing.assert_allclose(function(x, e, der), expected, rtol=0, atol=1e-14 * np.abs(expected).max(),
+                                       err_msg=f"der={der}")
+
+
+def test_weights_simplex_der():
+    """der above the dimension gives zeros, negative der is an error, NaN gives NaN"""
+    x = np.linspace(-1, 2, 7)
+    for e in ([0., 1.], [0., 0.5, 1.], [0., 0.2, 0.5, 1.]):
+        n = len(e) - 1
+        for function in simplex_functions(n):
+            np.testing.assert_array_equal(function(x, e, n + 1), np.zeros_like(x))
+            for der in range(n + 1):
+                result = function(np.array([0.3, np.nan]), e, der)
+                assert np.isfinite(result[0]) and np.isnan(result[1])
+            with pytest.raises((ValueError, NotImplementedError)):
+                function(x, e, -1)
+    with pytest.raises(ValueError):
+        weights_tetra(x, 0., 0.2, 0.5, 1., der=-1)
+    with pytest.raises(NotImplementedError):
+        weights_triangle(x, 0., 0.5, 1., der=-1)
+
+
+@pytest.mark.parametrize("e", [[0., 5e-324, 0.5, 1.], [0., 5e-324, 1e-323, 1.], [0., 0., 5e-324, 1.], [0., 5e-324, 1.],
+                               [0., 1e-200, 2e-200, 1.], [0., 1e-308, 0.1, 1.], [0., 1e-308, 1.]])
+def test_weights_simplex_tiny_differences(e):
+    """differences so small that their inverse or the coefficients of the derivatives overflow: finite results away
+    from them, the same as for equal values"""
+    n = len(e) - 1
+    x = np.arange(-5, 26) / 20  # with x = 0 exactly, at the tiny values
+    equal = np.where(np.array(e) < 1e-100, 0., e)
+    for der in range(n + 1):
+        for function in simplex_functions(n):
+            result = function(x, e, der)[x != 0]
+            assert np.all(np.isfinite(result))
+            np.testing.assert_allclose(result, function(x, equal, der)[x != 0], rtol=1e-14, atol=1e-14)
+
+
+def test_weights_simplex_large_peak():
+    """the mean of the two limits at a value does not overflow where they are close to the largest float"""
+    e = [0., 1e-308, 2e-308]
+    for function in simplex_functions(2):
+        result = function(np.array([np.nextafter(1e-308, 0), 1e-308, np.nextafter(1e-308, 1)]), e, 1)
+        np.testing.assert_allclose(result, 1e308, rtol=1e-14)
 
 
 @pytest.mark.parametrize("kind", ["single", "parallelepiped"])
