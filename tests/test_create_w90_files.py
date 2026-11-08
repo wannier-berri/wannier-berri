@@ -342,7 +342,7 @@ def check_create_w90files_Fe(path_data, path_ref=None,
     if wannierise:
         wandata.wannierise(init="amn",
                            froz_min=-8,
-                           froz_max=20,
+                           froz_max=30,
                            print_progress_every=20,
                            num_iter=100,
                            conv_tol=1e-6,
