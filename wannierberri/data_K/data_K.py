@@ -202,7 +202,7 @@ class Data_K(System, abc.ABC):
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
                                      Emin=-np.inf, Emax=np.inf, select_bands=None):
-        from ..grid.tetratriangle import get_bands_in_range, get_bands_below_range
+        from ..grid.simplex import get_bands_in_range, get_bands_below_range
         bands_in_range = get_bands_in_range(
             emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers, select_bands=select_bands)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}

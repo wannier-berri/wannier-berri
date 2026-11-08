@@ -3,8 +3,8 @@ import abc
 import numpy as np
 from functools import cached_property, lru_cache
 from collections import defaultdict
-from .tetratriangle import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
-                            get_bands_above_range, reactive_values_tetra, occupation_kernel, weights_general)
+from .simplex import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
+                      get_bands_above_range, reactive_values_tetra, occupation_kernel, weights_general)
 from ..utility import cached_einsum, weight_select_bands
 
 
