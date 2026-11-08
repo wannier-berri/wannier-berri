@@ -15,11 +15,11 @@ from wannierberri.calculators import dynamic
 from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
-from wannierberri.grid.tetratriangle import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
-                                             omega_intervals, _add_occupied, occupation_kernel, occupied_pieces,
-                                           delta_tetra, delta_values_tetra, delta_weights_tetra)
+from wannierberri.grid.simplex import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
+                                       omega_intervals, _add_occupied, occupation_kernel, occupied_pieces,
+                                       delta_tetra, delta_values_tetra, delta_weights_tetra,
+                                       weights_tetra, occupied_tetrahedra)
 from wannierberri.grid.ttweights import TetraWeights
-from wannierberri.grid.tetrahedron import weights_tetra, occupied_tetrahedra
 from wannierberri.system import System_R
 
 S0 = np.eye(2, dtype=complex)

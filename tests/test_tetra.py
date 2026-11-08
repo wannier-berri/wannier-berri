@@ -5,12 +5,11 @@ import tempfile
 import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.tetrahedron import (weights_tetra, PRINCIPAL_FAR,
-                                           _separate_values, _add_principal_3d)
+from wannierberri.grid.simplex import (weights_tetra, PRINCIPAL_FAR,
+                                       _add_principal_3d, _mean_tlog, _mean_log_triangle_close,
+                                       weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
+                                       delta_tetra)
 from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
-from wannierberri.grid.triangle import (weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
-                                        PRINCIPAL_FAR as PRINCIPAL_FAR_2D)
-from wannierberri.grid.tetratriangle import delta_tetra
 from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
@@ -282,21 +281,6 @@ def test_principal_values(dE):
             assert np.abs(np.diff(near)).max() < 1e-4 * (1 + np.abs(near).max())
 
 
-@pytest.mark.parametrize("values, separated", [
-    ([0, 0, 10, 20], [-0.5, 0.5, 10, 20]), ([0, 10, 10, 20], [0, 9.5, 10.5, 20]), ([0, 0, 0, 10], [-1, 0, 1, 10]),
-    ([0, 0, 10, 10], [-0.5, 0.5, 9.5, 10.5]), ([0, 0, 0, 0], [-1.5, -0.5, 0.5, 1.5]),
-    ([0, 0.3, 0.6, 10], [-0.7, 0.3, 1.3, 10]), ([0, 0, 1, 10], [-2 / 3, 1 / 3, 4 / 3, 10]),
-    ([0, 0.3, 10, 20], [-0.35, 0.65, 10, 20]), ([0, 3, 10, 20], [0, 3, 10, 20]), ([0, 0, 1, 2], [-0.75, 0.25, 1.25, 2.25])])
-def test_separate_values(values, separated):
-    """with the gap 1: values closer than the gap are spread symmetrically around their mean, groups that come closer
-    than the gap are merged, and the other values are unchanged"""
-    for function in (_separate_values, _separate_values.py_func):
-        e = np.array(values, dtype=float)
-        function(e, 1.0)
-        np.testing.assert_allclose(e, separated, rtol=0, atol=1e-14)
-        assert e.sum() == pytest.approx(sum(values), abs=1e-13)
-
-
 @pytest.mark.parametrize("dE", [[1.0, 1.0, 1.0, 1.0], [3.0, 3.0 + 1e-6, 3.0 + 2e-6, 3.0 + 4e-6]])
 def test_principal_values_flat(dE):
     """for (nearly) equal values, 1/(dE - omega), and zero at omega equal to all of them"""
@@ -318,12 +302,12 @@ def test_principal_values_narrow(offset):
 
 @pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 1.0, 1.5, 2.0]])
 def test_principal_expansion_continuity(dE):
-    """continuous where the expansion far from the values (at 1/PRINCIPAL_FAR times their spread from their mean)
+    """continuous where the expansion far from the values (at PRINCIPAL_FAR times their spread from their mean)
     takes over from the integral over the intervals"""
     dE = np.array(dE)
     mean, spread = dE.mean(), np.ptp(dE)
     for side in (-1, 1):
-        omega = mean + side * spread / PRINCIPAL_FAR * np.array([1 - 1e-9, 1 + 1e-9])
+        omega = mean + side * spread * PRINCIPAL_FAR * np.array([1 - 1e-9, 1 + 1e-9])
         inside, outside = weights_tetra_reactive(omega, dE)
         assert outside == pytest.approx(inside, rel=1e-7)
 
@@ -340,7 +324,7 @@ def test_principal_expansion_accuracy(dE):
         return delta_tetra(np.array([x]), *dE)[0]
 
     for side in (-1, 1):
-        w = mean + side * spread / PRINCIPAL_FAR * (1 + 1e-6)
+        w = mean + side * spread * PRINCIPAL_FAR * (1 + 1e-6)
         reference = sum(quad(lambda x: density(x) / (x - w), a, b, epsabs=1e-14, epsrel=1e-12, limit=200)[0]
                         for a, b in zip(nodes[:-1], nodes[1:]))
         assert weights_tetra_reactive(np.array([w]), dE)[0] == pytest.approx(reference, rel=1e-9)
@@ -364,6 +348,192 @@ def test_principal_values_at_corner():
         np.testing.assert_allclose(values, values[0], rtol=1e-9)
 
 
+def divided_difference_decimal(f, values, prec=80):
+    """the divided difference of f over distinct values (floats, taken exactly), in decimal arithmetic"""
+    with decimal.localcontext() as context:
+        context.prec = prec
+        t = [decimal.Decimal(v) for v in values]
+        result = decimal.Decimal(0)
+        for i, ti in enumerate(t):
+            denominator = decimal.Decimal(1)
+            for j, tj in enumerate(t):
+                if j != i:
+                    denominator *= ti - tj
+            result += f(ti) / denominator
+        return float(result)
+
+
+def t2_log(t):  # t^2 log|t| / 2
+    return t * t * abs(t).ln() / 2 if t != 0 else decimal.Decimal(0)
+
+
+def t2_log_minus(t):  # t^2 log|t| / 2 - 3 t^2 / 4, the second derivative is log|t|
+    return t2_log(t) - 3 * t * t / 4
+
+
+def t_log_antiderivative(t):  # t^2 log|t| / 2 - t^2 / 4, the derivative is t log|t|
+    return t2_log(t) - t * t / 4
+
+
+@pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 1e-3, 2e-3, 1.0], [0.0, 1e-6, 3e-6, 1.0],
+                                [0.0, 1.0, 1.0 + 1e-9, 1.0 + 3e-9], [0.0, 1e-9, 1.0, 1.0 + 1e-9],
+                                [5.0, 5.0 + 1e-7, 5.0 + 3e-7, 7.0]])
+def test_principal_values_clusters(dE):
+    """nearly equal corner values, with omega also within and next to a cluster of them and at the values: six times
+    the third divided difference of t^2 log|t| / 2 at t = dE - omega, in 80-digit decimal arithmetic (this identity
+    is checked against the numerical principal-value integral in test_principal_values)"""
+    dE = np.array(dE)
+    values = np.sort(dE)
+    omega = np.concatenate([np.linspace(values[0] - 1, values[-1] + 1, 23) + 0.0123,
+                            [v + s * d for v in values for d in (1e-3, 1e-7, 1e-10) for s in (-1, 1)],
+                            (values[:-1] + values[1:]) / 2, values])
+    for function in (_add_principal_3d, _add_principal_3d.py_func):
+        res = np.zeros(len(omega))
+        function(res, omega, dE)
+        for w, value in zip(omega, res):
+            # the differences are exact (Sterbenz) only near the values; elsewhere the reference uses the same rounded t
+            t = [float(v - w) for v in values]
+            expected = 6 * divided_difference_decimal(t2_log, t)
+            assert value == pytest.approx(expected, rel=1e-9, abs=1e-12), f"omega={w}"
+
+
+@pytest.mark.parametrize("w", [-1.0, 0.25, 0.5, 0.999, 1.5, 3.0])
+def test_principal_values_equal(w):
+    """equal corner values, without separating them: the closed forms for three equal values (the density 3 (1 - x)^2
+    on [0, 1], or 3 x^2), two pairs (6 x (1 - x)), also given as integers, and four equal values (1/(dE - omega))"""
+    log_ratio = np.log(np.abs((1 - w) / w))
+    lower = 3 * (w - 3 / 2) + 3 * (1 - w) ** 2 * log_ratio  # P int_0^1 3 (1 - x)^2 / (x - w) dx
+    upper = 3 * (w + 1 / 2) + 3 * w ** 2 * log_ratio  # P int_0^1 3 x^2 / (x - w) dx
+    pairs = 3 - 6 * w + 6 * w * (1 - w) * log_ratio  # P int_0^1 6 x (1 - x) / (x - w) dx
+    for e, expected in (([0.0, 0.0, 0.0, 1.0], lower), ((0, 1, 0, 0), lower), ([1.0, 0.0, 1.0, 1.0], upper),
+                        ([0.0, 1.0, 0.0, 1.0], pairs), ((1, 1, 0, 0), pairs), ([7.0, 7.0, 7.0, 7.0], 1 / (7 - w))):
+        for function in (_add_principal_3d, _add_principal_3d.py_func):
+            res = np.zeros(1)
+            function(res, np.array([w]), np.array(e))
+            assert res[0] == pytest.approx(expected, rel=1e-12), f"values {e}"
+
+
+def test_principal_values_3_equal_at_value():
+    """omega at three equal values, where the principal part diverges logarithmically: the closed forms of
+    test_principal_values_equal (shifted and scaled) at the neighbouring floating-point numbers and below, and at
+    the value itself the closed form at a distance of the machine epsilon times the scale of the values (the
+    convention of `_add_principal_3d`, as for triangles); at two equal
+    values, finite and continuous (3, -3 and 0 for the values 0, 0, 1, 1 and 0, 1, 1, 2)"""
+    def lower(d, scale):  # 3 (1 - x)^2 on [0, 1] in units of scale, omega = d above 0, without overflow for small d
+        w = d / scale
+        return (3 * (w - 3 / 2) + 3 * (1 - w) ** 2 * (np.log(np.abs(1 - w)) - np.log(np.abs(w)))) / scale
+
+    def upper(d, scale):  # 3 x^2 on [0, 1], omega = d above 1
+        w = 1 + d / scale
+        return (3 * (w + 1 / 2) + 3 * w ** 2 * (np.log(np.abs(d / scale)) - np.log(np.abs(w)))) / scale
+
+    for e, node, expected in (([0.0, 0.0, 0.0, 1.0], 0.0, lambda d: lower(d, 1.0)),
+                              ([5.0, 5.0, 5.0, 7.0], 5.0, lambda d: lower(d, 2.0)),
+                              ([-3.0, 2.0, 2.0, 2.0], 2.0, lambda d: upper(d, 5.0))):
+        e = np.array(e)
+        omega = np.array([np.nextafter(node, -np.inf), np.nextafter(node, np.inf), node + 1e-20, node - 1e-20,
+                          node + 1e-10, node - 1e-6])
+        omega = omega[omega != node]
+        for function in (_add_principal_3d, _add_principal_3d.py_func):
+            res = np.zeros(len(omega) + 1)
+            function(res, np.append(omega, node), e)
+            np.testing.assert_allclose(res[:-1], expected(omega - node), rtol=1e-8)
+            at_zero = 2.2e-16 * (np.ptp(e) + np.abs(e).max())  # the distance taken at the node
+            assert res[-1] == pytest.approx(expected(at_zero), rel=1e-8)
+    for e, node, expected in (([0.0, 0.0, 1.0, 1.0], 0.0, 3), ([0.0, 0.0, 1.0, 1.0], 1.0, -3), ([0.0, 1.0, 1.0, 2.0], 1.0, 0)):
+        omega = node + np.array([-1e-12, -1e-15, 0, 1e-15, 1e-12])
+        near = weights_tetra_reactive(omega, np.array(e))
+        np.testing.assert_allclose(near, expected, rtol=0, atol=1e-9)  # changing as d log|d|
+
+
+@pytest.mark.parametrize("dE, omega", [([0.0, 0.0, 1.0, 1.0], [0.0, 1.0, 0.5, -3.4, 4.4]),
+                                       ([0.3, -1.2, 2.0, 0.7], [0.5, -1.2, 0.7, 4.0]),
+                                       ([0.0, 0.0, 0.0, 1.0], [0.5, 1.0, -2.0]), ([-2.0, -1.0, -1.0, -1.0], [-1.5, -4.0])])
+def test_principal_values_scale(dE, omega):
+    """scaling the values and omega by a power of two (exactly) scales the principal part by its inverse, down to
+    small values, where squares of them would underflow, and up to large ones, where the moments of the expansions
+    near the values would overflow (omega is chosen not far from the values)"""
+    dE, omega = np.array(dE), np.array(omega)
+    reference = weights_tetra_reactive(omega, dE)
+    for k in (-560, -330, -60, 60, 330, 500):
+        scale = 2.0 ** k
+        for function in (_add_principal_3d, _add_principal_3d.py_func):
+            res = np.zeros(len(omega))
+            function(res, omega * scale, dE * scale)
+            # the logarithms contain log(scale), up to about 390, which cancels between the averages over the triangles
+            np.testing.assert_allclose(res * scale, reference, rtol=1e-10, atol=1e-14, err_msg=f"scale 2^{k}")
+
+
+def test_principal_values_weight():
+    """the result is multiplied by the weight and added to res, near the values and far from them"""
+    e = np.array([0.3, -1.2, 2.0, 0.7])
+    omega = np.array([-50.0, -1.0, 0.5, 1.0, 50.0])
+    reference = weights_tetra_reactive(omega, e)
+    for function in (_add_principal_3d, _add_principal_3d.py_func):
+        res = np.full(len(omega), 1.5)
+        function(res, omega, e, -2.5)
+        np.testing.assert_allclose(res, 1.5 - 2.5 * reference, rtol=1e-14)
+
+
+def log_abs(x):
+    """log|x|, and NaN for zero, which the helpers below must not use"""
+    return np.log(abs(x)) if x != 0 else np.nan
+
+
+def mean_tlog(function, a, b):
+    return function(a, b, log_abs(a), log_abs(b))
+
+
+def mean_log_triangle(close, tlog, a, b, c, at_zero):
+    """the average of log|t| over a triangle, as in `_add_principal_3d`"""
+    value, done = close(a, b, c, at_zero)
+    if done:
+        return value
+    return 2 * (mean_tlog(tlog, b, c) - mean_tlog(tlog, a, b)) / (c - a) - 1
+
+
+def test_mean_tlog():
+    """the average of t log|t| over an interval, around the switches between the series (half width over the distance
+    from zero below 0.1), the closed form far from zero and the one for an interval reaching zero, against the formula
+    in 50-digit decimal arithmetic; and its limit for equal ends"""
+    for m in (1.0, -3.7, 1e3, 2e-5):
+        for r in (1e-4, 0.011, 0.05, 0.0999, 0.1, 0.1001, 0.3, 0.9999, 1.0, 1.5):
+            a, b = m - r * abs(m), m + r * abs(m)
+            expected = divided_difference_decimal(t_log_antiderivative, [a, b], prec=50)
+            for function in (_mean_tlog, _mean_tlog.py_func):
+                assert mean_tlog(function, a, b) == pytest.approx(expected, rel=1e-14, abs=1e-15 * abs(m))
+    for function in (_mean_tlog, _mean_tlog.py_func):
+        assert mean_tlog(function, 2.5, 2.5) == 2.5 * np.log(2.5)
+        assert mean_tlog(function, 0.0, 0.0) == 0
+        assert mean_tlog(function, 0.0, 2.0) == pytest.approx(np.log(2) - 1 / 2, rel=1e-15)
+        assert mean_tlog(function, -2.0, 0.0) == pytest.approx(-np.log(2) + 1 / 2, rel=1e-15)
+        for a, b in ((0.0, 2e305), (-2e305, 0.0), (-1e305, 1.5e305), (0.0, 5.1094810959409254e305),
+                     (-5.1094810959409254e305, 0.0)):  # finite, up to near the largest float
+            expected = divided_difference_decimal(t_log_antiderivative, [a, b], prec=50)
+            assert mean_tlog(function, a, b) == pytest.approx(expected, rel=1e-14)
+
+
+def test_mean_log_triangle():
+    """the average of log|t| over a triangle, on both sides of where the expansion far from zero takes over (distance 
+    larger than PRINCIPAL_FAR times the spread), also with two nearly equal values, against twice the second
+    divided difference of t^2 log|t| / 2 - 3 t^2 / 4 in 80-digit decimal arithmetic; and its limits for equal values"""
+    functions = [(_mean_log_triangle_close, _mean_tlog), (_mean_log_triangle_close.py_func, _mean_tlog.py_func)]
+    for m in (1.0, -3.7, 2e-5):
+        for shape in ((-1, 0.2, 0.8), (-1, -1 + 1e-6, 2), (-2, 1, 1 + 1e-9)):
+            shape = np.array(shape) - np.mean(shape)
+            for ratio in (1e-5, 0.1, 1. / PRINCIPAL_FAR * (1 - 1e-9), 1. / PRINCIPAL_FAR * (1 + 1e-9), 1.0, 5.0):
+                values = np.sort(m + shape / np.ptp(shape) * ratio * abs(m))
+                expected = 2 * divided_difference_decimal(t2_log_minus, values)
+                for close, tlog in functions:
+                    assert mean_log_triangle(close, tlog, *values, 1.0) == pytest.approx(expected, rel=1e-12, abs=1e-14), \
+                        f"m={m}, values={values}"
+    for close, tlog in functions:
+        assert close(2.5, 2.5, 2.5, 1.0) == (np.log(2.5), True)
+        assert close(0.0, 0.0, 0.0, 1e-3) == (np.log(1e-3), True)
+        assert mean_log_triangle(close, tlog, 0.0, 0.0, 1.0, 1.0) == pytest.approx(-3 / 2, rel=1e-15)  # 2 int_0^1 (1 - x) log x dx
+        assert mean_log_triangle(close, tlog, 0.0, 1.0, 1.0, 1.0) == pytest.approx(-1 / 2, rel=1e-15)  # 2 int_0^1 x log x dx
+
+
 @pytest.mark.parametrize("kind", ["single", "parallelepiped"])
 def test_dynamic_weights_kramers_kronig(kind):
     """the reactive weights are the principal-value integrals of the delta weights over the frequency, for pairs of
@@ -385,6 +555,90 @@ def test_dynamic_weights_kramers_kronig(kind):
                 kernel = np.log(np.abs((edges[1:] - w) / (edges[:-1] - w)))
             kernel[~np.isfinite(kernel)] = 0
             np.testing.assert_allclose(values, delta @ kernel, rtol=1e-3, atol=1e-4)
+
+
+def test_weights_cached_by_value():
+    """the weights for the Fermi levels are computed once for equal arrays (each calculator has its own copy), again
+    for different ones, and not mixed up when the caller changes its array afterwards"""
+    rng = np.random.default_rng(4)
+    nk, nb = 2, 3
+    eCorners = rng.random((nk, 2, 2, 2, nb))
+    tetra = TetraWeights(eCenter=rng.random((nk, nb)), eCorners=eCorners, kind="parallelepiped")
+    computed = []
+    compute = tetra.weight_1k1b_priv
+
+    def counting(eFermi, ik, ib, der):
+        computed.append((tuple(eFermi), ik, ib))
+        return compute(eFermi, ik, ib, der)
+
+    tetra.weight_1k1b_priv = counting
+    efermi = np.linspace(0.2, 0.8, 7)
+    original = efermi.copy()
+    first = tetra.weights_all_band_groups(efermi, der=1)
+    ncomputed = len(computed)
+    assert ncomputed > 0
+    second = tetra.weights_all_band_groups(efermi.copy(), der=1)
+    assert len(computed) == ncomputed  # nothing computed again
+    for w1, w2 in zip(first, second):
+        assert w1.keys() == w2.keys()
+        for key in w1:
+            np.testing.assert_array_equal(w2[key], w1[key])
+    shifted = efermi + 0.05
+    other = tetra.weights_all_band_groups(shifted, der=1)
+    assert len(computed) > ncomputed and all(e == tuple(shifted) for e, _, _ in computed[ncomputed:])
+    ncomputed = len(computed)
+    efermi[:] = shifted  # the caller changes its array: the weights are those for the new values
+    again = tetra.weights_all_band_groups(efermi, der=1)
+    assert len(computed) == ncomputed
+    # the same ends, other values between them
+    between = np.concatenate([shifted[:1], np.sort(rng.uniform(shifted[0], shifted[-1], 5)), shifted[-1:]])
+    third = tetra.weights_all_band_groups(between, der=1)
+    assert len(tetra.eFermi_stored) == 3
+    # one value changed by the smallest step: computed again
+    nudged = shifted.copy()
+    nudged[3] = np.nextafter(nudged[3], np.inf)
+    ncomputed = len(computed)
+    fourth = tetra.weights_all_band_groups(nudged, der=1)
+    assert len(computed) > ncomputed and len(tetra.eFermi_stored) == len(tetra.weights) == 4
+    # a list with the same values: nothing computed again
+    ncomputed = len(computed)
+    tetra.weights_all_band_groups(list(original), der=1)
+    assert len(computed) == ncomputed
+    # against a new instance, without the cache
+    tetra.weight_1k1b_priv = compute
+    for array, results in ((shifted, other), (shifted, again), (between, third), (nudged, fourth), (original, first)):
+        fresh = TetraWeights(eCenter=tetra.eCenter, eCorners=eCorners, kind="parallelepiped")
+        for w1, w2 in zip(fresh.weights_all_band_groups(array, der=1), results):
+            assert w1.keys() == w2.keys()
+            for key in w1:
+                np.testing.assert_array_equal(w2[key], w1[key])
+
+
+@pytest.mark.parametrize("dtype, values", [(int, [1, 2, 3]), (np.float32, [1.25, 2.5, 3.75])])
+@pytest.mark.parametrize("first", ["other", "float64"])
+def test_weights_cached_other_dtype(dtype, values, first):
+    """Fermi levels given as integers or float32 (exact in both): the weights are computed in float64 (not truncated
+    or rounded), and the same as for the equal float64 values, in either order. A failed conversion leaves the cache
+    unchanged"""
+    rng = np.random.default_rng(5)
+    eCenter, eCorners = rng.random((2, 3)) * 4, rng.random((2, 2, 2, 2, 3)) * 4
+    efermi = np.array(values, dtype=dtype)
+    reference = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    for der in (0, 1, 2, -1):
+        expected = reference.weights_all_band_groups(efermi.astype(np.float64), der=der)
+        arrays = [efermi, efermi.astype(np.float64)]
+        if first == "float64":
+            arrays.reverse()
+        for array in arrays:
+            for w1, w2 in zip(expected, tetra.weights_all_band_groups(array, der=der)):
+                assert w1.keys() == w2.keys()
+                for key in w1:
+                    np.testing.assert_allclose(w2[key], w1[key], rtol=0, atol=1e-14)
+    assert len(tetra.eFermi_stored) == 1
+    with pytest.raises(ValueError):
+        tetra.weights_all_band_groups(np.array(["a", "b"]), der=1)
+    assert len(tetra.eFermi_stored) == len(tetra.weights) == 1
 
 
 def test_tetra_2D(system_Haldane_PythTB):
@@ -461,7 +715,7 @@ def test_principal_values_2d(e):
     e = np.array(e)
     mean, spread = e.mean(), np.ptp(e)
     omega = np.concatenate([np.linspace(e.min() - 1, e.max() + 1, 17) + 0.0123,
-                            mean + spread / PRINCIPAL_FAR_2D * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
+                            mean + spread * PRINCIPAL_FAR * np.array([-1 - 1e-9, -1 + 1e-9, 1 - 1e-9, 1 + 1e-9])])
     for function in (_add_principal_2d, _add_principal_2d.py_func):
         res = np.zeros(len(omega))
         function(res, omega, e)

@@ -42,7 +42,7 @@ class StaticCalculator(Calculator):
         super().__init__(**kwargs)
         if kwargs_formula is None:
             kwargs_formula = {}
-        self.Efermi = np.array(Efermi)
+        self.Efermi = np.array(Efermi, dtype=float)
         self.Emin = Emin
         self.Emax = Emax
         self.tetra = tetra

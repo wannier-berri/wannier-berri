@@ -3,8 +3,8 @@ import abc
 import numpy as np
 from functools import cached_property, lru_cache
 from collections import defaultdict
-from .tetratriangle import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
-                            get_bands_above_range, reactive_values_tetra, occupation_kernel, weights_general)
+from .simplex import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
+                      get_bands_above_range, reactive_values_tetra, occupation_kernel, weights_general)
 from ..utility import cached_einsum, weight_select_bands
 
 
@@ -15,7 +15,7 @@ def ones(n):
 
 class TTWeights(abc.ABC):
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
-       the Fermi level list remains the same throughout calculation"""
+       and list of Fermi levels (compared by value, see `index_eFermi`)"""
 
     def __init__(self, eCenter, eCorners, kind="single"):
         self.eCenter = eCenter
@@ -24,7 +24,7 @@ class TTWeights(abc.ABC):
         assert eCorners.shape[-1] == self.nb, f"nb mismatch: {eCorners.shape[-1]} != {self.nb}"
         self.set_kind(kind, eCorners, eCenter)
 
-        self.eFermis = []
+        self.eFermi_stored = []
         self.eFermi = None
         if self.nk == 0:
             self.null = True
@@ -45,7 +45,7 @@ class TTWeights(abc.ABC):
             return 0.
         if der == -1:
             return 1 - self.weight_1k1b(ief, ik, ib, der=0)
-        return self.weight_1k1b_priv(self.eFermis[ief], ik, ib, der=der)
+        return self.weight_1k1b_priv(self.eFermi_stored[ief], ik, ib, der=der)
 
     @cached_property
     def factor_num_tetra(self):
@@ -64,8 +64,11 @@ class TTWeights(abc.ABC):
         return self.weights[ief][der][ik][ib]
 
     def index_eFermi(self, eFermi):
-        for i, eF in enumerate(self.eFermis):
-            if eF is eFermi:
+        """the index of the stored Fermi levels equal to eFermi, or -1. They are compared by value (exactly, so that
+        an array with NaN never matches), so that the weights are shared between calculators (each of which has its
+        own array of the Fermi levels)"""
+        for i, eF in enumerate(self.eFermi_stored):
+            if eF is eFermi or (eF.shape == eFermi.shape and np.array_equal(eF, eFermi)):
                 return i
         return -1
 
@@ -73,12 +76,16 @@ class TTWeights(abc.ABC):
         """
              here  the key of the return dict is a pair of integers (ib1,ib2)
         """
+        eFermi = np.asarray(eFermi)
         ief = self.index_eFermi(eFermi)
         #        print ("debug, index_eFermi:",ief)
         if ief < 0:
+            # a copy, in case the array of the caller is changed later, and in float64: the weights are computed
+            # with the stored array, and would be truncated for integers
+            stored = np.array(eFermi, dtype=np.float64)
             ief = len(self.weights)
             self.weights.append(defaultdict(lambda: defaultdict(lambda: {})))
-            self.eFermis.append(eFermi)
+            self.eFermi_stored.append(stored)
         res = []
         for ik in range(self.nk):
             bands_in_range = get_bands_in_range(
@@ -202,7 +209,7 @@ class TriangleWeights(TTWeights):
 
 class TetraWeights(TTWeights):
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
-       the Fermi level list remains the same throughout calculation"""
+       and list of Fermi levels (compared by value, see `index_eFermi`)"""
 
     def set_kind(self, kind, eCorners, eCenter):
         if kind == "single":
