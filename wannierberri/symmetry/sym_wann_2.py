@@ -151,7 +151,7 @@ class SymWann:
 
 
     def find_irreducible_Rab(self, block1, block2):
-        logger.info("searching irreducible Rvectors for pairs of a,b")
+        logger.info(f"searching irreducible Rvectors for pairs of atoms in blocks {block1} and {block2}")
         np1 = self.num_points_list_left[block1]
         np2 = self.num_points_list_right[block2]
         nR = self.nRvec
@@ -311,7 +311,6 @@ class SymWann:
                         ws2b = ws2 + b * norb2
                         we2b = ws2b + norb2
                         for iR, XX_L in X.items():
-                            # print (f"iR = {iR}, blocks: {block1, block2} \n   iRvec_map[iR] = {iRvec_map[iR]} ws1a = {ws1a}, we1a = {we1a}, ws2b = {ws2b}, we2b = {we2b}, XX_L.shap={XX_L.shape}")
                             return_dic[k][iRvec_map[iR], ws1a:we1a, ws2b:we2b] += XX_L
 
         logger.debug('Symmetrizing Finished\n')
