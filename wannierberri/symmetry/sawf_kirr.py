@@ -7,11 +7,11 @@ logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 
-def get_symmetrizer_Uirr(symmetrizer, ikirr):
+def get_symmetrizer_Uirr(symmetrizer, ikirr, **kwargs):
     if isinstance(symmetrizer, VoidSymmetrizer):
         return VoidSymmetrizer()
     else:
-        return Symmetrizer_Uirr(symmetrizer, ikirr)
+        return Symmetrizer_Uirr(symmetrizer, ikirr, **kwargs)
 
 
 def get_symmetrizer_Zirr(symmetrizer, ikirr, free=None):
@@ -38,7 +38,9 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
 
     """
 
-    def __init__(self, symmetrizer, ikirr, accuracy_threshold=1e-6):
+    def __init__(self, symmetrizer, ikirr,
+                 accuracy_threshold=1e-6,
+                 no_exclude_bands=-4):
         self.ikirr = ikirr
         self.isym_little = symmetrizer.isym_little[ikirr]
         self.nsym_little = len(self.isym_little)
@@ -52,7 +54,7 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         self.num_wann = symmetrizer.num_wann
         self.time_reversals = symmetrizer.time_reversals
         self.include_bands = np.ones(self.nb, dtype=bool)
-        err = self.check(accuracy_threshold=accuracy_threshold)
+        err = self.check(accuracy_threshold=accuracy_threshold, no_exclude_bands=no_exclude_bands)
         if err > 1e-6:
             logger.info(f"Symmetrizer_Uirr initialized for ikirr={ikirr}, kpt={self.ikpt}, {self.kpt_red} with {self.nsym_little} symmetries, max error in included blocks: {err} ; "
                 f"excluded bands are {np.where(~self.include_bands)[0]} out of {self.nb} total bands (accuracy threshold {accuracy_threshold})")
