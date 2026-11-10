@@ -256,7 +256,7 @@ class SymWann:
                 logger.debug("iRab_irred = %s", iRab_irred)
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
-                    v = np.copy(v1)[:, ws1:we1, ws2:we2]
+                    v = v1[:, ws1:we1, ws2:we2]
                     # transforms a matrix X[iR, m,n,...] into a nested dictionary like
                     # {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
                     matrix_dict_list[k] = _matrix_to_dict(v, np1=np1, norb1=norb1, np2=np2, norb2=norb2,
