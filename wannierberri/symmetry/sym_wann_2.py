@@ -1,7 +1,7 @@
 import copy
 from collections import defaultdict
 from ..system.system import num_cart_dim
-from ..utility import cached_einsum
+# from ..utility import cached_einsum
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
@@ -419,31 +419,52 @@ class SymWann:
             XX = np.tensordot(XX, rot_mat_loc, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX = XX * (parity_I[X] * (-1) ** n_cart)
-        result = cached_einsum("ij,pjk...,kl->pil...",
-                            self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
-                            XX,
-                            self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
+        # result = cached_einsum("ij,pjk...,kl->pil...",
+        result = rotate_fast(
+            self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
+            XX,
+            self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
         if symop.time_reversal:
             result = result.conj() * parity_TR[X]
         return result
 
+# def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
+#     """transforms a matrix X[iR, m,n,...] into a nested dictionary like
+#         {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
+#     """
+#     result = defaultdict(lambda: {})
+#     for a in range(np1):
+#         s1 = a * norb1
+#         e1 = s1 + norb1
+#         for b in range(np2):
+#             s2 = b * norb2
+#             e2 = s2 + norb2
+#             result_ab = {}
+#             for iR, X in enumerate(mat[:, s1:e1, s2:e2]):
+#                 if np.any(abs(X) > cutoff):
+#                     result_ab[iR] = X
+#             if len(result_ab) > 0:
+#                 result[(a, b)] = result_ab
+#     return result
+
+
+def rotate_fast(L, XX, R):
+    p, m, n = XX.shape[:3]
+    cart_shape = XX.shape[3:]
+    XX = XX.reshape(p, m, n, -1)                      # (p, m, n, c)
+    tmp = np.matmul(L, XX.reshape(p, m, -1))          # L @ X, (p, m, n*c)
+    tmp = tmp.reshape(p, m, n, -1).transpose(0, 1, 3, 2)   # (p, m, c, n)
+    result = np.matmul(tmp, R)                        # (p, m, c, n')
+    return result.transpose(0, 1, 3, 2).reshape((p, m, R.shape[1]) + cart_shape)
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
-    """transforms a matrix X[iR, m,n,...] into a nested dictionary like
-        {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
-    """
-    result = defaultdict(lambda: {})
-    for a in range(np1):
-        s1 = a * norb1
-        e1 = s1 + norb1
-        for b in range(np2):
-            s2 = b * norb2
-            e2 = s2 + norb2
-            result_ab = {}
-            for iR, X in enumerate(mat[:, s1:e1, s2:e2]):
-                if np.any(abs(X) > cutoff):
-                    result_ab[iR] = X
-            if len(result_ab) > 0:
-                result[(a, b)] = result_ab
+    nR = mat.shape[0]
+    big = (np.abs(mat) > cutoff).reshape(nR, np1, norb1, np2, norb2, -1).any(axis=(2, 4, 5))
+    result = defaultdict(dict)
+    for a, b in zip(*np.nonzero(big.any(axis=0))):
+        a, b = int(a), int(b)
+        s1, s2 = a * norb1, b * norb2
+        result[(a, b)] = {int(iR): mat[iR, s1:s1 + norb1, s2:s2 + norb2]
+                          for iR in np.flatnonzero(big[:, a, b])}
     return result
