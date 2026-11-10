@@ -322,22 +322,6 @@ class SymWann:
         logger.debug('Symmetrizing Finished\n')
         return return_dic, np.array(iRvec_new)
 
-    # def symmetrize_inplace_no_change_iRvec(self, XX_R_dict, iRvec, cutoff=-1, cutoff_dict=None):
-    #     XX_R_dict_new, iRvec_new = self.symmetrize(XX_R=XX_R_dict,
-    #                                                cutoff=cutoff, cutoff_dict=cutoff_dict)
-    #     iRvec_old = [tuple([int(x) for x in r]) for r in iRvec]
-    #     iRvec_new = [tuple([int(x) for x in r]) for r in iRvec_new]
-    #     assert len(iRvec_new) == len(iRvec), ("Number of R-vectors changed during symmetrization, this should not happen\n" +
-    #                                             f" old ({len(iRvec_old)}): \n{iRvec_old}, \n new ({len(iRvec_new)}):\n {iRvec_new}\n"+
-    #                                             f"extra vectors : {set(iRvec_new) - set(iRvec_old)}"+
-    #                                             f"missing vectors : {set(iRvec_old) - set(iRvec_new)}")
-    #     reorder = [self.index_R(r) for r in iRvec_new]
-    #     assert np.all(iRvec[reorder] == iRvec_new), f"iRvec reordering failed: {iRvec[reorder]} != {iRvec_new}"
-    #     for k in XX_R_dict:
-    #         XX_R_copy = XX_R_dict[k].copy()
-    #         XX_R_dict[k][reorder] = XX_R_dict_new[k][:]
-    #         logger.info(f"symmetrized matrix {k}, max change = {np.max(np.abs(XX_R_dict[k] - XX_R_copy))}")
-    #     return XX_R_dict
 
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         """
@@ -398,8 +382,8 @@ class SymWann:
                 for iR in iR_new_list:
                     new_Rvec = tuple(atom_R_map[iR, atom_a, atom_b])
                     iRab_all[(atom_a_map, atom_b_map)].add(new_Rvec)
-                    if new_Rvec in self.iRvec:
-                        new_Rvec_index = self.index_R(new_Rvec)
+                    new_Rvec_index = self.index_R(new_Rvec)
+                    if new_Rvec_index is not None:
                         for X in matrix_dict_list_res:
                             if new_Rvec_index in matrix_dict_in[X][(atom_a_map, atom_b_map)]:
                                 if mode == "single":
