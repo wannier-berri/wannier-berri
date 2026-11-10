@@ -125,11 +125,11 @@ class SymWann:
                               'SS', 'SH', 'SA', 'SHA', 'overlap_up_down', 'dV_soc']
 
 
-    def index_R(self, R):
-        try:
-            return self.iRvec_index[tuple(R)]
-        except KeyError:
-            return None
+    # def index_R(self, R):
+    #     try:
+    #         return self.iRvec_index[tuple(R)]
+    #     except KeyError:
+    #         return None
 
     def get_atom_R_map(self, iRvec, isym, block1, block2):
         """
@@ -324,44 +324,103 @@ class SymWann:
         return return_dic, np.array(iRvec_new)
 
 
+    # def _average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
+    #     """
+    #     Averages matrices over symmetry operations for a given pair of blocks.
+
+    #     Parameters
+    #     ----------
+    #     iRab_new : dict
+    #         A dictionary mapping (atom_a, atom_b) pairs to lists of new R-vectors (That need to be evaluated)
+
+    #     matrix_dict_in : dict
+    #         A dictionary containing the input matrices to be averaged.
+
+    #     iRvec_origin : list
+    #         A list of original R-vectors.
+
+    #     mode : str
+    #         The averaging mode, either "sum" or "single". In sum mode all R-vectors that map to the same R-vector are summed.
+    #         In sungle mode only one of them is taken.
+
+    #     block1 : int
+    #         The index of the first block.
+
+    #     block2 : int
+    #         The index of the second block.
+
+    #     Return
+    #     --------
+    #         (matrix_dict_list_res, iRab_all)
+    #         matrix_dict_list_res : dict
+    #             {"Ham":{ (a,b):{iR:mat} }, "AA":{...}, ...} , where iR is the index of R-vector in the old set of R-vectors
+    #     """
+    #     assert mode in ["sum", "single"]
+    #     iRab_new = copy.deepcopy(iRab_new)
+    #     iRvec_origin_array = np.array(iRvec_origin, dtype=int)
+
+    #     matrix_dict_list_res = {k: defaultdict(lambda: defaultdict(lambda: 0)) for k in matrix_dict_in}
+
+    #     iRab_all = defaultdict(lambda: set())
+    #     for isym in self.use_symmetries_index:
+    #         symop = self.spacegroup.symmetries[isym]
+    #         # T is the translation needed to return to the home unit cell after rotation
+    #         T1 = self.symmetrizer_left.T_list[block1][:, isym]
+    #         T2 = self.symmetrizer_right.T_list[block2][:, isym]
+    #         atommap1 = self.symmetrizer_left.atommap_list[block1][:, isym]
+    #         atommap2 = self.symmetrizer_right.atommap_list[block2][:, isym]
+    #         logger.debug(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
+    #         R_map = iRvec_origin_array @ symop.rotation.T
+    #         R_map_round = np.rint(R_map).astype(int)
+    #         assert np.allclose(R_map, R_map_round), f"R_map not integer: {R_map}"
+    #         R_map = R_map_round
+    #         atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
+    #         # atom_R_map[iR, a, b] gives the new R vector to wich the original iR vector is mapped for atoms a and b
+    #         for (atom_a, atom_b), iR_new_list in iRab_new.items():
+    #             atom_a_map = atommap1[atom_a]
+    #             atom_b_map = atommap2[atom_b]
+    #             exclude_set = set()
+    #             for iR in iR_new_list:
+    #                 new_Rvec = tuple(atom_R_map[iR, atom_a, atom_b])
+    #                 iRab_all[(atom_a_map, atom_b_map)].add(new_Rvec)
+    #                 new_Rvec_index = self.index_R(new_Rvec)
+    #                 if new_Rvec_index is not None:
+    #                     for X in matrix_dict_list_res:
+    #                         if new_Rvec_index in matrix_dict_in[X][(atom_a_map, atom_b_map)]:
+    #                             if mode == "single":
+    #                                 exclude_set.add(iR)
+    #                             # we rotate from the XXL from the "new" R-vector and atom pairs back to the original,
+    #                             # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b
+    #                             # (earlier it was atom_a_map, atom_b_map which was wrong)
+    #                             XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
+    #                             XX_L_rotated = self._rotate_XX_L_backwards(XX_L, X, isym, block1=block1, block2=block2,
+    #                                                              atom_a=atom_a, atom_b=atom_b)
+    #                             matrix_dict_list_res[X][(atom_a, atom_b)][iR] += XX_L_rotated
+    #             # in single mode we need to determine it only once
+    #             if mode == "single":
+    #                 iR_new_list -= exclude_set
+
+    #     if mode == "single":
+    #         for (atom_a, atom_b), iR_new_list in iRab_new.items():
+    #             assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) {len(iR_new_list)} R vectors were not set : {iR_new_list}" + ", ".join(
+    #                 str(iRvec_origin[ir]) for ir in iR_new_list)
+
+    #     if mode == "sum":
+    #         for x in matrix_dict_list_res.values():
+    #             for d in x.values():
+    #                 for k, v in d.items():
+    #                     v /= len(self.use_symmetries_index)
+    #     return matrix_dict_list_res, iRab_all
+
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
-        """
-        Averages matrices over symmetry operations for a given pair of blocks.
-
-        Parameters
-        ----------
-        iRab_new : dict
-            A dictionary mapping (atom_a, atom_b) pairs to lists of new R-vectors (That need to be evaluated)
-
-        matrix_dict_in : dict
-            A dictionary containing the input matrices to be averaged.
-
-        iRvec_origin : list
-            A list of original R-vectors.
-
-        mode : str
-            The averaging mode, either "sum" or "single". In sum mode all R-vectors that map to the same R-vector are summed.
-            In sungle mode only one of them is taken.
-
-        block1 : int
-            The index of the first block.
-
-        block2 : int
-            The index of the second block.
-
-        Return
-        --------
-            (matrix_dict_list_res, iRab_all)
-            matrix_dict_list_res : dict
-                {"Ham":{ (a,b):{iR:mat} }, "AA":{...}, ...} , where iR is the index of R-vector in the old set of R-vectors
-        """
         assert mode in ["sum", "single"]
         iRab_new = copy.deepcopy(iRab_new)
         iRvec_origin_array = np.array(iRvec_origin, dtype=int)
+        self._ensure_grid()
 
         matrix_dict_list_res = {k: defaultdict(lambda: defaultdict(lambda: 0)) for k in matrix_dict_in}
+        iRab_all = defaultdict(set)
 
-        iRab_all = defaultdict(lambda: set())
         for isym in self.use_symmetries_index:
             symop = self.spacegroup.symmetries[isym]
             # T is the translation needed to return to the home unit cell after rotation
@@ -370,46 +429,62 @@ class SymWann:
             atommap1 = self.symmetrizer_left.atommap_list[block1][:, isym]
             atommap2 = self.symmetrizer_right.atommap_list[block2][:, isym]
             logger.debug(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
-            R_map = iRvec_origin_array @ symop.rotation.T
-            R_map_round = np.rint(R_map).astype(int)
-            assert np.allclose(R_map, R_map_round), f"R_map not integer: {R_map}"
-            R_map = R_map_round
-            atom_R_map = (R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :])
-            # atom_R_map[iR, a, b] gives the new R vector to wich the original iR vector is mapped for atoms a and b
+
+            R_map = iRvec_origin_array @ symop.rotation.T  # rotation is an integer matrix
+
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
-                atom_a_map = atommap1[atom_a]
-                atom_b_map = atommap2[atom_b]
-                exclude_set = set()
-                for iR in iR_new_list:
-                    new_Rvec = tuple(atom_R_map[iR, atom_a, atom_b])
-                    iRab_all[(atom_a_map, atom_b_map)].add(new_Rvec)
-                    new_Rvec_index = self.index_R(new_Rvec)
-                    if new_Rvec_index is not None:
-                        for X in matrix_dict_list_res:
-                            if new_Rvec_index in matrix_dict_in[X][(atom_a_map, atom_b_map)]:
-                                if mode == "single":
-                                    exclude_set.add(iR)
-                                # we rotate from the XXL from the "new" R-vector and atom pairs back to the original,
-                                # therefore the forward=False, and we use atom_a = atom_a, atom_b = atom_b
-                                # (earlier it was atom_a_map, atom_b_map which was wrong)
-                                XX_L = matrix_dict_in[X][(atom_a_map, atom_b_map)][new_Rvec_index]
-                                XX_L_rotated = self._rotate_XX_L_backwards(XX_L, X, isym, block1=block1, block2=block2,
-                                                                 atom_a=atom_a, atom_b=atom_b)
-                                matrix_dict_list_res[X][(atom_a, atom_b)][iR] += XX_L_rotated
-                # in single mode we need to determine it only once
+                if not iR_new_list:                               # single mode: pair already finished
+                    continue
+                key_map = (atommap1[atom_a], atommap2[atom_b])
+
+                # new R-vectors for all remaining iR of this pair at once
+                iR_arr = np.array(sorted(iR_new_list), dtype=np.int64)
+                new_R = R_map[iR_arr] + (T1[atom_a] - T2[atom_b])
+                iRab_all[key_map].update(map(tuple, new_R.tolist()))
+
+                idx = self.lookup_R(new_R)                        # -1 where not in self.iRvec
+                ok = idx >= 0
+                if not ok.any():
+                    continue
+                iR_ok = iR_arr[ok].tolist()
+                idx_ok = idx[ok].tolist()
+
+                hit = set()
+                for X, mats in matrix_dict_in.items():
+                    d = mats.get(key_map)                         # .get: no empty entries are created
+                    if not d:
+                        continue
+                    sel = [(iR, i) for iR, i in zip(iR_ok, idx_ok) if i in d]
+                    if not sel:
+                        continue
+                    iRs, ids = zip(*sel)
+                    # rotate from the "new" R-vector / atom pair back to the original one,
+                    # all matrices of this (pair, X, isym) in a single call
+                    rotated = self._rotate_XX_L_backwards_batch(
+                        np.stack([d[i] for i in ids]), X, isym,
+                        block1=block1, block2=block2, atom_a=atom_a, atom_b=atom_b)
+                    res_XX = matrix_dict_list_res[X][(atom_a, atom_b)]
+                    for iR, rot in zip(iRs, rotated):
+                        res_XX[iR] += rot
+                    if mode == "single":
+                        hit.update(iRs)
+
+                # in single mode every iR needs to be determined only once
                 if mode == "single":
-                    iR_new_list -= exclude_set
+                    iR_new_list -= hit
 
         if mode == "single":
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
-                assert len(iR_new_list) == 0, f"for atoms ({atom_a},{atom_b}) {len(iR_new_list)} R vectors were not set : {iR_new_list}" + ", ".join(
-                    str(iRvec_origin[ir]) for ir in iR_new_list)
+                assert len(iR_new_list) == 0, (
+                    f"for atoms ({atom_a},{atom_b}) {len(iR_new_list)} R vectors were not set : "
+                    + ", ".join(str(iRvec_origin[ir]) for ir in iR_new_list))
 
         if mode == "sum":
+            nsym = len(self.use_symmetries_index)
             for x in matrix_dict_list_res.values():
                 for d in x.values():
                     for k, v in d.items():
-                        v /= len(self.use_symmetries_index)
+                        v /= nsym
         return matrix_dict_list_res, iRab_all
 
     def _rotate_XX_L_backwards(self, XX_L: np.ndarray, X: str, isym, block1, block2, atom_a, atom_b):
@@ -449,6 +524,41 @@ class SymWann:
             result = result.conj() * parity_TR[X]
         return result
 
+    def _ensure_grid(self):
+        if getattr(self, "_grid", None) is not None:
+            return
+        R_arr = np.array(self.iRvec, dtype=int)
+        self._grid_min = R_arr.min(axis=0)
+        self._grid_shape = R_arr.max(axis=0) - self._grid_min + 1
+        grid = np.full(self._grid_shape, -1, dtype=np.int64)
+        grid[tuple((R_arr - self._grid_min).T)] = np.arange(len(R_arr))
+        self._grid = grid
+
+    def lookup_R(self, R_arr):
+        """Index in self.iRvec for each row of R_arr (n,3); -1 if not present."""
+        self._ensure_grid()
+        shifted = R_arr - self._grid_min
+        inside = np.all((shifted >= 0) & (shifted < self._grid_shape), axis=1)
+        idx = np.full(len(R_arr), -1, dtype=np.int64)
+        idx[inside] = self._grid[tuple(shifted[inside].T)]
+        return idx
+
+    def _rotate_XX_L_backwards_batch(self, XX, X, isym, block1, block2, atom_a, atom_b):
+        """Same as _rotate_XX_L_backwards, but XX has an extra leading batch axis: (p, m, n, ...)."""
+        n_cart = num_cart_dim(X)
+        symop = self.spacegroup.symmetries[isym]
+        rot_mat_loc = symop.rotation_cart
+        for _ in range(n_cart):
+            XX = np.tensordot(XX, rot_mat_loc, axes=((-n_cart,), (0,)))
+        if symop.inversion:
+            XX = XX * (parity_I[X] * (-1) ** n_cart)
+        result = cached_einsum("ij,pjk...,kl->pil...",
+                            self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
+                            XX,
+                            self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
+        if symop.time_reversal:
+            result = result.conj() * parity_TR[X]
+        return result
 
 
 
@@ -470,3 +580,5 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
             if len(result_ab) > 0:
                 result[(a, b)] = result_ab
     return result
+
+
