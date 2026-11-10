@@ -441,19 +441,15 @@ class SymWann:
             XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= parity_I[X] * (-1)**n_cart
-        result = _rotate_matrix(X=XX_L,
-                                L=self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
-                                R=self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
+        result = cached_einsum("ij,jk...,kl->il...", 
+                               self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym], 
+                               XX_L, 
+                               self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
         if symop.time_reversal:
             result = result.conj() * parity_TR[X]
         return result
 
 
-def _rotate_matrix(X, L, R):
-    """
-    Rotate a matrix X[m,n,...] with L[m,n] and R[m,n] matrices
-    """
-    return cached_einsum("ij,jk...,kl->il...", L, X, R)
 
 
 def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
