@@ -155,50 +155,51 @@ class SymWann:
         T2 = self.symmetrizer_right.T_list[block2][:, isym]
         return R_map[:, None, None, :] + T1[None, :, None, :] - T2[None, None, :, :]
 
+
     def find_irreducible_Rab(self, block1, block2):
-        """
-        Finds which Rvectors can be chosen as an irreducible set for each pair of atoms (a,b)
-        where a is in block1 and b is in block2.
-
-        Parameters
-        ----------
-        block1, block2 : int
-            Block indices
-
-        Return
-        --------
-        dict
-         { (a,b):set([index of Rvecotr, if it is irreducible])}
-        """
         logger.info("searching irreducible Rvectors for pairs of a,b")
-
         np1 = self.num_points_list_left[block1]
         np2 = self.num_points_list_right[block2]
+        nR = self.nRvec
         map1 = self.symmetrizer_left.atommap_list[block1]
         map2 = self.symmetrizer_right.atommap_list[block2]
-        irreducible = np.ones((self.nRvec, np1, np2), dtype=bool)
-        logger.debug(f"np1 = {np1}, np2 = {np2}\n")
 
-        R_list = np.array(self.iRvec, dtype=int)
-        logger.debug(f"R_list = {R_list}\n")
+        # dense lookup grid: R-vector -> index (or -1)
+        R_arr = np.array(self.iRvec, dtype=int)
+        Rmin = R_arr.min(axis=0)
+        grid_shape = R_arr.max(axis=0) - Rmin + 1
+        grid = np.full(grid_shape, -1, dtype=np.int64)
+        grid[tuple((R_arr - Rmin).T)] = np.arange(nR)
+
+        # lexicographic key of the source (a, b, iR), shape (nR, np1, np2)
+        iR_src = np.arange(nR)[:, None, None]
+        a_src = np.arange(np1)[None, :, None]
+        b_src = np.arange(np2)[None, None, :]
+        key_src = (a_src * np2 + b_src) * nR + iR_src
+
+        irreducible = np.ones((nR, np1, np2), dtype=bool)
 
         for isym in self.use_symmetries_index:
-            # T : np.ndarray(shape=(num_points, nsym, 3), dtype=int)
-            # A matrix that contains the translation needed to bring the transformed point back to the home unit cell.
-            atom_R_map = self.get_atom_R_map(self.iRvec, isym, block1, block2)
-            for a, a1 in enumerate(map1[:, isym]):
-                for b, b1 in enumerate(map2[:, isym]):
-                    if (a1, b1) >= (a, b):
-                        for iR in range(self.nRvec):
-                            if irreducible[iR, a, b]:
-                                iR1 = self.index_R(atom_R_map[iR, a, b])
-                                if iR1 is not None and (a1, b1, iR1) > (a, b, iR):
-                                    irreducible[iR1, a1, b1] = False
-        logger.debug(
-            f"Found {np.sum(irreducible)} sets of (R,a,b) out of the total {self.nRvec * np1 * np2} ({self.nRvec}*{np1}*{np2})")
-        dic = {(a, b): set([iR for iR in range(self.nRvec) if irreducible[iR, a, b]])
-               for a in range(np1) for b in range(np2)}
-        res = {k: v for k, v in dic.items() if len(v) > 0}
+            atom_R_map = np.rint(self.get_atom_R_map(self.iRvec, isym, block1, block2)).astype(int)
+            shifted = atom_R_map - Rmin                                  # (nR,np1,np2,3)
+            inside = np.all((shifted >= 0) & (shifted < grid_shape), axis=-1)
+            iR1 = np.full((nR, np1, np2), -1, dtype=np.int64)
+            iR1[inside] = grid[tuple(shifted[inside].T)]
+
+            a1 = np.broadcast_to(map1[:, isym][None, :, None], iR1.shape)
+            b1 = np.broadcast_to(map2[:, isym][None, None, :], iR1.shape)
+            key_dst = (a1 * np2 + b1) * nR + iR1
+
+            mask = (iR1 >= 0) & (key_dst > key_src) & irreducible
+            irreducible[iR1[mask], a1[mask], b1[mask]] = False
+
+        logger.debug(f"Found {irreducible.sum()} sets of (R,a,b) out of the total {nR * np1 * np2}")
+        res = {}
+        for a in range(np1):
+            for b in range(np2):
+                s = np.flatnonzero(irreducible[:, a, b])
+                if s.size:
+                    res[(a, b)] = set(s.tolist())
         return res
 
 
