@@ -37,6 +37,8 @@ def wannierise(wandata,
                print_wcc_chk=False,
                savechk=True,
                wcc_start_red=None,
+               check_sym_accuracy=1e-6,
+               check_sym_no_exclude_bands=-4,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in wandata.
@@ -244,7 +246,7 @@ def wannierise(wandata,
                             wb=wandata.bkvec.wk,
                             bk=wandata.bkvec.bk_cart,
                             symmetrizer_Zirr=get_symmetrizer_Zirr(symmetrizer, ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),
-                            symmetrizer_Uirr=get_symmetrizer_Uirr(symmetrizer, ik),
+                            symmetrizer_Uirr=get_symmetrizer_Uirr(symmetrizer, ik, accuracy_threshold=check_sym_accuracy, no_exclude_bands=check_sym_no_exclude_bands),
                             ikirr=ik,
                             amn=amn[kpt],
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
