@@ -428,25 +428,6 @@ class SymWann:
             result = result.conj() * parity_TR[X]
         return result
 
-# def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
-#     """transforms a matrix X[iR, m,n,...] into a nested dictionary like
-#         {(a,b): {iR: np.array(num_w_a, num_w_b,...)}}
-#     """
-#     result = defaultdict(lambda: {})
-#     for a in range(np1):
-#         s1 = a * norb1
-#         e1 = s1 + norb1
-#         for b in range(np2):
-#             s2 = b * norb2
-#             e2 = s2 + norb2
-#             result_ab = {}
-#             for iR, X in enumerate(mat[:, s1:e1, s2:e2]):
-#                 if np.any(abs(X) > cutoff):
-#                     result_ab[iR] = X
-#             if len(result_ab) > 0:
-#                 result[(a, b)] = result_ab
-#     return result
-
 
 def rotate_fast(L, XX, R):
     p, m, n = XX.shape[:3]
