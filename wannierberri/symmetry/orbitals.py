@@ -435,7 +435,7 @@ class SphericalHarmonics:
         else:
             ibasis = len(self.calcualted_basices)
             self.calcualted_basices.append(basis)
-            logger.debug(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
+            logger.debug("new basis for spherical harmonics, \n %s\n total %s bases", basis, len(self.calcualted_basices))
         if (orbital, ibasis) not in self.harmonics:
             self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
         return self.harmonics[(orbital, ibasis)]

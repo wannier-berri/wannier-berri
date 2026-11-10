@@ -187,7 +187,7 @@ class SymWann:
             mask = (iR1 >= 0) & (key_dst > key_src) & irreducible
             irreducible[iR1[mask], a1[mask], b1[mask]] = False
 
-        logger.debug(f"Found {irreducible.sum()} sets of (R,a,b) out of the total {nR * np1 * np2}")
+        logger.debug("Found %s sets of (R,a,b) out of the total %s", irreducible.sum(), nR * np1 * np2)
         res = {}
         for a in range(np1):
             for b in range(np2):
@@ -253,7 +253,7 @@ class SymWann:
                 norb2 = self.num_orb_list_right[block2]
                 np2 = self.num_points_list_right[block2]
                 iRab_irred = self.find_irreducible_Rab(block1=block1, block2=block2)
-                logger.debug(f"iRab_irred = {iRab_irred}")
+                logger.debug("iRab_irred = %s", iRab_irred)
                 matrix_dict_list = {}
                 for k, v1 in XX_R.items():
                     v = np.copy(v1)[:, ws1:we1, ws2:we2]
@@ -267,12 +267,12 @@ class SymWann:
                                                                         iRvec_origin=self.iRvec, mode="sum",
                                                                         block1=block1, block2=block2)
 
-                logger.debug(f"iRvec_ab_all = {iRvec_ab_all}")
-                logger.debug(f"iRab_irred = {iRab_irred}")
+                logger.debug("iRvec_ab_all = %s", iRvec_ab_all)
+                logger.debug("iRab_irred = %s", iRab_irred)
                 for k, val in matrix_dict_list_res.items():
-                    logger.debug(f"matrix_dict_list_res[{k}]  = \n")
+                    logger.debug("matrix_dict_list_res[%s]  = \n", k)
                     for ab, X in val.items():
-                        logger.debug(f"  ({ab}):\n {X}\n")
+                        logger.debug("  (%s):\n %s\n", ab, X)
 
 
                 iRvec_new_set = set.union(*iRvec_ab_all.values())
@@ -290,7 +290,7 @@ class SymWann:
                 full_iRvec_set = set.union(full_iRvec_set, iRvec_new_set)
 
         iRvec_new = list(full_iRvec_set)
-        logger.debug(f'\n\niRvec_new = {np.array(iRvec_new)}\n')
+        logger.debug('\n\niRvec_new = %s\n', np.array(iRvec_new))
         nRvec_new = len(iRvec_new)
         iRvec_new_index = {r: i for i, r in enumerate(iRvec_new)}
 
@@ -332,7 +332,7 @@ class SymWann:
             T2 = self.symmetrizer_right.T_list[block2][:, isym]
             atommap1 = self.symmetrizer_left.atommap_list[block1][:, isym]
             atommap2 = self.symmetrizer_right.atommap_list[block2][:, isym]
-            logger.debug(f"symmetry operation  {isym + 1}/{len(self.spacegroup.symmetries)}")
+            logger.debug("symmetry operation  %s/%s", isym + 1, len(self.spacegroup.symmetries))
 
             R_map = iRvec_origin_array @ symop.rotation.T  # rotation is an integer matrix
 

@@ -118,13 +118,13 @@ class WannierData:
         """
         from .utility import grid_from_kpoints
         self = cls()
-        logger.debug(f"got irreducible={irreducible}, mp_grid={mp_grid}, seedname={seedname}, files={files},  projections={projections}, unk_grid={unk_grid}, normalize={normalize}")
+        logger.debug("got irreducible=%s, mp_grid=%s, seedname=%s, files=%s,  projections=%s, unk_grid=%s, normalize=%s", irreducible, mp_grid, seedname, files, projections, unk_grid, normalize)
         if irreducible is None:
             from irrep.utility import grid_from_kpoints as grid_from_kpoints_irrep
             kpt_red = np.array([KP.K  for KP in bandstructure.kpoints])
             # logger.info(f"kpt_red={kpt_red}")
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
-            logger.debug(f"detected grid={grid}, selected_kpoints={selected_kpoints}")
+            logger.debug("detected grid=%s, selected_kpoints=%s", grid, selected_kpoints)
             if len(selected_kpoints) < np.prod(grid):
                 logger.warning(f"detected grid {grid} od {np.prod(grid)} kpoints, "
                               f"but only {len(selected_kpoints)} kpoints are available."
@@ -133,7 +133,7 @@ class WannierData:
             else:
                 irreducible = False
         self.irreducible = irreducible
-        logger.debug(f"self.irreducible={self.irreducible}")
+        logger.debug("self.irreducible=%s", self.irreducible)
 
 
         self.seedname = copy(seedname)
@@ -260,12 +260,12 @@ class WannierData:
                 kwargs["kptirr"] = self.symmetrizer.kptirr
                 kwargs["NK"] = self.symmetrizer.NK
             kwargs["selected_kpoints"] = self.symmetrizer.selected_kpoints
-        logger.debug(f"Setting AMN with kwargs={kwargs}")
+        logger.debug("Setting AMN with kwargs=%s", kwargs)
         amn = AMN.from_bandstructure(bandstructure=bandstructure,
                             projections=projectionsSet,
                             normalize=normalize,
                             **kwargs)
-        logger.debug(f"AMN file created with NK={amn.NK}")
+        logger.debug("AMN file created with NK=%s", amn.NK)
         if self.bands_were_selected:
             amn.select_bands(selected_bands=self.selected_bands)
         self.set_file('amn', amn, overwrite=True, allow_selected_bands=True)
@@ -370,9 +370,9 @@ class WannierData:
         if set(["mmn", "uhu", "uiu", "shu", "siu"]).intersection(set(files)):
             if "bkvec" not in files:
                 files.append("bkvec")
-        logger.debug(f"files = {files}")
+        logger.debug("files = %s", files)
         for f in files:
-            logger.debug(f"Trying to read file {f} from npz {seedname}.{f}.npz")
+            logger.debug("Trying to read file %s from npz %s.%s.npz", f, seedname, f)
             try:
                 if f == "symmetrizer":
                     from ..symmetry.sawf import SymmetrizerSAWF

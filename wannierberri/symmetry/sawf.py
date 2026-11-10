@@ -309,8 +309,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        logger.debug(f"num_wann: {num_wann}")
-        logger.debug(f"D_wann_block_indices: {self.D_wann_block_indices}")
+        logger.debug("num_wann: %s", num_wann)
+        logger.debug("D_wann_block_indices: %s", self.D_wann_block_indices)
 
 
     def symmetrize_wannier_property(self, wannier_property):
@@ -992,7 +992,7 @@ class SymmetrizerSAWF:
             the new symmetrizer with the symmetry operation applied to the spacegroup
         """
         new_spacegroup_index, translation_differnce = self.spacegroup.get_transformed_group_index(symmetry_operation)
-        logger.debug(f"{translation_differnce=}, {new_spacegroup_index=}")
+        logger.debug("translation_differnce=%s, new_spacegroup_index=%s", translation_differnce, new_spacegroup_index)
         new_sawf = SymmetrizerSAWF()
         new_sawf.spacegroup = self.spacegroup
         new_sawf.num_wann = self.num_wann
@@ -1002,7 +1002,7 @@ class SymmetrizerSAWF:
         new_sawf.rot_orb_list = []
         new_sawf.D_wann_block_indices = self.D_wann_block_indices
         for T, atom_map, rot_orb in zip(self.T_list, self.atommap_list, self.rot_orb_list):
-            logger.debug(f"{T.shape=}, {atom_map.shape=}, {rot_orb.shape=} {new_sawf.Nsym=}, {new_sawf.num_wann=}, {new_spacegroup_index=}")
+            logger.debug("T.shape=%s, atom_map.shape=%s, rot_orb.shape=%s new_sawf.Nsym=%s, new_sawf.num_wann=%s, new_spacegroup_index=%s", T.shape, atom_map.shape, rot_orb.shape, new_sawf.Nsym, new_sawf.num_wann, new_spacegroup_index)
             new_sawf.T_list.append((T[:, new_spacegroup_index] - translation_differnce) @ symmetry_operation.rotation.T)
             new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
             new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])

@@ -133,7 +133,7 @@ class SystemSOC(System_R):
 
     @property
     def has_soc(self):
-        logger.debug(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
+        logger.debug("checking hassoc, nspin=%s, XXR keys : %s", self.nspin, list(self._XX_R.keys()))
         if self.nspin == 2:
             return (self.has_R_mat_all(['dV_soc', 'overlap_up_down']) and
                     self.system_up.has_R_mat('dV_soc') and
@@ -261,7 +261,7 @@ class SystemSOC(System_R):
                     silent=True,
                 )
                 system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
-                logger.debug(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
+                logger.debug("system_soc has matrices %s after symmetrization", list(system_soc._XX_R.keys()))
                 rvec.iRvec = iRvec_new
                 rvec.mp_grid = system_soc.rvec.mp_grid,
                 rvec.clear_cached()

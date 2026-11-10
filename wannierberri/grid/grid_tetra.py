@@ -60,7 +60,7 @@ class GridTetra(GridAbstract):
             weights = _weights / sum(_weights)
         else:
             weights = np.array(weights) * _weights
-        logger.debug(f"weights of tetrahedra are {weights}, total = {sum(weights)} ")
+        logger.debug("weights of tetrahedra are %s, total = %s ", weights, sum(weights))
         self.K_list = []
         logger.info("generating starting K_list")
         for tetr, w in zip(tetrahedra, weights):
@@ -85,9 +85,9 @@ class GridTetra(GridAbstract):
         """split tetrahedra that have at lkeast one edge larger than dkmax"""
         while True:
             logger.debug(
-                f"maximal tetrahedron size for now is {self.size_max} ({len(self.K_list)}), we need to refine down to size {dkmax}")
+                "maximal tetrahedron size for now is %s (%s), we need to refine down to size %s", self.size_max, len(self.K_list), dkmax)
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
-            logger.debug(f"the volume is {sum(volumes)}, min: {min(volumes)}, max: {max(volumes)}, mean: {np.mean(volumes)}")
+            logger.debug("the volume is %s, min: %s, max: %s, mean: %s", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
             # logger.debug(f"sizes now are {self.sizes}" )
             if self.size_max < dkmax:
                 break
@@ -104,8 +104,8 @@ class GridTetra(GridAbstract):
         while True:
             volumes = [tetra_volume(K.vertices) for K in self.K_list]
             logger.debug(
-                f"maximal tetrahedron size for now is {max(volumes)} ({len(self.K_list)}), we need to refine down to size {vmax}")
-            logger.debug(f"the volume is {sum(volumes)}, min: {min(volumes)}, max: {max(volumes)}, mean: {np.mean(volumes)}")
+                "maximal tetrahedron size for now is %s (%s), we need to refine down to size %s", max(volumes), len(self.K_list), vmax)
+            logger.debug("the volume is %s, min: %s, max: %s, mean: %s", sum(volumes), min(volumes), max(volumes), np.mean(volumes))
             if max(volumes) < vmax:
                 break
             klist = []

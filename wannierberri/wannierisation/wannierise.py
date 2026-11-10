@@ -141,7 +141,7 @@ def wannierise(wandata,
     elif isinstance(frozen_states, dict):
         for ik, frozen_ik in frozen_states.items():
             if ik in kptirr:
-                logger.debug(f"{kptirr=}, {ik=}, {frozen_ik=}")
+                logger.debug("kptirr=%r, ik=%r, frozen_ik=%r", kptirr, ik, frozen_ik)
                 iki = np.where(kptirr == ik)[0][0]
                 for ib in frozen_ik:
                     frozen[iki, ib] = True

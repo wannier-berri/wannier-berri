@@ -83,8 +83,7 @@ class EBRsearcher:
         self.debug = debug
         if n_anti > 0:
             logger.debug(
-                f"grey group '{spacegroup.name}': using {len(self.isym_unitary)}"
-                f" unitary of {len(spacegroup.symmetries)} operations")
+                "grey group '%s': using %s unitary of %s operations", spacegroup.name, len(self.isym_unitary), len(spacegroup.symmetries))
         self.all_possible_irreps_conj = get_all_possible_irreps_conj(
             symmetrizer,
             spacegroup_unitary=self.spacegroup_unitary,
@@ -94,7 +93,7 @@ class EBRsearcher:
             self.set_trial_projections_irreps(symmetrizer, trial_projections_set)
         else:
             self.set_irreps_D_wann(symmetrizer)
-        logger.debug(f"{self.irreps_per_projection_vectors=}")
+        logger.debug("self.irreps_per_projection_vectors=%r", self.irreps_per_projection_vectors)
         self.set_irreps_dft(symmetrizer,
                             frozen=frozen, outer=outer,
                             froz_min=froz_min, froz_max=froz_max,
@@ -121,8 +120,8 @@ class EBRsearcher:
         # find which characters are produced by each projection
         characters_wann = [[] for _ in range(self.NKirr)]
 
-        logger.debug(f"{symmetrizer.D_wann_block_indices=} ")
-        logger.debug(f"{len(symmetrizer.D_wann_blocks)=} ")
+        logger.debug("symmetrizer.D_wann_block_indices=%r ", symmetrizer.D_wann_block_indices)
+        logger.debug("len(symmetrizer.D_wann_blocks)=%r ", len(symmetrizer.D_wann_blocks))
         for iproj in range(self.num_trial_projections):
             block_ind = symmetrizer.D_wann_block_indices[iproj]
             num_wann_p = block_ind[1] - block_ind[0]
@@ -168,18 +167,20 @@ class EBRsearcher:
             nfrozen = len(frozen_ik)
             char_outer = np.array([symmetrizer.d_band_diagonal(ik, isym)[outer_ik].sum() for isym in self.isym_little[ik]])
             char_frozen = np.array([symmetrizer.d_band_diagonal(ik, isym)[frozen_ik].sum() for isym in self.isym_little[ik]])
-            logger.debug(f"ik= {ik} contains {nfrozen} frozen states\n" +
-                f"the little group contains {len(self.isym_little[ik])} symmetries: \n {self.isym_little[ik]}\n" +
-                f"characters in outer window : {np.round(char_outer, 3)}\n" +
-                f"characters in frozen window: {np.round(char_frozen, 3)}")
+            logger.debug("ik= %s contains %s frozen states\n"
+                "the little group contains %s symmetries: \n %s\n"
+                "characters in outer window : %s\n"
+                "characters in frozen window: %s",
+                ik, nfrozen, len(self.isym_little[ik]), self.isym_little[ik],
+                np.round(char_outer, 3), np.round(char_frozen, 3))
 
             vector_frozen = char_to_vector(char_frozen, self.all_possible_irreps_conj[ik])
             vector_outer = char_to_vector(char_outer, self.all_possible_irreps_conj[ik])
 
             self.irreps_frozen_vectors.append(vector_frozen)
             self.irreps_outer_vectors.append(vector_outer)
-            logger.debug(f"Frozen states are represented by vector {vector_frozen}")
-            logger.debug(f"Outer states are represented by vector {vector_outer}")
+            logger.debug("Frozen states are represented by vector %s", vector_frozen)
+            logger.debug("Outer states are represented by vector %s", vector_outer)
 
             nband_frozen_irreps = np.round(sum(v * irrep[0]
                                       for v, irrep in zip(vector_frozen, self.all_possible_irreps_conj[ik])), 3)
@@ -188,8 +189,8 @@ class EBRsearcher:
                        "try adding more projections"
                        f"ik={ik} nfrozen={nfrozen} nband_frozen_irreps={nband_frozen_irreps}")
         for i in range(self.NKirr):
-            logger.debug(f"ik={i} \n frozen={self.irreps_frozen_vectors[i]} \n"
-                f" outer={self.irreps_outer_vectors[i]} \n")
+            logger.debug("ik=%s \n frozen=%s \n"
+                " outer=%s \n", i, self.irreps_frozen_vectors[i], self.irreps_outer_vectors[i])
 
 
     def find_combinations(self, num_wann_min=0, num_wann_max=None, fixed=[]):
@@ -212,7 +213,8 @@ class EBRsearcher:
 
         lfixed = np.zeros(self.num_trial_projections, dtype=bool)
         lfixed[np.array(fixed, dtype=int)] = True
-        logger.debug(f"{self.irreps_per_projection_vectors=}, \n{self.irreps_outer_vectors=}, \n{lfixed=}, \n{self.proj_max_multiplicity=}")
+        logger.debug("self.irreps_per_projection_vectors=%r, \n self.irreps_outer_vectors=%r, \n lfixed=%r, \n self.proj_max_multiplicity=%r",
+                     self.irreps_per_projection_vectors, self.irreps_outer_vectors, lfixed, self.proj_max_multiplicity)
         combinations = find_combinations_max(
             vectors=self.irreps_per_projection_vectors[0],
             vector_max=self.irreps_outer_vectors[0],
@@ -224,8 +226,8 @@ class EBRsearcher:
         num_wann_per_comb = np.dot(combinations, self.num_wann_per_projection)
         combinations = combinations[num_wann_per_comb >= num_wann_min]
 
-        logger.debug(f"From first point within outer window {len(combinations)} are valid")
-        logger.debug(f"{combinations=}")
+        logger.debug("From first point within outer window %s are valid", len(combinations))
+        logger.debug("combinations=%r", combinations)
         iksrt = np.argsort(self.nsym_little)[::-1]  # start from highest symmetry points, because they exclude more
         for ik in iksrt:
             combinations = check_combinations_min_max(combinations=combinations,
@@ -233,7 +235,7 @@ class EBRsearcher:
                                                       vector_min=self.irreps_frozen_vectors[ik],
                                                       vector_max=self.irreps_outer_vectors[ik])
 
-            logger.debug(f"From ik={ik}/{self.NKirr} with frozen and outer window {len(combinations)} are valid")
+            logger.debug("From ik=%s/%s with frozen and outer window %s are valid", ik, self.NKirr, len(combinations))
         return combinations
 
 

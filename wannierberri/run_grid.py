@@ -228,7 +228,7 @@ def run(
     if isinstance(grid, Path):
         logger.debug("Calculation along a path - checking calculators for compatibility")
         for key, calc in calculators.items():
-            logger.debug(f"Checking calculator `{key}`")
+            logger.debug("Checking calculator `%s`", key)
             if not calc.allow_path:
                 raise ValueError(
                     f"Calculation along a Path is running, but calculator `{key}` is not compatible with a Path")
@@ -243,7 +243,7 @@ def run(
         if use_irred_kpt:
             symmetrize = True
         for key, calc in calculators.items():
-            logger.debug(f"Checking calculator `{key}`")
+            logger.debug("Checking calculator `%s`", key)
             if not calc.allow_grid:
                 raise ValueError(
                     f"Calculation on Grid is running, but calculator `{key}` is not compatible with a Grid")
@@ -303,7 +303,7 @@ def run(
     else:
         K_list = grid.get_K_list(use_symmetry=use_irred_kpt, k_batch=k_batch)
         factors = np.array([Kp.factor for Kp in K_list])
-        logger.debug(f"Done, sum of weights: {sum(Kp.factor for Kp in K_list)}")
+        logger.debug("Done, sum of weights: %s", sum(Kp.factor for Kp in K_list))
         start_iter = 0
         nk_prev = 0
         if allow_restart or dump_results:

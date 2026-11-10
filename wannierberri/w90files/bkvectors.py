@@ -339,7 +339,7 @@ class BKVectors(W90_file):
                     f"shell_klatt={shell_klatt}\n"
                     f"shell_kcart={shell_kcart}\n")
 
-        logger.debug(f"Shells found with weights {weight_shell} and tolerance {tol}")
+        logger.debug("Shells found with weights %s and tolerance %s", weight_shell, tol)
         bk_grid = []
         bk_cart = []
         wk = []

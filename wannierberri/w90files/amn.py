@@ -74,7 +74,7 @@ class AMN(W90_file):
         if npar is None:
             npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
-        logger.debug(f"reading {seedname}.amn: " + f_amn_in[0].strip())
+        logger.debug("reading %s.amn: %s", seedname, f_amn_in[0].strip())
         s = f_amn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
         block = NW * NB
@@ -87,7 +87,7 @@ class AMN(W90_file):
     def to_w90_file(self, seedname):
         f_amn_out = self.open_file(seedname, "w")
         f_amn_out.write(f"created by WannierBerri on {datetime.now()} \n")
-        logger.debug(f"writing {seedname}.amn: ")
+        logger.debug("writing %s.amn: ", seedname)
         f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
             for iw in range(self.NW):

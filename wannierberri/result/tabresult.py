@@ -154,20 +154,20 @@ class TABresult(Result):
             if on_grid[ik]:
                 k_map[ind_grid[ik]].append(ik)
             else:
-                logger.debug(f"k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
+                logger.debug("k-point %s=%s is not on the grid, skipping.", ik, self.kpoints[ik])
         t0 = time()
         logger.debug("collecting")
         results = {r: self.results[r].to_grid(k_map) for r in self.results}
         t1 = time()
-        logger.debug(f"collecting: to_grid  : {t1 - t0}")
+        logger.debug("collecting: to_grid  : %s", t1 - t0)
         res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results, mode=self.mode,
                         save_mode=self.save_mode)
         t2 = time()
-        logger.debug(f"collecting: TABresult  : {t2 - t1}")
+        logger.debug("collecting: TABresult  : %s", t2 - t1)
         res.grid = np.copy(grid)
         res.gridorder = order
         t3 = time()
-        logger.debug(f"collecting - OK : {t3 - t0} ({t3 - t2})")
+        logger.debug("collecting - OK : %s (%s)", t3 - t0, t3 - t2)
         return res
 
     def self_to_path(self, path):

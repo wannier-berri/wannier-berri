@@ -70,8 +70,8 @@ def get_system_w90(
     logger.debug("parameters before NeededData.get_parameters: " + str(parameters))
     parameters, param_needed_data = NeededData.get_parameters(**parameters)
     needed_data = NeededData(**param_needed_data)
-    logger.debug(f"needed_data.matrices: {needed_data.matrices}")
-    logger.debug(f"parameters after NeededData.get_parameters: {parameters}")
+    logger.debug("needed_data.matrices: %s", needed_data.matrices)
+    logger.debug("parameters after NeededData.get_parameters: %s", parameters)
 
     system = System_R(**parameters)
 

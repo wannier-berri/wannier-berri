@@ -272,7 +272,7 @@ class Rvectors:
         XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2, 3, 4, 5))
         num_wann_r = XX_RR_grid.shape[6]
         num_wann_l = XX_RR_grid.shape[8]
-        logger.debug(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
+        logger.debug("remapping %s num_wann_r=%s, num_wann_l=%s", XX_RR_grid.shape, num_wann_r, num_wann_l)
         nl = self.nshifts_left
         nr = self.nshifts_right
         assert (nr == 1) or (XX_RR_grid.shape[6] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
@@ -280,7 +280,7 @@ class Rvectors:
         assert (nl == 1) or (XX_RR_grid.shape[8] == nl), f"XX_RR_grid {XX_RR_grid.shape} should have {nl} right shifts"
 
         shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,) * 2 + XX_RR_grid.shape[9:]
-        logger.debug(f"shape_new {shape_new}")
+        logger.debug("shape_new %s", shape_new)
         XX_RR_new = np.zeros(shape_new, dtype=XX_RR_grid.dtype)
         for a in range(num_wann_r):
             ia = 0 if self.nshifts_right == 1 else a
@@ -290,7 +290,7 @@ class Rvectors:
                     ic = 0 if self.nshifts_left == 1 else c
                     ishift1 = self.shift_index[ic, ia]
                     ishift2 = self.shift_index[ic, ib]
-                    logger.debug(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
+                    logger.debug("a,b,c = %s,%s,%s : %s, %s", a, b, c, ishift1, ishift2)
                     for iRi1, iRm1, nd1 in zip(self.iRvec_index_list[ishift1],
                                             self.iRvec_mod_list[ishift1],
                                             self.Ndegen_list[ishift1]):
