@@ -131,6 +131,7 @@ class SymWann:
     #     except KeyError:
     #         return None
 
+
     def get_atom_R_map(self, iRvec, isym, block1, block2):
         """
         Get the R vector mapping for a specific symmetry operation and atom pair.
@@ -412,6 +413,7 @@ class SymWann:
     #                     v /= len(self.use_symmetries_index)
     #     return matrix_dict_list_res, iRab_all
 
+
     def average_XX_block(self, iRab_new, matrix_dict_in, iRvec_origin, mode, block1, block2):
         assert mode in ["sum", "single"]
         iRab_new = copy.deepcopy(iRab_new)
@@ -476,8 +478,8 @@ class SymWann:
         if mode == "single":
             for (atom_a, atom_b), iR_new_list in iRab_new.items():
                 assert len(iR_new_list) == 0, (
-                    f"for atoms ({atom_a},{atom_b}) {len(iR_new_list)} R vectors were not set : "
-                    + ", ".join(str(iRvec_origin[ir]) for ir in iR_new_list))
+                    f"for atoms ({atom_a},{atom_b}) {len(iR_new_list)} R vectors were not set : " +
+                    ", ".join(str(iRvec_origin[ir]) for ir in iR_new_list))
 
         if mode == "sum":
             nsym = len(self.use_symmetries_index)
@@ -516,9 +518,9 @@ class SymWann:
             XX_L = np.tensordot(XX_L, rot_mat_loc, axes=((-n_cart,), (0,)))
         if symop.inversion:
             XX_L *= parity_I[X] * (-1)**n_cart
-        result = cached_einsum("ij,jk...,kl->il...", 
-                               self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym], 
-                               XX_L, 
+        result = cached_einsum("ij,jk...,kl->il...",
+                               self.symmetrizer_left.rot_orb_dagger_list[block1][atom_a, isym],
+                               XX_L,
                                self.symmetrizer_right.rot_orb_list[block2][atom_b, isym])
         if symop.time_reversal:
             result = result.conj() * parity_TR[X]
@@ -580,5 +582,3 @@ def _matrix_to_dict(mat, np1, norb1, np2, norb2, cutoff=1e-10):
             if len(result_ab) > 0:
                 result[(a, b)] = result_ab
     return result
-
-
