@@ -5,6 +5,7 @@ import numpy as np
 from functools import cached_property
 from typing import Iterable
 import logging
+from ..utility import cached_einsum
 logger = logging.getLogger(__name__)
 
 
@@ -96,8 +97,8 @@ class Rvectors:
 
         wigner = WignerSeitz(self.lattice, mp_grid=mp_grid, tolerance=ws_tolerance)
         res = [wigner(shift_reduced=s) for s in all_shifts_red]
-        self.iRvec_list     = [r[0] for r in res]
-        self.Ndegen_list    = [r[1] for r in res]
+        self.iRvec_list = [r[0] for r in res]
+        self.Ndegen_list = [r[1] for r in res]
         self.iRvec_mod_list = [r[2] for r in res]
 
         Rmin = np.min([R.min(axis=0) for R in self.iRvec_list], axis=0)
@@ -668,7 +669,7 @@ class WignerSeitz:
     def __call__(self, shift_reduced):
         shift_cart = shift_reduced.dot(self.real_lattice)
         d = self.cRvec_search + shift_cart                      # (n0, 27, 3)
-        dist = np.sqrt(np.einsum('ijk,ijk->ij', d, d))          # replaces np.linalg.norm
+        dist = np.sqrt(cached_einsum('ijk,ijk->ij', d, d))          # replaces np.linalg.norm
         mask = np.abs(dist - dist.min(axis=1, keepdims=True)) < self.tolerance
         ndeg = mask.sum(axis=1)
         iRvec = self.iRvec_search[mask]                         # (N, 3), rows in the same order as before
