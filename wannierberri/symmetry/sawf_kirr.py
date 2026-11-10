@@ -107,22 +107,20 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
 
 
     def rotate_U(self, U, isym):
-        Uloc = U.copy()
         if self.time_reversals[isym]:
-            Uloc = Uloc.conj()
-        Uloc = rotate_block_matrix(Uloc,
+            U = U.conj()
+        U = rotate_block_matrix(U,
                                    lblocks=self.d_band_blocks[isym],
                                    lindices=self.d_indices,
                                    rblocks=self.D_wann_blocks_inverse[isym],
                                    rindices=self.D_indices)
-        return Uloc
+        return U
 
 
     def __call__(self, U, maxiter=10, tol=5e-5):
-        Uprev = U.copy()
+        Uprev = U
         for _ in range(maxiter):
-            Uloc = Uprev.copy()
-            Usym = sum(self.rotate_U(Uloc, isym) for isym in self.isym_little) / self.nsym_little
+            Usym = sum(self.rotate_U(Uprev, isym) for isym in self.isym_little) / self.nsym_little
             diff1 = abs(Usym - Uprev).max()
             Usym_ortho = np.zeros(Usym.shape, dtype=complex)
             Usym_ortho[self.include_bands] = orthogonalize(Usym[self.include_bands])
@@ -179,7 +177,6 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
         Rotates the zmat matrix at the irreducible kpoint
         Z = d_band^+ @ Z @ d_band
         """
-        Zloc = Z.copy()
         Zloc = rotate_block_matrix(Zloc, lblocks=self.lblocks[isym],
                                  lindices=self.indices,
                                  rblocks=self.rblocks[isym],

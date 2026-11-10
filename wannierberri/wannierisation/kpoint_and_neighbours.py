@@ -111,7 +111,7 @@ class Kpoint_and_neighbours:
         assert 0 <= mix_ratio <= 1
         if not hasattr(self, 'U_localize'):
             self.U_localize = np.eye(self.num_wann, dtype=complex)
-        self.U_nb = deepcopy(U_nb)
+        self.U_nb = np.asarray(U_nb)
         U_nb_free = [self.U_nb[ib][f] for ib, f in enumerate(self.free_nb)]
         Z = self.calc_Z(U_nb_free) + self.Zfrozen
         if self.Zold is not None and mix_ratio != 1:
@@ -213,7 +213,10 @@ class Kpoint_and_neighbours:
         if self.U_opt_full is None or self.U_nb is None:
             return
         UT = self.U_opt_full.T.conj()
-        self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
+        # self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
+        tmp = np.matmul(UT, self.Mmn)   
+        self.Mmn_opt = np.matmul(tmp, self.U_nb)
+
         self._r2, self._wcc = get_r2(wb=self.wb,
                                      Mmn_rotated=self.Mmn_opt,
                                      wcc_bk_phase=wcc_bk_phase,
@@ -236,7 +239,7 @@ class Kpoint_and_neighbours:
             the contribution of the k-point to the r2 (part of the spread)
         """
         if U_nb is not None:
-            self.U_nb = U_nb
+            self.U_nb = np.asarray(U_nb)
             self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self._wcc, self._r2
 

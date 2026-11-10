@@ -25,13 +25,24 @@ def rotate_block_matrix(Z, lblocks, lindices, rblocks, rindices,
     np.array(complex, shape=(M,N))
         the rotated matrix
     """
+
+
     if result is None:
-        result = np.zeros(Z.shape, dtype=Z.dtype)
+        result = np.empty_like(Z)
+
+    # for (start, end), block in zip(lindices, lblocks):
+    #     result[start:end, :] = block @ Z[start:end, :]
+
+    # for (start, end), block in zip(rindices, rblocks):
+    #     result[:, start:end] = result[:, start:end] @ block
+
     for (start, end), block in zip(lindices, lblocks):
-        result[start:end, :] = block @ Z[start:end, :]
+        np.matmul(block, Z[start:end, :],
+                  out=result[start:end, :])
 
     for (start, end), block in zip(rindices, rblocks):
-        result[:, start:end] = result[:, start:end] @ block
+        np.matmul(result[:, start:end], block,
+                  out=result[:, start:end])
 
     return result
 

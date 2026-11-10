@@ -269,7 +269,8 @@ def get_max_eig(matrix, nvec, nBfree):
     assert matrix.shape[0] == matrix.shape[1]
     assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
     e, v = np.linalg.eigh(matrix)
-    return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
+    return v[:, nBfree - nvec:nBfree]
+    # return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
 
 
 def orthogonalize(u):
