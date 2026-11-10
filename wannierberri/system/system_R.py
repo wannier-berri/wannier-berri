@@ -6,7 +6,7 @@ import numpy as np
 from packaging import version
 from ..symmetry.wyckoff_position import split_into_orbits
 from ..symmetry.point_symmetry import PointGroup
-from ..utility import clear_cached, one2three, pauli_xyz
+from ..utility import clear_cached, one2three, pauli_xyz, savez
 from .system import System, num_cart_dim
 from ..fourier.rvectors import Rvectors
 from ..factors import bohr, factor_spin
@@ -406,9 +406,9 @@ class System_R(System):
             pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
             suborbit_list = split_into_orbits(pos, spacegroup=spacegroup)
             if len(suborbit_list) > 1:
-                logger.warning(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
-                         "it is recommentded to name atoms at different wyckoff positions differently:\n"
-                         "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
+                logger.warning("Positions of  %s belong to different wyckoff positions. This case is not much tested."
+                         "it is recommentded to name atoms at different wyckoff positions differently:\n%s",
+                         atom, "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
             logger.info(f"pos_list: {suborbit_list}")
             if ";" in orbital:
@@ -545,9 +545,9 @@ class System_R(System):
                 sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
                     if warn:
-                        logger.warning(f"you declared your system as non-periodic along direction {i},"
-                                       f"but there are {sum(sel)} of total {self.rvec.nRvec} R-vectors with R[{i}]!=0."
-                                       "They will be excluded, please make sure you know what you are doing")
+                        logger.warning("you declared your system as non-periodic along direction %s,"
+                                       "but there are %s of total %s R-vectors with R[%s]!=0."
+                                       "They will be excluded, please make sure you know what you are doing", i, sum(sel), self.rvec.nRvec, i)
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
@@ -606,13 +606,13 @@ class System_R(System):
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            logger.warning(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
-                          "For other states spin properties will be set to zero. are yoiu sure ?")
+            logger.warning("number of spin pairs %s is less then num_wann/2 = %s."
+                          "For other states spin properties will be set to zero. are yoiu sure ?", len(pairs), self.num_wann / 2)
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
             if dist > 1e-3:
-                logger.warning(f"setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
+                logger.warning("setting spin pair for Wannier function %s and %s, distance between them %s", i, j, dist)
             SS_R0[i, i] = pauli_xyz[0, 0]
             SS_R0[i, j] = pauli_xyz[0, 1]
             SS_R0[j, i] = pauli_xyz[1, 0]
@@ -929,7 +929,9 @@ class System_R(System):
     def nRvec(self):
         return self.rvec.nRvec
 
-    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(),
+               compressed=False,
+               R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
         Parameters
@@ -967,23 +969,23 @@ class System_R(System):
 
             if key in ['pointgroup', 'iRvec']:
                 if val is not None:
-                    np.savez(fullpath, **val.as_dict())
+                    savez(fullpath, compressed=compressed, **val.as_dict())
                 elif overwrite and os.path.exists(fullpath):
                     os.remove(fullpath)
             elif key in ['cell']:
-                np.savez(fullpath, **val)
+                savez(fullpath, **val, compressed=compressed)
             else:
-                np.savez(fullpath, val)
+                savez(fullpath, val, compressed=compressed)
             logger.debug(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
                 if hasattr(self, key) and getattr(self, key) is not None:
                     val = getattr(self, key)
-                    np.savez(fullpath, val)
+                    savez(fullpath, val, compressed=compressed)
         for key in R_matrices:
             logger.debug("saving %s", key)
-            np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
+            savez(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key), compressed=compressed)
             logger.debug(" - Ok!\n")
 
 

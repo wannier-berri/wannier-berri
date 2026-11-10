@@ -116,8 +116,8 @@ def main(argv):
     if NBout <= 0:
         NBout = NBin
     if NBout + IBstart > NBin:
-        logger.warning(f"NB+IBstart-1={NBout + IBstart} exceeds the number of bands in WAVECAR NBin={NBin}"
-                      f"We set NBout={NBin - IBstart}")
+        logger.warning("NB+IBstart-1=%s exceeds the number of bands in WAVECAR NBin=%s"
+                      "We set NBout=%s", NBout + IBstart, NBin, NBin - IBstart)
         NBout = NBin - IBstart
 
     print(f"WAVECAR contains {NK} k-points and {NBin} bands.\n Writing {NBout} bands in the output starting from")

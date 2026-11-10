@@ -1,5 +1,6 @@
 import numpy as np
 import abc
+from ..utility import savez
 
 
 class Result(abc.ABC):
@@ -36,14 +37,14 @@ class Result(abc.ABC):
         raise NotImplementedError()
 
     # saving as binary
-    def save(self, name):
+    def save(self, name, compressed=False):
         """
         writes a dictionary-like object to file called `name`  defined in
         :func:`~wannierberri.result.EnergyResult.as_dict`
         """
         name = name.format('')
         with open(name + ".npz", "wb") as f:
-            np.savez_compressed(f, **self.as_dict(), allow_pickle=True)
+            savez(f, **self.as_dict(), allow_pickle=True, compressed=compressed)
 
     @property
     def _maxval_raw(self):

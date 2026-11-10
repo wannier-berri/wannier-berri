@@ -50,7 +50,7 @@ class SystemInterpolator:
         matrix_keys_all = matrix_keys0.union(matrix_keys1)
         matrix_keys_exclude = matrix_keys_all - matrix_keys0.intersection(matrix_keys1)
         if len(matrix_keys_exclude) > 0:
-            logger.warning(f"The following matrix elements are present in only one of the systems: {matrix_keys_exclude} , they will be excluded from the interpolation")
+            logger.warning("The following matrix elements are present in only one of the systems: %s , they will be excluded from the interpolation", matrix_keys_exclude)
         for sys, iRmap  in zip([self.system0, self.system1], [iRvec_map_0, iRvec_map_1]):
             for key in matrix_keys_exclude:
                 if key in sys._XX_R:

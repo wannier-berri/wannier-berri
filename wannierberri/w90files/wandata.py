@@ -126,9 +126,9 @@ class WannierData:
             grid, selected_kpoints = grid_from_kpoints_irrep(kpt_red, grid=None, allow_missing=True)
             logger.debug("detected grid=%s, selected_kpoints=%s", grid, selected_kpoints)
             if len(selected_kpoints) < np.prod(grid):
-                logger.warning(f"detected grid {grid} od {np.prod(grid)} kpoints, "
-                              f"but only {len(selected_kpoints)} kpoints are available."
-                              "assuming that only irreducible kpoints are needed.")
+                logger.warning("detected grid %s od %s kpoints, "
+                              "but only %s kpoints are available."
+                              "assuming that only irreducible kpoints are needed.", grid, np.prod(grid), len(selected_kpoints))
                 irreducible = True
             else:
                 irreducible = False
@@ -326,7 +326,7 @@ class WannierData:
             bandstructure = BandStructure.from_gpaw(**args_bandstructure)
         except AttributeError as e:
             # irrep<3
-            logger.warning(f"Failed to create BandStructure.from_gpaw(): {e} probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead")
+            logger.warning("Failed to create BandStructure.from_gpaw(): %s probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead", e)
             bandstructure = BandStructure(code="gpaw", **args_bandstructure)
 
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
@@ -392,7 +392,7 @@ class WannierData:
                 self.set_file(f, val=val)
             except FileNotFoundError as e:
                 if ignore_missing_files:
-                    logger.warning(f"file {filepath} not found, cannot read {f} file ({e}).\n Set it manually, if needed")
+                    logger.warning("file %s not found, cannot read %s file (%s).\n Set it manually, if needed", filepath, f, e)
                 else:
                     raise FileNotFoundError(f"Missing required npz file: {filepath} ({e}). aborting")
         for f in self._files:
@@ -417,8 +417,8 @@ class WannierData:
                 nkeys = len(ff.data.keys())
                 NK = ff.NK
             if nkeys < NK:
-                logger.warning(f"file {f} cntains {nkeys} k-points less than NK ({NK}) , "
-                              "so we assume the files contain only on irreducible k-points")
+                logger.warning("file %s cntains %s k-points less than NK (%s) , "
+                              "so we assume the files contain only on irreducible k-points", f, nkeys, NK)
                 irreducible = True
         self.irreducible = irreducible
         return self
@@ -426,7 +426,8 @@ class WannierData:
 
     def to_npz(self,
                seedname=None,
-               files=None
+               files=None,
+               compressed=False
                ):
         if seedname is None:
             seedname = self.seedname
@@ -438,9 +439,9 @@ class WannierData:
         for f in files:
             if f in self._files:
                 val = self.get_file(f)
-                val.to_npz(str(seedname) + "." + val.extension + ".npz")
+                val.to_npz(str(seedname) + "." + val.extension + ".npz", compressed=compressed)
             else:
-                logger.warning(f"file {f} is not set, cannot write to npz")
+                logger.warning("file %s is not set, cannot write to npz", f)
 
 
 
@@ -528,7 +529,7 @@ class WannierData:
             _read_files_loc.remove('mmn')
         for f in _read_files_loc:
             if f not in FILES_CLASSES:
-                logger.warning(f"file {f} is not a valid Wannier file, skipping it")
+                logger.warning("file %s is not a valid Wannier file, skipping it", f)
                 continue
             kwargs_w90 = {}
             if f in ['uhu', 'uiu', 'shu', 'siu']:
@@ -673,7 +674,7 @@ class WannierData:
         if self.has_file(key):
             if overwrite:
                 self.unset_file(key)
-                logger.warning(f"file '{key}' was already set, overwriting it")
+                logger.warning("file '%s' was already set, overwriting it", key)
             else:
                 raise RuntimeError(f"file '{key}' was already set")
         self.check_conform(key, val)

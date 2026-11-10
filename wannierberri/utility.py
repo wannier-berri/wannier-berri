@@ -290,7 +290,7 @@ def orthogonalize(u):
         U, _, VT = np.linalg.svd(u, full_matrices=False)
         return U @ VT
     except np.linalg.LinAlgError as e:
-        logger.warning(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        logger.warning("SVD failed with error '%s', using non-orthogonalized matrix", e)
         return u
 
 
@@ -446,3 +446,7 @@ def get_alat_espresso(seedname_pw):
     _Lattice, _positions, _typat, alat_bohr = parser.parse_lattice()
     alat_angstrom = alat_bohr * bohr_angstrom
     return alat_angstrom
+
+
+def savez(file, *val, compressed=False, **arrays):
+    return (np.savez_compressed if compressed else np.savez)(file, *val, **arrays)

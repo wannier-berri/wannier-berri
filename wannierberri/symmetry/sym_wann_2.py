@@ -151,7 +151,7 @@ class SymWann:
 
 
     def find_irreducible_Rab(self, block1, block2):
-        logger.info(f"searching irreducible Rvectors for pairs of atoms in blocks {block1} and {block2}")
+        logger.debug("searching irreducible Rvectors for pairs of atoms in blocks %s and %s", block1, block2)
         np1 = self.num_points_list_left[block1]
         np2 = self.num_points_list_right[block2]
         nR = self.nRvec
@@ -228,7 +228,7 @@ class SymWann:
             raise NotImplementedError(f"symmetrization of matrices {unknown} is not implemented yet")
         unknown = set(XX_R.keys()) - set(self.tested_matrix_list)
         if unknown:
-            logger.warning(f"symmetrization of matrices {unknown} is not tested. use on your own risk")
+            logger.warning("symmetrization of matrices %s is not tested. use on your own risk", unknown)
 
         if cutoff_dict is None:
             cutoff_dict = {}

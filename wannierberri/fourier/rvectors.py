@@ -459,7 +459,7 @@ class Rvectors:
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
         if len(notfound) > 0 and not self.ignore_mR_not_found:
             for ir in notfound:
-                logger.warning(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+                logger.warning("R[%s] = %s does not have a -R partner", ir, self.iRvec[ir])
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):

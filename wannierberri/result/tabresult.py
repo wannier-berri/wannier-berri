@@ -5,6 +5,7 @@ import functools
 from collections.abc import Iterable
 from .result import Result
 from .kbandresult import get_component
+from ..utility import savez
 
 import logging
 logger = logging.getLogger(__name__)
@@ -466,7 +467,8 @@ def write_frmsf(frmsf_name,
     return ttxt, twrite
 
 
-def write_npz(npz_name, quantities, res, suffix=""):
+
+def write_npz(npz_name, quantities, res, suffix="", compressed=False):
     """
     Write the data to a npz file
 
@@ -490,10 +492,10 @@ def write_npz(npz_name, quantities, res, suffix=""):
     dic = {Q: res.get_data(quantity=Q) for Q in quantities}
     if len(suffix) > 0:
         suffix = "-" + suffix
-    np.savez_compressed(f"{npz_name}{suffix}.npz",
-                        recip_lattice=res.recip_lattice,
-                        **dic
-                        )
+    savez(f"{npz_name}{suffix}.npz",
+          recip_lattice=res.recip_lattice,
+          compressed=compressed,
+          **dic)
 
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):

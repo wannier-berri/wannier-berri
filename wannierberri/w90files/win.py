@@ -117,7 +117,7 @@ class WIN(SavableNPZ):
         if key in self.data:
             del self.data[key]
         else:
-            logger.warning(f"key {key} not found in the data, nothing to delete")
+            logger.warning("key %s not found in the data, nothing to delete", key)
 
     def __contains__(self, key):
         """

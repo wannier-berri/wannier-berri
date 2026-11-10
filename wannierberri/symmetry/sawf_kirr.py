@@ -96,8 +96,8 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                     if verbose:
                         logger.info(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
                 else:
-                    logger.warning(f"max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not among the  upper"
-                                f" bands({no_exclude_bands}:{self.nb}) bands, this may indicate inaccuracy in the input data")
+                    logger.warning("max error in block %s [%s:%s] is %s, exceeding threshold %s, and this is not among the  upper"
+                                " bands(%s:%s) bands, this may indicate inaccuracy in the input data", i, start, end, max_error_in_blocks[i], accuracy_threshold, no_exclude_bands, self.nb)
                     maxerr = max(maxerr, max_error_in_blocks[i])
             else:
                 maxerr = max(maxerr, max_error_in_blocks[i])
@@ -129,9 +129,9 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                 return Usym
             Uprev = Usym_ortho
         else:
-            logger.warning(f"symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
+            logger.warning("symmetrization did not converge in %s iterations, final changes %s, %s"
                   "; probably the input data are not perfectly symmetrizable, or the provided projections are not"
-                  "compatible with the irreps of the DFT bands."
+                  "compatible with the irreps of the DFT bands.", maxiter, diff1, diff2
             )
         return Usym
 

@@ -36,6 +36,7 @@ def wannierise(wandata,
                irreducible=False,
                print_wcc_chk=False,
                savechk=True,
+               chkcompressed=False,
                wcc_start_red=None,
                ):
     r"""
@@ -302,14 +303,12 @@ def wannierise(wandata,
         wcc_chk, spreads_chk = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
         print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")
         if not np.allclose(wcc, wcc_chk, atol=1e-6):
-            logger.warning(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
-        if not np.allclose(spreads, spreads_chk, atol=1e-2):
-            logger.warning(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+            logger.warning("The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = %s", np.abs(wcc - wcc_chk).max())
 
     # if not np.allclose(wcc, wcc_chk, atol=1e-4):
     #     logger.warning(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
     # if not np.allclose(spreads, spreads_chk, atol=1e-4):
-    #     logger.warning(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+    #         logger.warning("The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = %s", np.abs(spreads - spreads_chk).max())
 
 
     wandata.wannierised = True
@@ -319,7 +318,7 @@ def wannierise(wandata,
     logger.info(f"total time for wannierization {time() - t0}")
     if savechk:
         chk = wandata.get_file('chk')
-        chk.to_npz(wandata.seedname + ".chk")
+        chk.to_npz(wandata.seedname + ".chk", compressed=chkcompressed)
     return wandata.chk.v_matrix
 
 

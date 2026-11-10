@@ -50,7 +50,7 @@ class K__Result(Result, abc.ABC):
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
-                logger.warning(f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
+                logger.warning("parameters %s are not fit : `%s` and `%s` ", var, getattr(self, var), getattr(other, var))
                 return False
         return True
 

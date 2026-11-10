@@ -11,9 +11,9 @@ except ImportError as err:
 
 import wannierberri as wberri
 
-from wannierberri.logging import configure_logging
-import logging
-configure_logging(loglevel=logging.DEBUG)
+# from wannierberri.logging import configure_logging
+# import logging
+# configure_logging(loglevel=logging.DEBUG)
 
 print(f"sys.version: {sys.version}")
 print(f"sys.path: {sys.path}")

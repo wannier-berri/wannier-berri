@@ -1,6 +1,6 @@
 from functools import cached_property, lru_cache
 import numpy as np
-from ..utility import cached_einsum, clear_cached, arr_to_string, normalize_type
+from ..utility import cached_einsum, clear_cached, arr_to_string, normalize_type, savez
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
@@ -247,7 +247,7 @@ class SymmetrizerSAWF:
             basis_list = proj.basis_list
             # logger.info(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
-                logger.warning(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+                logger.warning("projection %s has more than one orbital. it will be split into separate blocks, please order them in the win file consistently", proj)
             for orb in orbitals:
                 projections_list.append((proj.positions, orb, basis_list))
 
@@ -751,12 +751,12 @@ class SymmetrizerSAWF:
         amn = np.random.random(shape) + 1j * np.random.random(shape)
         return self.symmetrize_amn(amn)
 
-    def to_npz(self, f_npz):
+    def to_npz(self, f_npz, compressed=False):
         if f_npz is None:
             return self
         dic = self.as_dict()
         logger.info(f"saving to {f_npz} : ")
-        np.savez_compressed(f_npz, **dic)
+        savez(f_npz, **dic, compressedfl=compressed)
         return self
 
     @classmethod
