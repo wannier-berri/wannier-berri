@@ -93,17 +93,26 @@ class Rvectors:
         self.iRvec_list = []
         self.Ndegen_list = []
         self.iRvec_mod_list = []
+
         wigner = WignerSeitz(self.lattice, mp_grid=mp_grid, tolerance=ws_tolerance)
-        self.iRvec_index_list = []  # indices of every shift in the
-        for shift in all_shifts_red:
-            iRvec, Ndegen, iRvec_mod = wigner(shift_reduced=shift)
-            self.iRvec_list.append(iRvec)
-            self.Ndegen_list.append(Ndegen)
-            self.iRvec_mod_list.append(iRvec_mod)
-        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))), dtype=int)
+        res = [wigner(shift_reduced=s) for s in all_shifts_red]
+        self.iRvec_list     = [r[0] for r in res]
+        self.Ndegen_list    = [r[1] for r in res]
+        self.iRvec_mod_list = [r[2] for r in res]
+
+        Rmin = np.min([R.min(axis=0) for R in self.iRvec_list], axis=0)
+        Rmax = np.max([R.max(axis=0) for R in self.iRvec_list], axis=0)
+        dims = tuple(int(x) for x in (Rmax - Rmin + 1))
+        strides = np.array([dims[1] * dims[2], dims[2], 1])
+
+        keys_list = [(R - Rmin) @ strides for R in self.iRvec_list]
+        uniq = np.unique(np.concatenate(keys_list))
+        lookup = np.full(int(np.prod(dims)), -1, dtype=np.int64)
+        lookup[uniq] = np.arange(len(uniq))
+
+        self.iRvec = np.stack(np.unravel_index(uniq, dims), axis=1) + Rmin
         self.clear_cached()
-        for i, iRvec in enumerate(self.iRvec_list):
-            self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
+        self.iRvec_index_list = [lookup[k] for k in keys_list]
 
     def as_dict(self):
         return dict(iRvec=self.iRvec,
@@ -186,14 +195,13 @@ class Rvectors:
         nr = self.nshifts_right
         remapper = np.zeros((self.nRvec, nl, nr, 3), dtype=int)
         weights = np.zeros((self.nRvec, nl, nr), dtype=float)
+
         for ia in range(nl):
             for ib in range(nr):
                 ishift = self.shift_index[ia, ib]
-                for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
-                                        self.iRvec_mod_list[ishift],
-                                        self.Ndegen_list[ishift]):
-                    remapper[iRi, ia, ib] = iRm
-                    weights[iRi, ia, ib] += 1. / nd
+                iRi = self.iRvec_index_list[ishift]
+                remapper[iRi, ia, ib] = self.iRvec_mod_list[ishift]
+                weights[iRi, ia, ib] += 1. / self.Ndegen_list[ishift]
         sum_expected = np.prod(self.mp_grid) * nl * nr
         sum_calculated = np.sum(weights)
         assert np.allclose(sum_calculated, sum_expected), f"found sum of weights {sum_calculated}, expected {sum_expected}"
