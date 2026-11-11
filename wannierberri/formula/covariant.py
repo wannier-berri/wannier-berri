@@ -2,7 +2,7 @@ import numpy as np
 
 from .basic import FormulaSymmetric, tildeFab, tildeFab_d
 from .elementary import Dcov, DerDcov, Der2Dcov, InvMass, DerWln, Eavln, DEinv_ln
-from ..utility import alpha_A, beta_A, cached_einsum, delta_f
+from ..utility import alpha_A, beta_A, cached_einsum, delta_f, hermitize
 from .formula import Formula_ln, Matrix_ln, Matrix_GenDer_ln, FormulaProduct, FormulaSum, DeltaProduct
 from ..symmetry.point_symmetry import transform_ident, transform_odd
 
@@ -521,8 +521,7 @@ class DerMorb_H(Formula_ln):
                 summ += -2 * s * cached_einsum(
                     "mlc,lncd->mncd", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                     self.dD.ln(ik, inn, out)[:, :, b, :])
-        summ = (summ + summ.swapaxes(0, 1).conj()) / 2
-        return summ
+        return hermitize(summ,0,1)
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
@@ -554,7 +553,7 @@ class DerMorb(Formula_ln):
             tmp = self.Eav.nn(ik, inn, out)[:, :, None, None] * self.dO.nn(ik, inn, out)
             tmp += 0.5 * cached_einsum("mlc,lnd->mncd", self.O.nn(ik, inn, out), self.V.nn(ik, inn, out))
             tmp += 0.5 * cached_einsum("mld,lnc->mncd", self.V.nn(ik, inn, out), self.O.nn(ik, inn, out))
-            res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
+            res += self.sign * hermitize(tmp, 0, 1)
         return res
 
     def ln(self, ik, inn, out):
@@ -639,8 +638,7 @@ class Der2Morb_H(Formula_ln):
                 summ += -2 * s * cached_einsum("mlc,lncde->mncde", (self.B.ln(ik, inn, out)[:, :, a]).transpose(1, 0, 2).conj(),
                         self.ddD.ln(ik, inn, out)[:, :, b])
 
-        summ = (summ + summ.swapaxes(0, 1).conj()) / 2
-        return summ
+        return hermitize(summ, 0, 1)
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
@@ -682,7 +680,7 @@ class Der2Morb(Formula_ln):
             tmp += 0.5 * cached_einsum("mle,lncd->mncde", self.V.nn(ik, inn, out), self.dO.nn(ik, inn, out))
             tmp += 0.5 * cached_einsum("mlc,lnde->mncde", self.O.nn(ik, inn, out), self.dV.nn(ik, inn, out))
             tmp += 0.5 * cached_einsum("mlde,lnc->mncde", self.dV.nn(ik, inn, out), self.O.nn(ik, inn, out))
-            res += self.sign * (tmp + tmp.swapaxes(0, 1).conj()) / 2
+            res += self.sign * hermitize(tmp, 0, 1)
         return res
 
     def ln(self, ik, inn, out):
@@ -739,7 +737,7 @@ class SpinVelocity(Matrix_ln):
         S = data_K.Xbar('SS')
         V = Velocity(data_K, external_terms=external_terms).matrix
         J = cached_einsum("klms,kmna->klnas", S, V)
-        return (J + J.swapaxes(1, 2).conj()) / 2
+        return hermitize(J, 1, 2)
 
     @classmethod
     def _J_H_qiao(cls, data_K, external_terms=True):
@@ -757,7 +755,7 @@ class SpinVelocity(Matrix_ln):
         J = (
             data_K.delE_K[:, None, :, :, None] * SS_H[:, :, :, None, :] +
             data_K.E_K[:, None, :, None, None] * shc_K_H[:, :, :, :, :] - shc_L_H)
-        return (J + J.swapaxes(1, 2).conj()) / 2
+        return hermitize(J, 1, 2)
 
     @classmethod
     def _J_H_ryoo(cls, data_K, external_terms=True):
@@ -770,7 +768,7 @@ class SpinVelocity(Matrix_ln):
         SHA_H = data_K.Xbar("SHA")
         J = -1j * (data_K.E_K[:, None, :, None, None] * SA_H - SHA_H)
         _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham', 1))
-        return (J + J.swapaxes(1, 2).conj()) / 2
+        return hermitize(J, 1, 2)
 
 
 class SpinOmega(Formula_ln):

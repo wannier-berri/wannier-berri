@@ -39,7 +39,7 @@
 
 import numpy as np
 import os
-from ..utility import cached_einsum, time_now_iso
+from ..utility import cached_einsum, hermitize, time_now_iso
 
 
 def hlp():
@@ -223,7 +223,7 @@ def run_mmn2uHu(PREFIX, **kwargs):
                                                IBstartSum:NB_sum + IBstartSum].conj(),
                                 MMN[ik][ib2][IBstart:NB_out + IBstart, IBstartSum:NB_sum + IBstartSum], eig_dum)
                             if ib1 == ib2:
-                                A[ib2, ib1] = 0.5 * (A[ib2, ib1] + A[ib2, ib1].T.conj())
+                                A[ib2, ib1] = hermitize(A[ib2, ib1], 0, 1)
                             else:
                                 A[ib1, ib2] = A[ib2, ib1].T.conj()
                     if (formatted):

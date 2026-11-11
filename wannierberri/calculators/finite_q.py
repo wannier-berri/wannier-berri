@@ -14,7 +14,7 @@ from ..data_K.data_K_R import Data_K_R
 from ..data_K.data_K_soc import Data_K_soc
 from ..result import EnergyResult
 from ..symmetry.point_symmetry import transform_ident, transform_trans
-from ..utility import cached_einsum
+from ..utility import cached_einsum, hermitize
 
 
 def _bond_average(x):
@@ -165,7 +165,7 @@ class OpticalConductivity_q(Calculator):
 
         def eigh(XX_R):
             H = R_to_k(XX_R)
-            return np.linalg.eigh(0.5 * (H + H.conj().swapaxes(1, 2)))
+            return np.linalg.eigh(hermitize(H))
 
         # states at k and k+q, in the gauge of data_K: H(k) = sum_R H(R) e^{ik.R}. Those at k are computed here too,
         # with all bands (data_K.E_K and UU_K may select bands by energy)

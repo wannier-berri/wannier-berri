@@ -6,6 +6,7 @@ import os
 from functools import lru_cache
 import shutil
 import numpy as np
+from numba import njit
 import logging
 logger = logging.getLogger(__name__)
 
@@ -446,3 +447,10 @@ def get_alat_espresso(seedname_pw):
     _Lattice, _positions, _typat, alat_bohr = parser.parse_lattice()
     alat_angstrom = alat_bohr * bohr_angstrom
     return alat_angstrom
+
+@njit
+def hermitize(M,axis1=-2,axis2=-1):
+    return (M + np.swapaxes(M,axis1,axis2).conj())*0.5
+
+def hermitize1032(M):
+    return (M + np.swapaxes(np.swapaxes(M.conj(),0,1),3,2))*0.5

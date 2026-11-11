@@ -2,7 +2,7 @@
 
 import numpy as np
 import abc
-from ..utility import cached_einsum
+from ..utility import cached_einsum, hermitize
 from ..symmetry.point_symmetry import TransformProduct
 
 
@@ -148,7 +148,7 @@ class FormulaProduct(Formula_ln):
         for mat, line in zip(matrices[1:], self.einsumlines):
             res = cached_einsum(line, res, mat)
         if self.hermitian:
-            res = 0.5 * (res + res.swapaxes(0, 1).conj())
+            res = hermitize(res, 0, 1)
         return np.array(res, dtype=complex)
 
     def ln(self, ik, inn, out):

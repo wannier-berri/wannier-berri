@@ -1,5 +1,5 @@
 import numpy as np
-from ..utility import alpha_A, beta_A, cached_einsum
+from ..utility import alpha_A, beta_A, cached_einsum, hermitize, hermitize1032
 from .formula import Formula_ln
 from ..symmetry.point_symmetry import transform_ident, transform_odd
 from .elementary import Eavln, DerDcov
@@ -43,8 +43,7 @@ class tildeFab(Formula_ln):
             #            summ += 1j * cached_einsum("mla,lnb->mnab", self.A.nl (ik,inn,out),Dln   )
             summ += -1 * cached_einsum("mla,lnb->mnab", self.A.nn(ik, inn, out), self.A.nn(ik, inn, out))
 
-        summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2)).conj())
-        return summ
+        return hermitize1032(summ)
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
@@ -86,8 +85,7 @@ class tildeFab_d(Formula_ln):
             summ += -2 * cached_einsum("mla,lnbd->mnabd", self.A.nn(ik, inn, out), self.dA.nn(ik, inn, out))
 
 #  Terms (a<->b, m<-n> )*   are accounted above by factor 2
-        summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2, 4)).conj())
-        return summ
+        return hermitize1032(summ)
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
@@ -130,8 +128,7 @@ class tildeHab(Formula_ln):
             summ += -cached_einsum(
                 "mla,lnb->mnab",
                 self.A.nn(ik, inn, out) * self.E[ik][inn][None, :, None], self.A.nn(ik, inn, out))
-        summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2)).conj())
-        return summ
+        return hermitize1032(summ)
 
     def ln(self, ik, inn, out):
         raise NotImplementedError()
@@ -199,8 +196,7 @@ class tildeHab_d(Formula_ln):
             summ += 2j * cached_einsum("mla,lnbd->mnabd", self.D.nl(ik, inn, out), self.dB.ln(ik, inn, out))
             summ += 2j * cached_einsum("lma,lnbd->mnabd", (self.B.ln(ik, inn, out)).conj(), self.dD.ln(ik, inn, out))
 
-        summ = 0.5 * (summ + summ.transpose((1, 0, 3, 2, 4)).conj())
-        return summ
+        return hermitize1032(summ)
 
     @property
     def additive(self):
