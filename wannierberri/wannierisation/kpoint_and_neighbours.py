@@ -1,4 +1,3 @@
-from copy import deepcopy
 from functools import cached_property
 
 import scipy
@@ -212,10 +211,11 @@ class Kpoint_and_neighbours:
         """
         if self.U_opt_full is None or self.U_nb is None:
             return
-        UT = self.U_opt_full.T.conj()
+        # UT = self.U_opt_full.conj()
         # self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
-        tmp = np.matmul(UT, self.Mmn)   
-        self.Mmn_opt = np.matmul(tmp, self.U_nb)
+        # tmp = np.matmul(UT, self.Mmn)
+        # self.Mmn_opt = np.matmul(tmp, self.U_nb)
+        self.Mmn_opt = cached_einsum('ji, bjl, blm->bim', self.U_opt_full.conj(), self.Mmn, self.U_nb)
 
         self._r2, self._wcc = get_r2(wb=self.wb,
                                      Mmn_rotated=self.Mmn_opt,
@@ -244,14 +244,14 @@ class Kpoint_and_neighbours:
         return self._wcc, self._r2
 
 
-def calA(B):
-    """ (B^dagger - B)/2 from MV97"""
-    return (B.T.conj() - B) / 2
+# def calA(B):
+#     """ (B^dagger - B)/2 from MV97"""
+#     return (B.T.conj() - B) / 2
 
 
-def calS(B):
-    """ (B^dagger + B)/(2i) from MV97"""
-    return (B.T.conj() + B) / (2j)
+# def calS(B):
+#     """ (B^dagger + B)/(2i) from MV97"""
+#     return (B.T.conj() + B) / (2j)
 
 
 def gradOmega(wb, Mbmn):
@@ -259,18 +259,22 @@ def gradOmega(wb, Mbmn):
     rng = np.arange(num_wann)
     Mbnn = Mbmn[:, rng, rng]
     q_bn = np.angle(Mbnn)
-    R = Mbmn * Mbnn[:, None, :].conj()
-    Rtilde = Mbmn / Mbnn[:, None, :]
-    Tbmn = Rtilde * q_bn[:, None, :]
-    return 2 * sum(w * (-calA(R) - calS(T))  for w, T, R in zip(wb, Tbmn, R))
+    Rbmn = Mbmn * Mbnn[:, None, :].conj()
+    Tbmn = Mbmn / Mbnn[:, None, :] * q_bn[:, None, :]
+    calAS = (Rbmn - Rbmn.T.conj() - 1j * (Tbmn + Tbmn.T.conj())) / 2
+    return -2 * cached_einsum('bii,bij->ij', calAS, wb)
+    # return 2 * sum(w * (-calA(R) - calS(T))  for w, T, R in zip(wb, Tbmn, Rbmn))
 
 
 def get_r2(wb, Mmn_rotated, weight, wcc_bk_phase=None, wbk=None):
-    num_wann = Mmn_rotated.shape[1]
-    rng = np.arange(num_wann)
-    Mmn_diag = Mmn_rotated[:, rng, rng]
+    # num_wann = Mmn_rotated.shape[1]
+    # rng = np.arange(num_wann)
+    # Mmn_diag = Mmn_rotated[:, rng, rng]
     if wcc_bk_phase is not None:
-        Mmn_diag = Mmn_diag * wcc_bk_phase.T[:, :]
+        # Mmn_diag = Mmn_diag * wcc_bk_phase.T[:, :]
+        Mmn_diag = cached_einsum('bii,ib->bi', Mmn_rotated, wcc_bk_phase)
+    else:
+        Mmn_diag = cached_einsum('bii->bi', Mmn_rotated)
     Mmn_diag_angle = np.angle(Mmn_diag)
     r2 = wb @ (1 - abs(Mmn_diag)**2 + Mmn_diag_angle ** 2) * weight
     if wbk is not None:

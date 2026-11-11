@@ -110,10 +110,10 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
         if self.time_reversals[isym]:
             U = U.conj()
         U = rotate_block_matrix(U,
-                                   lblocks=self.d_band_blocks[isym],
-                                   lindices=self.d_indices,
-                                   rblocks=self.D_wann_blocks_inverse[isym],
-                                   rindices=self.D_indices)
+                                lblocks=self.d_band_blocks[isym],
+                                lindices=self.d_indices,
+                                rblocks=self.D_wann_blocks_inverse[isym],
+                                rindices=self.D_indices)
         return U
 
 
@@ -177,12 +177,11 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
         Rotates the zmat matrix at the irreducible kpoint
         Z = d_band^+ @ Z @ d_band
         """
-        Zloc = rotate_block_matrix(Zloc, lblocks=self.lblocks[isym],
-                                 lindices=self.indices,
-                                 rblocks=self.rblocks[isym],
-                                 rindices=self.indices,
+        Z = rotate_block_matrix(Z, lblocks=self.lblocks[isym],
+                                lindices=self.indices,
+                                rblocks=self.rblocks[isym],
+                                rindices=self.indices,
                                 )
         if self.time_reversals[isym]:
-            Zloc = Zloc.conj()
-
-        return Zloc
+            Z = Z.conj()
+        return Z
