@@ -39,10 +39,10 @@ def cached_einsum(subscripts, *operands, optimize='greedy', **kwargs):
     if fn is None:
         _, info = oe.contract_path(subscripts, *shapes, shapes=True, optimize=optimize)
         if info.naive_cost < NAIVE_COST_THRESHOLD:
-            print(f"Using np.einsum for {subscripts} with shapes {shapes} (naive cost {info.naive_cost})")
+            logger.debug("Using np.einsum for %s with shapes %s (naive cost %s)", subscripts, shapes, info.naive_cost)
             fn = lambda *ops, **kw: np.einsum(subscripts, *ops, **kw)
         else:
-            print(f"Using opt_einsum for {subscripts} with shapes {shapes} (naive cost {info.naive_cost})")
+            logger.debug("Using opt_einsum for %s with shapes %s (naive cost %s)", subscripts, shapes, info.naive_cost)
             fn = oe.contract_expression(subscripts, *shapes, optimize=optimize)
         EINSUM_CACHE[key] = fn
     return fn(*operands, **kwargs)

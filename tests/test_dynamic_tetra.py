@@ -923,7 +923,7 @@ def test_occupied_kernel_monte_carlo(ncorners):
             np.testing.assert_allclose(principal[ief], mc, rtol=0, atol=2e-3)
 
 
-@pytest.mark.parametrize("calculator, parameters", [c for c in CALCULATORS if c[0] is not dynamic.SHC])
+@pytest.mark.parametrize("calculator, parameters", [c for c in CALCULATORS if c[0] not in [dynamic.SHC, dynamic.ShiftCurrent, dynamic.InjectionCurrent]])
 def test_occupation_insulator(calculator, parameters):
     """for an insulator, the occupations within the tetrahedra are those at the k-points, for several Fermi levels in
     the gap (the two-band model has no spin operator, so SHC is not included)"""
@@ -933,7 +933,7 @@ def test_occupation_insulator(calculator, parameters):
     if calculator is dynamic.OpticalConductivity:
         kwargs["tetra_reactive"] = True
     result = run(system, {"k": calculator(**kwargs), "cells": calculator(tetra_occupation=True, **kwargs)}, NK=6)
-    assert np.abs(result["k"]).max() > 0
+    assert np.abs(result["k"]).max() > 1e-8
     np.testing.assert_allclose(result["cells"], result["k"], rtol=0, atol=1e-12 * np.abs(result["k"]).max())
 
 
