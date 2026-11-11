@@ -52,7 +52,7 @@ def get_system_random(num_wann,
         R_try = set(tuple(R) for R in R_try)
         iRvec.update(R_try)
     if len(iRvec) < nRvec:
-        logger.warning(f"required number of R-vectors {nRvec} was not achieved. got only {len(iRvec)}")
+        logger.warning("required number of R-vectors %s was not achieved. got only %s", nRvec, len(iRvec))
     iRvec = np.array(list(iRvec))
     norm = np.linalg.norm(iRvec, axis=1)
     srt = np.argsort(norm)

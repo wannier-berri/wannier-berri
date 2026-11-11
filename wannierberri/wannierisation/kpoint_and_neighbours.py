@@ -1,4 +1,3 @@
-from copy import deepcopy
 from functools import cached_property
 
 import scipy
@@ -61,6 +60,7 @@ class Kpoint_and_neighbours:
         self.data = {}
         self.frozen = frozen
         self.nfrozen = sum(frozen)
+        self.rangenfrozen = np.arange(self.nfrozen)
         assert self.nfrozen <= self.num_wann, f"Number of frozen bands {self.nfrozen} exceeds number of wannier functions {self.num_wann} at irreducible k-point {ikirr}"
         self.free = free
         self.selected = frozen | free
@@ -80,7 +80,7 @@ class Kpoint_and_neighbours:
 
         # initialize the U matrix with projections
         amn2 = amn[self.free, :].dot(amn[self.free, :].T.conj())
-        self.U_opt_free = get_max_eig(amn2, self.nWfree, self.NBfree)  # nBfee x nWfree marrices
+        self.U_opt_free = get_max_eig(amn2, self.nWfree)  # nBfee x nWfree marrices
         self.U_opt_full = self.rotate_to_projections(self.U_opt_free)
 
     def get_U_opt_full(self):
@@ -111,24 +111,22 @@ class Kpoint_and_neighbours:
         assert 0 <= mix_ratio <= 1
         if not hasattr(self, 'U_localize'):
             self.U_localize = np.eye(self.num_wann, dtype=complex)
-        self.U_nb = deepcopy(U_nb)
+        self.U_nb = np.asarray(U_nb)
         U_nb_free = [self.U_nb[ib][f] for ib, f in enumerate(self.free_nb)]
         Z = self.calc_Z(U_nb_free) + self.Zfrozen
         if self.Zold is not None and mix_ratio != 1:
             Z = mix_ratio * Z + (1 - mix_ratio) * self.Zold
         self.Zold = Z
-        self.U_opt_free = get_max_eig(Z, self.nWfree, self.num_bands_free)
+        self.U_opt_free = get_max_eig(Z, self.nWfree)
         if localise:
             U_opt_full = np.zeros((self.nband, self.num_wann), dtype=complex)
-            U_opt_full[self.frozen, range(self.nfrozen)] = 1.
+            U_opt_full[self.frozen, self.rangenfrozen] = 1.
             U_opt_full[self.free, self.nfrozen:] = self.U_opt_free
             U_opt_full = orthogonalize(U_opt_full)
             check = U_opt_full.T.conj().dot(U_opt_full) - np.eye(self.num_wann)
             assert np.allclose(check, 0, atol=1e-6), f"U_opt_full is not unitary : {check}"
-            Mmn_loc = np.array([U_opt_full.T.conj() @ self.Mmn[ib].dot(self.U_nb[ib]) *
-                                wcc_bk_phase[None, :, ib]
-                                for ib in range(self.nnb)])
-            Mmn_loc_sumb = sum(mm * wb for mm, wb in zip(Mmn_loc, self.wb)) / sum(self.wb)
+            Mmn_loc = cached_einsum('ji,bjl,blm,mb->bim', U_opt_full.conj(), self.Mmn, self.U_nb, wcc_bk_phase)
+            Mmn_loc_sumb = cached_einsum('bjl, b->jl', Mmn_loc, self.wb)
             U = np.linalg.inv(Mmn_loc_sumb)
             U = U.T.conj()
             U = orthogonalize(U)
@@ -177,9 +175,23 @@ class Kpoint_and_neighbours:
             Mmn_loc_opt = self.freefrozen
         else:
             Mmn_loc_opt = [self.freefree[ib].dot(U_nb[ib]) for ib in range(len(self.wb))]
+        # Here, we cannot vectoriza because the matrices Mmn_loc_opt have different shapes for each neighbour
         Z = np.array(sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt)))
-        self.symmmetrizer_Zirr(Z)
-        return Z
+        return self.symmmetrizer_Zirr(Z)
+
+    @cached_property
+    def U_template(self):
+        """
+        return the template for the U matrix with frozen bands
+
+        Returns
+        -------
+        numpy.ndarray(NB,nW)
+            the template for the U matrix with frozen bands
+        """
+        U = np.zeros((self.nband, self.num_wann), dtype=complex)
+        U[self.frozen, range(self.nfrozen)] = 1.
+        return U
 
 
     def rotate_to_projections(self, U_opt_free):
@@ -197,8 +209,7 @@ class Kpoint_and_neighbours:
         numpy.ndarray(NB,nW)
             the rotated U matrix for full set of bands and WFs
         """
-        U = np.zeros((self.nband, self.num_wann), dtype=complex)
-        U[self.frozen, range(self.nfrozen)] = 1.
+        U = self.U_template.copy()
         U[self.free, self.nfrozen:] = U_opt_free
         U_loc = U[self.selected, :].copy()
         ZV = orthogonalize(U_loc.T.conj().dot(self.amn_sel))
@@ -212,8 +223,8 @@ class Kpoint_and_neighbours:
         """
         if self.U_opt_full is None or self.U_nb is None:
             return
-        UT = self.U_opt_full.T.conj()
-        self.Mmn_opt = np.array([UT @ mmn @ Ub for mmn, Ub in zip(self.Mmn, self.U_nb)])
+        self.Mmn_opt = cached_einsum('ji, bjl, blm->bim', self.U_opt_full.conj(), self.Mmn, self.U_nb)
+
         self._r2, self._wcc = get_r2(wb=self.wb,
                                      Mmn_rotated=self.Mmn_opt,
                                      wcc_bk_phase=wcc_bk_phase,
@@ -236,38 +247,23 @@ class Kpoint_and_neighbours:
             the contribution of the k-point to the r2 (part of the spread)
         """
         if U_nb is not None:
-            self.U_nb = U_nb
+            self.U_nb = np.asarray(U_nb)
             self.update_Mmn_opt(wcc_bk_phase=wcc_bk_phase)
         return self._wcc, self._r2
 
 
-def calA(B):
-    """ (B^dagger - B)/2 from MV97"""
-    return (B.T.conj() - B) / 2
-
-
-def calS(B):
-    """ (B^dagger + B)/(2i) from MV97"""
-    return (B.T.conj() + B) / (2j)
-
-
 def gradOmega(wb, Mbmn):
-    num_wann = Mbmn.shape[1]
-    rng = np.arange(num_wann)
-    Mbnn = Mbmn[:, rng, rng]
+    Mbnn = np.diagonal(Mbmn, axis1=1, axis2=2)
     q_bn = np.angle(Mbnn)
-    R = Mbmn * Mbnn[:, None, :].conj()
-    Rtilde = Mbmn / Mbnn[:, None, :]
-    Tbmn = Rtilde * q_bn[:, None, :]
-    return 2 * sum(w * (-calA(R) - calS(T))  for w, T, R in zip(wb, Tbmn, R))
+    X = Mbmn * (Mbnn.conj() + 1j * q_bn / Mbnn)[:, None, :]
+    return 2 * cached_einsum('bij,b->ij', (X - X.swapaxes(-1, -2).conj()) / 2, wb)
 
 
 def get_r2(wb, Mmn_rotated, weight, wcc_bk_phase=None, wbk=None):
-    num_wann = Mmn_rotated.shape[1]
-    rng = np.arange(num_wann)
-    Mmn_diag = Mmn_rotated[:, rng, rng]
     if wcc_bk_phase is not None:
-        Mmn_diag = Mmn_diag * wcc_bk_phase.T[:, :]
+        Mmn_diag = cached_einsum('bii,ib->bi', Mmn_rotated, wcc_bk_phase)
+    else:
+        Mmn_diag = np.diagonal(Mmn_rotated, axis1=1, axis2=2)
     Mmn_diag_angle = np.angle(Mmn_diag)
     r2 = wb @ (1 - abs(Mmn_diag)**2 + Mmn_diag_angle ** 2) * weight
     if wbk is not None:

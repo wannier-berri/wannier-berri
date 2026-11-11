@@ -2,6 +2,8 @@ import os.path
 
 import numpy as np
 
+from wannierberri.utility import hermitize
+
 from ..fourier.rvectors import Rvectors
 from scipy import constants as const
 from ..factors import Ry_eV
@@ -96,7 +98,7 @@ def get_system_phonons_qe(
                         phi = _str2array(dynamical[f'phi.{i + 1}.{j + 1}'], dtype=complex
                                      ).reshape(3, 3, order='F')
                         dyn_mat[i * 3:i * 3 + 3, j * 3:j * 3 + 3] = phi
-                dyn_mat = 0.5 * (dyn_mat + dyn_mat.T.conj())
+                dyn_mat = hermitize(dyn_mat, 0, 1)  # symmetrize the dynamical matrix
                 dynamical_mat.append(dyn_mat)
                 q_points.append(q)
 

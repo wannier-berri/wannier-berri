@@ -61,7 +61,7 @@ def ray_init_cluster(
         if opt not in ray_init:
             ray_init_loc[opt] = def_val()
         else:
-            logger.warning(f"the ray cluster will use '{opt}={ray_init[opt]}' provided in ray_init")
+            logger.warning("the ray cluster will use '%s=%s' provided in ray_init", opt, ray_init[opt])
     set_opt('address', lambda: 'auto')
     set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
     set_opt('_redis_password', lambda: os.environ["redis_password"])

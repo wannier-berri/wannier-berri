@@ -3,8 +3,8 @@ import numpy as np
 from collections.abc import Iterable
 from .grid import GridAbstract
 from .Kpoint import KpointBZpath
+from ..utility import savez
 import logging
-logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +123,8 @@ class Path(GridAbstract):
         )
         return self
 
-    def to_npz(self, filename):
-        np.savez(filename, **self.as_dict())
+    def to_npz(self, filename, compressed=False):
+        savez(filename, **self.as_dict(), compressed=compressed)
 
     @classmethod
     def from_npz(cls, filename):

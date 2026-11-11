@@ -1,4 +1,5 @@
 # inheriting just in order to have possibility to change default values, without changing the rest of the code
+from ..utility import savez
 from ..utility import normalize_type
 import abc
 import numpy as np
@@ -22,10 +23,10 @@ class SavableNPZ(abc.ABC):
         pass
 
 
-    def to_npz(self, f_npz):
+    def to_npz(self, f_npz, compressed=False):
         dic = self.as_dict()
         logger.info(f"saving to {f_npz} : ")
-        np.savez_compressed(f_npz, **dic)
+        savez(f_npz, compressed=compressed, **dic)
         return self
 
     @classmethod

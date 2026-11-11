@@ -6,7 +6,7 @@ import numpy as np
 from packaging import version
 from ..symmetry.wyckoff_position import split_into_orbits
 from ..symmetry.point_symmetry import PointGroup
-from ..utility import clear_cached, one2three, pauli_xyz
+from ..utility import clear_cached, one2three, pauli_xyz, savez
 from .system import System, num_cart_dim
 from ..fourier.rvectors import Rvectors
 from ..factors import bohr, factor_spin
@@ -284,8 +284,8 @@ class System_R(System):
 
         # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
 
-        logger.debug(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-        logger.debug(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
+        logger.debug("Wannier Centers cart (raw):\n %s\n", self.wannier_centers_cart)
+        logger.debug("Wannier Centers red: (raw):\n %s\n", self.wannier_centers_red)
         logger.info(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
         self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
@@ -304,8 +304,8 @@ class System_R(System):
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup, use_symmetries_index=use_symmetries_index)
         self.set_structure_from_sg(symmetrizer.spacegroup)
 
-        logger.debug(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
-        logger.debug(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
+        logger.debug("Wannier Centers cart (symetrized):\n %s\n", self.wannier_centers_cart)
+        logger.debug("Wannier Centers red: (symmetrized):\n %s\n", self.wannier_centers_red)
 
         self.clear_cached_R()
         self.clear_cached_wcc()
@@ -406,9 +406,9 @@ class System_R(System):
             pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
             suborbit_list = split_into_orbits(pos, spacegroup=spacegroup)
             if len(suborbit_list) > 1:
-                logger.warning(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
-                         "it is recommentded to name atoms at different wyckoff positions differently:\n"
-                         "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
+                logger.warning("Positions of  %s belong to different wyckoff positions. This case is not much tested."
+                         "it is recommentded to name atoms at different wyckoff positions differently:\n%s",
+                         atom, "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
             logger.info(f"pos_list: {suborbit_list}")
             if ";" in orbital:
@@ -545,9 +545,9 @@ class System_R(System):
                 sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
                     if warn:
-                        logger.warning(f"you declared your system as non-periodic along direction {i},"
-                                       f"but there are {sum(sel)} of total {self.rvec.nRvec} R-vectors with R[{i}]!=0."
-                                       "They will be excluded, please make sure you know what you are doing")
+                        logger.warning("you declared your system as non-periodic along direction %s,"
+                                       "but there are %s of total %s R-vectors with R[%s]!=0."
+                                       "They will be excluded, please make sure you know what you are doing", i, sum(sel), self.rvec.nRvec, i)
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
@@ -606,13 +606,13 @@ class System_R(System):
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            logger.warning(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
-                          "For other states spin properties will be set to zero. are yoiu sure ?")
+            logger.warning("number of spin pairs %s is less then num_wann/2 = %s."
+                          "For other states spin properties will be set to zero. are yoiu sure ?", len(pairs), self.num_wann / 2)
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
             if dist > 1e-3:
-                logger.warning(f"setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
+                logger.warning("setting spin pair for Wannier function %s and %s, distance between them %s", i, j, dist)
             SS_R0[i, i] = pauli_xyz[0, 0]
             SS_R0[i, j] = pauli_xyz[0, 1]
             SS_R0[j, i] = pauli_xyz[1, 0]
@@ -651,10 +651,10 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_pointgroup()
         self.check_periodic()
-        logger.debug(f"Real-space lattice:\n {self.real_lattice}")
-        logger.debug(f"Number of wannier functions: {self.num_wann}")
-        logger.debug(f"Number of R points: {self.rvec.nRvec}")
-        logger.debug(f"Recommended size of FFT grid {self.NKFFT_recommended}")
+        logger.debug("Real-space lattice:\n %s", self.real_lattice)
+        logger.debug("Number of wannier functions: %s", self.num_wann)
+        logger.debug("Number of R points: %s", self.rvec.nRvec)
+        logger.debug("Recommended size of FFT grid %s", self.NKFFT_recommended)
 
 
     def do_ws_dist(self, mp_grid, wannier_centers_cart=None, ws_dist_tol=1e-5):
@@ -670,7 +670,7 @@ class System_R(System):
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
         self.rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)
         for key, val in self._XX_R.items():
-            logger.debug(f"using new ws_dist for {key}\n")
+            logger.debug("using new ws_dist for %s\n", key)
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
@@ -929,7 +929,9 @@ class System_R(System):
     def nRvec(self):
         return self.rvec.nRvec
 
-    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(),
+               compressed=False,
+               R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
         Parameters
@@ -959,7 +961,7 @@ class System_R(System):
 
         for key in set(properties):
             fullpath = os.path.join(path, key + ".npz")
-            logger.debug(f"saving {key} to {fullpath}")
+            logger.debug("saving %s to %s", key, fullpath)
             if key == 'iRvec':
                 val = self.rvec
             else:
@@ -967,23 +969,23 @@ class System_R(System):
 
             if key in ['pointgroup', 'iRvec']:
                 if val is not None:
-                    np.savez(fullpath, **val.as_dict())
+                    savez(fullpath, compressed=compressed, **val.as_dict())
                 elif overwrite and os.path.exists(fullpath):
                     os.remove(fullpath)
             elif key in ['cell']:
-                np.savez(fullpath, **val)
+                savez(fullpath, **val, compressed=compressed)
             else:
-                np.savez(fullpath, val)
+                savez(fullpath, val, compressed=compressed)
             logger.debug(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
                 if hasattr(self, key) and getattr(self, key) is not None:
                     val = getattr(self, key)
-                    np.savez(fullpath, val)
+                    savez(fullpath, val, compressed=compressed)
         for key in R_matrices:
-            logger.debug(f"saving {key}")
-            np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
+            logger.debug("saving %s", key)
+            savez(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key), compressed=compressed)
             logger.debug(" - Ok!\n")
 
 
@@ -1030,11 +1032,11 @@ class System_R(System):
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
-        logger.debug(f"properties to load: {properties}")
+        logger.debug("properties to load: %s", properties)
         for key in properties:
             if key in keys_processed:
                 continue
-            logger.debug(f"loading {key}\n ")
+            logger.debug("loading %s\n ", key)
             a = np.load(os.path.join(path, key + ".npz"), allow_pickle=True)
 
             # pointgroup was previouslly named symgroup. This is for backward compatibility
@@ -1051,7 +1053,7 @@ class System_R(System):
                 val = a['arr_0']
 
             if key == "iRvec":
-                logger.debug(f"{val=}")
+                logger.debug("val=%r", val)
                 rvecdict = Rvectors.read_dict(val)
                 ## legacy - to read old systems, where the shifts are not written in the Rvectors file.
                 if "shifts_left_red" not in rvecdict:
@@ -1071,13 +1073,13 @@ class System_R(System):
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
             matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
         for key in matrices:
-            logger.debug(f"loading R_matrix {key}")
+            logger.debug("loading R_matrix %s", key)
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
 
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
-            logger.debug(f"loading {key} - Ok!\n")
+            logger.debug("loading %s - Ok!\n", key)
         return self
 
     @classmethod

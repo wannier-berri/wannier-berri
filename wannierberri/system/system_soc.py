@@ -121,19 +121,25 @@ class SystemSOC(System_R):
     def essential_properties(self):
         return super().essential_properties + ['cell']
 
-    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None,
+               overwrite=True, compressed=False):
         # if not self.silent:
         logger.info(f"Saving SystemSOC to {path}")
-        super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
+        super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices,
+                       overwrite=overwrite)
         if R_matrices is not None:
             R_matrices = set(R_matrices) - set(["overlap_up_down"])
-        self.system_up.to_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+        self.system_up.to_npz(path=os.path.join(path, "system_up"),
+                              overwrite=overwrite, exclude_properties=exclude_properties,
+                              R_matrices=R_matrices, compressed=compressed)
         if self.nspin == 2:
-            self.system_down.to_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+            self.system_down.to_npz(path=os.path.join(path, "system_down"),
+                                    overwrite=overwrite, exclude_properties=exclude_properties,
+                                    R_matrices=R_matrices, compressed=compressed)
 
     @property
     def has_soc(self):
-        logger.debug(f"checking hassoc, nspin={self.nspin}, XXR keys : {list(self._XX_R.keys())}")
+        logger.debug("checking hassoc, nspin=%s, XXR keys : %s", self.nspin, list(self._XX_R.keys()))
         if self.nspin == 2:
             return (self.has_R_mat_all(['dV_soc', 'overlap_up_down']) and
                     self.system_up.has_R_mat('dV_soc') and
@@ -261,7 +267,7 @@ class SystemSOC(System_R):
                     silent=True,
                 )
                 system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
-                logger.debug(f"system_soc has matrices {list(system_soc._XX_R.keys())} after symmetrization")
+                logger.debug("system_soc has matrices %s after symmetrization", list(system_soc._XX_R.keys()))
                 rvec.iRvec = iRvec_new
                 rvec.mp_grid = system_soc.rvec.mp_grid,
                 rvec.clear_cached()

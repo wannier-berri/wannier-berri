@@ -165,7 +165,7 @@ class Grid(GridAbstract):
                 ] for y in range(self.div[1])
             ] for x in range(self.div[0])
         ]
-        logger.debug(f"Done in {time() - t00} s ")
+        logger.debug("Done in %s s ", time() - t00)
         if use_symmetry:
             t0 = time()
             logger.debug("excluding symmetry-equivalent K-points from initial grid")
@@ -179,7 +179,7 @@ class Grid(GridAbstract):
                                 if k != (x, y, z):
                                     KP.absorb(K_list[k[0]][k[1]][k[2]])
                                     K_list[k[0]][k[1]][k[2]] = None
-            logger.debug(f"Done in {time() - t0} s ")
+            logger.debug("Done in %s s ", time() - t0)
 
         K_list = [K for Kyz in K_list for Kz in Kyz for K in Kz if K is not None]
         logger.info(
@@ -213,7 +213,7 @@ def autoNK(NK, NKFFTrec, pointgroup):
 
 
 def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, length=None, length_FFT=None):
-    logger.debug(f"determining grids from NK={NK} ({type(NK)}), NKdiv={NKdiv} ({type(NKdiv)}), NKFFT={NKFFT} ({type(NKFFT)})")
+    logger.debug("determining grids from NK=%s (%s), NKdiv=%s (%s), NKFFT=%s (%s)", NK, type(NK), NKdiv, type(NKdiv), NKFFT, type(NKFFT))
     NKdiv = one2three(NKdiv)
     NKFFT = one2three(NKFFT)
     NK = one2three(NK)
@@ -229,7 +229,7 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
         if NKFFT is None:
             NKFFT = np.array(
                 np.round(length_FFT / (2 * np.pi) * np.linalg.norm(pointgroup.recip_lattice, axis=1)), dtype=int)
-            logger.debug(f"length_FFT={length_FFT} was converted into NKFFT={NKFFT}")
+            logger.debug("length_FFT=%s was converted into NKFFT=%s", length_FFT, NKFFT)
         else:
             logger.warning("length_FFT is disregarded in presence of NKFFT")
 

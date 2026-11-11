@@ -1,6 +1,6 @@
 from functools import cached_property, lru_cache
 import numpy as np
-from ..utility import cached_einsum, clear_cached, arr_to_string, normalize_type
+from ..utility import cached_einsum, clear_cached, arr_to_string, normalize_type, savez
 from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
@@ -247,7 +247,7 @@ class SymmetrizerSAWF:
             basis_list = proj.basis_list
             # logger.info(f"orbitals = {orbitals}")
             if len(orbitals) > 1:
-                logger.warning(f"projection {proj} has more than one orbital. it will be split into separate blocks, please order them in the win file consistently")
+                logger.warning("projection %s has more than one orbital. it will be split into separate blocks, please order them in the win file consistently", proj)
             for orb in orbitals:
                 projections_list.append((proj.positions, orb, basis_list))
 
@@ -309,8 +309,8 @@ class SymmetrizerSAWF:
                     self.D_wann_blocks[ik][isym].append(D[ik, isym])
         self.D_wann_block_indices = np.array(self.D_wann_block_indices)
         self.num_wann = num_wann
-        logger.debug(f"num_wann: {num_wann}")
-        logger.debug(f"D_wann_block_indices: {self.D_wann_block_indices}")
+        logger.debug("num_wann: %s", num_wann)
+        logger.debug("D_wann_block_indices: %s", self.D_wann_block_indices)
 
 
     def symmetrize_wannier_property(self, wannier_property):
@@ -751,12 +751,12 @@ class SymmetrizerSAWF:
         amn = np.random.random(shape) + 1j * np.random.random(shape)
         return self.symmetrize_amn(amn)
 
-    def to_npz(self, f_npz):
+    def to_npz(self, f_npz, compressed=False):
         if f_npz is None:
             return self
         dic = self.as_dict()
         logger.info(f"saving to {f_npz} : ")
-        np.savez_compressed(f_npz, **dic)
+        savez(f_npz, **dic, compressedfl=compressed)
         return self
 
     @classmethod
@@ -992,7 +992,7 @@ class SymmetrizerSAWF:
             the new symmetrizer with the symmetry operation applied to the spacegroup
         """
         new_spacegroup_index, translation_differnce = self.spacegroup.get_transformed_group_index(symmetry_operation)
-        logger.debug(f"{translation_differnce=}, {new_spacegroup_index=}")
+        logger.debug("translation_differnce=%s, new_spacegroup_index=%s", translation_differnce, new_spacegroup_index)
         new_sawf = SymmetrizerSAWF()
         new_sawf.spacegroup = self.spacegroup
         new_sawf.num_wann = self.num_wann
@@ -1002,7 +1002,7 @@ class SymmetrizerSAWF:
         new_sawf.rot_orb_list = []
         new_sawf.D_wann_block_indices = self.D_wann_block_indices
         for T, atom_map, rot_orb in zip(self.T_list, self.atommap_list, self.rot_orb_list):
-            logger.debug(f"{T.shape=}, {atom_map.shape=}, {rot_orb.shape=} {new_sawf.Nsym=}, {new_sawf.num_wann=}, {new_spacegroup_index=}")
+            logger.debug("T.shape=%s, atom_map.shape=%s, rot_orb.shape=%s new_sawf.Nsym=%s, new_sawf.num_wann=%s, new_spacegroup_index=%s", T.shape, atom_map.shape, rot_orb.shape, new_sawf.Nsym, new_sawf.num_wann, new_spacegroup_index)
             new_sawf.T_list.append((T[:, new_spacegroup_index] - translation_differnce) @ symmetry_operation.rotation.T)
             new_sawf.atommap_list.append(atom_map[:, new_spacegroup_index])
             new_sawf.rot_orb_list.append(rot_orb[:, new_spacegroup_index])
