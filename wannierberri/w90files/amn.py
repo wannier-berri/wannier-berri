@@ -118,6 +118,8 @@ class AMN(W90_file):
                            normalize=True, verbose=False,
                            selected_kpoints=None,
                            kptirr=None,
+                           use_paw=False,
+                           use_pseudo=True,
                            NK=None):
         """
         Create an AMN object from a BandStructure object
@@ -163,44 +165,77 @@ class AMN(W90_file):
 
         if verbose:
             logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
-        data = {}
+        data ={}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
         unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
         bessel = Bessel_j_radial_int()
 
-        for ikirr in kptirr:
-            kp = bandstructure.kpoints[selected_kpoints[ikirr]]
-            igk = kp.ig[:, :3] + kp.k[None, :]
-            expgk = np.exp(-2j * np.pi * (pos @ igk.T))
-            wf = kp.WF
-            wf = wf.conj()
-            if normalize:
-                norms = np.linalg.norm(wf, axis=(1, 2))
-                wf = wf / norms[:, None, None]
-            if spinor:
-                wf_up = wf[:, :, 0]
-                wf_down = wf[:, :, 1]
+        if use_pseudo:
+            for ikirr in kptirr:
+                kp = bandstructure.kpoints[selected_kpoints[ikirr]]
+                igk = kp.ig[:, :3] + kp.k[None, :]
+                expgk = np.exp(-2j * np.pi * (pos @ igk.T))
+                wf = kp.WF
+                wf = wf.conj()
+                if normalize:
+                    norms = np.linalg.norm(wf, axis=(1, 2))
+                    wf = wf / norms[:, None, None]
+                if spinor:
+                    wf_up = wf[:, :, 0]
+                    wf_down = wf[:, :, 1]
 
-            gk = igk @ rec_latt
-            prj = []
-            projector_dict = {}
-            for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
-                if spread_factor not in projector_dict:
-                    projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
-                projector = projector_dict[spread_factor]
-                prj.append(projector(orb, basis, radial_nodes))
-            proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
+                gk = igk @ rec_latt
+                prj = []
+                projector_dict = {}
+                for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
+                    if spread_factor not in projector_dict:
+                        projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
+                    projector = projector_dict[spread_factor]
+                    prj.append(projector(orb, basis, radial_nodes))
+                proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
+                if spinor:
+                    proj_up = wf_up @ proj_gk.T
+                    proj_down = wf_down @ proj_gk.T
+                    datak = []
+                    for u, d in zip(proj_up.T, proj_down.T):
+                        datak.append(u)
+                        datak.append(d)
+                    data[ikirr] = np.array(datak).T
+                else:
+                    data[ikirr] = wf[:, :, 0] @ proj_gk.T
+
+
+        if use_paw:
             if spinor:
-                proj_up = wf_up @ proj_gk.T
-                proj_down = wf_down @ proj_gk.T
-                datak = []
-                for u, d in zip(proj_up.T, proj_down.T):
-                    datak.append(u)
-                    datak.append(d)
-                data[ikirr] = np.array(datak).T
-            else:
-                data[ikirr] = wf[:, :, 0] @ proj_gk.T
+                raise NotImplementedError("PAW projections are not implemented yet for spinor wavefunctions. They ware only for GPAW in collinear spin mode so far") 
+            for ikirr in kptirr:
+            
+                kp = bandstructure.kpoints_paw[selected_kpoints[ikirr]]
+                proj = kp.proj
+                # 1. map positions of projections to the atom positions.
+                # if the there is no atom close to the projection position, then the projection is ignored.
+                map_proj_to_atom = {}
+                for i, proj_pos in enumerate(proj.positions):
+                    dist = np.linalg.norm(proj_pos - positions, axis=1)
+                    if np.min(dist) < 1e-3:
+                        map_proj_to_atom[i] = np.argmin(dist)
+                if len(map_proj_to_atom) == 0:
+                    logger.warning(f"No projections found for k-point {kp.k}. Ignoring this k-point.")
+                    continue
+                proj = proj[sorted(map_proj_to_atom.keys())]
+                proj_positions = np.array([proj.positions[i] for i in sorted(map_proj_to_atom.keys())])
+                prod = np.zeros((num_bands, num_wann), dtype=complex)
+                for a, dO_ii in bandstructure.dO_aii.items():
+                    I1, I2 = bandstructure.get_orb_indices_on_atom(a)
+                    prod += (proj[:, I1:I2].conj() @ dO_ii )
+                return prod
+
+                data_ikirr = 0  # placeholder for the data for this k-pint
+                data[ikirr] = data_ikirr + data.get(ikirr, 0)  # add to existing data if any
+
+            raise NotImplementedError("PAW projections are not implemented yet. Please, use pseudo-projections.")
+
         return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list,
                    spread_list=spread_list, spinor=spinor,
                    wannier_names=projections.get_wannier_names(),
