@@ -87,7 +87,10 @@ class Data_K_soc(Data_K_R):
             SSk[:, rng, rng, :] = pauli_rotated[:, 0, 0, ::, :]
             SSk[:, rng + 1, rng + 1, :] = pauli_rotated[:, 1, 1, :, :, :]
         if self.nspin == 2:
-            overlap = self.get_k_mat('overlap_up_down', der=der).reshape((self.nk, self.num_wann // 2, self.num_wann // 2) + (1,) * (der + 1))
+            # Keep the spin axis singleton, followed by one Cartesian axis per derivative.
+            overlap = self.get_k_mat('overlap_up_down', der=der).reshape(
+                (self.nk, self.num_wann // 2, self.num_wann // 2, 1) + (3,) * der
+            )
         else:
             if der == 0:
                 overlap = np.eye(self.num_wann // 2, dtype=complex)[None, :, :].reshape((1, self.num_wann // 2, self.num_wann // 2) + (1,) * (der + 1))

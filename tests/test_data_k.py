@@ -55,3 +55,16 @@ def test_fourier(system_Fe_W90):
                 f"numpy does not match fftw for {field}_bar_der{der} "
 
     # TODO: Allow gauge degree of freedom
+
+
+def test_soc_spin_operator_first_derivative(system_Fe_gpaw_soc_z):
+    """The first spin-operator derivative has a spin and a Cartesian axis."""
+    system = system_Fe_gpaw_soc_z
+    grid = wberri.Grid(system=system, NKFFT=1, NKdiv=1, use_symmetry=False)
+    data_k_class = get_data_k_class_from_system(system)
+    data_k = data_k_class(system, dK=np.zeros(3), grid=grid, fftlib="numpy")
+
+    spin_derivative = data_k.SS_W(der=1)
+
+    assert spin_derivative.shape == (1, system.num_wann, system.num_wann, 3, 3)
+    assert np.isfinite(spin_derivative).all()
