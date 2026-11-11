@@ -242,9 +242,9 @@ class MMN(W90_file):
                         kpoints_dict_keys.add(ik2)
                         num_times_needed[ik2] = num_times_needed.get(ik2, 0) + 1
         n_needed_kpoints = len(kpoints_dict_keys)
-        logger.debug(f"Total number of k-points used for mmn calculation: {n_needed_kpoints} out of total {NK} {len(kpt_grid)} k-points in the grid ({len(kptirr)} irreducible k-points)")
+        logger.debug("Total number of k-points used for mmn calculation: %s out of total %s %s k-points in the grid (%s irreducible k-points)", n_needed_kpoints, NK, len(kpt_grid), len(kptirr))
         for i in range(max(num_times_needed.values(), default=0)):
-            logger.debug(f"Number of k-points needed {i} times: {[ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))]}")
+            logger.debug("Number of k-points needed %s times: %s", i, [ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))])
         logger.debug("excluding irreducible k-points")
 
         if use_disk:
@@ -268,7 +268,7 @@ class MMN(W90_file):
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
                                                         k_new=kpt_grid[ik2], **store_kwargs)
                         kpoints_dict_all[ik2] = kp2
-                        logger.debug(f"adding k-point {ik2}  (in kpoints_dict_all = {ik2 in kpoints_dict_all}); the length is now {len(kpoints_dict_all)}")
+                        logger.debug("adding k-point %s  (in kpoints_dict_all = %s); the length is now %s", ik2, ik2 in kpoints_dict_all, len(kpoints_dict_all))
 
 
 

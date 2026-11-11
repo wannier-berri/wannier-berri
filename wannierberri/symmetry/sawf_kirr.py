@@ -98,8 +98,8 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                     if verbose:
                         logger.info(f"Excluding bands {start} to {end} (block {i}) from symmetrization, max error in block {max_error_in_blocks[i]} exceeds threshold {accuracy_threshold}")
                 else:
-                    logger.warning(f"max error in block {i} [{start}:{end}] is {max_error_in_blocks[i]}, exceeding threshold {accuracy_threshold}, and this is not among the  upper"
-                                f" bands({no_exclude_bands}:{self.nb}) bands, this may indicate inaccuracy in the input data")
+                    logger.warning("max error in block %s [%s:%s] is %s, exceeding threshold %s, and this is not among the  upper"
+                                " bands(%s:%s) bands, this may indicate inaccuracy in the input data", i, start, end, max_error_in_blocks[i], accuracy_threshold, no_exclude_bands, self.nb)
                     maxerr = max(maxerr, max_error_in_blocks[i])
             else:
                 maxerr = max(maxerr, max_error_in_blocks[i])
@@ -107,22 +107,25 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
 
 
     def rotate_U(self, U, isym):
-        Uloc = U.copy()
         if self.time_reversals[isym]:
-            Uloc = Uloc.conj()
-        Uloc = rotate_block_matrix(Uloc,
-                                   lblocks=self.d_band_blocks[isym],
-                                   lindices=self.d_indices,
-                                   rblocks=self.D_wann_blocks_inverse[isym],
-                                   rindices=self.D_indices)
-        return Uloc
+            U = U.conj()
+        U = rotate_block_matrix(U,
+                                lblocks=self.d_band_blocks[isym],
+                                lindices=self.d_indices,
+                                rblocks=self.D_wann_blocks_inverse[isym],
+                                rindices=self.D_indices)
+        return U
 
+    def symmetrize(self, U):
+        Usum = np.zeros_like(U)
+        for isym in self.isym_little:
+            Usum += self.rotate_U(U, isym)
+        return Usum / self.nsym_little
 
     def __call__(self, U, maxiter=10, tol=5e-5):
-        Uprev = U.copy()
+        Uprev = U
         for _ in range(maxiter):
-            Uloc = Uprev.copy()
-            Usym = sum(self.rotate_U(Uloc, isym) for isym in self.isym_little) / self.nsym_little
+            Usym = self.symmetrize(Uprev)
             diff1 = abs(Usym - Uprev).max()
             Usym_ortho = np.zeros(Usym.shape, dtype=complex)
             Usym_ortho[self.include_bands] = orthogonalize(Usym[self.include_bands])
@@ -131,9 +134,9 @@ class Symmetrizer_Uirr(SymmetrizerSAWF):
                 return Usym
             Uprev = Usym_ortho
         else:
-            logger.warning(f"symmetrization did not converge in {maxiter} iterations, final changes {diff1}, {diff2}"
+            logger.warning("symmetrization+orthogonalization did not converge in %s iterations, final changes %s, %s"
                   "; probably the input data are not perfectly symmetrizable, or the provided projections are not"
-                  "compatible with the irreps of the DFT bands."
+                  "compatible with the irreps of the DFT bands.", maxiter, diff1, diff2
             )
         return Usym
 
@@ -167,25 +170,30 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
 
     def __call__(self, Z):
         if Z.shape[0] == 0:
-            # return Z # temporary for testing
             return Z
-        else:
-            Z_rotated = [self.rotate_Z(Z, isym) for isym in self.isym_little]
-            Z[:] = sum(Z_rotated) / self.nsym_little
-            return Z
-
-    def rotate_Z(self, Z, isym):
-        """
-        Rotates the zmat matrix at the irreducible kpoint
-        Z = d_band^+ @ Z @ d_band
-        """
-        Zloc = Z.copy()
-        Zloc = rotate_block_matrix(Zloc, lblocks=self.lblocks[isym],
-                                 lindices=self.indices,
-                                 rblocks=self.rblocks[isym],
-                                 rindices=self.indices,
+        Zsum = np.zeros_like(Z)
+        for isym in self.isym_little:
+            t = rotate_block_matrix(Z,
+                                lblocks=self.lblocks[isym],
+                                lindices=self.indices,
+                                rblocks=self.rblocks[isym],
+                                rindices=self.indices,
                                 )
-        if self.time_reversals[isym]:
-            Zloc = Zloc.conj()
+            if self.time_reversals[isym]:
+                t = t.conj()
+            Zsum += t
+        return Zsum / self.nsym_little
 
-        return Zloc
+    # def rotate_Z(self, Z, isym):
+    #     """
+    #     Rotates the zmat matrix at the irreducible kpoint
+    #     Z = d_band^+ @ Z @ d_band
+    #     """
+    #     Z = rotate_block_matrix(Z, lblocks=self.lblocks[isym],
+    #                             lindices=self.indices,
+    #                             rblocks=self.rblocks[isym],
+    #                             rindices=self.indices,
+    #                             )
+    #     if self.time_reversals[isym]:
+    #         Z = Z.conj()
+    #     return Z

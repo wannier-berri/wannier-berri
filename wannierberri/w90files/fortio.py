@@ -12,7 +12,7 @@ class FortranFileR(fortio.FortranFile):
         try:
             super().__init__(filename, mode='r', header_dtype='uint32', auto_endian=True, check_file=True)
         except ValueError:
-            logger.debug(f"File '{filename}' contains sub-records - using header_dtype='int32'")
+            logger.debug("File '%s' contains sub-records - using header_dtype='int32'", filename)
             super().__init__(filename, mode='r', header_dtype='int32', auto_endian=True, check_file=True)
 
 

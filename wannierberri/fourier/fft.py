@@ -13,7 +13,7 @@ try:
     PYFFTW_IMPORTED = True
 except Exception as err:
     PYFFTW_IMPORTED = False
-    logger.warning(f"error importing  `pyfftw` : {err} \n will use numpy instead \n")
+    logger.warning("error importing  `pyfftw` : %s \n will use numpy instead \n", err)
 
 
 def fft_W(inp, axes, inverse=False, destroy=True):

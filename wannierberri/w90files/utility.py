@@ -119,7 +119,7 @@ def grid_from_kpoints(kpoints, grid=None):
     else:
         returngrid = False
     npgrid = np.array(grid)
-    logger.debug(f"mpgrid = {npgrid}, {len(kpoints)}")
+    logger.debug("mpgrid = %s, %s", npgrid, len(kpoints))
     kpoints_unique = set()
     selected_kpoints = []
     for i, k in enumerate(kpoints):
@@ -129,7 +129,7 @@ def grid_from_kpoints(kpoints, grid=None):
                 kpoints_unique.add(kint)
                 selected_kpoints.append(i)
             else:
-                logger.warning(f"k-point {k} is repeated")
+                logger.warning("k-point %s is repeated", k)
 
     num_selected = len(selected_kpoints)
     num_k_grid = np.prod(npgrid)

@@ -198,7 +198,7 @@ class SOC(W90_file):
 
         # TODO : use time-reversal symmetry in case of non-magnetic calculation to calculate only one spin channel and one off-diagonal block
         for q in range(nk):
-            logger.debug(f"Calculating SOC for k-point {q}/{nk}")
+            logger.debug("Calculating SOC for k-point %s/%s", q, nk)
             KPup = bandstructure_up.kpoints_paw[q]
             if altermagnetic_transformer is None:
                 if nspin == 2:
