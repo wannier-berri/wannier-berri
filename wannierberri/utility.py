@@ -249,7 +249,7 @@ def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
     return lst
 
 
-def get_max_eig(matrix, nvec, nBfree):
+def get_max_eig(matrix, nvec):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
 
     Parameters
@@ -266,10 +266,13 @@ def get_max_eig(matrix, nvec, nBfree):
     numpy.ndarray(n,nvec)
         eigenvectors
     """
-    assert matrix.shape[0] == matrix.shape[1]
-    assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
+    if nvec == 0:
+        return np.zeros((matrix.shape[0], 0), dtype=complex)
+    # assert matrix.shape[0] == matrix.shape[1]
+    # assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
     e, v = np.linalg.eigh(matrix)
-    return v[:, nBfree - nvec:nBfree]
+    # n = matrix.shape[0]
+    return v[:, -nvec:]
     # return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
 
 
