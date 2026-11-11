@@ -177,8 +177,7 @@ class Kpoint_and_neighbours:
             Mmn_loc_opt = [self.freefree[ib].dot(U_nb[ib]) for ib in range(len(self.wb))]
         # Here, we cannot vectoriza because the matrices Mmn_loc_opt have different shapes for each neighbour
         Z = np.array(sum(wb * mmn.dot(mmn.T.conj()) for wb, mmn in zip(self.wb, Mmn_loc_opt)))
-        self.symmmetrizer_Zirr(Z)
-        return Z
+        return self.symmmetrizer_Zirr(Z)
 
     @cached_property
     def U_template(self):
