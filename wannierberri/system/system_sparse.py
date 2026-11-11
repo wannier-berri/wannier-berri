@@ -48,7 +48,7 @@ def get_system_sparse(real_lattice,
                     X[iR, j[0], j[1]] = h
             self.set_R_mat(k, X)
         else:
-            logger.warning(f"{k} is empty")
+            logger.warning("%s is empty", k)
 
     self.do_at_end_of_init()
     if symmetrize_info is not None:

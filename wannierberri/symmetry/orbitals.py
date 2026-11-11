@@ -424,6 +424,14 @@ class SphericalHarmonics:
         return 2 * self.costheta * self.sintheta
 
     @cached_property
+    def cos3phi(self):
+        return 4 * self.cosphi**3 - 3 * self.cosphi
+
+    @cached_property
+    def sin3phi(self):
+        return 3 * self.sinphi - 4 * self.sinphi**3
+
+    @cached_property
     def orbitalrotator(self):
         return OrbitalRotator()
 
@@ -435,7 +443,7 @@ class SphericalHarmonics:
         else:
             ibasis = len(self.calcualted_basices)
             self.calcualted_basices.append(basis)
-            logger.debug(f"new basis for spherical harmonics, \n {basis}\n total {len(self.calcualted_basices)} bases")
+            logger.debug("new basis for spherical harmonics, \n %s\n total %s bases", basis, len(self.calcualted_basices))
         if (orbital, ibasis) not in self.harmonics:
             self.harmonics[(orbital, ibasis)] = self._harmonics(orbital, basis)
         return self.harmonics[(orbital, ibasis)]
@@ -479,5 +487,19 @@ class SphericalHarmonics:
                         return sq(15 / (16 * pi)) * self.sin2theta * self.cosphi
                     case 'dyz':
                         return sq(15 / (16 * pi)) * self.sin2theta * self.sinphi
+                    case 'fz3':
+                        return sq(7 / (16 * pi)) * (5 * self.costheta**3 - 3 * self.costheta)
+                    case 'fxz2':
+                        return sq(21 / (32 * pi)) * self.sintheta * (5 * self.costheta**2 - 1) * self.cosphi
+                    case 'fyz2':
+                        return sq(21 / (32 * pi)) * self.sintheta * (5 * self.costheta**2 - 1) * self.sinphi
+                    case 'fzx2-zy2':
+                        return sq(105 / (16 * pi)) * self.sintheta**2 * self.costheta * self.cos2phi
+                    case 'fxyz':
+                        return sq(105 / (16 * pi)) * self.sintheta**2 * self.costheta * self.sin2phi
+                    case 'fx3-3xy2':
+                        return sq(35 / (32 * pi)) * self.sintheta**3 * self.cos3phi
+                    case 'f3yx2-y3':
+                        return sq(35 / (32 * pi)) * self.sintheta**3 * self.sin3phi
                     case _:
                         raise ValueError(f"orbital {orbital} not implemented")

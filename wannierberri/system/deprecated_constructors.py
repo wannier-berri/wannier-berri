@@ -3,7 +3,7 @@ logger = logging.getLogger(__name__)
 
 
 def constructor_deprecation_warning(old_constructor_name, new_constructor_name):
-    logger.warning(f"DeprecationWarning: {old_constructor_name} is deprecated and will be removed in the future. Use System_R.from_{new_constructor_name} instead.")
+    logger.warning("DeprecationWarning: %s is deprecated and will be removed in the future. Use System_R.from_%s instead.", old_constructor_name, new_constructor_name)
 
 
 def System_w90(*args, **kwargs):

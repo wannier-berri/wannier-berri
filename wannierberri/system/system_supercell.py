@@ -249,8 +249,8 @@ def add_proximity_potential(system, VV_qq, mp_grid, supercell_matrix, ws_dist_to
     VV_qq_dagger = VV_qq.transpose(1, 0, 3, 2).conj()
     deviation = abs(VV_qq - VV_qq_dagger).max()
     if deviation > 1e-6 * abs(VV_qq).max():
-        logger.warning(f"VV_qq is not Hermitian (deviation {deviation:.2e}, max |V| {abs(VV_qq).max():.2e}). "
-                      "Only its Hermitian part is used")
+        logger.warning("VV_qq is not Hermitian (deviation %.2e, max |V| %.2e). "
+                      "Only its Hermitian part is used", deviation, abs(VV_qq).max())
     VV_qq = (VV_qq + VV_qq_dagger) / 2
     iRvec_cells = _get_iRvec_in_supercell(M)
     num_cells = len(iRvec_cells)
@@ -287,8 +287,8 @@ def add_proximity_potential(system, VV_qq, mp_grid, supercell_matrix, ws_dist_to
     deviation = max(abs(shifted(R1) - XX_R_grid[i]).max() for R1, i in zip(iRvec_grid, icell))
     VV_max = abs(VV_RR).max()
     if deviation > 1e-6 * VV_max:
-        logger.warning(f"the potential is not periodic with the supercell (deviation {deviation:.2e}, "
-                      f"max |V| {VV_max:.2e}). Only its periodic part is used")
+        logger.warning("the potential is not periodic with the supercell (deviation %.2e, "
+                      "max |V| %.2e). Only its periodic part is used", deviation, VV_max)
 
     rvec = Rvectors(lattice=real_lattice, shifts_left_red=wannier_centers_cart[0] @ np.linalg.inv(real_lattice))
     rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)

@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from ..utility import group_numbers
+from ..utility import group_numbers, savez
 from .wandata import WannierData
 import logging
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ class WannierDataSOC(WannierData):
             soc = SOC.from_npz(seedname + ".soc.npz")
         except FileNotFoundError:
             if ignore_missing_files:
-                logger.warning(f"SOC file {seedname}.soc.npz not found. SOC will be set to None.")
+                logger.warning("SOC file %s.soc.npz not found. SOC will be set to None.", seedname)
                 soc = None
             else:
                 raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")
@@ -89,17 +89,17 @@ class WannierDataSOC(WannierData):
             data_soc.cell = {key: val for key, val in cell.items()}
         return data_soc
 
-    def to_npz(self, seedname=None, files=None):
+    def to_npz(self, seedname=None, files=None, compressed=False):
         if seedname is None:
             seedname = self.seedname
         """Save Wannier90DataSOC to NPZ files."""
-        super().to_npz(seedname=seedname, files=self.get_files_proper(files))
+        super().to_npz(seedname=seedname, files=self.get_files_proper(files), compressed=compressed)
         if self.cell is not None:
-            np.savez(seedname + ".cell.npz", **self.cell)
+            savez(seedname + ".cell.npz", compressed=compressed, **self.cell)
         files_ud = [f for f in files if f != "soc"] if files is not None else None
-        self.data_up.to_npz(seedname=seedname + "-spin-0", files=files_ud)
+        self.data_up.to_npz(seedname=seedname + "-spin-0", files=files_ud, compressed=compressed)
         if self.data_down is not None:
-            self.data_down.to_npz(seedname=seedname + "-spin-1", files=files_ud)
+            self.data_down.to_npz(seedname=seedname + "-spin-1", files=files_ud, compressed=compressed)
 
     def check_wannierised(self, msg=""):
         self.data_up.check_wannierised(msg=msg + " (spin up)")

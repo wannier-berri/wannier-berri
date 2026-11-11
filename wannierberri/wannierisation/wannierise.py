@@ -36,7 +36,10 @@ def wannierise(wandata,
                irreducible=False,
                print_wcc_chk=False,
                savechk=True,
+               chkcompressed=False,
                wcc_start_red=None,
+               check_sym_accuracy=1e-6,
+               check_sym_no_exclude_bands=-4,
                ):
     r"""
     Performs disentanglement and maximal localization of the bands recorded in wandata.
@@ -141,7 +144,7 @@ def wannierise(wandata,
     elif isinstance(frozen_states, dict):
         for ik, frozen_ik in frozen_states.items():
             if ik in kptirr:
-                logger.debug(f"{kptirr=}, {ik=}, {frozen_ik=}")
+                logger.debug("kptirr=%r, ik=%r, frozen_ik=%r", kptirr, ik, frozen_ik)
                 iki = np.where(kptirr == ik)[0][0]
                 for ib in frozen_ik:
                     frozen[iki, ib] = True
@@ -244,7 +247,7 @@ def wannierise(wandata,
                             wb=wandata.bkvec.wk,
                             bk=wandata.bkvec.bk_cart,
                             symmetrizer_Zirr=get_symmetrizer_Zirr(symmetrizer, ik, free[ik]) if symmetrize_Z else VoidSymmetrizer(NK=1),
-                            symmetrizer_Uirr=get_symmetrizer_Uirr(symmetrizer, ik),
+                            symmetrizer_Uirr=get_symmetrizer_Uirr(symmetrizer, ik, accuracy_threshold=check_sym_accuracy, no_exclude_bands=check_sym_no_exclude_bands),
                             ikirr=ik,
                             amn=amn[kpt],
                             weight=symmetrizer.ndegen(ik) / symmetrizer.NK
@@ -302,14 +305,12 @@ def wannierise(wandata,
         wcc_chk, spreads_chk = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
         print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")
         if not np.allclose(wcc, wcc_chk, atol=1e-6):
-            logger.warning(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
-        if not np.allclose(spreads, spreads_chk, atol=1e-2):
-            logger.warning(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+            logger.warning("The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = %s", np.abs(wcc - wcc_chk).max())
 
     # if not np.allclose(wcc, wcc_chk, atol=1e-4):
     #     logger.warning(f"The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = {np.abs(wcc - wcc_chk).max()}")
     # if not np.allclose(spreads, spreads_chk, atol=1e-4):
-    #     logger.warning(f"The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = {np.abs(spreads - spreads_chk).max()}")
+    #         logger.warning("The Wannier spreads from the chk file and the Wannier spreads from the wannierizer are not the same. diff = %s", np.abs(spreads - spreads_chk).max())
 
 
     wandata.wannierised = True
@@ -319,7 +320,7 @@ def wannierise(wandata,
     logger.info(f"total time for wannierization {time() - t0}")
     if savechk:
         chk = wandata.get_file('chk')
-        chk.to_npz(wandata.seedname + ".chk")
+        chk.to_npz(wandata.seedname + ".chk", compressed=chkcompressed)
     return wandata.chk.v_matrix
 
 

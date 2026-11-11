@@ -28,7 +28,7 @@ class UXU(W90_file):
     @classmethod
     def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix=None, bk_reorder=None):
         suffix = CLS.extension if suffix is None else suffix
-        logger.debug(f"reading object of class {CLS.__name__} from file {seedname}.{suffix} with formatted={formatted} bk_reorder={bk_reorder}")
+        logger.debug("reading object of class %s from file %s.%s with formatted=%s bk_reorder=%s", CLS.__name__, seedname, suffix, formatted, bk_reorder)
         if formatted:
             f_uXu_in = open(seedname + "." + suffix, 'r')
             header = f_uXu_in.readline().strip()
@@ -39,7 +39,7 @@ class UXU(W90_file):
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
 
-        logger.debug(f"reading {seedname}.{suffix} : <{header}>")
+        logger.debug("reading %s.%s : <%s>", seedname, suffix, header)
 
         data = np.zeros((NK, NNB, NNB, NB, NB), dtype=complex)
         if formatted:
@@ -55,7 +55,7 @@ class UXU(W90_file):
         if bk_reorder is not None:
             for ik in range(NK):
                 data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :][:, bk_reorder[ik], :, :]
-        logger.debug(f" {suffix} OK ")
+        logger.debug(" %s OK ", suffix)
         f_uXu_in.close()
         return CLS(data=data)
 
@@ -152,7 +152,7 @@ class SXU(W90_file):
         suffix = CLS.extension if suffix is None else suffix
         file_name = seedname + "." + suffix
 
-        logger.debug(f"reading object of class {CLS.__name__} from file {file_name} with formatted={formatted} bk_reorder={bk_reorder}")
+        logger.debug("reading object of class %s from file %s with formatted=%s bk_reorder=%s", CLS.__name__, file_name, formatted, bk_reorder)
 
         if formatted:
             f_sXu_in = open(seedname + "." + suffix, 'r')
@@ -164,7 +164,7 @@ class SXU(W90_file):
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
 
-        logger.debug(f"reading {seedname}.{suffix} : <{header}>")
+        logger.debug("reading %s.%s : <%s>", seedname, suffix, header)
 
         data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
 
@@ -183,7 +183,7 @@ class SXU(W90_file):
         if bk_reorder is not None:
             for ik in range(NK):
                 data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :]
-        logger.debug(f"{suffix} OK ")
+        logger.debug("%s OK ", suffix)
         f_sXu_in.close()
         return CLS(data=data)
 

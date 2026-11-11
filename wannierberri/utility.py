@@ -249,7 +249,7 @@ def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
     return lst
 
 
-def get_max_eig(matrix, nvec, nBfree):
+def get_max_eig(matrix, nvec):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
 
     Parameters
@@ -266,10 +266,14 @@ def get_max_eig(matrix, nvec, nBfree):
     numpy.ndarray(n,nvec)
         eigenvectors
     """
-    assert matrix.shape[0] == matrix.shape[1]
-    assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
+    if nvec == 0:
+        return np.zeros((matrix.shape[0], 0), dtype=complex)
+    # assert matrix.shape[0] == matrix.shape[1]
+    # assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
     e, v = np.linalg.eigh(matrix)
-    return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
+    # n = matrix.shape[0]
+    return v[:, -nvec:]
+    # return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
 
 
 def orthogonalize(u):
@@ -290,7 +294,7 @@ def orthogonalize(u):
         U, _, VT = np.linalg.svd(u, full_matrices=False)
         return U @ VT
     except np.linalg.LinAlgError as e:
-        logger.warning(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        logger.warning("SVD failed with error '%s', using non-orthogonalized matrix", e)
         return u
 
 
@@ -446,3 +450,16 @@ def get_alat_espresso(seedname_pw):
     _Lattice, _positions, _typat, alat_bohr = parser.parse_lattice()
     alat_angstrom = alat_bohr * bohr_angstrom
     return alat_angstrom
+
+
+def savez(file, *val, compressed=False, **arrays):
+    return (np.savez_compressed if compressed else np.savez)(file, *val, **arrays)
+
+
+@njit
+def hermitize(M, axis1=-2, axis2=-1):
+    return (M + np.swapaxes(M, axis1, axis2).conj()) * 0.5
+
+
+def hermitize1032(M):
+    return (M + np.swapaxes(np.swapaxes(M.conj(), 0, 1), 3, 2)) * 0.5

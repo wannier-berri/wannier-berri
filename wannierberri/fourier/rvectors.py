@@ -5,6 +5,7 @@ import numpy as np
 from functools import cached_property
 from typing import Iterable
 import logging
+from ..utility import cached_einsum
 logger = logging.getLogger(__name__)
 
 
@@ -93,17 +94,26 @@ class Rvectors:
         self.iRvec_list = []
         self.Ndegen_list = []
         self.iRvec_mod_list = []
+
         wigner = WignerSeitz(self.lattice, mp_grid=mp_grid, tolerance=ws_tolerance)
-        self.iRvec_index_list = []  # indices of every shift in the
-        for shift in all_shifts_red:
-            iRvec, Ndegen, iRvec_mod = wigner(shift_reduced=shift)
-            self.iRvec_list.append(iRvec)
-            self.Ndegen_list.append(Ndegen)
-            self.iRvec_mod_list.append(iRvec_mod)
-        self.iRvec = np.array(list(set(tuple(a) for a in np.concatenate(self.iRvec_list))), dtype=int)
+        res = [wigner(shift_reduced=s) for s in all_shifts_red]
+        self.iRvec_list = [r[0] for r in res]
+        self.Ndegen_list = [r[1] for r in res]
+        self.iRvec_mod_list = [r[2] for r in res]
+
+        Rmin = np.min([R.min(axis=0) for R in self.iRvec_list], axis=0)
+        Rmax = np.max([R.max(axis=0) for R in self.iRvec_list], axis=0)
+        dims = tuple(int(x) for x in (Rmax - Rmin + 1))
+        strides = np.array([dims[1] * dims[2], dims[2], 1])
+
+        keys_list = [(R - Rmin) @ strides for R in self.iRvec_list]
+        uniq = np.unique(np.concatenate(keys_list))
+        lookup = np.full(int(np.prod(dims)), -1, dtype=np.int64)
+        lookup[uniq] = np.arange(len(uniq))
+
+        self.iRvec = np.stack(np.unravel_index(uniq, dims), axis=1) + Rmin
         self.clear_cached()
-        for i, iRvec in enumerate(self.iRvec_list):
-            self.iRvec_index_list.append(np.array([self.iR(R) for R in iRvec]))
+        self.iRvec_index_list = [lookup[k] for k in keys_list]
 
     def as_dict(self):
         return dict(iRvec=self.iRvec,
@@ -186,14 +196,13 @@ class Rvectors:
         nr = self.nshifts_right
         remapper = np.zeros((self.nRvec, nl, nr, 3), dtype=int)
         weights = np.zeros((self.nRvec, nl, nr), dtype=float)
+
         for ia in range(nl):
             for ib in range(nr):
                 ishift = self.shift_index[ia, ib]
-                for iRi, iRm, nd in zip(self.iRvec_index_list[ishift],
-                                        self.iRvec_mod_list[ishift],
-                                        self.Ndegen_list[ishift]):
-                    remapper[iRi, ia, ib] = iRm
-                    weights[iRi, ia, ib] += 1. / nd
+                iRi = self.iRvec_index_list[ishift]
+                remapper[iRi, ia, ib] = self.iRvec_mod_list[ishift]
+                weights[iRi, ia, ib] += 1. / self.Ndegen_list[ishift]
         sum_expected = np.prod(self.mp_grid) * nl * nr
         sum_calculated = np.sum(weights)
         assert np.allclose(sum_calculated, sum_expected), f"found sum of weights {sum_calculated}, expected {sum_expected}"
@@ -235,22 +244,33 @@ class Rvectors:
         assert XX_R_grid.shape[0:3] == tuple(self.mp_grid), f"XX_R_grid {XX_R_grid.shape} should be {self.mp_grid}"
         assert (nl == 1) or (XX_R_grid.shape[3] == nl), f"XX_R_grid {XX_R_grid.shape} should have {nl} lWFs"
         assert (nr == 1) or (XX_R_grid.shape[4] == nr), f"XX_R_grid {XX_R_grid.shape} should have {nr} rWFs"
-        XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
-        shape_new = (self.nRvec,) + XX_R_grid.shape[3:]
         weights_new = weights.reshape(weights.shape + (1,) * (XX_R_grid.ndim - 5))
         num_wann_l = XX_R_grid.shape[3]
         num_wann_r = XX_R_grid.shape[4]
-        XX_R_new = np.zeros(shape_new, dtype=XX_R_grid.dtype)
+        # XX_R_sum_grid = XX_R_grid.sum(axis=(0, 1, 2))
+        # shape_new = (self.nRvec,) + XX_R_grid.shape[3:]
+        # XX_R_new = np.zeros(shape_new, dtype=XX_R_grid.dtype)
+        # for a in range(num_wann_l):
+        #     ia = 0 if self.nshifts_left == 1 else a
+        #     for b in range(num_wann_r):
+        #         ib = 0 if self.nshifts_right == 1 else b
+        #         XX_R_new[:, a, b] = XX_R_grid[mapx[:, ia, ib], mapy[:, ia, ib], mapz[:, ia, ib], a, b]
+        #         XX_R_new[:, a, b] *= weights_new[:, ia, ib]
+        # XX_R_sum_new = XX_R_new.sum(axis=0)
+        # assert np.allclose(XX_R_sum_new, XX_R_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_R_sum_grid}"
+        ia_idx = np.zeros(num_wann_l, dtype=int) if self.nshifts_left == 1 else np.arange(num_wann_l)
+        ib_idx = np.zeros(num_wann_r, dtype=int) if self.nshifts_right == 1 else np.arange(num_wann_r)
+        mx = mapx[:, ia_idx][:, :, ib_idx]            # (nR, num_wann_l, num_wann_r)
+        my = mapy[:, ia_idx][:, :, ib_idx]
+        mz = mapz[:, ia_idx][:, :, ib_idx]
+        w = weights_new[:, ia_idx][:, :, ib_idx]
 
-        for a in range(num_wann_l):
-            ia = 0 if self.nshifts_left == 1 else a
-            for b in range(num_wann_r):
-                ib = 0 if self.nshifts_right == 1 else b
-                XX_R_new[:, a, b] = XX_R_grid[mapx[:, ia, ib], mapy[:, ia, ib], mapz[:, ia, ib], a, b]
-                XX_R_new[:, a, b] *= weights_new[:, ia, ib]
-        XX_R_sum_new = XX_R_new.sum(axis=0)
-        assert np.allclose(XX_R_sum_new, XX_R_sum_grid), f"XX_R_sum_R_new {XX_R_sum_new} != XX_R_sum_T_tmp {XX_R_sum_grid}"
+        a = np.arange(num_wann_l)[None, :, None]
+        b = np.arange(num_wann_r)[None, None, :]
+        XX_R_new = XX_R_grid[mx, my, mz, a, b] * w
         return XX_R_new
+
+
 
 
     def remap_XX_from_grid_to_list_RR(self, XX_RR_grid):
@@ -272,7 +292,7 @@ class Rvectors:
         XX_RR_sum_grid = XX_RR_grid.sum(axis=(0, 1, 2, 3, 4, 5))
         num_wann_r = XX_RR_grid.shape[6]
         num_wann_l = XX_RR_grid.shape[8]
-        logger.debug(f"remapping {XX_RR_grid.shape} num_wann_r={num_wann_r}, num_wann_l={num_wann_l}")
+        logger.debug("remapping %s num_wann_r=%s, num_wann_l=%s", XX_RR_grid.shape, num_wann_r, num_wann_l)
         nl = self.nshifts_left
         nr = self.nshifts_right
         assert (nr == 1) or (XX_RR_grid.shape[6] == nr), f"XX_RR_grid {XX_RR_grid.shape} should have {nr} WFs"
@@ -280,7 +300,7 @@ class Rvectors:
         assert (nl == 1) or (XX_RR_grid.shape[8] == nl), f"XX_RR_grid {XX_RR_grid.shape} should have {nl} right shifts"
 
         shape_new = XX_RR_grid.shape[6:9] + (self.nRvec,) * 2 + XX_RR_grid.shape[9:]
-        logger.debug(f"shape_new {shape_new}")
+        logger.debug("shape_new %s", shape_new)
         XX_RR_new = np.zeros(shape_new, dtype=XX_RR_grid.dtype)
         for a in range(num_wann_r):
             ia = 0 if self.nshifts_right == 1 else a
@@ -290,7 +310,7 @@ class Rvectors:
                     ic = 0 if self.nshifts_left == 1 else c
                     ishift1 = self.shift_index[ic, ia]
                     ishift2 = self.shift_index[ic, ib]
-                    logger.debug(f"a,b,c = {a},{b},{c} : {ishift1}, {ishift2}")
+                    logger.debug("a,b,c = %s,%s,%s : %s, %s", a, b, c, ishift1, ishift2)
                     for iRi1, iRm1, nd1 in zip(self.iRvec_index_list[ishift1],
                                             self.iRvec_mod_list[ishift1],
                                             self.Ndegen_list[ishift1]):
@@ -459,7 +479,7 @@ class Rvectors:
         notfound = np.where(np.logical_not(mapping.any(axis=1)))[0]
         if len(notfound) > 0 and not self.ignore_mR_not_found:
             for ir in notfound:
-                logger.warning(f"R[{ir}] = {self.iRvec[ir]} does not have a -R partner")
+                logger.warning("R[%s] = %s does not have a -R partner", ir, self.iRvec[ir])
         # check if some R-vectors have more then 1 partner
         morefound = np.where(np.sum(mapping, axis=1) > 1)[0]
         if len(morefound > 0):
@@ -647,23 +667,13 @@ class WignerSeitz:
 
 
     def __call__(self, shift_reduced):
-        shift_cartesian = shift_reduced.dot(self.real_lattice)
-        dist = np.linalg.norm(self.cRvec_search + shift_cartesian, axis=2)
-        # print (f"distances : \n{repr(dist)}")
-        Ndegen = []
-        iRvec = []
-        for i, iRs in enumerate(self.iRvec_search):
-            # print (f"{i} : {repr(iRs)}  : {dist[i]}")
-            dist_min = dist[i].min()
-            select = np.where(abs(dist[i] - dist_min) < self.tolerance)[0]
-            # print (f"selecting {select} with distance {dist[i][select]} and min {dist_min}")
-            ndeg = len(select)
-            for j in select:
-                # print (f"    {iRs[j]} : {dist[i][j]} {ndeg}")
-                iRvec.append(iRs[j])
-                Ndegen.append(ndeg)
-        iRvec = np.array(iRvec)
-        Ndegen = np.array(Ndegen)
+        shift_cart = shift_reduced.dot(self.real_lattice)
+        d = self.cRvec_search + shift_cart                      # (n0, 27, 3)
+        dist = np.sqrt(cached_einsum('ijk,ijk->ij', d, d))          # replaces np.linalg.norm
+        mask = np.abs(dist - dist.min(axis=1, keepdims=True)) < self.tolerance
+        ndeg = mask.sum(axis=1)
+        iRvec = self.iRvec_search[mask]                         # (N, 3), rows in the same order as before
+        Ndegen = np.repeat(ndeg, ndeg)
         return iRvec, Ndegen, iRvec % self.mp_grid
 
 
