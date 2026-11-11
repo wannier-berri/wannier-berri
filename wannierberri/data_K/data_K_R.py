@@ -1,6 +1,6 @@
 from functools import cached_property
 import numpy as np
-from ..utility import alpha_A, beta_A
+from ..utility import alpha_A, beta_A, hermitize
 from .data_K import Data_K
 from ..system.system_R import System_R
 
@@ -70,11 +70,11 @@ class Data_K_R(Data_K, System_R):
         if name == 'GG' and not self.system.has_R_mat('GG'):
             res = self.Xbar('FF', der=der)
             res = 0.5 * (res + res.swapaxes(3, 4))
-            return 0.5 * (res + res.swapaxes(1, 2).conj())
+            return hermitize(res, 1, 2)
         elif name == 'OO' and not self.system.has_R_mat('OO'):
             res = self.Xbar('FF', der=der)
             res = 1j * (res[:, :, :, alpha_A, beta_A] - res[:, :, :, beta_A, alpha_A])
-            return 0.5 * (res + res.swapaxes(1, 2).conj())
+            return hermitize(res, 1, 2)
         else:
             return self.R_to_k_H(
                 self.get_R_mat(name).copy(),

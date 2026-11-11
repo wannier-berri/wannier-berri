@@ -173,7 +173,7 @@ class Symmetrizer_Zirr(SymmetrizerSAWF):
             return Z
         Zsum = np.zeros_like(Z)
         for isym in self.isym_little:
-            t = rotate_block_matrix(Z, 
+            t = rotate_block_matrix(Z,
                                 lblocks=self.lblocks[isym],
                                 lindices=self.indices,
                                 rblocks=self.rblocks[isym],

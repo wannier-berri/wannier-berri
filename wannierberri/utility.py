@@ -454,3 +454,12 @@ def get_alat_espresso(seedname_pw):
 
 def savez(file, *val, compressed=False, **arrays):
     return (np.savez_compressed if compressed else np.savez)(file, *val, **arrays)
+
+
+@njit
+def hermitize(M, axis1=-2, axis2=-1):
+    return (M + np.swapaxes(M, axis1, axis2).conj()) * 0.5
+
+
+def hermitize1032(M):
+    return (M + np.swapaxes(np.swapaxes(M.conj(), 0, 1), 3, 2)) * 0.5

@@ -1,6 +1,6 @@
 
 from .system_R import System_R
-from ..utility import cached_einsum, real_recip_lattice, alpha_A, beta_A
+from ..utility import cached_einsum, hermitize, real_recip_lattice, alpha_A, beta_A
 from ..fourier.rvectors import Rvectors
 from .needed_data import NeededData
 import numpy as np
@@ -155,7 +155,7 @@ def get_system_w90(
         for ik, w in zip(kptirr, weights_k):
             data = soc.data[ik][soc_ispin, soc_ispin].transpose(1, 2, 0)  # shape (num_wann, num_wann, 3)
             dVsoc[ik] = chk.wannier_gauge(data, ik, ik) * w  # Hamiltonian gauge
-        dVsoc = 0.5 * (dVsoc + dVsoc.swapaxes(1, 2).conj())
+        dVsoc = hermitize(dVsoc, 1, 2)  # symmetrize the spin-orbit coupling matrix
         system.set_R_mat('dV_soc', system.rvec.q_to_R(dVsoc))
         del dVsoc
 
