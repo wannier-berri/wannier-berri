@@ -1,4 +1,7 @@
+from collections import defaultdict
+
 from scipy.linalg import block_diag
+
 from .unique_list import UniqueList
 from numpy import sqrt as sq
 import numpy as np
@@ -307,6 +310,33 @@ class Projector:
             return bessel_j_radial_int * spherical * self.coef
 
 
+class ProjectorPaw:
+
+    def __init__(self, kpoint_gpaw, atoms_list, basis_list, overlap_paw):
+        from ..symmetry.orbitals import w90_to_gpaw_reordering, rot_orb_basis, orbitals_sets_dic
+        reorder = w90_to_gpaw_reordering()
+        self.projections_dict = defaultdict(lambda: 0)
+        for a in atoms_list:
+            I1, I2 = overlap_paw.orb_atom_indices[[a, a + 1]]
+            P_ni = kpoint_gpaw.proj[:, I1:I2].copy()
+            start = 0
+            for l in overlap_paw.setups[a]:
+                shell = 'spdf'[l]
+                nl = 2 * l + 1
+                rot = rot_orb_basis(l, basis_list[a])
+                P = P_ni[:, start:start + nl][:, reorder[l]] @ rot  # is it rot or rot.T?
+                for i, orb in enumerate(orbitals_sets_dic[shell]):
+                    self.projections_dict[orb] += P[:, i].conj()
+                start += nl
+
+
+    def __call__(self, orbital, basis=None, radial_nodes=0):
+        if orbital in hybrids_coef and orbital not in basis_orbital_list:
+            return sum(self(orb, basis, radial_nodes) * coef for orb, coef in hybrids_coef[orbital].items())
+        else:
+            return self.projections_dict[orbital]
+
+
 
 def radial_function_tilde(n, r):
     """
@@ -503,3 +533,31 @@ class SphericalHarmonics:
                         return sq(35 / (32 * pi)) * self.sintheta**3 * self.sin3phi
                     case _:
                         raise ValueError(f"orbital {orbital} not implemented")
+
+
+@lru_cache
+def w90_to_gpaw_reordering():
+    try:
+        from gpaw.sphere.spherical_harmonics import names
+    except ImportError:
+        logger.warning("gpaw is not installed, using saved names, not checking that they are the same as in the current gpaw version")
+        names = [['1'],
+         ['y', 'z', 'x'],
+            ['xy', 'yz', '3z2-r2', 'zx', 'x2-y2'],
+            ['3x2y-y3', 'xyz', '4yz2-y3-x2y', '2z3-3x2z-3y2z', '4xz2-x3-xy2',
+          'x2z-y2z', 'x3-3xy2']]
+    # only those entries which differ (except the first letter)
+    dic = {'s': '1', 'dz2': '3z2-r2', 'dxz': 'zx', 'fz3': '2z3-3x2z-3y2z', 'fxz2': '4xz2-x3-xy2', 'fyz2': '4yz2-y3-x2y', 'fzx2-zy2': 'x2z-y2z', 'f3yx2-y3': '3x2y-y3'}
+    res = {}
+    for l, shell in enumerate(basis_shells_list):
+        lst = []
+        for orb in orbitals_sets_dic[shell]:
+            name_gpaw = dic.get(orb, orb[1:])
+            print(f"orb = {orb}, name_gpaw = {name_gpaw}, names[l] = {names[l]}")
+            try:
+                lst.append(names[l].index(name_gpaw))
+            except ValueError as e:
+                logger.warning(f"orbital {orb} not found in gpaw names {names[l]}, ")
+                raise e
+        res[shell] = lst
+    return res
