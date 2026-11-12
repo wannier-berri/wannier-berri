@@ -5,7 +5,6 @@ import numpy as np
 from ..symmetry.projections import ProjectionsSet
 from ..symmetry.unique_list import UniqueListMod1
 
-from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 from .w90file import W90_file, auto_kptirr, check_shape
 import logging
 logger = logging.getLogger(__name__)
@@ -120,6 +119,8 @@ class AMN(W90_file):
                                       orbitals, basis_list, radial_nodes_list, spread_list,
                                       normalize=True,
                                       bessel=None):
+        from ..symmetry.orbitals import Bessel_j_radial_int, Projector
+
         if bessel is None:
             bessel = Bessel_j_radial_int()
         igk = kp.ig[:, :3] + kp.k[None, :]
@@ -175,28 +176,24 @@ class AMN(W90_file):
         normalize : bool
             if True, the palne wave of the wavefunctions are normalised. If None, then the wavefunctions are normalised only if paw projections are not used.
         """
-
-
+        from ..symmetry.orbitals import Bessel_j_radial_int
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
         assert projections.spinor == bandstructure.spinor, "The spinor of the projections and the bandstructure must be the same : %s and %s" % (projections.spinor, bandstructure.spinor)
 
-
         data = defaultdict(lambda: np.zeros((bandstructure.num_bands, projections.num_wann), dtype=complex))
 
 
-
         use_pseudo_index = []
-        start = 0
-
-
         positions = []
         orbitals = []
         radial_nodes_list = []
         basis_list = []
         spread_list = []
         logger.info("Creating amn. Using projections_set \n %s", projections)
+        
+        start = 0
         for proj in projections.projections:
             if proj.use_paw:
                 data_loc = cls.from_bandstructure_paw(bandstructure, proj, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)

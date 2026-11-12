@@ -13,12 +13,14 @@ _needed_packages = {
     "pyfftw": "fast Fourier transforms (optional, otherwise uses numpy's FFT)",
     "seekpath": "automatic generation of k-point paths",
     "matplotlib": "plotting",
-    "sympy": _need_for_symmetry_str,
     "fortio": "reading Fortran unformatted files (uHu, chk, spn, unk, …)",
     "gpaw": "interface with GPAW",
     "ase": "interface with ASE and GPAW",
     "pythtb": "interface with PythTB (optional)",
     "xmltodict": "reading QuantumEspresso dynamical matrices for phonons",
+    "spherical": _need_for_symmetry_str,
+    "quaternionic": _need_for_symmetry_str,
+
 }
 
 

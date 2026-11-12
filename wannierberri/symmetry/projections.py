@@ -1,6 +1,5 @@
 from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
 from .unique_list import UniqueListMod1
-from ..symmetry.orbitals import num_orbitals, orbitals_sets_dic
 from ..utility import cached_einsum
 import copy
 from functools import cached_property
@@ -191,6 +190,7 @@ class Projection:
     @property
     def num_wann_per_site_scalar(self):
         """number of wannier functions per site (without spin)"""
+        from .orbitals import num_orbitals
         return sum(num_orbitals(o) for o in self.orbitals)
 
     @property
@@ -292,6 +292,7 @@ class Projection:
         list(str)
             The orbitals of the projections (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
         """
+        from .orbitals import orbitals_sets_dic
         orbitals = []
         positions = []
         for pos in self.positions:
@@ -308,6 +309,7 @@ class Projection:
         list(str)
             The names of the wannier functions (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
         """
+        from .orbitals import orbitals_sets_dic
         return [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
 
     @property

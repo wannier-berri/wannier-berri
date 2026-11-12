@@ -1,12 +1,15 @@
 from collections import defaultdict
 
+import quaternionic
+import spherical
+from math import prod
+from functools import cached_property, lru_cache
 from scipy.linalg import block_diag
 
 from .unique_list import UniqueList
 from numpy import sqrt as sq
 import numpy as np
 
-from functools import cached_property, lru_cache
 from scipy.special import spherical_jn
 from scipy.interpolate import CubicSpline
 from scipy.integrate import trapezoid
@@ -78,161 +81,97 @@ hybrids_coef = {
 for k in basis_orbital_list:
     hybrids_coef[k] = {k: 1}
 
-
-
-
-
-class Orbitals:
-
-    def __init__(self):
-        import sympy
-        x = sympy.Symbol('x')
-        y = sympy.Symbol('y')
-        z = sympy.Symbol('z')
-        self.xyz = np.transpose([x, y, z])
-        orbitals = {}
-        orbitals['s'] = lambda x, y, z: 1 + 0 * x
-
-        orbitals['px'] = lambda x, y, z: x
-        orbitals['py'] = lambda x, y, z: y
-        orbitals['pz'] = lambda x, y, z: z
-
-        orbitals['dz2'] = lambda x, y, z: (2 * z * z - x * x - y * y) / (2 * sympy.sqrt(3.0))
-        orbitals['dxz'] = lambda x, y, z: x * z
-        orbitals['dyz'] = lambda x, y, z: y * z
-        orbitals['dx2-y2'] = lambda x, y, z: (x * x - y * y) / 2
-        orbitals['dxy'] = lambda x, y, z: x * y
-
-        orbitals['fz3'] = lambda x, y, z: z * (2 * z * z - 3 * x * x - 3 * y * y) / (2 * sympy.sqrt(15.0))
-        orbitals['fxz2'] = lambda x, y, z: x * (4 * z * z - x * x - y * y) / (2 * sympy.sqrt(10.0))
-        orbitals['fyz2'] = lambda x, y, z: y * (4 * z * z - x * x - y * y) / (2 * sympy.sqrt(10.0))
-        orbitals['fzx2-zy2'] = lambda x, y, z: z * (x * x - y * y) / 2
-        orbitals['fxyz'] = lambda x, y, z: x * y * z
-        orbitals['fx3-3xy2'] = lambda x, y, z: x * (x * x - 3 * y * y) / (2 * sympy.sqrt(6.0))
-        orbitals['f3yx2-y3'] = lambda x, y, z: y * (3 * x * x - y * y) / (2 * sympy.sqrt(6.0))
-
-        self.orb_function_dic = {key: [orbitals[k] for k in val] for key, val in orbitals_sets_dic.items() if key in basis_shells_list}
-        self.orb_chara_dic = {
-            's': [x],
-            'p': [z, x, y],
-            'd': [z * z, x * z, y * z, x * x, x * y, y * y],
-            'f': [
-                z * z * z, x * z * z, y * z * z, z * x * x, x * y * z, x * x * x, y * y * y, z * y * y, x * y * y,
-                y * x * x
-            ],
-        }
-
-        self.hybrid_matrix_dic = {}
-        self.hybrid_matrix_shells_dic = {}
-        self.hybrid_matrix_shells_start = {}
-
-        for hshell in hybrid_shells_list:
-            basis_shells_used = set()
-            for orb in orbitals_sets_dic[hshell]:
-                if orb in basis_orbital_list:
-                    basis_shells_used.add(orb_to_shell(orb))
-                elif orb in hybrids_coef:
-                    for orb2 in hybrids_coef[orb]:
-                        basis_shells_used.add(orb_to_shell(orb2))
-                else:
-                    raise ValueError(f"orbital {orb} is not in the basis_orbital_list or hybrids_coef")
-            basis_shells_used = list(basis_shells_used)
-            self.hybrid_matrix_shells_dic[hshell] = basis_shells_used
-            basis_shells_start = [0]
-            for shell in basis_shells_used:
-                basis_shells_start.append(basis_shells_start[-1] + len(orbitals_sets_dic[shell]))
-            # print (f"hybrid shell {hshell}, basis_shells = {basis_shells_used}, basis_shells_start = {basis_shells_start}")
-            num_orb = len(orbitals_sets_dic[hshell])
-            self.hybrid_matrix_shells_start[hshell] = basis_shells_start
-            matrix = np.zeros((len(orbitals_sets_dic[hshell]), basis_shells_start[-1]))
-            for i, horb in enumerate(orbitals_sets_dic[hshell]):
-                for j, borb in enumerate(hybrids_coef[horb]):
-                    bshell = orb_to_shell(borb)
-                    shell_stat = basis_shells_start[basis_shells_used.index(bshell)]
-                    k = shell_stat + orbitals_sets_dic[bshell].index(borb)
-                    matrix[i, k] = hybrids_coef[horb][borb]
-            self.hybrid_matrix_dic[hshell] = matrix
-            # print (f"matrix = \n{matrix}")
-            check = np.zeros((num_orb, num_orb))
-            for s, e in zip(basis_shells_start[:-1], basis_shells_start[1:]):
-                mat_shell = matrix[:, s:e]
-                # print (f"check.shape = {check.shape}, mat_shell.shape = {mat_shell.shape}")
-                check += mat_shell @ mat_shell.T
-            assert np.allclose(check, np.eye(num_orb)), f"check failed for {hshell} : {check}"
-
-
-
-
-
-    def rot_orb_basis(self, orb_symbol, rot_glb):
-        """Get rotation matrix of orbitals in each orbital quantum number
-        orb_symbol : str
-            one of 's', 'p', 'd', 'f'
-        rot_glb : 3x3 array
-            rotation matrix in cartesian coordinates
-        Returns
-        -------
-        orb_rot_mat : array
-            rotation matrix of shape (num_orbitals, num_orbitals)
-            where num_orbitals = 1, 3, 5, 7 for 's', 'p', 'd', 'f' respectively
-        Notes
-        -----
-        The rotation matrix A is defined as
-        phi_j(R^-1 r) = phi_i(r) A_ij where phi_i is the original orbital, phi'_i is the rotated orbital
-        """
-        import sympy
-        orb_dim = num_orbitals(orb_symbol)
-        orb_rot_mat = np.zeros((orb_dim, orb_dim), dtype=float)
-        xp, yp, zp = np.dot(np.linalg.inv(rot_glb), self.xyz)
-        OC = self.orb_chara_dic[orb_symbol]
-        OC_len = len(OC)
-        for i in range(orb_dim):
-            subs = []
-            equation = (self.orb_function_dic[orb_symbol][i](xp, yp, zp)).expand()
-            for j in range(OC_len):
-                eq_tmp = equation.subs(OC[j], 1)
-                for j_add in range(1, OC_len):
-                    eq_tmp = eq_tmp.subs(OC[(j + j_add) % OC_len], 0)
-                subs.append(eq_tmp)
-            if orb_symbol in ['s', 'pz']:
-                orb_rot_mat[0, 0] = subs[0].evalf()
-            elif orb_symbol == 'p':
-                orb_rot_mat[0, i] = subs[0].evalf()
-                orb_rot_mat[1, i] = subs[1].evalf()
-                orb_rot_mat[2, i] = subs[2].evalf()
-            elif orb_symbol == 'd':
-                orb_rot_mat[0, i] = (2 * subs[0] - subs[3] - subs[5]) / sympy.sqrt(3.0)
-                orb_rot_mat[1, i] = subs[1].evalf()
-                orb_rot_mat[2, i] = subs[2].evalf()
-                orb_rot_mat[3, i] = (subs[3] - subs[5]).evalf()
-                orb_rot_mat[4, i] = subs[4].evalf()
-            elif orb_symbol == 'f':
-                orb_rot_mat[0, i] = (subs[0] * sympy.sqrt(15.0)).evalf()
-                orb_rot_mat[1, i] = (subs[1] * sympy.sqrt(10.0) / 2).evalf()
-                orb_rot_mat[2, i] = (subs[2] * sympy.sqrt(10.0) / 2).evalf()
-                orb_rot_mat[3, i] = (2 * subs[3] + 3 * subs[0]).evalf()
-                orb_rot_mat[4, i] = subs[4].evalf()
-                orb_rot_mat[5, i] = ((2 * subs[5] + subs[1] / 2) * sympy.sqrt(6.0)).evalf()
-                orb_rot_mat[6, i] = ((-2 * subs[6] - subs[2] / 2) * sympy.sqrt(6.0)).evalf()
-
-        return orb_rot_mat
-
-
-    def rot_orb(self, orb_symbol, rot_glb):
-        if orb_symbol in ["s", "p", "d", "f"]:
-            return self.rot_orb_basis(orb_symbol, rot_glb)
-        elif orb_symbol in hybrid_shells_list:
-            nbasis = self.hybrid_matrix_dic[orb_symbol].shape[1]
-            rot_orb_loc = np.zeros((nbasis, nbasis))
-            matrix_hybrid = self.hybrid_matrix_dic[orb_symbol]
-            for s, e, shell  in zip(self.hybrid_matrix_shells_start[orb_symbol], self.hybrid_matrix_shells_start[orb_symbol][1:], self.hybrid_matrix_shells_dic[orb_symbol]):
-                rot_orb_loc[s:e, s:e] = self.rot_orb_basis(shell, rot_glb)
-            return matrix_hybrid @ rot_orb_loc @ matrix_hybrid.T
+_wigner = spherical.Wigner(3)
 
 
 @lru_cache
-def get_orbitals():
-    return Orbitals()
+def _real_to_complex(shell):
+    """Ct, Ct^-1, where phi_a = sum_m C[a, m] Y_lm and Ct = C.T (rows indexed by m = -l..l).
+
+    Orbital order within a shell: m=0, then (cos, sin) pairs for m = 1..l.
+    cos-type: n/sqrt2 * (Y_{-m} + (-1)^m Y_m)
+    sin-type: i n/sqrt2 * (Y_{-m} - (-1)^m Y_m)
+    with n = sqrt(4 pi / (2l+1)!!) from your orbital normalization.
+    """
+    l = basis_shells_list.index(shell)
+    n = np.sqrt(4 * np.pi / prod(range(1, 2 * l + 2, 2)))
+    C = np.zeros((2 * l + 1, 2 * l + 1), dtype=complex)
+    C[0, l] = n
+    for m in range(1, l + 1):
+        s = (-1) ** m
+        c, sn = 2 * m - 1, 2 * m
+        C[c, l - m], C[c, l + m] = n / np.sqrt(2), s * n / np.sqrt(2)
+        C[sn, l - m], C[sn, l + m] = 1j * n / np.sqrt(2), -1j * s * n / np.sqrt(2)
+    Ct = C.T
+    return Ct, Ct.conj().T / n**2          # C = n * (unitary), so the inverse is free
+
+
+def rot_orb_basis(orb_symbol, rot_glb):
+    """A with phi_j(R^-1 r) = sum_i phi_i(r) A_ij, shape (2l+1, 2l+1). Handles det = ±1."""
+    l = basis_shells_list.index(orb_symbol)
+    R = np.asarray(rot_glb, dtype=float)
+    improper = np.linalg.det(R) < 0
+    if improper:
+        R = -R                                   # proper part; inversion is (-1)^l
+    D = _wigner.D(quaternionic.array.from_rotation_matrix(R))
+    i0 = _wigner.Dindex(l, -l, -l)
+    D = D[i0:i0 + (2 * l + 1) ** 2].reshape(2 * l + 1, 2 * l + 1).conj()
+    Ct, Ct_inv = _real_to_complex(orb_symbol)
+    A = (Ct_inv @ D @ Ct).real
+    return (-1) ** l * A if improper else A
+
+
+
+hybrid_matrix_dic = {}
+hybrid_matrix_shells_dic = {}
+hybrid_matrix_shells_start = {}
+
+for hshell in hybrid_shells_list:
+    basis_shells_used = set()
+    for orb in orbitals_sets_dic[hshell]:
+        if orb in basis_orbital_list:
+            basis_shells_used.add(orb_to_shell(orb))
+        elif orb in hybrids_coef:
+            for orb2 in hybrids_coef[orb]:
+                basis_shells_used.add(orb_to_shell(orb2))
+        else:
+            raise ValueError(f"orbital {orb} is not in the basis_orbital_list or hybrids_coef")
+    basis_shells_used = list(basis_shells_used)
+    hybrid_matrix_shells_dic[hshell] = basis_shells_used
+    basis_shells_start = [0]
+    for shell in basis_shells_used:
+        basis_shells_start.append(basis_shells_start[-1] + len(orbitals_sets_dic[shell]))
+    # print (f"hybrid shell {hshell}, basis_shells = {basis_shells_used}, basis_shells_start = {basis_shells_start}")
+    num_orb = len(orbitals_sets_dic[hshell])
+    hybrid_matrix_shells_start[hshell] = basis_shells_start
+    matrix = np.zeros((len(orbitals_sets_dic[hshell]), basis_shells_start[-1]))
+    for i, horb in enumerate(orbitals_sets_dic[hshell]):
+        for j, borb in enumerate(hybrids_coef[horb]):
+            bshell = orb_to_shell(borb)
+            shell_stat = basis_shells_start[basis_shells_used.index(bshell)]
+            k = shell_stat + orbitals_sets_dic[bshell].index(borb)
+            matrix[i, k] = hybrids_coef[horb][borb]
+    hybrid_matrix_dic[hshell] = matrix
+    # print (f"matrix = \n{matrix}")
+    check = np.zeros((num_orb, num_orb))
+    for s, e in zip(basis_shells_start[:-1], basis_shells_start[1:]):
+        mat_shell = matrix[:, s:e]
+        # print (f"check.shape = {check.shape}, mat_shell.shape = {mat_shell.shape}")
+        check += mat_shell @ mat_shell.T
+    assert np.allclose(check, np.eye(num_orb)), f"check failed for {hshell} : {check}"
+
+
+def rot_orb(orb_symbol, rot_glb):
+    if orb_symbol in ["s", "p", "d", "f"]:
+        return rot_orb_basis(orb_symbol, rot_glb)
+    elif orb_symbol in hybrid_shells_list:
+        nbasis = hybrid_matrix_dic[orb_symbol].shape[1]
+        rot_orb_loc = np.zeros((nbasis, nbasis))
+        matrix_hybrid = hybrid_matrix_dic[orb_symbol]
+        for s, e, shell  in zip(hybrid_matrix_shells_start[orb_symbol], hybrid_matrix_shells_start[orb_symbol][1:], hybrid_matrix_shells_dic[orb_symbol]):
+            rot_orb_loc[s:e, s:e] = rot_orb_basis(shell, rot_glb)
+        return matrix_hybrid @ rot_orb_loc @ matrix_hybrid.T
+
 
 
 class OrbitalRotator:
@@ -247,14 +186,13 @@ class OrbitalRotator:
 
     def __init__(self):
         self.calcualted_matrices = UniqueList(tolerance=1e-4)
-        self.orbitals = get_orbitals()
         self.results_dict = {}
 
     def __call__(self, orb_symbol, rot_cart=None, irot=None, basis1=None, basis2=None):
-        # return self.orbitals.rot_orb(orb_symbol=orb_symbol, rot_glb=basis1.T @ rot_cart @ basis2)
-
         assert (basis1 is None) == (basis2 is None), "basis1 and basis2 should be both provided or both None"
-        assert (irot is None) != (rot_cart is None), f"either irot or rot_cart should be provided, not both, got irot={irot}, rot_cart={rot_cart}"
+        assert (irot is None) != (rot_cart is None), f"exactly one of irot or rot_cart should be provided, got irot={irot}, rot_cart={rot_cart}"
+        if rot_cart is not None:
+            rot_cart = np.asarray(rot_cart, dtype=float)
         if irot is None:
             if basis1 is not None:
                 # rot_cart = basis2.T @ rot_cart @ basis1
@@ -270,7 +208,7 @@ class OrbitalRotator:
             if ";" in orb_symbol:
                 mat_list = [self(orb, irot=irot) for orb in orb_symbol.split(";")]
             else:
-                mat_list = [self.orbitals.rot_orb(orb_symbol=orb_symbol, rot_glb=rot_cart)]
+                mat_list = [rot_orb(orb_symbol=orb_symbol, rot_glb=rot_cart)]
             self.results_dict[(irot, orb_symbol)] = block_diag(*mat_list)
         return self.results_dict[(irot, orb_symbol)]
 
@@ -414,6 +352,7 @@ class Bessel_j_radial_int:
         select = (k <= self.kmax)
         res[select] = spline(k[select])
         return res
+
 
 
 class SphericalHarmonics:
