@@ -23,7 +23,7 @@ class SavableNPZ(abc.ABC):
         pass
 
 
-    def to_npz(self, f_npz, compressed=False):
+    def to_npz(self, f_npz, compressed=True):
         dic = self.as_dict()
         logger.info(f"saving to {f_npz} : ")
         savez(f_npz, compressed=compressed, **dic)
