@@ -1,9 +1,9 @@
 import numpy as np
-from .orbitals import num_orbitals
 from .unique_list import UniqueListMod1
 
 
 class Dwann:
+
 
     """
     A class to generate the Wannier transformation matrices D_wann 
@@ -57,6 +57,7 @@ class Dwann:
                 basis_list=None,
                 spinor=False):
 
+
         self.nsym = spacegroup.size
         if spinor:
             self.spinor = True
@@ -74,6 +75,7 @@ class Dwann:
         if orbital != "_":
             assert orbitalrotator is not None
             assert basis_list is not None
+            from .orbitals import num_orbitals
             self.num_orbitals_scal = num_orbitals(orbital)
         else:
             self.num_orbitals_scal = 1
