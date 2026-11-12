@@ -427,7 +427,7 @@ class WannierData:
     def to_npz(self,
                seedname=None,
                files=None,
-               compressed=False
+               compressed=True
                ):
         if seedname is None:
             seedname = self.seedname

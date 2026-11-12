@@ -89,7 +89,7 @@ class WannierDataSOC(WannierData):
             data_soc.cell = {key: val for key, val in cell.items()}
         return data_soc
 
-    def to_npz(self, seedname=None, files=None, compressed=False):
+    def to_npz(self, seedname=None, files=None, compressed=True):
         if seedname is None:
             seedname = self.seedname
         """Save Wannier90DataSOC to NPZ files."""

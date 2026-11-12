@@ -933,7 +933,7 @@ class System_R(System):
         return self.rvec.nRvec
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(),
-               compressed=False,
+               compressed=True,
                R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files

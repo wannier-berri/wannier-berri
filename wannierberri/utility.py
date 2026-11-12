@@ -452,7 +452,7 @@ def get_alat_espresso(seedname_pw):
     return alat_angstrom
 
 
-def savez(file, *val, compressed=False, **arrays):
+def savez(file, *val, compressed=True, **arrays):
     return (np.savez_compressed if compressed else np.savez)(file, *val, **arrays)
 
 
