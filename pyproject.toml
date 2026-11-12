@@ -44,11 +44,12 @@ fftw = [
     "pyFFTW>=0.12.0",
 ]
 symmetry = [
-    "sympy",
     "spglib>=2",
     "irrep>=2.5.0",
     "spgrep",
     "seekpath",
+    "spherical",
+    "quaternionic",
 ]
 default = [
     "wannierberri[parallel]",

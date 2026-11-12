@@ -3,7 +3,6 @@ import multiprocessing
 import numpy as np
 from ..symmetry.projections import ProjectionsSet
 
-from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 from .w90file import W90_file, auto_kptirr, check_shape
 import logging
 logger = logging.getLogger(__name__)
@@ -132,6 +131,7 @@ class AMN(W90_file):
         normalize : bool
             if True, the wavefunctions are normalised
         """
+        from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
