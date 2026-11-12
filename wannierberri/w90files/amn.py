@@ -192,12 +192,15 @@ class AMN(W90_file):
         basis_list = []
         spread_list = []
         logger.info("Creating amn. Using projections_set \n %s", projections)
-        
+
         start = 0
         for proj in projections.projections:
             if proj.use_paw:
                 data_loc = cls.from_bandstructure_paw(bandstructure, proj, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
+                print(f"proj {proj} data_loc keys = {list(data_loc.keys())}")
+                print(f"setting projection {start} to {start + proj.num_wann} for from paw")
                 for ik, dat in data_loc.items():
+                    print(f"ik = {ik} data_loc shape = {dat.shape}, max = {np.max(np.abs(dat))}, min = {np.min(np.abs(dat))}")
                     data[ik][:, start:start + proj.num_wann] += dat
             else:
                 use_pseudo_index += list(range(start, start + proj.num_wann))
@@ -243,7 +246,7 @@ class AMN(W90_file):
         """
         Create an AMN object from a bandstructure with PAW projections.
         """
-        from ..symmetry.orbitals import ProjectorPaw
+        from ..symmetry.orbitals import ProjectorPaw, orbitals_sets_dic
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
@@ -263,7 +266,8 @@ class AMN(W90_file):
                                      atoms_list=atoms_list_selected,
                                      basis_list=projection.basis_list,
                                      overlap_paw=bandstructure.overlap_paw)
-            data[ikirr] = [projector(orbital) for orbital in projection.orbitals]
+            print(f"orbitals = {projection.orbitals},")
+            data[ikirr] = np.array([projector(orb) for orbital in projection.orbitals for orb in orbitals_sets_dic[orbital]]).T
         return data
 
 

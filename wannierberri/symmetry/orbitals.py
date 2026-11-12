@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import quaternionic
 import spherical
 from math import prod
@@ -108,7 +106,10 @@ def _real_to_complex(shell):
 
 def rot_orb_basis(orb_symbol, rot_glb):
     """A with phi_j(R^-1 r) = sum_i phi_i(r) A_ij, shape (2l+1, 2l+1). Handles det = ±1."""
-    l = basis_shells_list.index(orb_symbol)
+    try:
+        l = basis_shells_list.index(orb_symbol)
+    except ValueError:
+        raise ValueError(f"orb_symbol {orb_symbol} is not in basis_shells_list {basis_shells_list}")
     R = np.asarray(rot_glb, dtype=float)
     improper = np.linalg.det(R) < 0
     if improper:
@@ -244,35 +245,39 @@ class Projector:
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
             bessel_j_radial_int = self.get_bessel_l(l, radial_nodes)
-            spherical = self.sph(orbital, basis)
-            return bessel_j_radial_int * spherical * self.coef
+            spherical_harm = self.sph(orbital, basis)
+            return bessel_j_radial_int * spherical_harm * self.coef
 
 
 class ProjectorPaw:
 
-    def __init__(self, kpoint_gpaw, atoms_list, basis_list, overlap_paw):
+    def __init__(self, kpoint_paw, atoms_list, basis_list, overlap_paw):
         from ..symmetry.orbitals import w90_to_gpaw_reordering, rot_orb_basis, orbitals_sets_dic
         reorder = w90_to_gpaw_reordering()
-        self.projections_dict = defaultdict(lambda: 0)
+        self.projections_dict = {}
         for a in atoms_list:
             I1, I2 = overlap_paw.orb_atom_indices[[a, a + 1]]
-            P_ni = kpoint_gpaw.proj[:, I1:I2].copy()
+            P_ni = np.copy(kpoint_paw.proj[:, I1:I2])
             start = 0
             for l in overlap_paw.setups[a]:
                 shell = 'spdf'[l]
                 nl = 2 * l + 1
-                rot = rot_orb_basis(l, basis_list[a])
-                P = P_ni[:, start:start + nl][:, reorder[l]] @ rot  # is it rot or rot.T?
+                rot = rot_orb_basis(shell, basis_list[a])
+                P = P_ni[:, start:start + nl][:, reorder[shell]] @ rot  # is it rot or rot.T?
                 for i, orb in enumerate(orbitals_sets_dic[shell]):
-                    self.projections_dict[orb] += P[:, i].conj()
+                    self.projections_dict[orb] = self.projections_dict.get(orb, 0.) + P[:, i].conj()
                 start += nl
+        for k, v in self.projections_dict.items():
+            print(f"orbital {k}, projection shape = {v.shape}, norm = {np.linalg.norm(v)}")
 
 
     def __call__(self, orbital, basis=None, radial_nodes=0):
         if orbital in hybrids_coef and orbital not in basis_orbital_list:
-            return sum(self(orb, basis, radial_nodes) * coef for orb, coef in hybrids_coef[orbital].items())
+            res = sum(self(orb, basis, radial_nodes) * coef for orb, coef in hybrids_coef[orbital].items())
         else:
-            return self.projections_dict[orbital]
+            res = self.projections_dict[orbital]
+        print(f"orbital {orbital}, projection shape = {res.shape}, norm = {np.linalg.norm(res)}")
+        return res.T
 
 
 
@@ -492,11 +497,9 @@ def w90_to_gpaw_reordering():
         lst = []
         for orb in orbitals_sets_dic[shell]:
             name_gpaw = dic.get(orb, orb[1:])
-            print(f"orb = {orb}, name_gpaw = {name_gpaw}, names[l] = {names[l]}")
             try:
                 lst.append(names[l].index(name_gpaw))
-            except ValueError as e:
-                logger.warning(f"orbital {orb} not found in gpaw names {names[l]}, ")
-                raise e
+            except ValueError:
+                raise ValueError(f"orbital {orb} not found in gpaw names {names[l]}, ")
         res[shell] = lst
     return res
