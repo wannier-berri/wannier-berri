@@ -21,6 +21,7 @@ dependencies = [
     "termcolor",
     "packaging>=20.8",
     "wannier90io",
+    "opt_einsum"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
