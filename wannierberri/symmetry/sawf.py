@@ -751,7 +751,7 @@ class SymmetrizerSAWF:
         amn = np.random.random(shape) + 1j * np.random.random(shape)
         return self.symmetrize_amn(amn)
 
-    def to_npz(self, f_npz, compressed=False):
+    def to_npz(self, f_npz, compressed=True):
         if f_npz is None:
             return self
         dic = self.as_dict()

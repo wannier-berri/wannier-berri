@@ -37,7 +37,7 @@ class Result(abc.ABC):
         raise NotImplementedError()
 
     # saving as binary
-    def save(self, name, compressed=False):
+    def save(self, name, compressed=True):
         """
         writes a dictionary-like object to file called `name`  defined in
         :func:`~wannierberri.result.EnergyResult.as_dict`
