@@ -388,7 +388,10 @@ class System_R(System):
                                               magmom=magmom,
                                               include_TR=True,
                                               spinor=soc,)
-        spacegroup.show()
+        try:
+            spacegroup.show(short=True, print=False)
+        except Exception as e:
+            logger.warning("spacegroup.show() failed with error: %s", e)
 
         assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
 

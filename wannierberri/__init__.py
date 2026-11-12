@@ -12,6 +12,13 @@ from .run_grid import run
 from .logging import configure_logging
 configure_logging()
 
+
+try:
+    from irrep import logging as irrep_logging
+    irrep_logging.configure_logging(console_level=irrep_logging.WARNING)
+except:
+    pass
+
 try:
     from ._version import version as __version__
 except ImportError:
