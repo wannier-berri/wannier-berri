@@ -15,4 +15,3 @@ def test_finite_field(system_Fe_W90):
     # order of R-vectors may be different, the original order was not saved, so we compare only permutation-invariant quantities
     assert np.allclose(H_Z.sum(axis=0), H_Z_ref.sum(axis=0), atol=1e-8), f"Hamiltonian with B field does not match reference for {fname}"
     assert np.allclose(abs(H_Z).sum(axis=0), abs(H_Z_ref).sum(axis=0), atol=1e-8), f"Hamiltonian with B field does not match reference for {fname}"
-            

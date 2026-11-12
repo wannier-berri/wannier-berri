@@ -3,6 +3,7 @@ import spherical
 from math import prod
 from functools import cached_property, lru_cache
 from scipy.linalg import block_diag
+
 from .unique_list import UniqueList
 from numpy import sqrt as sq
 import numpy as np
@@ -105,7 +106,10 @@ def _real_to_complex(shell):
 
 def rot_orb_basis(orb_symbol, rot_glb):
     """A with phi_j(R^-1 r) = sum_i phi_i(r) A_ij, shape (2l+1, 2l+1). Handles det = ±1."""
-    l = basis_shells_list.index(orb_symbol)
+    try:
+        l = basis_shells_list.index(orb_symbol)
+    except ValueError:
+        raise ValueError(f"orb_symbol {orb_symbol} is not in basis_shells_list {basis_shells_list}")
     R = np.asarray(rot_glb, dtype=float)
     improper = np.linalg.det(R) < 0
     if improper:
@@ -241,8 +245,39 @@ class Projector:
         else:
             l = {'s': 0, 'p': 1, 'd': 2, 'f': 3}[orbital[0]]
             bessel_j_radial_int = self.get_bessel_l(l, radial_nodes)
-            spherical = self.sph(orbital, basis)
-            return bessel_j_radial_int * spherical * self.coef
+            spherical_harm = self.sph(orbital, basis)
+            return bessel_j_radial_int * spherical_harm * self.coef
+
+
+class ProjectorPaw:
+
+    def __init__(self, kpoint_paw, atoms_list, basis_list, overlap_paw):
+        from ..symmetry.orbitals import w90_to_gpaw_reordering, rot_orb_basis, orbitals_sets_dic
+        reorder = w90_to_gpaw_reordering()
+        self.projections_dict = {}
+        for a in atoms_list:
+            I1, I2 = overlap_paw.orb_atom_indices[[a, a + 1]]
+            P_ni = np.copy(kpoint_paw.proj[:, I1:I2])
+            start = 0
+            for l in overlap_paw.setups[a]:
+                shell = 'spdf'[l]
+                nl = 2 * l + 1
+                rot = rot_orb_basis(shell, basis_list[a])
+                P = P_ni[:, start:start + nl][:, reorder[shell]] @ rot  # is it rot or rot.T?
+                for i, orb in enumerate(orbitals_sets_dic[shell]):
+                    self.projections_dict[orb] = self.projections_dict.get(orb, 0.) + P[:, i].conj()
+                start += nl
+        for k, v in self.projections_dict.items():
+            print(f"orbital {k}, projection shape = {v.shape}, norm = {np.linalg.norm(v)}")
+
+
+    def __call__(self, orbital, basis=None, radial_nodes=0):
+        if orbital in hybrids_coef and orbital not in basis_orbital_list:
+            res = sum(self(orb, basis, radial_nodes) * coef for orb, coef in hybrids_coef[orbital].items())
+        else:
+            res = self.projections_dict[orbital]
+        print(f"orbital {orbital}, projection shape = {res.shape}, norm = {np.linalg.norm(res)}")
+        return res.T
 
 
 
@@ -322,6 +357,7 @@ class Bessel_j_radial_int:
         select = (k <= self.kmax)
         res[select] = spline(k[select])
         return res
+
 
 
 class SphericalHarmonics:
@@ -441,3 +477,29 @@ class SphericalHarmonics:
                         return sq(35 / (32 * pi)) * self.sintheta**3 * self.sin3phi
                     case _:
                         raise ValueError(f"orbital {orbital} not implemented")
+
+
+@lru_cache
+def w90_to_gpaw_reordering():
+    try:
+        from gpaw.sphere.spherical_harmonics import names
+    except ImportError:
+        logger.warning("gpaw is not installed, using saved names, not checking that they are the same as in the current gpaw version")
+        names = [['1'],
+         ['y', 'z', 'x'],
+            ['xy', 'yz', '3z2-r2', 'zx', 'x2-y2'],
+            ['3x2y-y3', 'xyz', '4yz2-y3-x2y', '2z3-3x2z-3y2z', '4xz2-x3-xy2',
+          'x2z-y2z', 'x3-3xy2']]
+    # only those entries which differ (except the first letter)
+    dic = {'s': '1', 'dz2': '3z2-r2', 'dxz': 'zx', 'fz3': '2z3-3x2z-3y2z', 'fxz2': '4xz2-x3-xy2', 'fyz2': '4yz2-y3-x2y', 'fzx2-zy2': 'x2z-y2z', 'f3yx2-y3': '3x2y-y3'}
+    res = {}
+    for l, shell in enumerate(basis_shells_list):
+        lst = []
+        for orb in orbitals_sets_dic[shell]:
+            name_gpaw = dic.get(orb, orb[1:])
+            try:
+                lst.append(names[l].index(name_gpaw))
+            except ValueError:
+                raise ValueError(f"orbital {orb} not found in gpaw names {names[l]}, ")
+        res[shell] = lst
+    return res

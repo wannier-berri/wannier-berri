@@ -73,15 +73,19 @@ class WannierDataSOC(WannierData):
                                              allow_pickle=allow_pickle)
         else:
             data_down = None
-        try:
-            from .soc import SOC
-            soc = SOC.from_npz(seedname + ".soc.npz")
-        except FileNotFoundError:
-            if ignore_missing_files:
-                logger.warning("SOC file %s.soc.npz not found. SOC will be set to None.", seedname)
-                soc = None
-            else:
-                raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")
+
+        if "soc" in files:
+            try:
+                from .soc import SOC
+                soc = SOC.from_npz(seedname + ".soc.npz")
+            except FileNotFoundError:
+                if ignore_missing_files:
+                    logger.warning("SOC file %s.soc.npz not found. SOC will be set to None.", seedname)
+                    soc = None
+                else:
+                    raise FileNotFoundError(f"SOC file {seedname}.soc.npz not found.")
+        else:
+            soc = None
 
         data_soc = cls(data_up=data_up, data_down=data_down, soc=soc, seedname=seedname, altermagnetic=altermagnetic)
         if os.path.isfile(seedname + ".cell.npz"):
