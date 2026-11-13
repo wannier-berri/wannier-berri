@@ -9,7 +9,7 @@ from wannierberri.grid.grid_tetra import GridTetra
 from wannierberri.grid.simplex import (weights_tetra, PRINCIPAL_FAR,
                                        _add_principal_3d, _mean_tlog, _mean_log_triangle_close,
                                        weights_triangle, weights_simplex, _add_principal_2d, _mean_log, occupied_triangles,
-                                       delta_tetra)
+                                       weights_general)
 from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
 from scipy.integrate import quad
 from wannierberri.grid import Grid
@@ -257,7 +257,7 @@ def test_dynamic_weights_reactive_pairs(kind):
 @pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 0.0, 1.0, 2.0], [0.0, 1.0, 1.0, 2.0], [0.0, 1.0, 2.0, 2.0],
                                 [0.0, 0.0, 0.0, 1.0], [0.0, 1.0, 1.0, 1.0], [0.0, 1e-9, 1.0, 2.0]])
 def test_principal_values(dE):
-    """the principal part against the numerical principal-value integral of the density of dE (`delta_tetra`), at
+    """the principal part against the numerical principal-value integral of the density of dE (`weights_tetra`, der=1), at
     frequencies inside and outside the range of dE and far from it; at the corner values, it is continuous"""
     dE = np.array(dE)
     nodes = np.unique(dE)
@@ -265,7 +265,7 @@ def test_principal_values(dE):
     values = weights_tetra_reactive(omega, dE)
 
     def density(x):
-        return delta_tetra(np.array([x]), *dE)[0]
+        return weights_tetra(np.array([x]), *dE, der=1)[0]
 
     for w, value in zip(omega, values):
         reference = 0
@@ -322,7 +322,7 @@ def test_principal_expansion_accuracy(dE):
     mean, spread = dE.mean(), np.ptp(dE)
 
     def density(x):
-        return delta_tetra(np.array([x]), *dE)[0]
+        return weights_tetra(np.array([x]), *dE, der=1)[0]
 
     for side in (-1, 1):
         w = mean + side * spread * PRINCIPAL_FAR * (1 + 1e-6)
@@ -672,6 +672,29 @@ def test_weights_simplex_der():
         weights_tetra(x, 0., 0.2, 0.5, 1., der=-1)
     with pytest.raises(NotImplementedError):
         weights_triangle(x, 0., 0.5, 1., der=-1)
+
+
+def test_weights_general():
+    """`weights_general`, as used by `TTWeights` (on the values of one band at the corners of the tetrahedra or
+    triangles, a strided view) and by the delta functions: the same as `weights_tetra` and `weights_triangle`, also
+    for other types of the values, which it leaves unchanged"""
+    rng = np.random.default_rng(11)
+    x = np.linspace(-0.5, 1.5, 41)
+    for ncorner, function in ((4, weights_tetra), (3, weights_triangle)):
+        vertices = rng.random((2, ncorner, 5))
+        vertices[1, 1, 2] = vertices[1, 2, 2]  # equal values
+        for dtype in (np.float64, np.float32):
+            values = vertices.astype(dtype)
+            copy = values.copy()
+            for ik in range(2):
+                for ib in range(5):
+                    for der in range(ncorner):
+                        result = weights_general(x, values[ik, :, ib], der)
+                        assert result.dtype == np.float64
+                        np.testing.assert_array_equal(result, function(x, *values[ik, :, ib], der=der))
+                        np.testing.assert_array_equal(weights_general(x, values[ik, ::-1, ib], der), result)
+                        np.testing.assert_array_equal(weights_general.py_func(x, values[ik, :, ib], der), result)
+            np.testing.assert_array_equal(values, copy)
 
 
 @pytest.mark.parametrize("e", [[0., 5e-324, 0.5, 1.], [0., 5e-324, 1e-323, 1.], [0., 0., 5e-324, 1.], [0., 5e-324, 1.],

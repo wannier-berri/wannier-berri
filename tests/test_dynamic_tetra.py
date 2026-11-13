@@ -17,8 +17,8 @@ from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.grid.simplex import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
                                        omega_intervals, _add_occupied, occupation_kernel, occupied_pieces,
-                                       delta_tetra, delta_values_tetra, delta_weights_tetra,
-                                       weights_tetra, occupied_tetrahedra)
+                                       delta_values_tetra, delta_weights_tetra,
+                                       weights_tetra, weights_simplex, occupied_tetrahedra)
 from wannierberri.grid.ttweights import TetraWeights
 from wannierberri.system import System_R
 
@@ -220,7 +220,6 @@ def test_python_versions():
         assert _edges_in_range.py_func(edges, emin, emax) == _edges_in_range(edges, emin, emax)
         assert _omega_in_range.py_func(edges, emin, emax) == _omega_in_range(edges, emin, emax)
     np.testing.assert_allclose(delta_values_tetra.py_func(edges, dE), delta_values_tetra(edges, dE), rtol=0, atol=1e-12)
-    np.testing.assert_allclose(delta_tetra.py_func(edges, *dE[0]), delta_tetra(edges, *dE[0]), rtol=0, atol=1e-12)
     efermi = np.array([-1.0, 0.5])
     for code in (0, 1, 2):
         args = (dE[:3], dE[3:6], 1., efermi, edges[:-1] + 0.25, edges, code)
@@ -272,7 +271,7 @@ def test_delta_values(dE):
     """the values of the delta function are the derivative of the cumulative weight, and are continuous unless three
     corners have the same value"""
     omega = np.linspace(-3, 4, 7001)
-    values = delta_tetra(omega, *dE)
+    values = weights_tetra(omega, *dE, der=1)
     h = 1e-6
     derivative = (weights_tetra(omega + h, *dE, der=0) - weights_tetra(omega - h, *dE, der=0)) / (2 * h)
     inside = np.min(np.abs(omega[:, None] - np.array(dE)[None, :]), axis=1) > 2 * h  # not at the kinks
@@ -303,7 +302,7 @@ def tetra_reference(x, e, der):
 
 @pytest.mark.parametrize("offset, spread", [(0.0, 1.0), (5.0, 1e-3), (10.0, 1e-4), (20.0, 1e-2), (5.0, 3e-7)])
 def test_weights_small_spread(offset, spread):
-    """the occupation and its derivatives (`weights_tetra`, used by `delta_tetra` and by the Fermi-surface quantities)
+    """the occupation and its derivatives (`weights_tetra`, used by the delta functions and by the Fermi-surface quantities)
     for values with a small spread far from zero, against `tetra_reference`, to 1e-12 relative. Expressions with the
     absolute energies would lose precision here (e.g. by 6e-5 for a spread of 1e-4 eV at 10 eV)."""
     rng = np.random.default_rng(7)
@@ -315,7 +314,6 @@ def test_weights_small_spread(offset, spread):
             reference = tetra_reference(w, e, der)
             np.testing.assert_allclose(weights_tetra(w, *e, der=der), reference, rtol=0,
                                        atol=1e-12 * np.abs(reference).max(), err_msg=f"der={der}")
-        np.testing.assert_array_equal(delta_tetra(w, *e), weights_tetra(w, *e, der=1))
 
 
 @pytest.mark.parametrize("dE", [[1.0, 1.2, 1.4, 2.0], [-3.0, -2.0, -1.0, 0.5], [3.5, 4.0, 4.5, 6.0],
@@ -325,11 +323,11 @@ def test_delta_values_range(dE):
     a flat dE, see `test_delta_values_flat`)"""
     omega = np.arange(-5.0, 5.001, 0.25)
     dE = np.array(dE)
-    np.testing.assert_allclose(delta_values_tetra(omega, dE[None])[0], delta_tetra(omega, *dE), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_values_tetra(omega, dE[None])[0], weights_tetra(omega, *dE, der=1), rtol=0, atol=1e-12)
     corners = np.empty((2, 2, 2))
     corners[0, 0, 0], corners[1, 1, 1], corners[0, 1, 0], corners[1, 0, 1] = dE
     corners[1, 0, 0] = corners[0, 1, 1] = corners[0, 0, 1] = corners[1, 1, 0] = dE.mean()
-    expected = sum(delta_tetra(omega, *t) for t in parallelepiped_tetrahedra(dE.mean(), corners)) / 12
+    expected = sum(weights_tetra(omega, *t, der=1) for t in parallelepiped_tetrahedra(dE.mean(), corners)) / 12
     np.testing.assert_allclose(parallel_delta(omega, dE.mean(), corners), expected,
                                rtol=0, atol=1e-12)
 
@@ -520,7 +518,7 @@ def test_delta_values_flat(spread):
     # a single frequency has no interval: nothing is taken as flat
     np.testing.assert_array_equal(delta_values_tetra(np.array([0.75]), np.full((1, 4), 0.8)), 0)
     single = delta_values_tetra(np.array([0.75]), np.array([[0.7, 0.72, 0.78, 0.8]]))
-    assert single[0, 0] == pytest.approx(delta_tetra(np.array([0.75]), 0.7, 0.72, 0.78, 0.8)[0], rel=1e-14)
+    assert single[0, 0] == pytest.approx(weights_tetra(np.array([0.75]), 0.7, 0.72, 0.78, 0.8, der=1)[0], rel=1e-14)
 
 
 def test_delta_values_flat_intervals():
@@ -551,7 +549,7 @@ def test_delta_values_flat_intervals():
         if flat:
             np.testing.assert_allclose(values, expected(2), rtol=1e-14)
         else:
-            np.testing.assert_allclose(values, delta_tetra(omega, *dE[0]), rtol=1e-14, atol=0)
+            np.testing.assert_allclose(values, weights_tetra(omega, *dE[0], der=1), rtol=1e-14, atol=0)
     # a parallelepiped where only some of the tetrahedra are flat: those through the flat face x = 0 (corners at
     # 0.6) with the centre (also 0.6), while the others extend to 0.9
     corners = np.full((2, 2, 2), 0.6)
@@ -887,7 +885,7 @@ def test_occupation_kernel_flat_transition_triangle():
                                           ([0.0, 1.0, 2.0], [1.0, 2.0, 0.5])])
 def test_occupied_kernel_principal_inside(occupied, dE):
     """the principal part over the occupied parts at frequencies within the range of dE, against the numerical
-    principal-value integral of the density of dE (`delta_tetra`) over each part, with Fermi levels between and at
+    principal-value integral of the density of dE (`weights_simplex`, der=1) over each part, with Fermi levels between and at
     the corner values; at the corner values of dE on the parts, it is continuous. Equal corner values (here where dE
     has equal values at two corners) are separated by 1e-7 of the spread, which changes the result by about 1e-5 of
     its scale. Also for triangles (3 corners)"""
@@ -905,7 +903,7 @@ def test_occupied_kernel_principal_inside(occupied, dE):
                 nodes = np.unique(d)
                 for a, b in zip(nodes[:-1], nodes[1:]):
                     def density(x):
-                        return delta_tetra(np.array([x]), *d)[0]
+                        return weights_simplex(np.array([x]), np.sort(d), der=1)[0]
                     if a < w < b:
                         reference += v * quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
                     else:

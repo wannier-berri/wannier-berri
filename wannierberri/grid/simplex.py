@@ -414,10 +414,8 @@ def occupied_tetrahedra(energies, efermi):
 
 @njit
 def weights_general(efall, dE, der):
-    if dE.shape[0] == 4:
-        return weights_tetra(efall, dE[0], dE[1], dE[2], dE[3], der=der)
-    elif dE.shape[0] == 3:
-        return weights_triangle(efall, dE[0], dE[1], dE[2], der=der)
+    """`weights_simplex` for a triangle or tetrahedron, with the values dE at its corners (in any order)"""
+    return weights_simplex(efall, np.sort(dE.astype(np.float64)), der)
 
 
 @njit
@@ -520,9 +518,10 @@ FLAT_FRACTION = 1e-3
 
 @njit
 def _add_delta_values(res, omega, edges, weight, dE):
-    """add weight * delta(dE - omega) over a tetrahedron (see `delta_tetra`) at the values omega to res. If dE is
-    flat (its spread below FLAT_FRACTION of the interval of omega around it), its values cannot be sampled at
-    the frequencies, and its weight is put into that interval, as with the averages over the intervals."""
+    """add weight * delta(dE - omega) over a tetrahedron (the density of the values of dE, `weights_simplex` with
+    der=1) at the values omega to res. If dE is flat (its spread below FLAT_FRACTION of the interval of omega around
+    it), its values cannot be sampled at the frequencies, and its weight is put into that interval, as with the
+    averages over the intervals."""
     emin, emax = dE.min(), dE.max()
     i = np.searchsorted(edges, (emin + emax) / 2, side='right') - 1
     if 0 <= i < omega.shape[0] and np.isfinite(edges[i + 1] - edges[i]) and \
@@ -536,8 +535,8 @@ def _add_delta_values(res, omega, edges, weight, dE):
 
 @njit
 def delta_values_tetra(omega, dE):
-    """values of delta(dE - omega) over a tetrahedron (see `delta_tetra`, and `_add_delta_values` for a flat dE) at
-    the given increasing values of omega
+    """values of delta(dE - omega) over a tetrahedron (see `_add_delta_values`, also for a flat dE) at the given
+    increasing values of omega
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
@@ -545,17 +544,6 @@ def delta_values_tetra(omega, dE):
     for i in range(dE.shape[0]):
         _add_delta_values(res=res[i], omega=omega, edges=edges, weight=1., dE=dE[i])
     return res
-
-
-@njit
-def delta_tetra(omega, e0, e1, e2, e3=None):
-    """delta(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its corners, at each
-    of the given values of omega: the density of the values of dE within the tetrahedron, normalised to 1, which is
-    `weights_tetra` with der=1"""
-    if e3 is None:
-        return weights_triangle(omega, e0, e1, e2, der=1)
-    else:
-        return weights_tetra(omega, e0, e1, e2, e3, der=1)
 
 
 @njit
