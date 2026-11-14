@@ -3,78 +3,108 @@ from ..utility import njit
 
 
 @njit
-def weights_triangle_der0(efall, e0, e1, e2):
-    occ = np.zeros_like(efall)
-    denom1 = 1. / ((e1 - e0) * (e2 - e0))
-    denom2 = 1. / ((e2 - e1) * (e2 - e0))
-    for i, ef in enumerate(efall):
-        if ef < e0:
-            continue
-        elif ef <= e1:
-            occ[i] = (ef - e0)**2 * denom1
-        elif ef <= e2:
-            occ[i] = 1. - (e2 - ef)**2 * denom2
-        else:
-            occ[i] = 1.
-    return occ
+def _simplex_value(x, e, inv, coef, k, der, b, right):
+    """the value of `weights_simplex` at x in [e_0, e_n], from the right (x + 0) or from the left (x - 0); b is a work
+    array (n + 1)"""
+    n = e.shape[0] - 1
+    if der == 0:
+        for j in range(n + 1):
+            b[j] = 1. if (x >= e[j] if right else x > e[j]) else 0.
+        for m in range(1, n + 1):
+            for j in range(n + 1 - m):
+                if (x >= e[j + m]) if right else (x > e[j + m]):
+                    b[j] = 1.
+                elif (x >= e[j]) if right else (x > e[j]):
+                    b[j] = ((x - e[j]) * b[j] + (e[j + m] - x) * b[j + 1]) * inv[j, j + m]
+        return b[0]
+    for j in range(n):
+        b[j] = 1. if ((e[j] <= x < e[j + 1]) if right else (e[j] < x <= e[j + 1])) else 0.
+    for d in range(1, k + 1):
+        for j in range(n - d):
+            # each term only where its spline is not zero, so that the factors are between 0 and 1 and the
+            # inverses of tiny differences never multiply a large distance
+            value = 0.
+            if b[j] != 0:
+                value += (x - e[j]) * inv[j, j + d] * b[j]
+            if b[j + 1] != 0:
+                value += (e[j + d + 1] - x) * inv[j + 1, j + d + 1] * b[j + 1]
+            b[j] = value
+    value = 0.
+    for j in range(n - k):
+        if b[j] != 0:  # coef[j] may overflow for differences of the values near the smallest floats
+            value += coef[j] * b[j]
+    return value
 
 
 @njit
-def weights_triangle_der1(efall, e0, e1, e2):
-    occ = np.zeros_like(efall)
-    denom1 = 2. / ((e1 - e0) * (e2 - e0))
-    denom2 = 2. / ((e2 - e1) * (e2 - e0))
-    for i, ef in enumerate(efall):
-        if ef < e0:
+def weights_simplex(efall, e, der=0):
+    """for a function linear within a simplex of dimension n (a segment, triangle or tetrahedron), with the sorted
+    values e (n + 1) at its corners: the fraction of the simplex where it is below each value of efall (der=0), and
+    its derivatives with respect to efall (der=1 is the density of the values, normalised to 1; zero for der > n)
+
+    The density is the B-spline with the knots e, normalised to 1: n B(x) / (e_n - e_0), with B the B-spline of
+    degree n - 1, computed by the recursion of Cox and de Boor, with the factors (x - e_j) / (e_(j+d) - e_j) and
+    (e_(j+d+1) - x) / (e_(j+d+1) - e_(j+1)) between 0 and 1. The fraction below x satisfies the same kind of
+    recursion, F(e_j, ..., e_(j+m)) = ((x - e_j) F(e_j, ..., e_(j+m-1)) + (e_(j+m) - x) F(e_(j+1), ..., e_(j+m)))
+    / (e_(j+m) - e_j) for e_j <= x < e_(j+m) (0 below and 1 above). The derivatives of the density are sums of the
+    B-splines of lower degree over the knots. So equal and nearly equal values need no special treatment: the terms
+    with equal knots are dropped (also for differences so small that their inverse overflows). At equal values, the
+    density or its derivatives jump; then der=2, 3 are their regular parts, without the delta functions. At x equal
+    to a value, the fraction is that strictly below it (so 0 at the value if all values are equal, as for
+    `_add_delta_values`), and the derivatives, which may jump there, are the mean of their limits from below and from
+    above. NaN in efall gives NaN (for der <= n)."""
+    if der < 0:
+        raise ValueError("weights_simplex: der must not be negative")
+    n = e.shape[0] - 1
+    occ = np.zeros(efall.shape[0])
+    if der > n:
+        return occ
+    # 1 / (e_j - e_i), and 0 for equal values
+    inv = np.zeros((n + 1, n + 1))
+    for i in range(n + 1):
+        for j in range(i + 1, n + 1):
+            if e[j] > e[i]:
+                value = 1. / (e[j] - e[i])
+                if np.isfinite(value):
+                    inv[i, j] = value
+    # the derivative of order der - 1 of the density is sum_j coef[j] B_j, with B_j the B-spline of degree k with
+    # the knots e_j, ..., e_(j+k+1), from (B_j)' = k (B_j inv[j, j+k] - B_(j+1) inv[j+1, j+k+1]) for degree k
+    k = n - 1
+    coef = np.zeros(n + 1)
+    coef[0] = n * inv[0, n]
+    for r in range(der - 1):
+        for j in range(r + 1, 0, -1):
+            coef[j] = k * inv[j, j + k] * (coef[j] - coef[j - 1])
+        coef[0] = k * inv[0, k] * coef[0]
+        k -= 1
+    b = np.zeros(n + 1)
+    for i in range(efall.shape[0]):
+        x = efall[i]
+        if np.isnan(x):
+            occ[i] = np.nan
+        elif x < e[0]:
             continue
-        elif ef <= e1:
-            occ[i] = (ef - e0) * denom1
-        elif ef <= e2:
-            occ[i] = (e2 - ef) * denom2
+        elif x > e[n]:
+            if der == 0:
+                occ[i] = 1.
+        elif der == 0:
+            occ[i] = _simplex_value(x, e, inv, coef, k, der, b, False)
         else:
-            occ[i] = 0.
+            value = _simplex_value(x, e, inv, coef, k, der, b, True)
+            for j in range(n + 1):
+                if x == e[j]:
+                    value = value / 2 + _simplex_value(x, e, inv, coef, k, der, b, False) / 2
+                    break
+            occ[i] = value
     return occ
-
-
-@njit
-def weights_triangle_der2(efall, e0, e1, e2):
-    occ = np.zeros_like(efall)
-    denom1 = 2. / ((e1 - e0) * (e2 - e0))
-    denom2 = - 2. / ((e2 - e1) * (e2 - e0))
-    for i, ef in enumerate(efall):
-        if ef < e0:
-            continue
-        elif ef <= e1:
-            occ[i] = denom1
-        elif ef <= e2:
-            occ[i] = denom2
-        else:
-            occ[i] = 0.
-    return occ
-
-
-@njit
-def space_e123(e0, e1, e2, diff_min=1e-12):
-    e = np.array(sorted([e0, e1, e2]))
-    # a dirty trick to avoid divisions by zero
-    for i in range(2):
-        e[i + 1] = max(e[i + 1], e[i] + diff_min)
-    return e[0], e[1], e[2]
 
 
 @njit
 def weights_triangle(efall, e0, e1, e2, der=0):
-    e0, e1, e2 = space_e123(e0, e1, e2, diff_min=1e-12)
-    if der == 0:
-        return weights_triangle_der0(efall, e0, e1, e2)
-    elif der == 1:
-        return weights_triangle_der1(efall, e0, e1, e2)
-    elif der == 2:
-        return weights_triangle_der2(efall, e0, e1, e2)
-    elif der > 2:
-        return np.zeros_like(efall)
-    else:
+    """`weights_simplex` for a triangle, with the values e0, e1, e2 at its corners (in any order)"""
+    if der < 0:
         raise NotImplementedError(f"der={der} not implemented in weights_triangle")
+    return weights_simplex(efall, np.sort(np.array([e0, e1, e2], dtype=np.float64)), der)
 
 
 # the expansion of the principal part far from the values of dE: its order, and the largest ratio of the spread of
@@ -193,127 +223,15 @@ def occupied_triangles(occupied, efermi):
 
 
 @njit
-def weights_tetra_der0(efall, e1, e2, e3, e4):
-    occ = np.zeros_like(efall)
-    denom4 = 1. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-    denom1 = 1. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-
-    # symmetric expression, using the peak of der=1 at (e3 e4 - e1 e2) / S, here taken relative to e1 (center1):
-    # S and the peak computed from the differences of the energies do not lose precision when the spread of the
-    # energies is small compared with their values
-    S = (e3 - e1) + (e4 - e2)
-    center1 = (e3 - e1) * (e4 - e1) / S
-    coef_middle = S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
-    vol_middle = ((e2 - e1) * S + 2 * (e3 - e2) * (e4 - e2)) / S**2
-    peak_height = 3 / S
-
-
-    for i, ef in enumerate(efall):
-        ef = efall[i]
-        if ef >= e4:
-            occ[i] = 1.
-        elif ef < e1:
-            continue
-        elif ef >= e3:  # c3
-            occ[i] = 1 - (e4 - ef) ** 3 * denom4
-        elif ef >= e2:  # c2  # e2:e3
-            y = (ef - e1) - center1
-            occ[i] = vol_middle + y * (peak_height - y**2 * coef_middle)
-        else:  # c1
-            occ[i] = (ef - e1) ** 3 * denom1
-    return occ
-
-
-@njit
-def weights_tetra_der1(efall, e1, e2, e3, e4):
-    occ = np.zeros_like(efall)
-    denom4 = 3. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-    denom1 = 3. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = (e3 - e1) + (e4 - e2)
-    center1 = (e3 - e1) * (e4 - e1) / S
-    coef_middle = 3 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
-    peak_height = 3 / S
-    for i, ef in enumerate(efall):
-        if ef <= e1 or ef >= e4:
-            continue
-        elif ef >= e3:  # c3
-            occ[i] = (e4 - ef) ** 2 * denom4
-        elif ef >= e2:  # c2  # e2:e3
-            y = (ef - e1) - center1
-            occ[i] = peak_height - y**2 * coef_middle
-        else:  # c1
-            occ[i] = (ef - e1) ** 2 * denom1
-    return occ
-
-
-@njit
-def weights_tetra_der2(efall, e1, e2, e3, e4):
-    occ = np.zeros_like(efall)
-    denom4 = -6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-    denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = (e3 - e1) + (e4 - e2)
-    center1 = (e3 - e1) * (e4 - e1) / S
-    coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
-    for i, ef in enumerate(efall):
-        if ef <= e1 or ef >= e4:
-            continue
-        elif ef >= e3:  # c3
-            occ[i] = (e4 - ef) * denom4
-        elif ef >= e2:  # c2  # e2:e3
-            y = (ef - e1) - center1
-            occ[i] = y * coef_middle
-        else:  # c1
-            occ[i] = (ef - e1) * denom1
-    return occ
-
-
-@njit
-def weights_tetra_der3(efall, e1, e2, e3, e4):
-    occ = np.zeros_like(efall)
-    denom4 = 6. / ((e4 - e1) * (e4 - e2) * (e4 - e3))
-    denom1 = 6. / ((e2 - e1) * (e3 - e1) * (e4 - e1))
-    S = (e3 - e1) + (e4 - e2)
-    coef_middle = -6 * S / ((e3 - e1) * (e4 - e1) * (e3 - e2) * (e4 - e2))
-    for i, ef in enumerate(efall):
-        if ef <= e1 or ef >= e4:
-            continue
-        elif ef >= e3:  # c3
-            occ[i] = denom4
-        elif ef >= e2:  # c2  # e2:e3
-            occ[i] = coef_middle
-        else:  # c1
-            occ[i] = denom1
-    return occ
-
-
-@njit
-def space_e1234(e1, e2, e3, e4, diff_min=1e-12):
-    e = np.array(sorted([e1, e2, e3, e4]))
-    # a dirty trick to avoid divisions by zero
-    for i in range(3):
-        e[i + 1] = max(e[i + 1], e[i] + diff_min)
-    return e[0], e[1], e[2], e[3]
-
-
-@njit
 def weights_tetra(efall, e1, e2, e3, e4, der=0):
-    """for a function linear within a tetrahedron, with the values e0, ..., e3 at its corners: the fraction of the
-    tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to efall (der=1 is
-    the density of the values, normalised to 1; der=2, 3 its derivatives). The formulas of the linear tetrahedron
-    method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994)."""
-    e1, e2, e3, e4 = space_e1234(e1, e2, e3, e4, diff_min=1e-12)
-    if der == 0:
-        return weights_tetra_der0(efall, e1, e2, e3, e4)
-    elif der == 1:
-        return weights_tetra_der1(efall, e1, e2, e3, e4)
-    elif der == 2:
-        return weights_tetra_der2(efall, e1, e2, e3, e4)
-    elif der == 3:
-        return weights_tetra_der3(efall, e1, e2, e3, e4)
-    elif der > 3:
-        return np.zeros_like(efall)
-    else:
+    """for a function linear within a tetrahedron, with the values e1, ..., e4 at its corners (in any order): the
+    fraction of the tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to
+    efall (der=1 is the density of the values, normalised to 1; der=2, 3 its derivatives), as in the linear
+    tetrahedron method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994).
+    Computed by `weights_simplex`, also for equal values."""
+    if der < 0:
         raise ValueError(f"der={der} not supported")
+    return weights_simplex(efall, np.sort(np.array([e1, e2, e3, e4], dtype=np.float64)), der)
 
 
 @njit
@@ -496,10 +414,8 @@ def occupied_tetrahedra(energies, efermi):
 
 @njit
 def weights_general(efall, dE, der):
-    if dE.shape[0] == 4:
-        return weights_tetra(efall, dE[0], dE[1], dE[2], dE[3], der=der)
-    elif dE.shape[0] == 3:
-        return weights_triangle(efall, dE[0], dE[1], dE[2], der=der)
+    """`weights_simplex` for a triangle or tetrahedron, with the values dE at its corners (in any order)"""
+    return weights_simplex(efall, np.sort(dE.astype(np.float64)), der)
 
 
 @njit
@@ -565,17 +481,18 @@ def get_bands_above_range(emax, Eband, Ebandmin=None):
 @njit
 def _edges_in_range(edges, emin, emax):
     """the slice lo:hi + 1 of the edges between which the cumulative weight of values in [emin, emax] changes: it is
-    0 at the edges up to lo and 1 at the edges from hi on. Returns (lo, hi), with hi <= lo if nothing changes.
-    The margin covers the shift of nearly equal values by `weights_tetra` (up to 3e-12)."""
+    0 at the edges up to lo (at most emin, as the cumulative weight is that strictly below the edge, see
+    `weights_simplex`) and 1 at the edges from hi on (above emax). Returns (lo, hi), with hi <= lo if nothing
+    changes."""
     lo = max(np.searchsorted(edges, emin, side='right') - 1, 0)
-    hi = min(np.searchsorted(edges, emax + 1e-10, side='left'), edges.shape[0] - 1)
+    hi = min(np.searchsorted(edges, emax, side='right'), edges.shape[0] - 1)
     return lo, hi
 
 
 @njit
 def _omega_in_range(omega, emin, emax):
     """the slice lo:hi of the increasing values omega within [emin, emax]"""
-    return np.searchsorted(omega, emin, side='left'), np.searchsorted(omega, emax + 1e-10, side='right')
+    return np.searchsorted(omega, emin, side='left'), np.searchsorted(omega, emax, side='right')
 
 
 
@@ -601,9 +518,10 @@ FLAT_FRACTION = 1e-3
 
 @njit
 def _add_delta_values(res, omega, edges, weight, dE):
-    """add weight * delta(dE - omega) over a tetrahedron (see `delta_tetra`) at the values omega to res. If dE is
-    flat (its spread below FLAT_FRACTION of the interval of omega around it), its values cannot be sampled at
-    the frequencies, and its weight is put into that interval, as with the averages over the intervals."""
+    """add weight * delta(dE - omega) over a tetrahedron (the density of the values of dE, `weights_simplex` with
+    der=1) at the values omega to res. If dE is flat (its spread below FLAT_FRACTION of the interval of omega around
+    it), its values cannot be sampled at the frequencies, and its weight is put into that interval, as with the
+    averages over the intervals."""
     emin, emax = dE.min(), dE.max()
     i = np.searchsorted(edges, (emin + emax) / 2, side='right') - 1
     if 0 <= i < omega.shape[0] and np.isfinite(edges[i + 1] - edges[i]) and \
@@ -617,8 +535,8 @@ def _add_delta_values(res, omega, edges, weight, dE):
 
 @njit
 def delta_values_tetra(omega, dE):
-    """values of delta(dE - omega) over a tetrahedron (see `delta_tetra`, and `_add_delta_values` for a flat dE) at
-    the given increasing values of omega
+    """values of delta(dE - omega) over a tetrahedron (see `_add_delta_values`, also for a flat dE) at the given
+    increasing values of omega
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
@@ -626,17 +544,6 @@ def delta_values_tetra(omega, dE):
     for i in range(dE.shape[0]):
         _add_delta_values(res=res[i], omega=omega, edges=edges, weight=1., dE=dE[i])
     return res
-
-
-@njit
-def delta_tetra(omega, e0, e1, e2, e3=None):
-    """delta(dE - omega) over a tetrahedron, where dE is linear with the values e0, ..., e3 at its corners, at each
-    of the given values of omega: the density of the values of dE within the tetrahedron, normalised to 1, which is
-    `weights_tetra` with der=1"""
-    if e3 is None:
-        return weights_triangle(omega, e0, e1, e2, der=1)
-    else:
-        return weights_tetra(omega, e0, e1, e2, e3, der=1)
 
 
 @njit
@@ -648,7 +555,7 @@ def delta_weights_tetra(edges, dE):
     each interval is the result at the frequency inside it.)
 
     edges : increasing array (nomega + 1,); dE : array (npair, 4); returns an array (npair, nomega). The weights times
-    the widths of the intervals sum to the fraction of the tetrahedron where edges[0] < dE < edges[-1]"""
+    the widths of the intervals sum to the fraction of the tetrahedron where edges[0] <= dE < edges[-1]"""
     width = edges[1:] - edges[:-1]
     res = np.zeros((dE.shape[0], width.shape[0]))
     for i in range(dE.shape[0]):
