@@ -551,14 +551,30 @@ def reactive_values_simplex(omega, dE):
     return res
 
 
+@njit
+def minmax_axis1(Ei):
+    n, m = Ei.shape
+    Eiminmax = np.empty((n, 2), dtype=Ei.dtype)
+    for i in range(n):
+        lo = Ei[i, 0]
+        hi = Ei[i, 0]
+        for j in range(1, m):
+            v = Ei[i, j]
+            if v < lo:
+                lo = v
+            elif v > hi:
+                hi = v
+        Eiminmax[i, 0] = lo
+        Eiminmax[i, 1] = hi
+    return Eiminmax
 
 @njit
-def _occupation_state(energies, efermi):
+def _occupation_state(eiminmax, efermi):
     """1 if the band is occupied in the whole tetrahedron (as in `occupied_tetrahedra`), 0 if it is empty, 2 if the
     Fermi level cuts it"""
-    if efermi >= energies.max():
+    if efermi >= eiminmax[1]:
         return 1
-    if efermi <= energies.min():
+    if efermi <= eiminmax[0]:
         return 0
     return 2
 
@@ -601,12 +617,15 @@ def occupation_kernel(Ei, Ej, sign, efermi, omega, edges, kind):
     res = np.zeros((Ei.shape[0], efermi.shape[0], omega.shape[0]))
     intervals = omega_intervals(omega)
     whole = np.zeros(omega.shape[0])
+
+    Eiminmax = minmax_axis1(Ei)
+    Ejminmax = minmax_axis1(Ej)
     for i in range(Ei.shape[0]):
         dE = sign * (Ei[i] - Ej[i])
         have_whole = False
         for ief in range(efermi.shape[0]):
             ef = efermi[ief]
-            state_i, state_j = _occupation_state(energies=Ei[i], efermi=ef), _occupation_state(energies=Ej[i], efermi=ef)
+            state_i, state_j = _occupation_state(eiminmax=Eiminmax[i], efermi=ef), _occupation_state(eiminmax=Ejminmax[i], efermi=ef)
             if state_i == state_j and state_i != 2:  # both occupied or both empty
                 continue
             for state, occupied, weight in ((state_j, Ej[i], 1.), (state_i, Ei[i], -1.)):
