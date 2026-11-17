@@ -568,6 +568,7 @@ def minmax_axis1(Ei):
         Eiminmax[i, 1] = hi
     return Eiminmax
 
+
 @njit
 def _occupation_state(eiminmax, efermi):
     """1 if the band is occupied in the whole tetrahedron (as in `occupied_tetrahedra`), 0 if it is empty, 2 if the
