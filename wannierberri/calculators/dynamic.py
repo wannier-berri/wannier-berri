@@ -212,7 +212,7 @@ class DynamicCalculator(Calculator, abc.ABC):
             if self.tetra_occupation:
                 # the band energies vary within the cells: the pairs where one of the bands may be occupied and the
                 # other empty somewhere (the pairs of a group with itself do not contribute, as without the cells)
-                Emin, Emax = data_K.tetraWeights.Emin[ik], data_K.tetraWeights.Emax[ik]
+                Emin, Emax = data_K.simplexWeights.Emin[ik], data_K.simplexWeights.Emax[ik]
                 ranges = {g: (Emin[g[0]:g[1]].min(), Emax[g[0]:g[1]].max()) for g in degen_groups}
                 degen_group_pairs = [
                     (ibm, ibn, Em, En) for ibm, Em in degen_groups.items() for ibn, En in degen_groups.items()
@@ -241,13 +241,13 @@ class DynamicCalculator(Calculator, abc.ABC):
             if self.tetra_occupation:
                 # the weights include the occupation factors within the cells: [pair, Efermi, omega]
                 group_pairs = [(pair[0], pair[1]) for pair in degen_group_pairs]
-                weights = functools.partial(data_K.tetraWeights.dynamic_weights,
+                weights = functools.partial(data_K.simplexWeights.dynamic_weights,
                                             ik=ik, pairs=group_pairs, omega=self.omega, efermi=self.Efermi)
             elif self.tetra_delta or self.tetra_reactive:
                 # pairs with no occupation factor (e.g. a group with itself) do not contribute
                 group_pairs = [(pair[0], pair[1]) if np.any(fE != 0) else ((0, 0), (0, 0))
                                for pair, fE in zip(degen_group_pairs, factor_Efermi)]
-                weights = functools.partial(data_K.tetraWeights.dynamic_weights,
+                weights = functools.partial(data_K.simplexWeights.dynamic_weights,
                                             ik=ik, pairs=group_pairs, omega=self.omega, efermi=None)
             if self.tetra_any:
                 if self.use_tetra_delta_12:

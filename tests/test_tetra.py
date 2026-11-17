@@ -6,11 +6,10 @@ import tempfile
 import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.simplex import (weights_tetra, PRINCIPAL_FAR,
+from wannierberri.grid.simplex import (weights_simplex_unsorted, PRINCIPAL_FAR,
                                        _add_principal_3d, _mean_tlog, _mean_log_triangle_close,
-                                       weights_triangle, weights_simplex, _add_principal_2d, _mean_log, occupied_triangles,
-                                       weights_general)
-from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
+                                       weights_simplex_sorted, _add_principal_2d, _mean_log, occupied_triangles)
+from wannierberri.grid.simplex_weights import SimplexWeights
 from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
@@ -18,6 +17,24 @@ import pytest
 from pytest import approx
 
 from wannierberri.run_grid import run
+
+
+def weights_triangle(efall, e0, e1, e2, der=0):
+    """`weights_simplex` for a triangle, with the values e0, e1, e2 at its corners (in any order)"""
+    if der < 0:
+        raise NotImplementedError(f"der={der} not implemented in weights_triangle")
+    return weights_simplex_sorted(efall, np.sort(np.array([e0, e1, e2], dtype=np.float64)), der)
+
+
+def weights_tetra(efall, e1, e2, e3, e4, der=0):
+    """for a function linear within a tetrahedron, with the values e1, ..., e4 at its corners (in any order): the
+    fraction of the tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to
+    efall (der=1 is the density of the values, normalised to 1; der=2, 3 its derivatives), as in the linear
+    tetrahedron method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994).
+    Computed by `weights_simplex`, also for equal values."""
+    if der < 0:
+        raise ValueError(f"der={der} not supported")
+    return weights_simplex_sorted(efall, np.sort(np.array([e1, e2, e3, e4], dtype=np.float64)), der)
 
 
 def weights_tetra_reactive(omega, E):
@@ -238,7 +255,7 @@ def test_dynamic_weights_reactive_pairs(kind):
     nk, nb = 3, 4
     eCenter = rng.random((nk, nb)) * 2
     eCorners = rng.random((nk, 4, nb) if kind == "single" else (nk, 2, 2, 2, nb)) * 2
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=3)
     omega = np.linspace(-3, 3, 31)
     pairs = [((0, 1), (2, 3)), ((2, 3), (0, 1)), ((0, 0), (0, 0)), ((0, 2), (3, 4)), ((3, 4), (0, 2))]
     for ik in range(nk):
@@ -550,14 +567,14 @@ def simplex_weights_decimal(x, values, der, prec=100):
             return decimal.Decimal(0)
         return math.factorial(n) // math.factorial(p) * (xd - t) ** p if p > 0 else decimal.Decimal(math.factorial(n))
 
-    return (-1) ** n * (divided_difference_decimal(lambda t: f(t, 0), values, prec=prec)
-                        + divided_difference_decimal(lambda t: f(t, 1), values, prec=prec)) / 2
+    return (-1) ** n * (divided_difference_decimal(lambda t: f(t, 0), values, prec=prec) +
+                        divided_difference_decimal(lambda t: f(t, 1), values, prec=prec)) / 2
 
 
 def simplex_functions(n):
     """weights_simplex (for sorted values) and the function for the given dimension that calls it (in any order)"""
-    functions = [lambda x, e, der: weights_simplex(x, np.sort(np.array(e, dtype=float)), der),
-                 lambda x, e, der: weights_simplex.py_func(x, np.sort(np.array(e, dtype=float)), der)]
+    functions = [lambda x, e, der: weights_simplex_sorted(x, np.sort(np.array(e, dtype=float)), der),
+                 lambda x, e, der: weights_simplex_sorted.py_func(x, np.sort(np.array(e, dtype=float)), der)]
     if n == 2:
         functions.append(lambda x, e, der: weights_triangle(x, *e, der=der))
     if n == 3:
@@ -674,8 +691,8 @@ def test_weights_simplex_der():
         weights_triangle(x, 0., 0.5, 1., der=-1)
 
 
-def test_weights_general():
-    """`weights_general`, as used by `TTWeights` (on the values of one band at the corners of the tetrahedra or
+def test_weights_simplex_unsorted():
+    """`weights_general`, as used by `SimplexWeights` (on the values of one band at the corners of the tetrahedra or
     triangles, a strided view) and by the delta functions: the same as `weights_tetra` and `weights_triangle`, also
     for other types of the values, which it leaves unchanged"""
     rng = np.random.default_rng(11)
@@ -689,11 +706,11 @@ def test_weights_general():
             for ik in range(2):
                 for ib in range(5):
                     for der in range(ncorner):
-                        result = weights_general(x, values[ik, :, ib], der)
+                        result = weights_simplex_unsorted(x, values[ik, :, ib], der)
                         assert result.dtype == np.float64
                         np.testing.assert_array_equal(result, function(x, *values[ik, :, ib], der=der))
-                        np.testing.assert_array_equal(weights_general(x, values[ik, ::-1, ib], der), result)
-                        np.testing.assert_array_equal(weights_general.py_func(x, values[ik, :, ib], der), result)
+                        np.testing.assert_array_equal(weights_simplex_unsorted(x, values[ik, ::-1, ib], der), result)
+                        np.testing.assert_array_equal(weights_simplex_unsorted.py_func(x, values[ik, :, ib], der), result)
             np.testing.assert_array_equal(values, copy)
 
 
@@ -729,7 +746,7 @@ def test_dynamic_weights_kramers_kronig(kind):
     nk, nb = 2, 4
     eCenter = rng.random((nk, nb)) * 2
     eCorners = rng.random((nk, 4, nb) if kind == "single" else (nk, 2, 2, 2, nb)) * 2
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=3)
     pairs = [((0, 1), (2, 3)), ((2, 4), (0, 2)), ((1, 2), (3, 4))]
     edges = np.linspace(-3, 3, 60001)
     omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals
@@ -749,7 +766,7 @@ def test_weights_cached_by_value():
     rng = np.random.default_rng(4)
     nk, nb = 2, 3
     eCorners = rng.random((nk, 2, 2, 2, nb))
-    tetra = TetraWeights(eCenter=rng.random((nk, nb)), eCorners=eCorners, kind="parallelepiped")
+    tetra = SimplexWeights(eCenter=rng.random((nk, nb)), eCorners=eCorners, kind="parallelepiped", dim=3)
     computed = []
     compute = tetra.weight_1k1b_priv
 
@@ -793,7 +810,7 @@ def test_weights_cached_by_value():
     # against a new instance, without the cache
     tetra.weight_1k1b_priv = compute
     for array, results in ((shifted, other), (shifted, again), (between, third), (nudged, fourth), (original, first)):
-        fresh = TetraWeights(eCenter=tetra.eCenter, eCorners=eCorners, kind="parallelepiped")
+        fresh = SimplexWeights(eCenter=tetra.eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
         for w1, w2 in zip(fresh.weights_all_band_groups(array, der=1), results):
             assert w1.keys() == w2.keys()
             for key in w1:
@@ -809,8 +826,8 @@ def test_weights_cached_other_dtype(dtype, values, first):
     rng = np.random.default_rng(5)
     eCenter, eCorners = rng.random((2, 3)) * 4, rng.random((2, 2, 2, 2, 3)) * 4
     efermi = np.array(values, dtype=dtype)
-    reference = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    reference = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
     for der in (0, 1, 2, -1):
         expected = reference.weights_all_band_groups(efermi.astype(np.float64), der=der)
         arrays = [efermi, efermi.astype(np.float64)]
@@ -1021,7 +1038,7 @@ def test_triangle_weights_kramers_kronig(kind):
     nk, nb = 2, 4
     eCenter = rng.random((nk, nb)) * 2
     eCorners = rng.random((nk, 2, 2, nb)) * 2
-    triangles = TriangleWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    triangles = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=2)
     pairs = [((0, 1), (2, 3)), ((2, 4), (0, 2)), ((1, 2), (3, 4))]
     edges = np.linspace(-3, 3, 60001)
     omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals

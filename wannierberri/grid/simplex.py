@@ -2,6 +2,10 @@ import numpy as np
 from ..utility import njit
 
 
+#############################################################################################################################
+
+###   Absorptive part
+
 @njit
 def _simplex_value(x, e, inv, coef, k, der, b, right):
     """the value of `weights_simplex` at x in [e_0, e_n], from the right (x + 0) or from the left (x - 0); b is a work
@@ -37,8 +41,10 @@ def _simplex_value(x, e, inv, coef, k, der, b, right):
 
 
 @njit
-def weights_simplex(efall, e, der=0):
-    """for a function linear within a simplex of dimension n (a segment, triangle or tetrahedron), with the sorted
+def weights_simplex_sorted(efall, e, der=0):
+    """
+    !!! e array must be sorted !!!
+    for a function linear within a simplex of dimension n (a segment, triangle or tetrahedron), with the SORTED
     values e (n + 1) at its corners: the fraction of the simplex where it is below each value of efall (der=0), and
     its derivatives with respect to efall (der=1 is the density of the values, normalised to 1; zero for der > n)
 
@@ -100,18 +106,24 @@ def weights_simplex(efall, e, der=0):
 
 
 @njit
-def weights_triangle(efall, e0, e1, e2, der=0):
-    """`weights_simplex` for a triangle, with the values e0, e1, e2 at its corners (in any order)"""
-    if der < 0:
-        raise NotImplementedError(f"der={der} not implemented in weights_triangle")
-    return weights_simplex(efall, np.sort(np.array([e0, e1, e2], dtype=np.float64)), der)
+def weights_simplex_unsorted(efall, dE, der):
+    """`weights_simplex` for a triangle or tetrahedron, with the values dE at its corners (in any order)"""
+    return weights_simplex_sorted(efall, np.sort(dE.astype(np.float64)), der)
 
 
+### end of absorptive part
+#############################################################################################################################
+
+
+#############################################################################################################################
+### Reactive part
 # the expansion of the principal part far from the values of dE: its order, and the largest ratio of the spread of
 # the values to the distance of omega from their mean where it is used (the terms decrease by at least 3/4 of it)
 PRINCIPAL_ORDER = 16
 PRINCIPAL_FAR = 4
 
+
+#### 2D case
 
 @njit
 def _mean_log(a, b, at_zero):
@@ -184,55 +196,7 @@ def _add_principal_2d(res, omega, e, weight=1.):
             res[i] += weight * 2 * (_mean_log(t[1], t[2], at_zero) - _mean_log(t[0], t[1], at_zero)) / spread
 
 
-@njit
-def occupied_triangles(occupied, efermi):
-    """the part of a triangle where a linear function is below efermi, divided into at most 2 triangles
-
-    occupied : the values at the 3 corners. Returns (bary, area): bary is an array (3, 3, 3), the barycentric
-    coordinates of the corners of each triangle (rows), and area (3,) their areas as fractions of the whole (zero
-    for the unused ones; 3 as for `occupied_tetrahedra`)"""
-    order = np.argsort(occupied)
-    a = occupied[order]
-    corner = np.zeros((3, 3))
-    for k in range(3):
-        corner[k, order[k]] = 1.
-
-    def point(k, l):
-        t = (efermi - a[k]) / (a[l] - a[k])
-        return (1 - t) * corner[k] + t * corner[l]
-
-    bary = np.zeros((3, 3, 3))
-    n = 0
-    if efermi >= a[2]:  # also a flat band at the Fermi level, as with the occupations at kBT = 0 (E <= mu)
-        bary[0] = np.eye(3)
-        n = 1
-    elif efermi <= a[0]:
-        pass
-    elif efermi <= a[1]:
-        bary[0, 0], bary[0, 1], bary[0, 2] = corner[0], point(0, 1), point(0, 2)
-        n = 1
-    else:  # a quadrilateral (0, 1, p12, p02)
-        p02, p12 = point(0, 2), point(1, 2)
-        bary[0, 0], bary[0, 1], bary[0, 2] = corner[0], corner[1], p12
-        bary[1, 0], bary[1, 1], bary[1, 2] = corner[0], p12, p02
-        n = 2
-    area = np.zeros(3)
-    for i in range(n):
-        area[i] = abs(np.linalg.det(bary[i]))
-    return bary, area
-
-
-@njit
-def weights_tetra(efall, e1, e2, e3, e4, der=0):
-    """for a function linear within a tetrahedron, with the values e1, ..., e4 at its corners (in any order): the
-    fraction of the tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to
-    efall (der=1 is the density of the values, normalised to 1; der=2, 3 its derivatives), as in the linear
-    tetrahedron method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994).
-    Computed by `weights_simplex`, also for equal values."""
-    if der < 0:
-        raise ValueError(f"der={der} not supported")
-    return weights_simplex(efall, np.sort(np.array([e1, e2, e3, e4], dtype=np.float64)), der)
-
+###########  3D case
 
 @njit
 def _get_moments(e, mean):
@@ -367,6 +331,27 @@ def _add_principal_3d(res, omega, e, weight=1.):
             res[i] += weight * 3 * (upper - lower) / spread
 
 
+####### wrapper for D=3 and D=2 cases
+
+@njit
+def _add_principal(res, omega, dE, weight=1):
+    if dE.shape[0] == 4:
+        _add_principal_3d(res, omega, e=dE, weight=weight)
+    elif dE.shape[0] == 3:
+        _add_principal_2d(res, omega, e=dE, weight=weight)
+    else:
+        raise NotImplementedError(f"dim={dE.shape[0] - 1} not supported")
+
+##### end of reactive part
+############################################################################################################################################################################################
+
+
+############################################################################################################################################################################################
+
+##### Fractions of occupied simplexes (tetrahedra or triangles)
+
+##### 3D case
+
 @njit
 def occupied_tetrahedra(energies, efermi):
     """the part of a tetrahedron where a linear function is below efermi, divided into at most 3 tetrahedra
@@ -412,70 +397,59 @@ def occupied_tetrahedra(energies, efermi):
     return bary, volume
 
 
-@njit
-def weights_general(efall, dE, der):
-    """`weights_simplex` for a triangle or tetrahedron, with the values dE at its corners (in any order)"""
-    return weights_simplex(efall, np.sort(dE.astype(np.float64)), der)
-
+##### 2D case
 
 @njit
-def _add_principal(res, omega, dE, weight=1):
-    if dE.shape[0] == 4:
-        _add_principal_3d(res, omega, e=dE, weight=weight)
-    elif dE.shape[0] == 3:
-        _add_principal_2d(res, omega, e=dE, weight=weight)
-    else:
-        raise NotImplementedError(f"dim={dE.shape[0] - 1} not supported")
+def occupied_triangles(occupied, efermi):
+    """the part of a triangle where a linear function is below efermi, divided into at most 2 triangles
 
+    occupied : the values at the 3 corners. Returns (bary, area): bary is an array (3, 3, 3), the barycentric
+    coordinates of the corners of each triangle (rows), and area (3,) their areas as fractions of the whole (zero
+    for the unused ones; 3 as for `occupied_tetrahedra`)"""
+    order = np.argsort(occupied)
+    a = occupied[order]
+    corner = np.zeros((3, 3))
+    for k in range(3):
+        corner[k, order[k]] = 1.
+
+    def point(k, l):
+        t = (efermi - a[k]) / (a[l] - a[k])
+        return (1 - t) * corner[k] + t * corner[l]
+
+    bary = np.zeros((3, 3, 3))
+    n = 0
+    if efermi >= a[2]:  # also a flat band at the Fermi level, as with the occupations at kBT = 0 (E <= mu)
+        bary[0] = np.eye(3)
+        n = 1
+    elif efermi <= a[0]:
+        pass
+    elif efermi <= a[1]:
+        bary[0, 0], bary[0, 1], bary[0, 2] = corner[0], point(0, 1), point(0, 2)
+        n = 1
+    else:  # a quadrilateral (0, 1, p12, p02)
+        p02, p12 = point(0, 2), point(1, 2)
+        bary[0, 0], bary[0, 1], bary[0, 2] = corner[0], corner[1], p12
+        bary[1, 0], bary[1, 1], bary[1, 2] = corner[0], p12, p02
+        n = 2
+    area = np.zeros(3)
+    for i in range(n):
+        area[i] = abs(np.linalg.det(bary[i]))
+    return bary, area
+
+
+####  Wrapper for D=3 and D=2 cases
 
 @njit
-def occupied_pieces(occupied, efermi):
+def occupied_simplexes(occupied, efermi):  # I know that the correct form is 'simplices', but i want it to found by "grep simplex"
     if occupied.shape[0] == 4:
         return occupied_tetrahedra(occupied, efermi)
     elif occupied.shape[0] == 3:
         return occupied_triangles(occupied, efermi)
 
 
-def get_borders(A, degen_thresh, degen_Kramers=False):
-    borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
-    if degen_Kramers:
-        borders = [i for i in borders if i % 2 == 0]
-    return [[ib1, ib2] for ib1, ib2 in zip(borders, borders[1:])]
+##### end of fractions of occupied simplexes
+########################################################################################################################################################################################
 
-
-def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, Ebandmin=None, Ebandmax=None, select_bands=None):
-    if Ebandmin is None:
-        Ebandmin = Eband
-    if Ebandmax is None:
-        Ebandmax = Eband
-    bands = []
-    for ib1, ib2 in get_borders(Eband, degen_thresh, degen_Kramers=degen_Kramers):
-        if select_bands is not None:
-            if set(range(ib1, ib2)).intersection(set(select_bands)) == set():
-                continue
-        if Ebandmax[ib1:ib2].max() >= emin and Ebandmin[ib1:ib2].min() <= emax:
-            bands.append([ib1, ib2])
-    return bands
-
-
-def get_bands_below_range(emin, Eband, Ebandmax=None):
-    if Ebandmax is None:
-        Ebandmax = Eband
-    add = np.where((Ebandmax < emin))[0]
-    if len(add) > 0:
-        return add[-1] + 1
-    else:
-        return 0
-
-
-def get_bands_above_range(emax, Eband, Ebandmin=None):
-    if Ebandmin is None:
-        Ebandmin = Eband
-    add = np.where((Ebandmin > emax))[0]
-    if len(add) > 0:
-        return add[0]
-    else:
-        return len(Eband)
 
 
 @njit
@@ -512,13 +486,13 @@ def omega_intervals(omega):
     return edges
 
 
-# a tetrahedron where the spread of dE is below this fraction of the interval of omega around it is taken as flat
+# a simplex where the spread of dE is below this fraction of the interval of omega around it is taken as flat
 FLAT_FRACTION = 1e-3
 
 
 @njit
 def _add_delta_values(res, omega, edges, weight, dE):
-    """add weight * delta(dE - omega) over a tetrahedron (the density of the values of dE, `weights_simplex` with
+    """add weight * delta(dE - omega) over a simplex (the density of the values of dE, `weights_simplex` with
     der=1) at the values omega to res. If dE is flat (its spread below FLAT_FRACTION of the interval of omega around
     it), its values cannot be sampled at the frequencies, and its weight is put into that interval, as with the
     averages over the intervals."""
@@ -530,14 +504,13 @@ def _add_delta_values(res, omega, edges, weight, dE):
         return
     lo, hi = _omega_in_range(omega, emin, emax)
     if hi > lo:
-        res[lo:hi] += weight * weights_general(omega[lo:hi], dE, der=1)
+        res[lo:hi] += weight * weights_simplex_unsorted(omega[lo:hi], dE, der=1)
 
 
 @njit
-def delta_values_tetra(omega, dE):
-    """values of delta(dE - omega) over a tetrahedron (see `_add_delta_values`, also for a flat dE) at the given
+def delta_values_simplex(omega, dE):
+    """values of delta(dE - omega) over a simplex (see `_add_delta_values`, also for a flat dE) at the given
     increasing values of omega
-
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
     edges = omega_intervals(omega)
@@ -547,10 +520,10 @@ def delta_values_tetra(omega, dE):
 
 
 @njit
-def delta_weights_tetra(edges, dE):
-    """the averages of delta(dE - omega) over a tetrahedron, as a function of omega, over the intervals of omega
-    between the given edges, where dE is linear and given at its 4 corners: for each interval, the fraction of the
-    tetrahedron where dE is within it, divided by its width. omega itself is not needed, only the edges. (With
+def delta_weights_simplex(edges, dE):
+    """the averages of delta(dE - omega) over a simplex, as a function of omega, over the intervals of omega
+    between the given edges, where dE is linear and given at its (d+1) corners: for each interval, the fraction of the
+    simplex where dE is within it, divided by its width. omega itself is not needed, only the edges. (With
     tetra_delta_average=True, the dynamic calculators take the edges from `omega_intervals`, and the average over
     each interval is the result at the frequency inside it.)
 
@@ -562,14 +535,14 @@ def delta_weights_tetra(edges, dE):
         lo, hi = _edges_in_range(edges, dE[i].min(), dE[i].max())
         if hi <= lo:
             continue
-        occ = weights_general(edges[lo:hi + 1], dE[i], der=0)
+        occ = weights_simplex_unsorted(edges[lo:hi + 1], dE[i], der=0)
         res[i, lo:hi] = (occ[1:] - occ[:-1]) / width[lo:hi]
     return res
 
 
 @njit
-def reactive_values_tetra(omega, dE):
-    """values of the average of P 1/(dE - omega) over a tetrahedron (see `weights_tetra_reactive`) at the given omega
+def reactive_values_simplex(omega, dE):
+    """values of the average of P 1/(dE - omega) over a simplex (see `weights_tetra_reactive`) at the given omega
 
     omega : array (nomega,); dE : array (npair, 4); returns an array (npair, nomega)"""
     res = np.zeros((dE.shape[0], omega.shape[0]))
@@ -598,7 +571,7 @@ def _add_kernel(res, omega, edges, intervals, kind, weight, dE):
     if kind == 0:
         _add_delta_values(res=res, omega=omega, edges=intervals, weight=weight, dE=dE)
     elif kind == 1:
-        res += weight * delta_weights_tetra(edges=edges, dE=dE.reshape(1, -1))[0]
+        res += weight * delta_weights_simplex(edges=edges, dE=dE.reshape(1, -1))[0]
     else:
         _add_principal(res=res, omega=omega, dE=dE, weight=weight)
 
@@ -607,7 +580,7 @@ def _add_kernel(res, omega, edges, intervals, kind, weight, dE):
 def _add_occupied(res, occupied, dE, efermi, omega, edges, intervals, kind, weight):
     """add weight times the integral over a tetrahedron of theta(efermi - occupied) times the function of dE - omega
     given by `kind` (see `_add_kernel`) to res"""
-    bary, volume = occupied_pieces(occupied, efermi)
+    bary, volume = occupied_simplexes(occupied, efermi)
 
     for t in range(3):
         if volume[t] > 0:

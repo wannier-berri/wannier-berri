@@ -16,12 +16,14 @@ from wannierberri import factors
 from wannierberri.calculators.sdct import SDCT_sym
 from wannierberri.fourier.rvectors import Rvectors
 from wannierberri.grid.simplex import (FLAT_FRACTION, _edges_in_range, _omega_in_range,
-                                       omega_intervals, _add_occupied, occupation_kernel, occupied_pieces,
-                                       delta_values_tetra, delta_weights_tetra,
-                                       weights_tetra, weights_simplex, occupied_tetrahedra)
-from wannierberri.grid.ttweights import TetraWeights
+                                       omega_intervals, _add_occupied, occupation_kernel, occupied_simplexes,
+                                       delta_values_simplex, delta_weights_simplex,
+                                       weights_simplex_sorted, occupied_tetrahedra)
+from wannierberri.grid.simplex_weights import SimplexWeights
 from wannierberri.system import System_R
 
+
+from .test_tetra import weights_tetra
 S0 = np.eye(2, dtype=complex)
 SIGMA = [np.array([[0, 1], [1, 0]], dtype=complex), np.array([[0, -1j], [1j, 0]]), np.diag([1., -1]).astype(complex)]
 A, M, T0, ALPHA = 3.0, 3.5, 0.1, 0.2  # lattice constant (Angstrom), and the parameters of the two-band model (eV)
@@ -120,13 +122,13 @@ def parallel_delta(omega, center, corners, edges=None):
     the upper one with the energies dE and the lower one at zero"""
     eCenter = np.array([[0.0, center]])
     eCorners = np.stack([np.zeros((2, 2, 2)), corners], axis=-1)[None]
-    weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    weights = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
     return weights.dynamic_weights(0, [((1, 2), (0, 1))], omega, edges=edges, type="delta")[0]
 
 
 def parallelepiped_tetrahedra(center, corners):
     """the values at the 4 vertices of each of the 12 tetrahedra of a parallelepiped"""
-    weights = TetraWeights(eCenter=np.array([[center]]), eCorners=corners[None, ..., None], kind="parallelepiped")
+    weights = SimplexWeights(eCenter=np.array([[center]]), eCorners=corners[None, ..., None], kind="parallelepiped", dim=3)
     return [vertices[0, :, 0] for vertices in weights.all_tetrahedra_vertices]
 
 
@@ -144,7 +146,7 @@ def test_delta_weights_linear(shape):
             x = rng.random((400000, 3)) - 0.5
         else:
             vertices = rng.normal(size=(4, 3))
-            weights = delta_weights_tetra(edges, (c + vertices @ g)[None])[0]
+            weights = delta_weights_simplex(edges, (c + vertices @ g)[None])[0]
             x = rng.dirichlet(np.ones(4), size=400000) @ vertices
         values = c + x @ g
         cumulative = np.cumsum(weights * np.diff(edges))
@@ -158,7 +160,7 @@ def test_delta_weights_linear(shape):
 def test_delta_weights_narrow(dE):
     """a delta function narrower than the intervals of omega keeps its weight"""
     edges = np.arange(0, 4.001, 0.1)
-    weights = delta_weights_tetra(edges, np.array([dE], dtype=float))[0]
+    weights = delta_weights_simplex(edges, np.array([dE], dtype=float))[0]
     assert np.sum(weights * np.diff(edges)) == pytest.approx(1, abs=1e-12)
     assert np.all(weights >= -1e-12)
 
@@ -171,7 +173,7 @@ def test_delta_weights_range(dE):
     edges = np.arange(-5.0, 5.001, 0.5)
     dE = np.array(dE)
     occ = weights_tetra(edges, dE[0], dE[1], dE[2], dE[3], 0)
-    np.testing.assert_allclose(delta_weights_tetra(edges, dE[None])[0], np.diff(occ) / np.diff(edges), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_weights_simplex(edges, dE[None])[0], np.diff(occ) / np.diff(edges), rtol=0, atol=1e-12)
     corners = np.empty((2, 2, 2))
     corners[0, 0, 0], corners[1, 1, 1], corners[0, 1, 0], corners[1, 0, 1] = dE
     corners[1, 0, 0] = corners[0, 1, 1] = corners[0, 0, 1] = corners[1, 1, 0] = dE.mean()
@@ -190,15 +192,15 @@ def test_delta_on_edges():
     weight is that strictly below the edge), as for the values at omega (`_add_delta_values`), and the density at the
     smallest or largest value of dE, where it jumps, is the mean of its limits"""
     edges = np.array([0.85, 0.95, 1.05, 1.2, 1.4])
-    np.testing.assert_allclose(delta_weights_tetra(edges, np.full((1, 4), 0.95))[0], [0, 10, 0, 0])
-    np.testing.assert_allclose(delta_weights_tetra(edges, np.full((1, 4), 1.4))[0], [0, 0, 0, 0])
-    np.testing.assert_allclose(delta_weights_tetra(edges, np.full((1, 4), 0.85))[0], [10, 0, 0, 0])
-    np.testing.assert_allclose(delta_weights_tetra(edges, np.array([[0.95, 0.95, 0.95, 1.05]]))[0], [0, 10, 0, 0])
+    np.testing.assert_allclose(delta_weights_simplex(edges, np.full((1, 4), 0.95))[0], [0, 10, 0, 0])
+    np.testing.assert_allclose(delta_weights_simplex(edges, np.full((1, 4), 1.4))[0], [0, 0, 0, 0])
+    np.testing.assert_allclose(delta_weights_simplex(edges, np.full((1, 4), 0.85))[0], [10, 0, 0, 0])
+    np.testing.assert_allclose(delta_weights_simplex(edges, np.array([[0.95, 0.95, 0.95, 1.05]]))[0], [0, 10, 0, 0])
     assert _edges_in_range(edges, 0.95, 0.95) == (1, 2)
     assert _edges_in_range(edges, 0.95, 1.05) == (1, 3)
     omega = np.array([0.0, 1.0, 2.0])
-    np.testing.assert_allclose(delta_values_tetra(omega, np.full((1, 4), 0.5)), [[0, 1, 0]])
-    np.testing.assert_allclose(delta_weights_tetra(omega_intervals(omega), np.full((1, 4), 0.5)), [[0, 1, 0]])
+    np.testing.assert_allclose(delta_values_simplex(omega, np.full((1, 4), 0.5)), [[0, 1, 0]])
+    np.testing.assert_allclose(delta_weights_simplex(omega_intervals(omega), np.full((1, 4), 0.5)), [[0, 1, 0]])
     omega = np.array([0.0, 0.5, 1.0, 1.5, 2.0])
     assert _omega_in_range(omega, 0.5, 1.5) == (1, 4)
     assert _omega_in_range(omega, 0.4, 1.6) == (1, 4)
@@ -206,7 +208,7 @@ def test_delta_on_edges():
     # the density of [a, a, a, c] is 3 (c - x)^2 / (c - a)^3 above a, of [a, c, c, c] 3 (x - a)^2 / (c - a)^3 below c
     a, c = 0.2, 1.2
     omega = np.array([0.0, a, 0.7, c, 1.4])
-    np.testing.assert_allclose(delta_values_tetra(omega, np.array([[a, a, a, c], [a, c, c, c]])),
+    np.testing.assert_allclose(delta_values_simplex(omega, np.array([[a, a, a, c], [a, c, c, c]])),
                                [[0, 1.5, 0.75, 0, 0], [0, 0, 0.75, 1.5, 0]], rtol=1e-14, atol=1e-14)
 
 
@@ -215,11 +217,11 @@ def test_python_versions():
     rng = np.random.default_rng(4)
     edges = np.arange(-5.0, 5.001, 0.5)
     dE = np.concatenate([rng.normal(size=(6, 4)) * 2, [[1.0, 1.0, 1.0, 1.0], [7.0, 8.0, 8.5, 9.0]]])
-    np.testing.assert_allclose(delta_weights_tetra.py_func(edges, dE), delta_weights_tetra(edges, dE), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_weights_simplex.py_func(edges, dE), delta_weights_simplex(edges, dE), rtol=0, atol=1e-12)
     for emin, emax in [(-6.0, -5.5), (-1.0, 1.0), (1.0, 1.0), (4.0, 6.0), (6.0, 7.0)]:
         assert _edges_in_range.py_func(edges, emin, emax) == _edges_in_range(edges, emin, emax)
         assert _omega_in_range.py_func(edges, emin, emax) == _omega_in_range(edges, emin, emax)
-    np.testing.assert_allclose(delta_values_tetra.py_func(edges, dE), delta_values_tetra(edges, dE), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_values_simplex.py_func(edges, dE), delta_values_simplex(edges, dE), rtol=0, atol=1e-12)
     efermi = np.array([-1.0, 0.5])
     for code in (0, 1, 2):
         args = (dE[:3], dE[3:6], 1., efermi, edges[:-1] + 0.25, edges, code)
@@ -245,7 +247,7 @@ def test_delta_weights_groups(kind, average):
     if not average:
         edges = None
     pairs = [((2, 4), (0, 2)), ((0, 2), (2, 4)), ((3, 4), (1, 2)), ((1, 3), (1, 3))]
-    weights = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    weights = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=3)
     result = weights.dynamic_weights(0, pairs, omega, edges=edges, type="delta")
     # empty pairs (used for the pairs that do not contribute) give zeros, and do not change the others
     with_empty = weights.dynamic_weights(0, [((0, 0), (0, 0))] + pairs, omega, edges=edges, type="delta")
@@ -256,7 +258,7 @@ def test_delta_weights_groups(kind, average):
     def one(i, j):
         if kind == "single":
             dE = (eCorners[0][:, i] - eCorners[0][:, j])[None]
-            return (delta_weights_tetra(edges, dE) if average else delta_values_tetra(omega, dE))[0]
+            return (delta_weights_simplex(edges, dE) if average else delta_values_simplex(omega, dE))[0]
         return parallel_delta(omega, eCenter[0, i] - eCenter[0, j], eCorners[0][..., i] - eCorners[0][..., j], edges)
 
     for (gi, gj), res in zip(pairs, result):
@@ -323,7 +325,7 @@ def test_delta_values_range(dE):
     a flat dE, see `test_delta_values_flat`)"""
     omega = np.arange(-5.0, 5.001, 0.25)
     dE = np.array(dE)
-    np.testing.assert_allclose(delta_values_tetra(omega, dE[None])[0], weights_tetra(omega, *dE, der=1), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(delta_values_simplex(omega, dE[None])[0], weights_tetra(omega, *dE, der=1), rtol=0, atol=1e-12)
     corners = np.empty((2, 2, 2))
     corners[0, 0, 0], corners[1, 1, 1], corners[0, 1, 0], corners[1, 0, 1] = dE
     corners[1, 0, 0] = corners[0, 1, 1] = corners[0, 0, 1] = corners[1, 1, 0] = dE.mean()
@@ -510,14 +512,14 @@ def test_delta_values_flat(spread):
     omega = np.arange(0.05, 2, 0.1)
     for dE in (0.73, 0.75 + 1e-13, 0.8):  # inside an interval, at an edge, at a frequency
         corners = dE + spread * np.array([0, 0.3, 0.7, 1.0])
-        values = delta_values_tetra(omega, corners[None])[0]
+        values = delta_values_simplex(omega, corners[None])[0]
         assert values.sum() * 0.1 == pytest.approx(1, rel=1e-12)
         assert np.count_nonzero(values) == 1 and abs(omega[np.argmax(values)] - corners.mean()) <= 0.05 + 1e-12
         parallel = parallel_delta(omega, dE, dE + spread * np.arange(8).reshape(2, 2, 2) / 7)
         assert parallel.sum() * 0.1 == pytest.approx(1, rel=1e-12)
     # a single frequency has no interval: nothing is taken as flat
-    np.testing.assert_array_equal(delta_values_tetra(np.array([0.75]), np.full((1, 4), 0.8)), 0)
-    single = delta_values_tetra(np.array([0.75]), np.array([[0.7, 0.72, 0.78, 0.8]]))
+    np.testing.assert_array_equal(delta_values_simplex(np.array([0.75]), np.full((1, 4), 0.8)), 0)
+    single = delta_values_simplex(np.array([0.75]), np.array([[0.7, 0.72, 0.78, 0.8]]))
     assert single[0, 0] == pytest.approx(weights_tetra(np.array([0.75]), 0.7, 0.72, 0.78, 0.8, der=1)[0], rel=1e-14)
 
 
@@ -535,17 +537,17 @@ def test_delta_values_flat_intervals():
 
     for dE, i in [(0.1, 0), (0.125, 1), (0.374, 1), (0.375, 2), (0.8, 3), (1.249, 3), (-0.125, 0),
                   (-0.2, None), (1.25, None), (1.3, None)]:
-        np.testing.assert_allclose(delta_values_tetra(omega, np.full((1, 4), dE))[0], expected(i), rtol=1e-14)
+        np.testing.assert_allclose(delta_values_simplex(omega, np.full((1, 4), dE))[0], expected(i), rtol=1e-14)
     # the middle of the range (0.3749997, below the edge 0.375), not the mean of the corners (above it), selects the
     # interval
     corners = np.array([[0.374999, 0.3750004, 0.3750004, 0.3750004]])
     assert (corners.min() + corners.max()) / 2 < 0.375 <= corners.mean()
-    np.testing.assert_allclose(delta_values_tetra(omega, corners)[0], expected(1), rtol=1e-14)
+    np.testing.assert_allclose(delta_values_simplex(omega, corners)[0], expected(1), rtol=1e-14)
     # just below and above the threshold, FLAT_FRACTION times the width of the interval
     for factor, flat in ((0.99, True), (1.01, False)):
         spread = factor * FLAT_FRACTION * widths[2]
         dE = np.array([[0.6, 0.6 + spread / 3, 0.6 + spread / 2, 0.6 + spread]])
-        values = delta_values_tetra(omega, dE)[0]
+        values = delta_values_simplex(omega, dE)[0]
         if flat:
             np.testing.assert_allclose(values, expected(2), rtol=1e-14)
         else:
@@ -557,7 +559,7 @@ def test_delta_values_flat_intervals():
     fine = np.linspace(-0.125, 1.25, 1101)[:-1] + 0.000625
     values = parallel_delta(fine, 0.6, corners)
     tetrahedra = parallelepiped_tetrahedra(0.6, corners)
-    expected_values = sum(delta_values_tetra(fine, t[None]) for t in tetrahedra)[0] / 12
+    expected_values = sum(delta_values_simplex(fine, t[None]) for t in tetrahedra)[0] / 12
     np.testing.assert_allclose(values, expected_values, rtol=1e-14, atol=0)
     flat_tetrahedra = sum(np.ptp(t) == 0 for t in tetrahedra)
     assert flat_tetrahedra == 2
@@ -751,7 +753,7 @@ def test_tetra_omega_intervals(dE):
     omega = np.array([0.9, 1.0, 1.1, 1.3])
     edges = dynamic.JDOS(Efermi=EFERMI, omega=omega, tetra_delta=True, tetra_delta_average=True).omega_edges
     np.testing.assert_allclose(edges, [0.85, 0.95, 1.05, 1.2, 1.4])
-    weights = delta_weights_tetra(edges, np.full((1, 4), dE))[0]
+    weights = delta_weights_simplex(edges, np.full((1, 4), dE))[0]
     np.testing.assert_allclose(weights, [0, 10, 0, 0])
 
 
@@ -895,7 +897,7 @@ def test_occupied_kernel_principal_inside(occupied, dE):
     result = occupied_kernel(occupied, dE, efermi, omega, np.zeros(1), 2)
     tolerance = 1e-5 * np.abs(result).max()
     for ief, ef in enumerate(efermi):
-        bary, volume = occupied_pieces(occupied, ef)
+        bary, volume = occupied_simplexes(occupied, ef)
         parts = [bary[t] @ dE for t in range(3) if volume[t] > 0]
         for w, value in zip(omega, result[ief]):
             reference = 0
@@ -903,7 +905,7 @@ def test_occupied_kernel_principal_inside(occupied, dE):
                 nodes = np.unique(d)
                 for a, b in zip(nodes[:-1], nodes[1:]):
                     def density(x):
-                        return weights_simplex(np.array([x]), np.sort(d), der=1)[0]
+                        return weights_simplex_sorted(np.array([x]), np.sort(d), der=1)[0]
                     if a < w < b:
                         reference += v * quad(density, a, b, weight="cauchy", wvar=w, limit=200)[0]
                     else:
@@ -1078,7 +1080,7 @@ def test_occupation_weights_groups(kind):
         eCorners = eCenter[:, None, :] + rng.normal(size=(nk, 4, nb))
     else:
         eCorners = eCenter[:, None, None, None, :] + rng.normal(size=(nk, 2, 2, 2, nb))
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=3)
     efermi = np.array([-0.5, 0.3])
     edges = np.linspace(-6, 6, 25)
     omega = (edges[1:] + edges[:-1]) / 2
