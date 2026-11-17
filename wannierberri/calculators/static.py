@@ -99,7 +99,7 @@ class StaticCalculator(Calculator):
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
-            weights = data_K.tetraWeights.weights_all_band_groups(
+            weights = data_K.simplexWeights.weights_all_band_groups(
                 self.Efermi, der=-1 if self.hole_like else self.fder, degen_thresh=self.degen_thresh,
                 degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax,
                 select_bands=self.select_bands

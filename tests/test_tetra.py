@@ -1,15 +1,15 @@
 import contextlib
 import decimal
+import math
 import os
 import tempfile
 import io
 import numpy as np
 from wannierberri.grid.grid_tetra import GridTetra
-from wannierberri.grid.simplex import (weights_tetra, PRINCIPAL_FAR,
+from wannierberri.grid.simplex import (weights_simplex_unsorted, PRINCIPAL_FAR,
                                        _add_principal_3d, _mean_tlog, _mean_log_triangle_close,
-                                       weights_triangle, _add_principal_2d, _mean_log, occupied_triangles,
-                                       delta_tetra)
-from wannierberri.grid.ttweights import TetraWeights, TriangleWeights
+                                       weights_simplex_sorted, _add_principal_2d, _mean_log, occupied_triangles)
+from wannierberri.grid.simplex_weights import SimplexWeights
 from scipy.integrate import quad
 from wannierberri.grid import Grid
 from wannierberri.data_K import get_data_k_class_from_system
@@ -17,6 +17,24 @@ import pytest
 from pytest import approx
 
 from wannierberri.run_grid import run
+
+
+def weights_triangle(efall, e0, e1, e2, der=0):
+    """`weights_simplex` for a triangle, with the values e0, e1, e2 at its corners (in any order)"""
+    if der < 0:
+        raise NotImplementedError(f"der={der} not implemented in weights_triangle")
+    return weights_simplex_sorted(efall, np.sort(np.array([e0, e1, e2], dtype=np.float64)), der)
+
+
+def weights_tetra(efall, e1, e2, e3, e4, der=0):
+    """for a function linear within a tetrahedron, with the values e1, ..., e4 at its corners (in any order): the
+    fraction of the tetrahedron where it is below each value of efall (der=0), and its derivatives with respect to
+    efall (der=1 is the density of the values, normalised to 1; der=2, 3 its derivatives), as in the linear
+    tetrahedron method, see e.g. P. E. Bloechl, O. Jepsen and O. K. Andersen, Phys. Rev. B 49, 16223 (1994).
+    Computed by `weights_simplex`, also for equal values."""
+    if der < 0:
+        raise ValueError(f"der={der} not supported")
+    return weights_simplex_sorted(efall, np.sort(np.array([e1, e2, e3, e4], dtype=np.float64)), der)
 
 
 def weights_tetra_reactive(omega, E):
@@ -237,7 +255,7 @@ def test_dynamic_weights_reactive_pairs(kind):
     nk, nb = 3, 4
     eCenter = rng.random((nk, nb)) * 2
     eCorners = rng.random((nk, 4, nb) if kind == "single" else (nk, 2, 2, 2, nb)) * 2
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=3)
     omega = np.linspace(-3, 3, 31)
     pairs = [((0, 1), (2, 3)), ((2, 3), (0, 1)), ((0, 0), (0, 0)), ((0, 2), (3, 4)), ((3, 4), (0, 2))]
     for ik in range(nk):
@@ -256,7 +274,7 @@ def test_dynamic_weights_reactive_pairs(kind):
 @pytest.mark.parametrize("dE", [[0.3, -1.2, 2.0, 0.7], [0.0, 0.0, 1.0, 2.0], [0.0, 1.0, 1.0, 2.0], [0.0, 1.0, 2.0, 2.0],
                                 [0.0, 0.0, 0.0, 1.0], [0.0, 1.0, 1.0, 1.0], [0.0, 1e-9, 1.0, 2.0]])
 def test_principal_values(dE):
-    """the principal part against the numerical principal-value integral of the density of dE (`delta_tetra`), at
+    """the principal part against the numerical principal-value integral of the density of dE (`weights_tetra`, der=1), at
     frequencies inside and outside the range of dE and far from it; at the corner values, it is continuous"""
     dE = np.array(dE)
     nodes = np.unique(dE)
@@ -264,7 +282,7 @@ def test_principal_values(dE):
     values = weights_tetra_reactive(omega, dE)
 
     def density(x):
-        return delta_tetra(np.array([x]), *dE)[0]
+        return weights_tetra(np.array([x]), *dE, der=1)[0]
 
     for w, value in zip(omega, values):
         reference = 0
@@ -321,7 +339,7 @@ def test_principal_expansion_accuracy(dE):
     mean, spread = dE.mean(), np.ptp(dE)
 
     def density(x):
-        return delta_tetra(np.array([x]), *dE)[0]
+        return weights_tetra(np.array([x]), *dE, der=1)[0]
 
     for side in (-1, 1):
         w = mean + side * spread * PRINCIPAL_FAR * (1 + 1e-6)
@@ -534,6 +552,191 @@ def test_mean_log_triangle():
         assert mean_log_triangle(close, tlog, 0.0, 1.0, 1.0, 1.0) == pytest.approx(-1 / 2, rel=1e-15)  # 2 int_0^1 x log x dx
 
 
+def simplex_weights_decimal(x, values, der, prec=100):
+    """the fraction of a simplex where a linear function with the given distinct values at its corners is below x
+    (der=0) and its derivatives: (-1)^n times the divided difference of (x - t)_+^n over the values, differentiated
+    der times with respect to x, in decimal arithmetic (the values may be decimals). At x equal to a value, where
+    the derivative of order n jumps, the mean of its limits from below and from above (the fraction is continuous
+    for distinct values)"""
+    n = len(values) - 1
+    p = n - der
+    xd = decimal.Decimal(x)
+
+    def f(t, at_x):
+        if t > xd or (t == xd and p == 0 and at_x == 0):
+            return decimal.Decimal(0)
+        return math.factorial(n) // math.factorial(p) * (xd - t) ** p if p > 0 else decimal.Decimal(math.factorial(n))
+
+    return (-1) ** n * (divided_difference_decimal(lambda t: f(t, 0), values, prec=prec) +
+                        divided_difference_decimal(lambda t: f(t, 1), values, prec=prec)) / 2
+
+
+def simplex_functions(n):
+    """weights_simplex (for sorted values) and the function for the given dimension that calls it (in any order)"""
+    functions = [lambda x, e, der: weights_simplex_sorted(x, np.sort(np.array(e, dtype=float)), der),
+                 lambda x, e, der: weights_simplex_sorted.py_func(x, np.sort(np.array(e, dtype=float)), der)]
+    if n == 2:
+        functions.append(lambda x, e, der: weights_triangle(x, *e, der=der))
+    if n == 3:
+        functions.append(lambda x, e, der: weights_tetra(x, *e, der=der))
+    return functions
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_weights_simplex_clusters(n):
+    """the fraction below x and its derivatives for random simplices, also with two or three nearly equal values (1e-6
+    to 1e-15 apart, at any position, also far from zero), at x within, next to and between them, against 100-digit
+    decimal arithmetic; relative to the largest value over x. At the values themselves, where the derivative of order n
+    jumps, the mean of its limits"""
+    rng = np.random.default_rng(n)
+    for trial in range(40):
+        e = np.sort(rng.random(n + 1))
+        size = rng.integers(1, n + 2)
+        pos = rng.integers(0, n + 2 - size)
+        gap = 10 ** rng.uniform(-15, -6)
+        for j in range(1, size):
+            e[pos + j] = e[pos] + j * gap * rng.uniform(0.5, 1.5)
+        e = np.sort(e + [0., 10.][trial % 2])
+        if len(set(e)) < len(e):
+            continue
+        x = np.concatenate([np.linspace(e[0], e[-1], 23), e, e + gap / 3, e - gap / 3, [e[0] - 1, e[-1] + 1]])
+        # within the simplex, away from the values, where the result may be much smaller than near a cluster
+        far = (np.abs(x[:, None] - e[None, :]).min(axis=1) > 1e-3) & (x > e[0]) & (x < e[-1])
+        for der in range(n + 1):
+            expected = np.array([simplex_weights_decimal(xi, e, der) for xi in x])
+            scale = np.abs(expected).max()
+            scale_far = np.abs(expected[far]).max() if far.any() else 0.
+            for function in simplex_functions(n):
+                result = function(x, rng.permutation(e) if n > 1 else e, der)
+                np.testing.assert_allclose(result, expected, rtol=0, atol=2e-15 * scale, err_msg=f"e={e!r}, der={der}")
+                np.testing.assert_allclose(result[far], expected[far], rtol=0, atol=2e-15 * scale_far,
+                                           err_msg=f"e={e!r}, der={der}, away from the values")
+
+
+EQUAL_VALUES = [  # values with equal ones on [0, 1], and the fraction below x and its derivatives
+    ([0, 0], [lambda x: 1 + 0 * x]),
+    ([0, 0, 1], [lambda x: 1 - (1 - x) ** 2, lambda x: 2 * (1 - x), lambda x: -2 + 0 * x]),
+    ([0, 1, 1], [lambda x: x ** 2, lambda x: 2 * x, lambda x: 2 + 0 * x]),
+    ([0, 0, 0, 1], [lambda x: 1 - (1 - x) ** 3, lambda x: 3 * (1 - x) ** 2, lambda x: -6 * (1 - x), lambda x: 6 + 0 * x]),
+    ([0, 1, 1, 1], [lambda x: x ** 3, lambda x: 3 * x ** 2, lambda x: 6 * x, lambda x: 6 + 0 * x]),
+    ([0, 0, 1, 1], [lambda x: 3 * x ** 2 - 2 * x ** 3, lambda x: 6 * x * (1 - x), lambda x: 6 - 12 * x,
+                    lambda x: -12 + 0 * x]),
+]
+
+
+@pytest.mark.parametrize("values, expected", EQUAL_VALUES)
+@pytest.mark.parametrize("shift, scale", [(0., 1.), (-3.7, 0.25), (100., 1e-6)])
+def test_weights_simplex_equal(values, expected, shift, scale):
+    """closed forms for equal values, also next to them (down to the neighbouring floating-point numbers) and at them,
+    where the derivatives, which may jump there, are the mean of their limits, and the fraction is that strictly
+    below (0 at the value if all values are equal); der=2, 3 are the parts without the delta functions"""
+    n = len(values) - 1
+    e = shift + scale * np.array(values, dtype=float)
+    lo, hi = e[0], e[-1]  # e has only these two values, the reference is taken relative to them
+    x = np.concatenate([np.linspace(lo - scale / 2, hi + scale / 2, 41), [np.nextafter(lo, -np.inf), lo,
+                        np.nextafter(lo, np.inf), np.nextafter(hi, -np.inf), hi, np.nextafter(hi, np.inf)]])
+    for der in range(n + 2):
+        if values == [0, 0]:
+            reference = np.where(x > lo, 1., 0.) if der == 0 else np.zeros_like(x)
+        elif der > n:
+            reference = np.zeros_like(x)
+        else:
+            t = (x - lo) / (hi - lo)
+            inside = expected[der](t) / (hi - lo) ** der
+            # the limits from above and from below, which differ at lo and hi where the result jumps
+            above = np.where((x >= lo) & (x < hi), inside, 1. if der == 0 else 0.) * (x >= lo)
+            below = np.where((x > lo) & (x <= hi), inside, 1. if der == 0 else 0.) * (x > lo)
+            reference = (above + below) / 2
+        for function in simplex_functions(n):
+            np.testing.assert_allclose(function(x, e, der), reference, rtol=1e-12, atol=1e-14 / scale ** der,
+                                       err_msg=f"der={der}")
+
+
+@pytest.mark.parametrize("values", [[0, 0, 1, 2], [0, 1, 1, 2], [0, 1, 2, 2], [0, 0, 1], [0, 1, 1]])
+def test_weights_simplex_two_equal(values):
+    """two equal values among distinct ones: the limit of distinct values, from 100-digit decimal arithmetic with the
+    equal values 1e-40 apart, away from the equal values"""
+    n = len(values) - 1
+    e = np.array(values, dtype=float)
+    knots = [decimal.Decimal(v) for v in values]
+    with decimal.localcontext() as context:
+        context.prec = 100
+        for i in range(1, n + 1):
+            if knots[i] == knots[i - 1]:
+                knots[i] += decimal.Decimal("1e-40")
+    x = np.linspace(-0.5, e[-1] + 0.5, 51)
+    x = x[np.abs(x[:, None] - e[None, :]).min(axis=1) > 1e-3]
+    for der in range(n + 1):
+        expected = np.array([simplex_weights_decimal(xi, knots, der) for xi in x])
+        for function in simplex_functions(n):
+            np.testing.assert_allclose(function(x, e, der), expected, rtol=0, atol=1e-14 * np.abs(expected).max(),
+                                       err_msg=f"der={der}")
+
+
+def test_weights_simplex_der():
+    """der above the dimension gives zeros, negative der is an error, NaN gives NaN"""
+    x = np.linspace(-1, 2, 7)
+    for e in ([0., 1.], [0., 0.5, 1.], [0., 0.2, 0.5, 1.]):
+        n = len(e) - 1
+        for function in simplex_functions(n):
+            np.testing.assert_array_equal(function(x, e, n + 1), np.zeros_like(x))
+            for der in range(n + 1):
+                result = function(np.array([0.3, np.nan]), e, der)
+                assert np.isfinite(result[0]) and np.isnan(result[1])
+            with pytest.raises((ValueError, NotImplementedError)):
+                function(x, e, -1)
+    with pytest.raises(ValueError):
+        weights_tetra(x, 0., 0.2, 0.5, 1., der=-1)
+    with pytest.raises(NotImplementedError):
+        weights_triangle(x, 0., 0.5, 1., der=-1)
+
+
+def test_weights_simplex_unsorted():
+    """`weights_general`, as used by `SimplexWeights` (on the values of one band at the corners of the tetrahedra or
+    triangles, a strided view) and by the delta functions: the same as `weights_tetra` and `weights_triangle`, also
+    for other types of the values, which it leaves unchanged"""
+    rng = np.random.default_rng(11)
+    x = np.linspace(-0.5, 1.5, 41)
+    for ncorner, function in ((4, weights_tetra), (3, weights_triangle)):
+        vertices = rng.random((2, ncorner, 5))
+        vertices[1, 1, 2] = vertices[1, 2, 2]  # equal values
+        for dtype in (np.float64, np.float32):
+            values = vertices.astype(dtype)
+            copy = values.copy()
+            for ik in range(2):
+                for ib in range(5):
+                    for der in range(ncorner):
+                        result = weights_simplex_unsorted(x, values[ik, :, ib], der)
+                        assert result.dtype == np.float64
+                        np.testing.assert_array_equal(result, function(x, *values[ik, :, ib], der=der))
+                        np.testing.assert_array_equal(weights_simplex_unsorted(x, values[ik, ::-1, ib], der), result)
+                        np.testing.assert_array_equal(weights_simplex_unsorted.py_func(x, values[ik, :, ib], der), result)
+            np.testing.assert_array_equal(values, copy)
+
+
+@pytest.mark.parametrize("e", [[0., 5e-324, 0.5, 1.], [0., 5e-324, 1e-323, 1.], [0., 0., 5e-324, 1.], [0., 5e-324, 1.],
+                               [0., 1e-200, 2e-200, 1.], [0., 1e-308, 0.1, 1.], [0., 1e-308, 1.]])
+def test_weights_simplex_tiny_differences(e):
+    """differences so small that their inverse or the coefficients of the derivatives overflow: finite results away
+    from them, the same as for equal values"""
+    n = len(e) - 1
+    x = np.arange(-5, 26) / 20  # with x = 0 exactly, at the tiny values
+    equal = np.where(np.array(e) < 1e-100, 0., e)
+    for der in range(n + 1):
+        for function in simplex_functions(n):
+            result = function(x, e, der)[x != 0]
+            assert np.all(np.isfinite(result))
+            np.testing.assert_allclose(result, function(x, equal, der)[x != 0], rtol=1e-14, atol=1e-14)
+
+
+def test_weights_simplex_large_peak():
+    """the mean of the two limits at a value does not overflow where they are close to the largest float"""
+    e = [0., 1e-308, 2e-308]
+    for function in simplex_functions(2):
+        result = function(np.array([np.nextafter(1e-308, 0), 1e-308, np.nextafter(1e-308, 1)]), e, 1)
+        np.testing.assert_allclose(result, 1e308, rtol=1e-14)
+
+
 @pytest.mark.parametrize("kind", ["single", "parallelepiped"])
 def test_dynamic_weights_kramers_kronig(kind):
     """the reactive weights are the principal-value integrals of the delta weights over the frequency, for pairs of
@@ -543,7 +746,7 @@ def test_dynamic_weights_kramers_kronig(kind):
     nk, nb = 2, 4
     eCenter = rng.random((nk, nb)) * 2
     eCorners = rng.random((nk, 4, nb) if kind == "single" else (nk, 2, 2, 2, nb)) * 2
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=3)
     pairs = [((0, 1), (2, 3)), ((2, 4), (0, 2)), ((1, 2), (3, 4))]
     edges = np.linspace(-3, 3, 60001)
     omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals
@@ -563,7 +766,7 @@ def test_weights_cached_by_value():
     rng = np.random.default_rng(4)
     nk, nb = 2, 3
     eCorners = rng.random((nk, 2, 2, 2, nb))
-    tetra = TetraWeights(eCenter=rng.random((nk, nb)), eCorners=eCorners, kind="parallelepiped")
+    tetra = SimplexWeights(eCenter=rng.random((nk, nb)), eCorners=eCorners, kind="parallelepiped", dim=3)
     computed = []
     compute = tetra.weight_1k1b_priv
 
@@ -607,7 +810,7 @@ def test_weights_cached_by_value():
     # against a new instance, without the cache
     tetra.weight_1k1b_priv = compute
     for array, results in ((shifted, other), (shifted, again), (between, third), (nudged, fourth), (original, first)):
-        fresh = TetraWeights(eCenter=tetra.eCenter, eCorners=eCorners, kind="parallelepiped")
+        fresh = SimplexWeights(eCenter=tetra.eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
         for w1, w2 in zip(fresh.weights_all_band_groups(array, der=1), results):
             assert w1.keys() == w2.keys()
             for key in w1:
@@ -623,8 +826,8 @@ def test_weights_cached_other_dtype(dtype, values, first):
     rng = np.random.default_rng(5)
     eCenter, eCorners = rng.random((2, 3)) * 4, rng.random((2, 2, 2, 2, 3)) * 4
     efermi = np.array(values, dtype=dtype)
-    reference = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
-    tetra = TetraWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped")
+    reference = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
+    tetra = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind="parallelepiped", dim=3)
     for der in (0, 1, 2, -1):
         expected = reference.weights_all_band_groups(efermi.astype(np.float64), der=der)
         arrays = [efermi, efermi.astype(np.float64)]
@@ -835,7 +1038,7 @@ def test_triangle_weights_kramers_kronig(kind):
     nk, nb = 2, 4
     eCenter = rng.random((nk, nb)) * 2
     eCorners = rng.random((nk, 2, 2, nb)) * 2
-    triangles = TriangleWeights(eCenter=eCenter, eCorners=eCorners, kind=kind)
+    triangles = SimplexWeights(eCenter=eCenter, eCorners=eCorners, kind=kind, dim=2)
     pairs = [((0, 1), (2, 3)), ((2, 4), (0, 2)), ((1, 2), (3, 4))]
     edges = np.linspace(-3, 3, 60001)
     omega = np.array([-2.5, -1.0033, -0.31, 0.0, 0.47, 1.2007, 2.6]) + (edges[1] - edges[0]) / 2  # middles of intervals

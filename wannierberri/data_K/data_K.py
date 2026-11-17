@@ -171,38 +171,29 @@ class Data_K(System, abc.ABC):
     def ndim(self):
         return len(self.periodic_directions)
 
-    @property
-    def tetraWeights3D(self):
-        from ..grid.ttweights import TetraWeights
-        if isinstance(self.Kpoint, KpointBZparallel):
-            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="parallelepiped")
-        elif isinstance(self.Kpoint, KpointBZtetra):
-            return TetraWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra(), kind="single")
-        else:
-            raise TypeError(f"Unknown Kpoint type {type(self.Kpoint)}")
-
-    @property
-    def tetraWeights2D(self):
-        from ..grid.ttweights import TriangleWeights
-        scal_prod = np.dot(*self.recip_lattice[self.periodic_directions])
-        if scal_prod > 0:
-            kind = "0101"
-        else:
-            kind = "0011"
-        return TriangleWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind=kind)
-
     @cached_property
-    def tetraWeights(self):
+    def simplexWeights(self):
+        from ..grid.simplex_weights import SimplexWeights
         if self.ndim == 3:
-            return self.tetraWeights3D
+            if isinstance(self.Kpoint, KpointBZparallel):
+                return SimplexWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind="parallelepiped", dim=3)
+            elif isinstance(self.Kpoint, KpointBZtetra):
+                return SimplexWeights(eCenter=self.E_K, eCorners=self.E_K_corners_tetra(), kind="single", dim=3)
+            else:
+                raise TypeError(f"Unknown Kpoint type {type(self.Kpoint)}")
         elif self.ndim == 2:
-            return self.tetraWeights2D
+            scal_prod = np.dot(*self.recip_lattice[self.periodic_directions])
+            if scal_prod > 0:
+                kind = "0101"
+            else:
+                kind = "0011"
+            return SimplexWeights(eCenter=self.E_K, eCorners=self.E_K_corners_parallel(), kind=kind, dim=2)
 
 
 
     def get_bands_in_range_groups_ik(self, ik, emin, emax, degen_thresh=-1, degen_Kramers=False, sea=False,
                                      Emin=-np.inf, Emax=np.inf, select_bands=None):
-        from ..grid.simplex import get_bands_in_range, get_bands_below_range
+        from ..grid.simplex_weights import get_bands_in_range, get_bands_below_range
         bands_in_range = get_bands_in_range(
             emin, emax, self.E_K[ik], degen_thresh=degen_thresh, degen_Kramers=degen_Kramers, select_bands=select_bands)
         weights = {(ib1, ib2): self.E_K[ik, ib1:ib2].mean() for ib1, ib2 in bands_in_range}

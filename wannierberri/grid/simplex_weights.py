@@ -3,8 +3,7 @@ import abc
 import numpy as np
 from functools import cached_property, lru_cache
 from collections import defaultdict
-from .simplex import (delta_values_tetra, delta_weights_tetra, get_bands_in_range, get_bands_below_range,
-                      get_bands_above_range, reactive_values_tetra, occupation_kernel, weights_general)
+from .simplex import delta_values_simplex, delta_weights_simplex, reactive_values_simplex, occupation_kernel, weights_simplex_unsorted
 from ..utility import cached_einsum, weight_select_bands
 
 
@@ -13,16 +12,16 @@ def ones(n):
     return np.ones(n)
 
 
-class TTWeights(abc.ABC):
+class SimplexWeights(abc.ABC):
     """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
        and list of Fermi levels (compared by value, see `index_eFermi`)"""
 
-    def __init__(self, eCenter, eCorners, kind="single"):
+    def __init__(self, eCenter, eCorners, dim, kind="single"):
         self.eCenter = eCenter
         self.nk, self.nb = self.eCenter.shape
         assert eCorners.shape[0] == self.nk, f"nk mismatch: {eCorners.shape[0]} != {self.nk}"
         assert eCorners.shape[-1] == self.nb, f"nb mismatch: {eCorners.shape[-1]} != {self.nb}"
-        self.set_kind(kind, eCorners, eCenter)
+        self.set_kind(kind=kind, eCorners=eCorners, eCenter=eCenter, dim=dim)
 
         self.eFermi_stored = []
         self.eFermi = None
@@ -34,11 +33,6 @@ class TTWeights(abc.ABC):
             Eall = np.concatenate((self.eCenter[:, None, :], eCorners.reshape(self.nk, -1, self.nb)), axis=1)
             self.Emin = Eall.min(axis=1)
             self.Emax = Eall.max(axis=1)
-
-    @abc.abstractmethod
-    def set_kind(self, kind, eCorners, eCenter):
-        """set the kind of tetrahedra or triangles and store the vertices in self.all_tetrahedra_vertices"""
-        pass
 
     def weight_1k1b(self, ief, ik, ib, der):
         if self.null:
@@ -55,7 +49,7 @@ class TTWeights(abc.ABC):
         occ = np.zeros(eFermi.shape, dtype=float)
         for tetrahedron in self.all_tetrahedra_vertices:
             evert = tetrahedron[ik, :, ib]
-            occ += weights_general(eFermi, evert, der=der)
+            occ += weights_simplex_unsorted(eFermi, evert, der=der)
         return occ * self.factor_num_tetra
 
     def __weight_1b(self, ief, ik, ib, der):
@@ -173,57 +167,89 @@ class TTWeights(abc.ABC):
             else:
                 dE = np.ascontiguousarray(sign * (vertices[ik][:, band_i] - vertices[ik][:, band_j]).T)
                 if type == "delta":
-                    addition = addition + (delta_values_tetra(omega, dE) if edges is None else delta_weights_tetra(edges, dE))
+                    addition = addition + (delta_values_simplex(omega, dE) if edges is None else delta_weights_simplex(edges, dE))
                 elif type == "reactive":
-                    addition = addition + reactive_values_tetra(omega, dE)
+                    addition = addition + reactive_values_simplex(omega, dE)
         np.add.at(res, np.array(group), addition)
         nband_pairs_inv = 1. / np.array([max((i2 - i1) * (j2 - j1), 1) for (i1, i2), (j1, j2) in pairs])  # empty pairs give 0
         return self.factor_num_tetra * cached_einsum("i...,i->i...", res, nband_pairs_inv)
 
 
-
-class TriangleWeights(TTWeights):
-
-
-    def set_kind(self, kind, eCorners, eCenter=None):
+    def set_kind(self, dim, kind, eCorners, eCenter=None):
         if kind == "single":
-            assert eCorners.shape == (self.nk, 4, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 4, self.nb)}"
+            assert eCorners.shape == (self.nk, dim + 1, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 4, self.nb)}"
             self.all_tetrahedra_vertices = [eCorners.copy()]
-        elif kind == "0011":
-            assert eCorners.shape == (self.nk, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
-            self.all_tetrahedra_vertices = []
-            E1 = eCorners[:, 0, 0]
-            E3 = eCorners[:, 1, 1]
-            for E2 in (eCorners[:, 0, 1], eCorners[:, 1, 0]):
-                self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
-        elif kind == "0101":
-            assert eCorners.shape == (self.nk, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
-            self.all_tetrahedra_vertices = []
-            E1 = eCorners[:, 0, 1]
-            E3 = eCorners[:, 1, 0]
-            for E2 in (eCorners[:, 0, 0], eCorners[:, 1, 1]):
-                self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
+        elif dim == 2:
+            if kind == "0011":
+                assert eCorners.shape == (self.nk, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
+                self.all_tetrahedra_vertices = []
+                E1 = eCorners[:, 0, 0]
+                E3 = eCorners[:, 1, 1]
+                for E2 in (eCorners[:, 0, 1], eCorners[:, 1, 0]):
+                    self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
+            elif kind == "0101":
+                assert eCorners.shape == (self.nk, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
+                self.all_tetrahedra_vertices = []
+                E1 = eCorners[:, 0, 1]
+                E3 = eCorners[:, 1, 0]
+                for E2 in (eCorners[:, 0, 0], eCorners[:, 1, 1]):
+                    self.all_tetrahedra_vertices.append(np.array([E1, E2, E3]).swapaxes(0, 1))
+            else:
+                raise ValueError(f"Unknown kind of triangles: {kind}")
+        elif dim == 3:
+            if kind == "parallelepiped":
+                assert eCorners.shape == (self.nk, 2, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
+                self.all_tetrahedra_vertices = []
+                for iface in 0, 1:
+                    for Eface in eCorners[:, iface, :, :], eCorners[:, :, iface, :], eCorners[:, :, :, iface]:
+                        E0 = eCenter
+                        E1 = Eface[:, 0, 0]
+                        E3 = Eface[:, 1, 1]
+                        for E2 in (Eface[:, 0, 1], Eface[:, 1, 0]):
+                            self.all_tetrahedra_vertices.append(np.array([E0, E1, E2, E3]).swapaxes(0, 1))
+            else:
+                raise ValueError(f"Unknown kind of tetrahedra: {kind}")
         else:
-            raise ValueError(f"Unknown kind of triangles: {kind}")
+            raise NotImplementedError(f"dim={dim} not implemented")
 
 
-class TetraWeights(TTWeights):
-    """the idea is to make a lazy evaluation, i.e. the weights are evaluated only once for a particular ik,ib
-       and list of Fermi levels (compared by value, see `index_eFermi`)"""
+def get_borders(A, degen_thresh, degen_Kramers=False):
+    borders = [0] + list(np.where((A[1:] - A[:-1]) > degen_thresh)[0] + 1) + [len(A)]
+    if degen_Kramers:
+        borders = [i for i in borders if i % 2 == 0]
+    return [[ib1, ib2] for ib1, ib2 in zip(borders, borders[1:])]
 
-    def set_kind(self, kind, eCorners, eCenter):
-        if kind == "single":
-            assert eCorners.shape == (self.nk, 4, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 4, self.nb)}"
-            self.all_tetrahedra_vertices = [eCorners.copy()]
-        elif kind == "parallelepiped":
-            assert eCorners.shape == (self.nk, 2, 2, 2, self.nb), f"eCorners shape mismatch: {eCorners.shape} != {(self.nk, 2, 2, 2, self.nb)}"
-            self.all_tetrahedra_vertices = []
-            for iface in 0, 1:
-                for Eface in eCorners[:, iface, :, :], eCorners[:, :, iface, :], eCorners[:, :, :, iface]:
-                    E0 = eCenter
-                    E1 = Eface[:, 0, 0]
-                    E3 = Eface[:, 1, 1]
-                    for E2 in (Eface[:, 0, 1], Eface[:, 1, 0]):
-                        self.all_tetrahedra_vertices.append(np.array([E0, E1, E2, E3]).swapaxes(0, 1))
-        else:
-            raise ValueError(f"Unknown kind of tetrahedra: {kind}")
+
+def get_bands_in_range(emin, emax, Eband, degen_thresh=-1, degen_Kramers=False, Ebandmin=None, Ebandmax=None, select_bands=None):
+    if Ebandmin is None:
+        Ebandmin = Eband
+    if Ebandmax is None:
+        Ebandmax = Eband
+    bands = []
+    for ib1, ib2 in get_borders(Eband, degen_thresh, degen_Kramers=degen_Kramers):
+        if select_bands is not None:
+            if set(range(ib1, ib2)).intersection(set(select_bands)) == set():
+                continue
+        if Ebandmax[ib1:ib2].max() >= emin and Ebandmin[ib1:ib2].min() <= emax:
+            bands.append([ib1, ib2])
+    return bands
+
+
+def get_bands_below_range(emin, Eband, Ebandmax=None):
+    if Ebandmax is None:
+        Ebandmax = Eband
+    add = np.where((Ebandmax < emin))[0]
+    if len(add) > 0:
+        return add[-1] + 1
+    else:
+        return 0
+
+
+def get_bands_above_range(emax, Eband, Ebandmin=None):
+    if Ebandmin is None:
+        Ebandmin = Eband
+    add = np.where((Ebandmin > emax))[0]
+    if len(add) > 0:
+        return add[0]
+    else:
+        return len(Eband)
