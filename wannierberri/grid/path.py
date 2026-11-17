@@ -123,7 +123,7 @@ class Path(GridAbstract):
         )
         return self
 
-    def to_npz(self, filename, compressed=False):
+    def to_npz(self, filename, compressed=True):
         savez(filename, **self.as_dict(), compressed=compressed)
 
     @classmethod

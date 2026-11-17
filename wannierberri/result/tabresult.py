@@ -468,7 +468,7 @@ def write_frmsf(frmsf_name,
 
 
 
-def write_npz(npz_name, quantities, res, suffix="", compressed=False):
+def write_npz(npz_name, quantities, res, suffix="", compressed=True):
     """
     Write the data to a npz file
 

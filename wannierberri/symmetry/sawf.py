@@ -5,7 +5,6 @@ from .utility import get_inverse_block, rotate_block_matrix
 from .projections import Projection, ProjectionsSet
 from .projections_searcher import EBRsearcher
 from .Dwann import Dwann
-from .orbitals import OrbitalRotator
 import logging
 logger = logging.getLogger(__name__)
 
@@ -206,12 +205,10 @@ class SymmetrizerSAWF:
         return bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map
 
 
-
-
     @cached_property
     def orbitalrotator(self):
+        from .orbitals import OrbitalRotator
         return OrbitalRotator()
-        # return OrbitalRotator([symop.rotation_cart for symop in self.spacegroup.symmetries])
 
     @classmethod
     def from_spacegroup_and_projections(cls, spacegroup, projections):
@@ -751,7 +748,7 @@ class SymmetrizerSAWF:
         amn = np.random.random(shape) + 1j * np.random.random(shape)
         return self.symmetrize_amn(amn)
 
-    def to_npz(self, f_npz, compressed=False):
+    def to_npz(self, f_npz, compressed=True):
         if f_npz is None:
             return self
         dic = self.as_dict()

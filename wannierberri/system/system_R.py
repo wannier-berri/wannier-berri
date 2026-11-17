@@ -388,7 +388,10 @@ class System_R(System):
                                               magmom=magmom,
                                               include_TR=True,
                                               spinor=soc,)
-        spacegroup.show()
+        try:
+            spacegroup.show(short=True, print=False)
+        except Exception as e:
+            logger.warning("spacegroup.show() failed with error: %s", e)
 
         assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
 
@@ -930,7 +933,7 @@ class System_R(System):
         return self.rvec.nRvec
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(),
-               compressed=False,
+               compressed=True,
                R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files

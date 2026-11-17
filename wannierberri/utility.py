@@ -1,4 +1,5 @@
 
+import opt_einsum as oe
 import numba
 import datetime
 from collections.abc import Iterable
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 # Global cache to store einsum paths
-EINSUM_PATH_CACHE = {}
+# EINSUM_PATH_CACHE = {}
 
 
 
@@ -26,23 +27,25 @@ def njit(*args, **kwargs):
     return numba.njit(*args, **kwargs)        # @njit(...) or @njit("sig", ...)
 
 
-def cached_einsum(subscripts, *operands,
-                  optimize='greedy',
-                  **kwargs):
-    """
-    A wrapper for np.einsum that caches the contraction path.
-    The cache key is a combination of the subscripts string and the
-    shapes of the operand arrays.
-    """
-    shapes = tuple(op.shape for op in operands)
-    cache_key = (subscripts, shapes)
 
-    if cache_key in EINSUM_PATH_CACHE:
-        path = EINSUM_PATH_CACHE[cache_key]
-    else:
-        path = np.einsum_path(subscripts, *operands, optimize=optimize)[0]
-        EINSUM_PATH_CACHE[cache_key] = path
-    return np.einsum(subscripts, *operands, optimize=path, **kwargs)
+EINSUM_CACHE = {}
+NAIVE_COST_THRESHOLD = 1e5   # tune on your machine
+
+
+def cached_einsum(subscripts, *operands, optimize='greedy', **kwargs):
+    shapes = tuple(op.shape for op in operands)
+    key = (subscripts, shapes, optimize)
+    fn = EINSUM_CACHE.get(key)
+    if fn is None:
+        _, info = oe.contract_path(subscripts, *shapes, shapes=True, optimize=optimize)
+        if info.naive_cost < NAIVE_COST_THRESHOLD:
+            logger.debug("Using np.einsum for %s with shapes %s (naive cost %s)", subscripts, shapes, info.naive_cost)
+            fn = lambda *ops, **kw: np.einsum(subscripts, *ops, **kw)
+        else:
+            logger.debug("Using opt_einsum for %s with shapes %s (naive cost %s)", subscripts, shapes, info.naive_cost)
+            fn = oe.contract_expression(subscripts, *shapes, optimize=optimize)
+        EINSUM_CACHE[key] = fn
+    return fn(*operands, **kwargs)
 
 
 def time_now_iso():
@@ -452,7 +455,7 @@ def get_alat_espresso(seedname_pw):
     return alat_angstrom
 
 
-def savez(file, *val, compressed=False, **arrays):
+def savez(file, *val, compressed=True, **arrays):
     return (np.savez_compressed if compressed else np.savez)(file, *val, **arrays)
 
 

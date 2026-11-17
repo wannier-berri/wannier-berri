@@ -122,7 +122,7 @@ class SystemSOC(System_R):
         return super().essential_properties + ['cell']
 
     def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None,
-               overwrite=True, compressed=False):
+               overwrite=True, compressed=True):
         # if not self.silent:
         logger.info(f"Saving SystemSOC to {path}")
         super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices,
