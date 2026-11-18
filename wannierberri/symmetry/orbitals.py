@@ -42,6 +42,9 @@ hybrid_shells_list = ['sp', 'p2', 'sp2', 'pz', 'sp3', 'sp3d2', 't2g', 'eg', 'pxy
 
 basis_orbital_list = [k for o in basis_shells_list for k in orbitals_sets_dic[o]]
 
+hybrid_shells_list.append("octahedron")
+orbitals_sets_dic["octahedron"] = ["octa-apical", "octa-basal+x", "octa-basal-x", "octa-basal+y", "octa-basal-y"]
+
 
 @lru_cache
 def orb_to_shell(orb):
@@ -75,8 +78,19 @@ hybrids_coef = {
     'sp3d2-5': {"s": 1 / sq(6), "pz": -1 / sq(2), "dz2": 1 / sq(3)},
     'sp3d2-6': {"s": 1 / sq(6), "pz": 1 / sq(2), "dz2": 1 / sq(3)},
 }
+
+
+
 for k in basis_orbital_list:
     hybrids_coef[k] = {k: 1}
+
+hybrids_coef["octa-apical"] = {"s": np.sqrt(3 / 5), "pz": np.sqrt(2 / 5)}
+hybrids_coef["octa-basal+x"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "px": np.sqrt(1 / 2), "dx2-y2": 1 / 2}
+hybrids_coef["octa-basal-x"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "px": -np.sqrt(1 / 2), "dx2-y2": 1 / 2}
+hybrids_coef["octa-basal+y"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "py": np.sqrt(1 / 2), "dx2-y2": -1 / 2}
+hybrids_coef["octa-basal-y"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "py": -np.sqrt(1 / 2), "dx2-y2": -1 / 2}
+
+
 
 _wigner = spherical.Wigner(3)
 

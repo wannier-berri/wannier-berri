@@ -263,7 +263,8 @@ def wannierise(wandata,
 
     wcc = wannierizer.wcc_cart
     spreads = wannierizer.spreads
-    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="starting WFs")
+    wannier_names = wandata.chk.wannier_names if hasattr(wandata.chk, "wannier_names") else None
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="starting WFs", wannier_names=wannier_names)
 
     converge_list = []
     delta_std = np.inf
@@ -288,7 +289,9 @@ def wannierise(wandata,
         delta_std = np.std(converge_list[-num_iter_converge:], axis=0).max()
 
         if i_iter % print_progress_every == 0:
-            print_centers_and_spreads(wcc=wcc, spreads=spreads, comment=f"Iteration {i_iter} (from wannierizer)", std=delta_std)
+            print_centers_and_spreads(wcc=wcc, spreads=spreads,
+                                      comment=f"Iteration {i_iter} (from wannierizer)", std=delta_std,
+                                      wannier_names=wannier_names)
 
         if i_iter > num_iter_converge and delta_std < conv_tol:
             logger.info(f"Converged after {i_iter} iterations")
@@ -297,13 +300,13 @@ def wannierise(wandata,
     t02 = time()
 
     U_opt_full_BZ = symmetrizer.U_to_full_BZ(U_opt_full_IR, include_k=include_k if irreducible else None)
-    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std)
+    print_centers_and_spreads(wcc=wcc, spreads=spreads, comment="Final state (from wannierizer)", std=delta_std, wannier_names=wannier_names)
     update_chk(wandata=wandata, U_opt_full_BZ=U_opt_full_BZ, wcc=wcc, spreads=spreads, print_wcc=print_wcc_chk)
     # Store the actual outer window for EPW export; irreducible-only output is unsupported.
     wandata.chk.lwindow = None if irreducible else selected_bands[symmetrizer.kpt2kptirr].copy()
     if not irreducible:
         wcc_chk, spreads_chk = wandata.chk.get_wannier_centers(wandata.bkvec, wandata.mmn, spreads=True)
-        print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)")
+        print_centers_and_spreads(wcc=wcc_chk, spreads=spreads_chk, comment="Final state (from chk)", wannier_names=wannier_names)
         if not np.allclose(wcc, wcc_chk, atol=1e-6):
             logger.warning("The Wannier centers from the chk file and the Wannier centers from the wannierizer are not the same. diff = %s", np.abs(wcc - wcc_chk).max())
 
@@ -349,11 +352,11 @@ def update_chk(wandata, U_opt_full_BZ,
             spreads = spreads_new
     wandata.chk.wannier_centers_cart, wandata.chk.wannier_spreads = wcc, spreads
     if print_wcc:
-        print_centers_and_spreads(wcc_new, spreads_new, comment=comment + ": from chk")
+        print_centers_and_spreads(wcc_new, spreads_new, comment=comment + ": from chk", wannier_names=wandata.chk.wannier_names if hasattr(wandata.chk, "wannier_names") else None)
     return wcc, spreads
 
 
-def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
+def print_centers_and_spreads(wcc, spreads, comment=None, std=None, wannier_names=None):
     """
     print the centers and spreads of the Wannier functions
 
@@ -379,9 +382,9 @@ def print_centers_and_spreads(wcc, spreads, comment=None, std=None):
         logger.info(breakline)
     logger.info("wannier centers and spreads")
     logger.info(breakline)
-    for w, s in zip(wcc, spreads):
+    for i, (w, s) in enumerate(zip(wcc, spreads)):
         w = np.round(w, 12)
-        logger.info(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}")
+        logger.info(f"{w[0]:16.12f}  {w[1]:16.12f}  {w[2]:16.12f}   |   {s:16.12f}" + (f"  {wannier_names[i]}" if wannier_names is not None else ""))
     logger.info(breakline)
     w = wcc.sum(axis=0)
     s = np.sum(spreads)
