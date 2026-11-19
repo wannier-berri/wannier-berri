@@ -437,6 +437,58 @@ class System:
                 differences[(key, isym)] = np.max(np.abs(data_ref - data_sym))
         return differences, kpoints
 
+    def find_efermi(self, num_electrons, emin=None, emax=None, length=20, prec=1e-4, max_length=1000, gap_center=True):
+        if emin is None or emax is None:
+            _emin, _emax = self.get_energy_range()
+            if emin is None:
+                emin = _emin
+            if emax is None:
+                emax = _emax
+
+        Efold = np.inf
+        Efnew = -np.inf
+        dn = 1
+        i = 0
+        while True:
+            Efermi = np.linspace(emin, emax, 1001)
+            cumdos = self.get_cumdos(Efermi, length=length)
+            Efold = Efnew
+            select = np.where((cumdos >= num_electrons - 1e-10) & (cumdos <= num_electrons + 1e-10))[0]
+            if len(select) > 5:
+                if gap_center:
+                    Efnew = Efermi[select].mean()
+                else:
+                    Efnew = Efermi[select].min()
+            else:
+                Efnew = np.interp(num_electrons, cumdos, Efermi)
+            logger.info(f"find_efermi: iteration {i}, Efermi={Efnew}, prec={abs(Efnew - Efold)}, length={length}, emin={emin}, emax={emax}, dn={dn}")
+            if abs(Efnew - Efold) < prec:
+                break
+            emin = np.interp(num_electrons - dn, cumdos, Efermi)
+            emax = np.interp(num_electrons + dn, cumdos, Efermi)
+            dn /= 2
+            i += 1
+            if i > 100:
+                logger.warning(f"find_efermi: did not converge after 100 iterations, last Efermi={Efnew}, last prec={abs(Efnew - Efold)}")
+                break
+            length = min(length * 2, max_length)
+        return Efnew.real
+
+
+
+
+    def get_cumdos(self, Efermi, length, tetra=True):
+        from ..run_grid import run
+        from ..grid.grid import Grid
+        from ..calculators.static import CumDOS
+        grid = Grid(system=self, length=length)
+        result = run(system=self, grid=grid, calculators={"cumdos": CumDOS(Efermi=Efermi, tetra=tetra)},
+                     fout_name=None)
+        return result.results["cumdos"].data.real
+
+
+
+
 
 
 

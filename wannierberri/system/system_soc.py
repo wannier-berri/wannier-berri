@@ -275,9 +275,15 @@ class SystemSOC(System_R):
         system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc, units=angle_units)
         return system_soc
 
+    def get_energy_range(self):
+        if self.system_down is None:
+            return self.system_up.get_energy_range()
+        else:
+            E_min_up, E_max_up = self.system_up.get_energy_range()
+            E_min_down, E_max_down = self.system_down.get_energy_range()
+            return min(E_min_up, E_min_down), max(E_max_up, E_max_down)
+
     def get_system_R(self):
-
-
         atoms_up = self.system_up.atom_centers_red
         atoms_down = self.system_down.atom_centers_red
         if atoms_up is not None and atoms_down is not None:
