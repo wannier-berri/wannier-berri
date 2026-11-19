@@ -3,13 +3,25 @@ import copy
 import numpy as np
 import wannierberri as wberri
 from .common import OUTPUT_DIR, REF_DIR
+import pytest
+
+from wannierberri.system import SystemInterpolator, SystemInterpolatorSOC
 
 
+@pytest.mark.parametrize("check_numbers", [2, 3, 4])
 def test_system_Fe_sym_W90_interpolate(check_system, system_Fe_sym_W90,
-                                       system_Fe_sym_W90_TR):
-    interpolator = wberri.system.interpolate.SystemInterpolator(system0=system_Fe_sym_W90,
-                                                                system1=system_Fe_sym_W90_TR)
-    system_Fe_sym_W90_interpolate = interpolator.interpolate(0.4)
+                                       system_Fe_sym_W90_TR, check_numbers):
+
+
+    if check_numbers == 2:
+        interpolator = SystemInterpolator(systems_list=[system_Fe_sym_W90, system_Fe_sym_W90_TR])
+        system_Fe_sym_W90_interpolate = interpolator.interpolate([0.6, 0.4])
+    elif check_numbers == 3:
+        interpolator = SystemInterpolator(systems_list=[system_Fe_sym_W90, system_Fe_sym_W90, system_Fe_sym_W90_TR])
+        system_Fe_sym_W90_interpolate = interpolator.interpolate([0.3, 0.3, 0.4])
+    elif check_numbers == 4:
+        interpolator = SystemInterpolator(systems_list=[system_Fe_sym_W90, system_Fe_sym_W90, system_Fe_sym_W90_TR, system_Fe_sym_W90_TR])
+        system_Fe_sym_W90_interpolate = interpolator.interpolate([0.3, 0.3, 0.2, 0.2])
 
 
     check_system(
@@ -20,7 +32,8 @@ def test_system_Fe_sym_W90_interpolate(check_system, system_Fe_sym_W90,
     )
 
 
-def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
+@pytest.mark.parametrize("check_numbers", [2, 3, 4])
+def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z, check_numbers):
     system_Fe_gpaw_soc_minusz = copy.deepcopy(system_Fe_gpaw_soc_z)
     system_Fe_gpaw_soc_minusz.swap_spin_channels()
     system_Fe_gpaw_soc_minusz.set_soc_axis(theta=0, phi=0.0, alpha_soc=1.0)
@@ -29,20 +42,30 @@ def test_system_interpolate_soc(check_system, system_Fe_gpaw_soc_z):
         matrices=['overlap_up_down', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
     )
-    interpolator = wberri.system.interpolate.SystemInterpolatorSOC(system0=system_Fe_gpaw_soc_minusz,
-                                                                   system1=system_Fe_gpaw_soc_z)
+    if check_numbers == 2:
+        interpolator = SystemInterpolatorSOC(systems_list=[system_Fe_gpaw_soc_minusz, system_Fe_gpaw_soc_z])
+    elif check_numbers == 3:
+        interpolator = SystemInterpolatorSOC(systems_list=[system_Fe_gpaw_soc_minusz, system_Fe_gpaw_soc_z, system_Fe_gpaw_soc_z])
+    elif check_numbers == 4:
+        interpolator = SystemInterpolatorSOC(systems_list=[system_Fe_gpaw_soc_minusz, system_Fe_gpaw_soc_z, system_Fe_gpaw_soc_z, system_Fe_gpaw_soc_minusz])
     calculators = {}
     Efermi = np.linspace(0, 18, 10)
-    calculators["cumdos"] = wberri.calculators.static.CumDOS(tetra=True, Efermi=Efermi)
-    calculators["dos"] = wberri.calculators.static.DOS(tetra=True, Efermi=Efermi)
-    calculators["ahc"] = wberri.calculators.static.Spin(tetra=True, Efermi=Efermi)
-    calculators["spin"] = wberri.calculators.static.Spin(tetra=True, Efermi=Efermi)
+    from wannierberri.calculators.static import CumDOS, DOS, Spin
+    calculators["cumdos"] = CumDOS(tetra=True, Efermi=Efermi)
+    calculators["dos"] = DOS(tetra=True, Efermi=Efermi)
+    calculators["ahc"] = Spin(tetra=True, Efermi=Efermi)
+    calculators["spin"] = Spin(tetra=True, Efermi=Efermi)
     results = {}
 
     grid = wberri.grid.Grid(system=system_Fe_gpaw_soc_z, NK=4)
 
     for alpha in [0.0, 0.25, 0.5, 0.75, 1.0]:
-        system_interp = interpolator.interpolate(alpha)
+        if check_numbers == 2:
+            system_interp = interpolator.interpolate([1 - alpha, alpha])
+        elif check_numbers == 3:
+            system_interp = interpolator.interpolate([(1 - alpha), 0.3 * alpha, 0.7 * alpha])
+        elif check_numbers == 4:
+            system_interp = interpolator.interpolate([0.2 * (1 - alpha), 0.4 * alpha, 0.6 * alpha, 0.8 * (1 - alpha)])
         check_system(
             system_interp, f"Fe_gpaw_soc_interp_alpha_{alpha:.2f}",
             matrices=['overlap_up_down', 'dV_soc'],

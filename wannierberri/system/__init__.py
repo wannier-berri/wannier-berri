@@ -14,5 +14,5 @@ from .deprecated_constructors import (
     SystemRandom,
     System_Phonon_QE,
 )
-from .interpolate import SystemInterpolator
+from .interpolate import SystemInterpolator, SystemInterpolatorSOC
 from .system_supercell import get_system_supercell, add_proximity_potential

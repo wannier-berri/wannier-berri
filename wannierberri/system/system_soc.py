@@ -27,7 +27,8 @@ class SystemSOC(System_R):
                  system_up,
                  system_down=None,
                  silent=True,
-                 cell=None
+                 cell=None,
+                 number_of_electrons=None,
                  ):
         self.needed_R_matrices = set()
         self.silent = silent
@@ -48,6 +49,14 @@ class SystemSOC(System_R):
             assert np.all(system_up.periodic == system_down.periodic), \
                 f"Periodicities of up and down systems should match {system_up.periodic} != {system_down.periodic}"
             assert not system_up.is_phonon, "SystemSOC does not support phonons in down system"
+
+        if number_of_electrons is None:
+            if system_up.number_of_electrons is not None and system_down.number_of_electrons is not None:
+                self.number_of_electrons = system_up.number_of_electrons + system_down.number_of_electrons
+            else:
+                self.number_of_electrons = None
+        else:
+            self.number_of_electrons = number_of_electrons
 
 
         self.is_phonon = False
