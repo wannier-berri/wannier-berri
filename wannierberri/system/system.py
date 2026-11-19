@@ -67,6 +67,7 @@ class System:
                  silent=False,
                  spinor=None,
                  wannier_names=None,
+                 number_of_electrons=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -76,6 +77,7 @@ class System:
         self.silent = silent
         self.spinor = spinor
         self.wannier_names = np.array(wannier_names) if wannier_names is not None else None
+        self.number_of_electrons = number_of_electrons
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT

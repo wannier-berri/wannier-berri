@@ -66,6 +66,10 @@ class SystemInterpolator:
 
     def interpolate(self, alpha):
         new_system = copy.deepcopy(self.system0)
+        if None not in [self.system0.number_of_electrons, self.system1.number_of_electrons]:
+            new_system.number_of_electrons = (1 - alpha) * self.system0.number_of_electrons + alpha * self.system1.number_of_electrons
+        else:
+            new_system.number_of_electrons = None
         new_system.wannier_centers_cart = (1 - alpha) * self.system0.wannier_centers_cart + alpha * self.system1.wannier_centers_cart
         for key in self.system0._XX_R:
             new_system._XX_R[key] = (1 - alpha) * self.system0._XX_R[key] + alpha * self.system1._XX_R[key]
