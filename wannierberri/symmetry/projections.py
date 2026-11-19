@@ -308,7 +308,10 @@ class Projection:
             The names of the wannier functions (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
         """
         from .orbitals import orbitals_sets_dic
-        return [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
+        lst = [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
+        if self.spinor:
+            lst = [f"{s}-{spin}" for s in lst for spin in ["up", "down"]]
+        return lst
 
     @property
     def num_free_vars(self):
