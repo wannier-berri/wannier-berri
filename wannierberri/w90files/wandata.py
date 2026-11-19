@@ -274,6 +274,8 @@ class WannierData:
             self.chk.num_wann = projectionsSet.num_wann
             self.chk.wannier_centers_cart = projectionsSet.wannier_centers_cart
             self.chk.wannier_spreads = np.array([666] * projectionsSet.num_wann)
+            if hasattr(self.chk, 'v_matrix'):
+                del self.chk.v_matrix
 
 
     @classmethod
