@@ -912,7 +912,9 @@ class System_R(System):
 
     @cached_property
     def optional_properties(self):
-        return ["positions", "magnetic_moments", "atom_labels", "atom_centers_red", "wannier_names", "wannier_to_atom_map"]
+        return ["positions", "magnetic_moments", "atom_labels", "atom_centers_red", 
+                "wannier_names", "wannier_to_atom_map",
+                "number_of_electrons"]
 
     def _R_mat_npz_filename(self, key, xxr=True):
         if xxr:

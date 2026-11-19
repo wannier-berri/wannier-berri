@@ -67,6 +67,7 @@ class System:
                  silent=False,
                  spinor=None,
                  wannier_names=None,
+                 number_of_electrons=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -76,6 +77,7 @@ class System:
         self.silent = silent
         self.spinor = spinor
         self.wannier_names = np.array(wannier_names) if wannier_names is not None else None
+        self.number_of_electrons = number_of_electrons
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
@@ -437,7 +439,11 @@ class System:
                 differences[(key, isym)] = np.max(np.abs(data_ref - data_sym))
         return differences, kpoints
 
-    def find_efermi(self, num_electrons, emin=None, emax=None, length=20, prec=1e-4, max_length=1000, gap_center=True):
+    def find_efermi(self, num_electrons=None, emin=None, emax=None, length=20, prec=1e-4, max_length=1000, gap_center=True):
+        if num_electrons is None:
+            if self.number_of_electrons is None:
+                raise ValueError("num_electrons must be provided or set in the system")
+            num_electrons = self.number_of_electrons
         if emin is None or emax is None:
             _emin, _emax = self.get_energy_range()
             if emin is None:
@@ -473,8 +479,6 @@ class System:
                 break
             length = min(length * 2, max_length)
         return Efnew.real
-
-
 
 
     def get_cumdos(self, Efermi, length, tetra=True):
