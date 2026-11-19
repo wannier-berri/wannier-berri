@@ -260,6 +260,8 @@ class EnergyResult(Result):
             **energ)
 
     def savedata(self, name, prefix, suffix, i_iter):
+        if prefix is None:
+            return
         suffix = "-" + suffix if len(suffix) > 0 else ""
         prefix = prefix + "-" if len(prefix) > 0 else ""
         filename = prefix + name + suffix + f"_iter-{i_iter:04d}"
