@@ -308,7 +308,10 @@ class Projection:
             The names of the wannier functions (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
         """
         from .orbitals import orbitals_sets_dic
-        return [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
+        lst = [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
+        if self.spinor:
+            lst = [f"{s}-{spin}" for s in lst for spin in ["up", "down"]]
+        return lst
 
     @property
     def num_free_vars(self):
@@ -938,7 +941,14 @@ def read_xzaxis(xaxis, zaxis):
         case (_, None):
             zaxis = get_perpendicular_coplanar_vector(xaxis, np.array([0, 0, 1]))
         case (_, _):
-            assert np.abs(np.dot(xaxis, zaxis)) < 1e-3, f"xaxis and zaxis should be orthogonal, found dot product of normalized vectors : {np.dot(xaxis, zaxis)}"
+            assert np.abs(np.dot(xaxis, zaxis)) < 0.99, f"xaxis and zaxis should not be parallel, found dot product of normalized vectors : {np.dot(xaxis, zaxis)}"
+            yaxis = np.cross(zaxis, xaxis)
+            yaxis = yaxis / np.linalg.norm(yaxis)
+            xaxis_new = np.cross(yaxis, zaxis)
+            if np.linalg.norm(xaxis_new - xaxis) > 1e-3:
+                logger.warning(f"xaxis and zaxis are not perpendicular, changing xaxis from {xaxis} to {xaxis_new}, to be in the same plane as zaxis and the old xaxis")
+            xaxis = xaxis_new
+
     yaxis = np.cross(zaxis, xaxis)
     return np.array([xaxis, yaxis, zaxis])
 

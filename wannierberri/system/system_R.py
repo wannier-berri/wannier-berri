@@ -1234,6 +1234,17 @@ class System_R(System):
         self.set_R_mat('AA', fakeAA, reset=reset)
         self.force_internal_terms_only = False
 
+    def get_energy_range(self):
+        """rough estimate of the minimal and maximal energy of the system"""
+        Ham = self.get_R_mat('Ham').copy()
+        iR0 = self.rvec.iR0
+        H_diag = Ham[iR0, self.range_wann, self.range_wann]
+        Ham[iR0, self.range_wann, self.range_wann] = 0
+        dE = np.linalg.norm(Ham) * 3
+        E_min = np.min(H_diag) - dE
+        E_max = np.max(H_diag) + dE
+        return E_min, E_max
+
 
 def get_nonperiodic_normal(real_lattice):
     surface_vectors = real_lattice[[0, 1], :]
