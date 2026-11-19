@@ -625,9 +625,21 @@ def get_diamond_projections():
     pos_atom = np.array([[-1, -1, -1], [1, 1, 1]]) / 8
     zaxis_bond = (pos_atom[1] - pos_atom[0]) @ spacegroup.lattice
 
+    from wannierberri.symmetry.orbitals import register_hybrid, clear_hybrids, HYBRID_REGISTER, restore_from_register
+    register = copy.deepcopy(HYBRID_REGISTER)
+    clear_hybrids()
+    restore_from_register(register)
+
+    register_hybrid('sp3z', coef_dict={"sp3z-1": {"s": 1 / 2, "pz": np.sqrt(3) / 2},
+                                       "sp3z-2": {"s": 1 / 2, "pz": -np.sqrt(1 / 12), "px": np.sqrt(2 / 3), },
+                                       "sp3z-3": {"s": 1 / 2, "pz": -np.sqrt(1 / 12), "px": -np.sqrt(1 / 6), "py": np.sqrt(1 / 2)},
+                                       "sp3z-4": {"s": 1 / 2, "pz": -np.sqrt(1 / 12), "px": -np.sqrt(1 / 6), "py": -np.sqrt(1 / 2)}
+                                                },)
+
     projections = {
         "s_bond": Projection(position_num=pos_bond, orbital='s', spacegroup=spacegroup),
         "sp3": Projection(position_num=pos_atom, orbital='sp3', spacegroup=spacegroup),
+        "sp3z": Projection(position_num=pos_atom, orbital='sp3z', zaxis=[1, 1, 1], xaxis=[1, -1, -1], spacegroup=spacegroup),
         "p_bond": Projection(position_num=pos_bond, orbital='pz', zaxis=zaxis_bond, spacegroup=spacegroup),
         "d_atom": Projection(position_num=pos_atom, orbital='d', spacegroup=spacegroup, rotate_basis=False),
         "p_atom": Projection(position_num=pos_atom, orbital='p', spacegroup=spacegroup, rotate_basis=False),
@@ -674,7 +686,8 @@ def test_create_Amn(projname):
         os.system(f"mv diamond.nnkp {projname}.nnkp")
         os.chdir(ROOT_DIR)
 
-    amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(amnfiles_path, f"{projname}"))
+    projname_ref = "sp3" if projname == "sp3z" else projname
+    amn_w90 = wberri.w90files.AMN.from_w90_file(os.path.join(amnfiles_path, f"{projname_ref}"))
     bandstructure = BandStructure.from_espresso(prefix=os.path.join(amnfiles_path, "di"),
                                                 normalize=False, include_TR=False)
     amn_wb = wberri.w90files.AMN.from_bandstructure(bandstructure, projections=projset, verbose=True)

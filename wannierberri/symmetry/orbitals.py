@@ -21,29 +21,39 @@ bohr_radius_angstrom = physical_constants["Bohr radius"][0] * 1e10
 # in future, if complex orbitals are considered, this should be taken care of
 
 
-orbitals_sets_dic = {
-    's': ['s'],
-    'p': ['pz', 'px', 'py'],
-    'd': ['dz2', 'dxz', 'dyz', 'dx2-y2', 'dxy'],
-    'f': ['fz3', 'fxz2', 'fyz2', 'fzx2-zy2', 'fxyz', 'fx3-3xy2', 'f3yx2-y3'],
-    'sp': ['sp-1', 'sp-2'],
-    'p2': ['pz', 'py'],
-    'pxy': ['px', 'py'],
-    'sp2': ['sp2-1', 'sp2-2', 'sp2-3'],
-    'pz': ['pz'],
-    'sp3': ['sp3-1', 'sp3-2', 'sp3-3', 'sp3-4'],
-    'sp3d2': ['sp3d2-1', 'sp3d2-2', 'sp3d2-3', 'sp3d2-4', 'sp3d2-5', 'sp3d2-6'],
-    't2g': ['dxz', 'dyz', 'dxy'],
-    'eg': ['dx2-y2', 'dz2'],
-}
-
 basis_shells_list = ['s', 'p', 'd', 'f']
-hybrid_shells_list = ['sp', 'p2', 'sp2', 'pz', 'sp3', 'sp3d2', 't2g', 'eg', 'pxy']
+
+HYBRID_REGISTER = []
+hybrid_matrix_dic = {}
+hybrid_matrix_shells_dic = {}
+hybrid_matrix_shells_start = {}
+basis_orbital_list = []
+
+
+def clear_hybrids():
+    global hybrid_shells_list, hybrids_coef, orbitals_sets_dic, hybrid_matrix_dic, hybrid_matrix_shells_dic, hybrid_matrix_shells_start, HYBRID_REGISTER
+    hybrid_shells_list = []
+    hybrids_coef = {k: {k: 1} for k in basis_orbital_list}
+    orbitals_sets_dic = {
+        's': ['s'],
+        'p': ['pz', 'px', 'py'],
+        'd': ['dz2', 'dxz', 'dyz', 'dx2-y2', 'dxy'],
+        'f': ['fz3', 'fxz2', 'fyz2', 'fzx2-zy2', 'fxyz', 'fx3-3xy2', 'f3yx2-y3'],
+    }
+    hybrid_matrix_dic = {}
+    hybrid_matrix_shells_dic = {}
+    hybrid_matrix_shells_start = {}
+    HYBRID_REGISTER = []
+
+
+clear_hybrids()
+
+hybrid_shells_list = []  # ['sp', 'p2', 'sp2', 'pz', 'sp3', 'sp3d2', 't2g', 'eg', 'pxy']
 
 basis_orbital_list = [k for o in basis_shells_list for k in orbitals_sets_dic[o]]
 
-hybrid_shells_list.append("octahedron")
-orbitals_sets_dic["octahedron"] = ["octa-apical", "octa-basal+x", "octa-basal-x", "octa-basal+y", "octa-basal-y"]
+# hybrid_shells_list.append("octahedron")
+# orbitals_sets_dic["octahedron"] = ["octa-apical", "octa-basal+x", "octa-basal-x", "octa-basal+y", "octa-basal-y"]
 
 
 @lru_cache
@@ -61,35 +71,11 @@ def num_orbitals(shell_symbol: str):
     return len(orbitals_sets_dic[shell_symbol.strip()])
 
 
-hybrids_coef = {
-    'sp-1': {"s": 1 / sq(2), "px": 1 / sq(2)},
-    'sp-2': {"s": 1 / sq(2), "px": -1 / sq(2)},
-    'sp2-1': {"s": 1 / sq(3), "px": -1 / sq(6), "py": 1 / sq(2)},
-    'sp2-2': {"s": 1 / sq(3), "px": -1 / sq(6), "py": -1 / sq(2)},
-    'sp2-3': {"s": 1 / sq(3), "px": 2 / sq(6)},
-    'sp3-1': {"s": 1 / 2, "px": 1 / 2, "py": 1 / 2, "pz": 1 / 2},
-    'sp3-2': {"s": 1 / 2, "px": 1 / 2, "py": -1 / 2, "pz": -1 / 2},
-    'sp3-3': {"s": 1 / 2, "px": -1 / 2, "py": 1 / 2, "pz": -1 / 2},
-    'sp3-4': {"s": 1 / 2, "px": -1 / 2, "py": -1 / 2, "pz": 1 / 2},
-    'sp3d2-1': {"s": 1 / sq(6), "px": -1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": 1 / 2},
-    'sp3d2-2': {"s": 1 / sq(6), "px": 1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": 1 / 2},
-    'sp3d2-3': {"s": 1 / sq(6), "py": -1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": -1 / 2},
-    'sp3d2-4': {"s": 1 / sq(6), "py": 1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": -1 / 2},
-    'sp3d2-5': {"s": 1 / sq(6), "pz": -1 / sq(2), "dz2": 1 / sq(3)},
-    'sp3d2-6': {"s": 1 / sq(6), "pz": 1 / sq(2), "dz2": 1 / sq(3)},
-}
-
+hybrids_coef = {}
 
 
 for k in basis_orbital_list:
     hybrids_coef[k] = {k: 1}
-
-hybrids_coef["octa-apical"] = {"s": np.sqrt(3 / 5), "pz": np.sqrt(2 / 5)}
-hybrids_coef["octa-basal+x"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "px": np.sqrt(1 / 2), "dx2-y2": 1 / 2}
-hybrids_coef["octa-basal-x"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "px": -np.sqrt(1 / 2), "dx2-y2": 1 / 2}
-hybrids_coef["octa-basal+y"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "py": np.sqrt(1 / 2), "dx2-y2": -1 / 2}
-hybrids_coef["octa-basal-y"] = {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "py": -np.sqrt(1 / 2), "dx2-y2": -1 / 2}
-
 
 
 _wigner = spherical.Wigner(3)
@@ -133,11 +119,8 @@ def rot_orb_basis(orb_symbol, rot_glb):
 
 
 
-hybrid_matrix_dic = {}
-hybrid_matrix_shells_dic = {}
-hybrid_matrix_shells_start = {}
-
-for hshell in hybrid_shells_list:
+@lru_cache
+def set_hybrid_matrix(hshell):
     basis_shells_used = set()
     for orb in orbitals_sets_dic[hshell]:
         if orb in basis_orbital_list:
@@ -148,13 +131,10 @@ for hshell in hybrid_shells_list:
         else:
             raise ValueError(f"orbital {orb} is not in the basis_orbital_list or hybrids_coef")
     basis_shells_used = list(basis_shells_used)
-    hybrid_matrix_shells_dic[hshell] = basis_shells_used
     basis_shells_start = [0]
     for shell in basis_shells_used:
         basis_shells_start.append(basis_shells_start[-1] + len(orbitals_sets_dic[shell]))
-    # print (f"hybrid shell {hshell}, basis_shells = {basis_shells_used}, basis_shells_start = {basis_shells_start}")
     num_orb = len(orbitals_sets_dic[hshell])
-    hybrid_matrix_shells_start[hshell] = basis_shells_start
     matrix = np.zeros((len(orbitals_sets_dic[hshell]), basis_shells_start[-1]))
     for i, horb in enumerate(orbitals_sets_dic[hshell]):
         for j, borb in enumerate(hybrids_coef[horb]):
@@ -162,14 +142,86 @@ for hshell in hybrid_shells_list:
             shell_stat = basis_shells_start[basis_shells_used.index(bshell)]
             k = shell_stat + orbitals_sets_dic[bshell].index(borb)
             matrix[i, k] = hybrids_coef[horb][borb]
-    hybrid_matrix_dic[hshell] = matrix
-    # print (f"matrix = \n{matrix}")
     check = np.zeros((num_orb, num_orb))
     for s, e in zip(basis_shells_start[:-1], basis_shells_start[1:]):
         mat_shell = matrix[:, s:e]
-        # print (f"check.shape = {check.shape}, mat_shell.shape = {mat_shell.shape}")
         check += mat_shell @ mat_shell.T
     assert np.allclose(check, np.eye(num_orb)), f"check failed for {hshell} : {check}"
+    return basis_shells_used, basis_shells_start, matrix
+
+
+def register_hybrid(shell_name, coef_dict=None, orb_names=None):
+    HYBRID_REGISTER.append(dict(shell_name=shell_name, coef_dict=coef_dict, orb_names=orb_names))
+    assert (coef_dict is not None) or (orb_names is not None), "at least one of coef_dict or orb_names should be provided"
+    if coef_dict is None:
+        coef_dict = {}
+    assert shell_name not in basis_shells_list, f"hybrid shell name {shell_name} is already a basis shell"
+    assert shell_name not in hybrid_shells_list, f"hybrid shell {shell_name} already registered"
+    new_orb_names = list(coef_dict.keys())
+    if orb_names is None:
+        orb_names = sorted(new_orb_names)
+    for orb in new_orb_names:
+        assert orb in orb_names, f"orbital {orb} in coef_dict is not in the provided orb_names"
+        assert orb not in basis_orbital_list, f"orbital {orb} is already a basis orbital, no need to redefine it"
+        assert orb not in hybrids_coef, f"orbital {orb} is already registered in hybrids_coef. Either rename it or (if the new definition is the same) exclude it from the dictionary"
+    for orb in orb_names:
+        assert orb in basis_orbital_list or orb in new_orb_names or orb in hybrids_coef, f"orbital {orb} is not in the basis_orbital_list or in the new_orb_names or in the hybrids_coef"
+    hybrids_coef.update(coef_dict)
+    hybrid_shells_list.append(shell_name)
+    orbitals_sets_dic[shell_name] = orb_names
+    basis_shells_used, basis_shells_start, matrix = set_hybrid_matrix(shell_name)
+    hybrid_matrix_dic[shell_name] = matrix
+    hybrid_matrix_shells_dic[shell_name] = basis_shells_used
+    hybrid_matrix_shells_start[shell_name] = basis_shells_start
+
+
+def restore_from_register(register):
+    for entry in register:
+        register_hybrid(**entry)
+
+
+register_hybrid(shell_name="sp", coef_dict={
+    "sp-1": {"s": 1 / sq(2), "px": 1 / sq(2)},
+    "sp-2": {"s": 1 / sq(2), "px": -1 / sq(2)},
+})
+
+register_hybrid(shell_name="sp2", coef_dict={
+    "sp2-1": {"s": 1 / sq(3), "px": -1 / sq(6), "py": 1 / sq(2)},
+    "sp2-2": {"s": 1 / sq(3), "px": -1 / sq(6), "py": -1 / sq(2)},
+    "sp2-3": {"s": 1 / sq(3), "px": 2 / sq(6)},
+})
+
+
+register_hybrid(shell_name="sp3", coef_dict={
+    "sp3-1": {"s": 1 / 2, "px": 1 / 2, "py": 1 / 2, "pz": 1 / 2},
+    "sp3-2": {"s": 1 / 2, "px": 1 / 2, "py": -1 / 2, "pz": -1 / 2},
+    "sp3-3": {"s": 1 / 2, "px": -1 / 2, "py": 1 / 2, "pz": -1 / 2},
+    "sp3-4": {"s": 1 / 2, "px": -1 / 2, "py": -1 / 2, "pz": 1 / 2},
+})
+
+register_hybrid(shell_name="sp3d2", coef_dict={
+    "sp3d2-1": {"s": 1 / sq(6), "px": -1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": 1 / 2},
+    "sp3d2-2": {"s": 1 / sq(6), "px": 1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": 1 / 2},
+    "sp3d2-3": {"s": 1 / sq(6), "py": -1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": -1 / 2},
+    "sp3d2-4": {"s": 1 / sq(6), "py": 1 / sq(2), "dz2": -1 / sq(12), "dx2-y2": -1 / 2},
+    "sp3d2-5": {"s": 1 / sq(6), "pz": -1 / sq(2), "dz2": 1 / sq(3)},
+    "sp3d2-6": {"s": 1 / sq(6), "pz": 1 / sq(2), "dz2": 1 / sq(3)},
+})
+
+register_hybrid(shell_name="t2g", orb_names=["dxz", "dyz", "dxy"])
+register_hybrid(shell_name="eg", orb_names=["dx2-y2", "dz2"])
+
+register_hybrid(shell_name="pxy", orb_names=["px", "py"])
+register_hybrid(shell_name="pz", orb_names=["pz"])
+register_hybrid("octa-vertex", orb_names=["octa-apical", "octa-basal+x", "octa-basal-x", "octa-basal+y", "octa-basal-y"],
+    coef_dict={
+        "octa-apical": {"s": np.sqrt(3 / 5), "pz": np.sqrt(2 / 5)},
+        "octa-basal+x": {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "px": np.sqrt(1 / 2), "dx2-y2": 1 / 2},
+        "octa-basal-x": {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "px": -np.sqrt(1 / 2), "dx2-y2": 1 / 2},
+        "octa-basal+y": {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "py": np.sqrt(1 / 2), "dx2-y2": -1 / 2},
+        "octa-basal-y": {"s": np.sqrt(1 / 10), "pz": -np.sqrt(3 / 20), "py": -np.sqrt(1 / 2), "dx2-y2": -1 / 2},
+}
+)
 
 
 def rot_orb(orb_symbol, rot_glb):
