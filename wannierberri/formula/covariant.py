@@ -1008,6 +1008,14 @@ class NLDrude_Z_orb_Hplus(FormulaSum):
         super().__init__([term1, term2], [-1, 1], ['apsu', 'uaps'])
 
 
+class NLDrude_Z_morb(FormulaSum):
+
+    def __init__(self, data_K, **kwargs_formula):
+        term1 = FormulaProduct([Der3E(data_K), morb(data_K, **kwargs_formula)], name='Der3Emorb')
+        term2 = FormulaProduct([Der2morb(data_K, **kwargs_formula), data_K.covariant('Ham', commader=1)], name='Der2morbVel')
+        super().__init__([term1, term2], [-1, 1], ['apsu', 'uaps'])
+
+
 class NLDrude_Z_orb_Omega(FormulaSum):
 
     def __init__(self, data_K, **kwargs_formula):

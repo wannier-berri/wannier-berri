@@ -641,22 +641,23 @@ class NLDrude_Zeeman_orb_Omega(StaticCalculator):
 
 
 class NLDrude_Zeeman_orb(StaticCalculator):
+    r"""Nonlinear Drude conductivity, orbital Zeeman term (:math:`S^2/A/T`)
 
-    def __init__(self, **kwargs):
-        self.Formula = frml.NLDrude_Z_orb_Hplus
+        | With Fermi surface integral of the orbital moment of the band, :math:`m = H - E\Omega` (``morb``, in
+          :math:`eV\cdot\AA^2`).
+        | Output: :math:`\sigma_{\beta\gamma\alpha:\mu} = \mu_Z \, \mathrm{factor\_nldrude} \int [dk]
+          (v_\alpha \partial_{\beta\gamma} m_\mu - m_\mu \partial_{\alpha\beta\gamma} E) (-f')`,
+          with :math:`\mu_Z` = ``fac_orb_Z`` and ``factor_nldrude`` from :mod:`wannierberri.factors`; the output
+          indices are ordered as :math:`\beta\gamma\alpha\mu`.
+        | It equals :math:`-\partial / \partial B_\mu` of :class:`NLDrude_FermiSea` with the band energies shifted by
+          :math:`-\mu_Z \, m \cdot B`.
+        | :math:`m` is differentiated twice in k, so it cannot be replaced by :math:`H + E\Omega - 2E_F\Omega`, which
+          equals :math:`m` only at :math:`E = E_F`."""
+
+    def __init__(self, constant_factor=factors.fac_orb_Z * factors.factor_nldrude, **kwargs):
+        self.Formula = frml.NLDrude_Z_morb
         self.fder = 1
-        super().__init__(**kwargs)
-
-    def __call__(self, data_K):
-        Hplus = super().__call__(data_K)
-        Omega = NLDrude_Zeeman_orb_Omega(Efermi=self.Efermi, tetra=self.tetra,
-                smoother=self.smoother, use_factor=False, print_comment=False,
-                kwargs_formula=self.kwargs_formula)(data_K).mul_array(self.Efermi)
-        final_factor = factors.fac_orb_Z * factors.factor_nldrude
-        if not self.use_factor:
-            final_factor = np.sign(final_factor)
-
-        return final_factor * (Hplus - 2 * Omega)
+        super().__init__(constant_factor=constant_factor, **kwargs)
 
 # E^1 B^1
 
