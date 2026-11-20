@@ -101,7 +101,8 @@ class Projection:
                  zaxis=None,
                  xaxis=None,
                  do_not_split_projections=False,
-                 atom_name=None):
+                 atom_name=None,
+                 use_paw=False):
         if void:
             return
         if do_not_split_projections:
@@ -110,6 +111,7 @@ class Projection:
             self.orbitals = orbital.split(";")
         self.radial_nodes = radial_nodes
         self.spread_factor = spread_factor
+        self.use_paw = use_paw
 
         # if none - generate a random 5-letter name for the atom,
         if atom_name is None:

@@ -110,3 +110,20 @@ def test_projector():
                 assert np.isclose(overlap, 1.0, atol=0.1), f"Overlap for {k1} is not 1: {overlap}"
             else:
                 assert np.isclose(overlap, 0.0, atol=1e-8), f"Overlap between {k1} and {k2} is not zero: {overlap}"
+
+
+@pytest.mark.parametrize("determinant", [1, -1])
+@pytest.mark.parametrize("l", [0, 1, 2, 3])
+def test_spherical_vs_gpaw(determinant, l):
+    # generate 10 random orthogonal matrices
+    shell = 'spdf'[l]
+    R_list = determinant * np.linalg.qr(np.random.rand(10, 3, 3))[0]
+    from wannierberri.symmetry.orbitals import get_orbitals, w90_to_gpaw_reordering
+    rot_orb_basis = get_orbitals().rot_orb_basis
+    reorder = w90_to_gpaw_reordering()[shell]
+    from gpaw.rotation import rotation as gpaw_rotation
+    R_gpaw = np.array([gpaw_rotation(l, R) for R in R_list])
+    R_gpaw_reordered = R_gpaw[:, reorder, :][:, :, reorder]
+    R_spherical = np.array([rot_orb_basis(shell, R) for R in R_list])
+    diff = np.max(np.abs(R_spherical - R_gpaw_reordered))
+    assert diff < 1e-10, f"Max difference between spherical and gpaw rotation matrices for shell {shell} is {diff}"
