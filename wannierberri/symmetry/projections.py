@@ -24,13 +24,6 @@ except ImportError:
 
 
 
-orbital_moment_matrix = {
-    's': np.zeros((1, 1)),
-    'p': np.zeros((3, 3)),
-    'd': np.zeros((5, 5)),
-}
-
-
 class Projection:
     """	
     A class to store initial projection. One object correspondsto a set of projections related by symmetry.
@@ -189,21 +182,18 @@ class Projection:
         return self.wyckoff_position.spacegroup
 
     def get_orbital_moment_matrix(self):
+        from .angular_momentum import get_l_shell
+        from .orbitals import orbitals_sets_dic
         L_list = []
         for orb in self.orbitals:
-            if orb in orbital_moment_matrix:
-                L_list.append(orbital_moment_matrix[orb])
-            else:
-                raise KeyError(f"orbital {orb} does not have a known orbital moment matrix defined")
+            shell = tuple(orbitals_sets_dic[orb])
+            L = get_l_shell(shell).transpose(1, 2, 0)  # shape (n_orb, n_orb, 3)
+            L_list.append(L)
         # make a block diagonal matrix
         L_mat_atom = scipy.linalg.block_diag(*L_list)
-        print(f"L_mat_atom for {self.orbitals} {L_mat_atom}")
         L_list = []
         for basis in self.basis_list:
-            if np.allclose(basis, np.eye(3)):
-                L_rotated = L_mat_atom
-            else:
-                raise NotImplementedError("rotation of orbital moment matrix is not implemented yet for non-trivial basis")
+            L_rotated = np.einsum("ij,klj->kli", basis.T, L_mat_atom)
             L_list.append(L_rotated)
         return scipy.linalg.block_diag(*L_list)
 
@@ -393,7 +383,7 @@ class ProjectionsSet:
             L_list.append(p.get_orbital_moment_matrix())
         L_scalar = scipy.linalg.block_diag(*L_list)
         if self.spinor:
-            L = np.zeros((2 * L_scalar.shape[0], 2 * L_scalar.shape[1]))
+            L = np.zeros((2 * L_scalar.shape[0], 2 * L_scalar.shape[1]), 3)
             L[0::2, 0::2] = L_scalar
             L[1::2, 1::2] = L_scalar
             return L
