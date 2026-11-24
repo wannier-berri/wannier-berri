@@ -381,7 +381,12 @@ class ProjectionsSet:
         L_list = []
         for p in self.projections:
             L_list.append(p.get_orbital_moment_matrix())
-        L_scalar = scipy.linalg.block_diag(*L_list)
+        L_scalar = np.zeros((self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
+        i = 0
+        for L in L_list:
+            n = L.shape[0]
+            L_scalar[i:i + n, i:i + n, :] = L
+            i += n
         if self.spinor:
             L = np.zeros((2 * L_scalar.shape[0], 2 * L_scalar.shape[1]), 3)
             L[0::2, 0::2] = L_scalar
@@ -478,7 +483,6 @@ class ProjectionsSet:
         """
 
         if not hasattr(self, "map_free_vars_cached"):
-            # print ("mapping free vars"	)
             maps = [p.wyckoff_position.map_orbit_on_free_vars for p in self.projections]
             rotations = np.zeros((self.num_points, 3, self.num_free_vars_wyckoff), dtype=float)
             translations = np.zeros((self.num_points, 3), dtype=float)
@@ -837,8 +841,6 @@ class RepulsivePotential:
         assert rotation.ndim == 3, f"rotation.ndim = {rotation.ndim}, should be 3"
         assert translation.ndim == 2, f"translation.ndim = {translation.ndim}, should be 2"
         assert rotation.shape[0] == translation.shape[0], f"rotation.shape = {rotation.shape}, translation.shape = {translation.shape}"
-        # print ("rotation",repr(rotation))
-        # print ("translation",repr(translation))
         if weights is None:
             weights = np.ones(rotation.shape[0])
         else:
@@ -854,12 +856,10 @@ class RepulsivePotential:
         self.rotation = jnp.array(rotation)
         self.translation = jnp.array(translation)
         self.num_free_vars = self.rotation.shape[2]
-        # free_vars_random = jnp.random.rand(self.num_free_vars)
         num_pos = self.rotation.shape[0]
         assert self.rotation.shape[0] == self.translation.shape[0]
         real_lattice = np.array(real_lattice) / abs(np.linalg.det(real_lattice))**(1 / 3)
         reciprocal_lattice = np.linalg.inv(real_lattice).T
-        # print (f"reciprocal_lattice = {reciprocal_lattice}, {np.linalg.det(reciprocal_lattice)}")
         r0 = r0 / num_pos**(1 / 3)
         maxG = 10
         max_mod_G = max_G_r0 / r0

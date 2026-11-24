@@ -91,6 +91,10 @@ class SystemSOC(System_R):
                     self.set_R_mat(key, self.get_R_mat(key).conj().swapaxes(1, 2), reset=True)
 
 
+    def set_LL_from_projections(self, projections_set):
+        self.system_up.set_LL_from_projections(projections_set)
+        if self.nspin == 2:
+            self.system_down.set_LL_from_projections(projections_set)
 
     def set_cell(self, positions, typat, magmoms_on_axis, **kwargs):
         self.cell = dict(positions=np.array(positions),

@@ -718,8 +718,8 @@ class SpinVelocity(Matrix_ln):
         super(Matrix_ln, self).__init__(data_K, external_terms=external_terms)
         if spin_current_type == "simple":
             # tight-binding case
-            super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms), keyL='SS')
-        if spin_current_type == "orb_loc":
+            super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms, keyL='SS'))
+        elif spin_current_type == "orb_loc":
             # tight-binding case
             super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms, keyL='LL'))
         elif spin_current_type == "qiao":
@@ -729,7 +729,7 @@ class SpinVelocity(Matrix_ln):
             # J. H. Ryoo et al PRB (2019)
             super().__init__(self._J_H_ryoo(data_K, external_terms=self.external_terms))
         else:
-            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
+            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple` or `orb_loc`, not {spin_current_type}")
         self.transformTR = transform_ident
         self.transformInv = transform_odd
 

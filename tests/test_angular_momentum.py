@@ -1,8 +1,10 @@
+import copy
+
 import pytest
 
 from wannierberri.symmetry.angular_momentum import get_l_shell
 import numpy as np
-
+from .test_formula import get_datak
 
 r3 = np.sqrt(3)
 r6 = np.sqrt(6)
@@ -144,3 +146,28 @@ def test_projection_L():
     L1p[2, :, :] = -L1p[2, :, ::]
     L1p[:, 2, :] = -L1p[:, 2, :]
     assert np.allclose(L1, L1p)
+
+
+
+def test_ohe(system_Fe_gpaw_soc_z):
+    from wannierberri.symmetry.projections import ProjectionsSet, Projection
+    from irrep.spacegroup import SpaceGroup
+    sg = SpaceGroup.get_trivial(lattice=np.eye(3))
+    proj_s = Projection(position_num=[[0., 0, 0]], orbital='s', spacegroup=sg)
+    proj_p = Projection(position_num=[[0., 0, 0]], orbital='p', spacegroup=sg)
+    proj_d = Projection(position_num=[[0., 0, 0]], orbital='d', spacegroup=sg)
+    projections = ProjectionsSet([proj_s, proj_p, proj_d])
+    system = copy.deepcopy(system_Fe_gpaw_soc_z)
+    system.set_LL_from_projections(projections)
+    L = system.system_up.get_R_mat("LL")[system.rvec.iR0]
+    print("L-matrix shape:", L.shape)
+    print("Lz = 'n", L[:, :, 2])
+    print("Lx = 'n", L[:, :, 0])
+    print("Ly = 'n", L[:, :, 1])
+
+    from wannierberri.calculators.dynamic import SHC
+    shc = SHC(SHC_type="orb_loc", Efermi=np.linspace(8.5, 10, 16),
+              omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=2.20, smr_type="Gaussian")
+    data_k = get_datak(system)
+    shc_result = shc(data_k)
+    print(f"Norm of SHC result: {np.linalg.norm(shc_result.data)}")
