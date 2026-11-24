@@ -1,9 +1,13 @@
 import copy
 
 import pytest
+from .common import ROOT_DIR
 
-from wannierberri.symmetry.angular_momentum import get_l_shell
+from wannierberri.symmetry.angular_momentum import get_L_shell
 import numpy as np
+import os
+
+from wannierberri.w90files.wandata_soc import WannierDataSOC
 from .test_formula import get_datak
 
 r3 = np.sqrt(3)
@@ -103,7 +107,7 @@ shell_names = ["s", "p", "d", "f"]
 
 @pytest.mark.parametrize("l", [0, 1, 2, 3])
 def test_get_l_shell(l):
-    assert np.allclose(get_l_shell(tuple(shells[l])), L_dict[shell_names[l]])
+    assert np.allclose(get_L_shell(tuple(shells[l])), L_dict[shell_names[l]])
 
 
 
@@ -113,7 +117,7 @@ def test_commutation_relations(l):
     # randomly permute the orbitals
     perm = np.random.permutation(len(shell))
     shell = [shell[i] for i in perm]
-    L = get_l_shell(tuple(shell))
+    L = get_L_shell(tuple(shell))
     Lx, Ly, Lz = L
     # check commutation relations
     assert np.allclose(Lx, Lx.conj().T)
@@ -130,19 +134,19 @@ def test_projection_L():
     from wannierberri.symmetry.projections import Projection
     ps = Projection(position_num=[[0, 0, 0]], orbital="s", zaxis=[0, 0, 1], xaxis=[1, 0, 0], spacegroup=sg)
     L = ps.get_orbital_moment_matrix()
-    Lp = get_l_shell(tuple(["s"])).transpose(1, 2, 0)
+    Lp = get_L_shell(tuple(["s"])).transpose(1, 2, 0)
     assert np.allclose(L, Lp)
     assert np.allclose(L, 0)
 
     p0 = Projection(position_num=[[0, 0, 0]], orbital="p", zaxis=[0, 0, 1], xaxis=[1, 0, 0], spacegroup=sg)
     L0 = p0.get_orbital_moment_matrix()
-    L0p = get_l_shell(tuple(["pz", "px", "py"])).transpose(1, 2, 0)
+    L0p = get_L_shell(tuple(["pz", "px", "py"])).transpose(1, 2, 0)
     assert np.allclose(L0, L0p)
 
     # this is like having non-rotated basis, buit the orbitals are pz, py, -px
     p1 = Projection(position_num=[[0, 0, 0]], orbital="p", zaxis=[0, 0, 1], xaxis=[0, 1, 0], spacegroup=sg)
     L1 = p1.get_orbital_moment_matrix()
-    L1p = get_l_shell(tuple(["pz", "py", "px"])).transpose(1, 2, 0)
+    L1p = get_L_shell(tuple(["pz", "py", "px"])).transpose(1, 2, 0)
     L1p[2, :, :] = -L1p[2, :, ::]
     L1p[:, 2, :] = -L1p[:, 2, :]
     assert np.allclose(L1, L1p)
@@ -171,3 +175,14 @@ def test_ohe(system_Fe_gpaw_soc_z):
     data_k = get_datak(system)
     shc_result = shc(data_k)
     print(f"Norm of SHC result: {np.linalg.norm(shc_result.data)}")
+
+
+
+def test_oam():
+    from gpaw import GPAW
+    path_data = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
+
+    calc = GPAW(path_data + "/Fe-nscf-irred-222.gpw", txt=None)
+    wandata = WannierDataSOC.from_gpaw(calc, files=["oam"])
+    for ik, data in wandata.data_up.get_file("oam").data.items():
+        print(f"K-point {ik}: {np.linalg.norm(data)}")

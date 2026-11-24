@@ -8,6 +8,7 @@ from .amn import AMN
 from .mmn import MMN
 from .eig import EIG
 from .win import WIN
+from .oam import OAM
 from .bkvectors import BKVectors
 from ..utility import cached_einsum
 import datetime
@@ -32,6 +33,7 @@ FILES_CLASSES = {'win': WIN,
                 'unk': UNK,
                 'bkvec': BKVectors,
                 'chk': CheckPoint,
+                'oam': OAM
                 }
 
 
@@ -91,6 +93,7 @@ class WannierData:
                           irred_bk_only=True,
                           include_paw=True,
                           include_pseudo=True,
+                          l_list=None,
                           bkvec=None):
         """
         Create a WannierData object from a bandstructure object
@@ -229,6 +232,11 @@ class WannierData:
                                          normalize=normalize,
                                          **kwargs_bandstructure)
             self.set_file('spn', spn)
+        if "oam" in files:
+            oam = OAM.from_bandstructure(bandstructure=bandstructure,
+                                         l_list=l_list,
+                                         **kwargs_bandstructure)
+            self.set_file('oam', oam)
         # TODO : use a cutoff ~100eV for symmetrizer
         if "unk" in files:
             unk = UNK.from_bandstructure(bandstructure=bandstructure,
@@ -331,6 +339,15 @@ class WannierData:
             logger.warning("Failed to create BandStructure.from_gpaw(): %s probably because of irrep version < 3. Trying BandStructure(code='gpaw', ...) instead", e)
             bandstructure = BandStructure(code="gpaw", **args_bandstructure)
 
+        if 'oam' in files:
+            try:
+                setups = calculator.dft.setups
+            except AttributeError:
+                setups = calculator.wfs.setups
+            l_list = [l for setup in setups for l in setup.l_j]
+        else:
+            l_list = None
+
         files_from_bandstructure = [f for f in files if f not in ["soc"]]
         self = cls.from_bandstructure(bandstructure,
                                 seedname=seedname,
@@ -345,7 +362,8 @@ class WannierData:
                                 irred_bk_only=irred_bk_only,
                                 include_paw=include_paw,
                                 include_pseudo=include_pseudo,
-                                bkvec=bkvec
+                                bkvec=bkvec,
+                                l_list=l_list
                                 )
         if return_bandstructure:
             if not return_paw:

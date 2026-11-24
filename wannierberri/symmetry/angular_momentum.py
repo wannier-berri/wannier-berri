@@ -1,7 +1,8 @@
 
 from functools import lru_cache
-
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 sq2 = np.sqrt(1 / 2)
 jsq2 = 1j * np.sqrt(1 / 2)
@@ -53,7 +54,7 @@ l_shell = {"s": 0, "p": 1, "d": 2, "f": 3}
 
 
 @lru_cache
-def get_l_shell(orb_tuple):
+def get_L_shell(orb_tuple):
     shell = set(s[0] for s in orb_tuple)
     if len(shell) != 1:
         raise ValueError(f"Orbitals {orb_tuple} are not from the same shell")
@@ -64,3 +65,38 @@ def get_l_shell(orb_tuple):
     matrix = np.array([real_from_complex[orb] for orb in orb_tuple], dtype=complex)
     L_shell = np.einsum("ijk,lj,mk->ilm", Lm_shell, matrix.conj(), matrix)
     return L_shell
+
+
+
+@lru_cache
+def get_orb_names_gpaw():
+    try:
+        from gpaw.sphere.spherical_harmonics import names
+    except ImportError:
+        logger.warning("gpaw is not installed, using saved names, not checking that they are the same as in the current gpaw version")
+        names = [['1'],
+         ['y', 'z', 'x'],
+            ['xy', 'yz', '3z2-r2', 'zx', 'x2-y2'],
+            ['3x2y-y3', 'xyz', '4yz2-y3-x2y', '2z3-3x2z-3y2z', '4xz2-x3-xy2',
+          'x2z-y2z', 'x3-3xy2']]
+    return names
+
+
+w90_to_gpaw_orb_dic = {'s': '1', 'dz2': '3z2-r2', 'dxz': 'zx', 'fz3': '2z3-3x2z-3y2z', 'fxz2': '4xz2-x3-xy2', 'fyz2': '4yz2-y3-x2y', 'fzx2-zy2': 'x2z-y2z', 'f3yx2-y3': '3x2y-y3'}
+gpaw_to_w90_orb_dic = {v: k for k, v in w90_to_gpaw_orb_dic.items()}
+
+
+@lru_cache
+def get_orb_names_gpaw_w90(l):
+    names = get_orb_names_gpaw()[l]
+    shell = 'spdf'[l]
+    names_w90 = []
+    for name in names:
+        name = gpaw_to_w90_orb_dic.get(name, shell + name)
+        names_w90.append(name)
+    return names_w90
+
+
+def get_L_shell_gpaw(l):
+    names = get_orb_names_gpaw_w90(l)
+    return get_L_shell(tuple(names))

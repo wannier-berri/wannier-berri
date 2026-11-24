@@ -182,12 +182,12 @@ class Projection:
         return self.wyckoff_position.spacegroup
 
     def get_orbital_moment_matrix(self):
-        from .angular_momentum import get_l_shell
+        from .angular_momentum import get_L_shell
         from .orbitals import orbitals_sets_dic
         L_list = []
         for orb in self.orbitals:
             shell = tuple(orbitals_sets_dic[orb])
-            L = get_l_shell(shell).transpose(1, 2, 0)  # shape (n_orb, n_orb, 3)
+            L = get_L_shell(shell).transpose(1, 2, 0)  # shape (n_orb, n_orb, 3)
             L_list.append(L)
         # make a block diagonal matrix
         L_mat_atom = scipy.linalg.block_diag(*L_list)
