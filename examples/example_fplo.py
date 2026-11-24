@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+from wannierberri.symmetry import point_symmetry as SYM
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 
-## these linesline if you want to use the git version of the code, instead of the one installed by pip
+## Uncomment these lines if you want to use the git version of the code, instead of the one installed by pip
 local_code = False
 num_proc = 4
 
@@ -22,32 +26,22 @@ else:
 
 
 
-SYM = wberri.point_symmetry
-
 # Efermi=np.linspace(12.,13.,1001)
 Efermi = np.linspace(-0.5, 0.5, 1001)
-system = wberri.System_fplo('../tests/data/Fe_FPLO/+hamdata', berry=False, spin=False)
+system = System_R.from_fplo('../tests/data/Fe_FPLO/+hamdata', berry=False, spin=False)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system, length=300, length_FFT=50)
-parallel = wberri.parallel.Parallel(num_cpus=num_proc)
+grid = wberri.Grid(system=system, length=300, length_FFT=50)
 
-
+ray_init()
 wberri.run(system,
            grid=grid,
            calculators={
-               "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False),
+               "ahc": calculators.static.AHC(Efermi=Efermi, tetra=False),
            },
-           parallel=parallel,
            adpt_num_iter=0,
            fout_name='Fe',
            suffix="fplo",
            restart=False,
             )
-
-
-
-# This line is not actually needed here and is added just for illustrative purpose.
-# It is needed only when one wants to close and reopen a new parallel object.
-parallel.shutdown()

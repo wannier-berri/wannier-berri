@@ -1,49 +1,68 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 
+from ..utility import one2three
+from .Kpoint import KpointBZparallel
+from ..symmetry.point_symmetry import PointGroup
 import numpy as np
 from time import time
 import abc
 from functools import cached_property
-import warnings
-
-from ..system.system import System
-from ..symmetry.point_symmetry import PointGroup
-from .Kpoint import KpointBZparallel
-from ..utility import one2three
+import logging
+logger = logging.getLogger(__name__)
 
 
 class GridAbstract(abc.ABC):
 
     @abc.abstractmethod
-    def __init__(self, system, use_symmetry, FFT=(1, 1, 1)):
+    def __init__(self,
+                 system=None,
+                 real_lattice=None,
+                 recip_lattice=None,
+                 pointgroup=None,
+                 use_symmetry=True,
+                 FFT=(1, 1, 1)):
+        """
+        Parameters
+        -----------
+        system : :class:`~wannierberri.system.System`
+            which the calculations will be made
+        real_lattice : 3x3 array 
+            real lattice vectors in angstroms (columns of the matrix)
+        recip_lattice : 3x3 array
+            reciprocal lattice vectors in 1/angstroms (columns of the matrix)
+        pointgroup : :class:`~wannierberri.symmetry.point_symmetry.PointGroup`
+            point group of the system
+        use_symmetry : bool
+            use symmetries of the system to exclude equivalent points   
+        FFT : 3-array
+            number of k-points in the FFT grid along each directions
+
+        Notes
+        -----
+        exactly one of system, real_lattice, recip_lattice, pointgroup should be provided. If use_symmetry is True, then pointgroup will be determined from the provided system or pointgroup. Otherwise - just create a trivial pointgroup (no symmetries) from the provided system or real_lattice or recip_lattice.
+
+        """
+        found = [p is not None for p in (system, real_lattice, recip_lattice, pointgroup)]
+        assert np.sum(found) == 1, f"Exactly one of system, real_lattice, recip_lattice, pointgroup should be provided. "\
+            f"Found: system={system}, real_lattice={real_lattice}, recip_lattice={recip_lattice}, pointgroup={pointgroup}"
         if use_symmetry:
-            if isinstance(system, System):
+            if found[0]:  # system is provided
                 self.pointgroup = system.pointgroup
-            elif isinstance(system, PointGroup):
-                self.pointgroup = system
+            elif found[3]:  # pointgroup is provided
+                self.pointgroup = pointgroup
         else:
-            if isinstance(system, System):
-                real_lattice = system.real_lattice
-            elif isinstance(system, PointGroup):
-                real_lattice = system.real_lattice
-            else:
-                real_lattice = system
-            self.pointgroup = PointGroup(real_lattice=real_lattice)
+            if any([found[0], found[1], found[3]]):  # system or real_lattice or pointgroup is provided
+                if found[0]:  # system or pointgroup is provided
+                    real_lattice = system.real_lattice
+                elif found[3]:  # pointgroup is provided
+                    real_lattice = pointgroup.real_lattice
+                self.pointgroup = PointGroup(real_lattice=real_lattice)
+            elif found[2]:  # recip_lattice is provided
+                self.pointgroup = PointGroup(recip_lattice=recip_lattice)
         self.FFT = np.array(FFT)
 
+
     @abc.abstractmethod
-    def get_K_list(self, use_symmetry=False):
+    def get_K_list(self, use_symmetry=False, k_batch=None):
         """ get all K-points in the grid """
 
     @cached_property
@@ -55,6 +74,14 @@ class GridAbstract(abc.ABC):
                 for iz in range(self.FFT[2])
             ])
 
+    @property
+    def recip_lattice(self):
+        return self.pointgroup.recip_lattice
+
+    @property
+    def real_lattice(self):
+        return self.pointgroup.real_lattice
+
 
 class Grid(GridAbstract):
     """ A class containing information about the k-grid.
@@ -63,6 +90,12 @@ class Grid(GridAbstract):
     -----------
     system : :class:`~wannierberri.system.System`
         which the calculations will be made
+    real_lattice : 3x3 array
+        real lattice vectors in angstroms (columns of the matrix)
+    recip_lattice : 3x3 array
+        reciprocal lattice vectors in 1/angstroms (columns of the matrix)
+    pointgroup : :class:`~wannierberri.symmetry.point_symmetry.PointGroup`
+        point group of the system
     length :  float
         (angstroms) -- in this case the grid is NK[i]=length*||B[i]||/2pi  B- reciprocal lattice
     length_FFT :  float
@@ -90,16 +123,20 @@ class Grid(GridAbstract):
 
     The others will be evaluated automatically.
 
+    # see also :class:`~wannierberri.grid.GridAbstract` 
     """
 
-    def __init__(self, system, length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
+    def __init__(self,
+                 system=None, real_lattice=None, recip_lattice=None, pointgroup=None,  # exactly one of these should be provided
+                 length=None, NKdiv=None, NKFFT=None, NK=None, length_FFT=None, use_symmetry=True):
 
-        super().__init__(system=system, use_symmetry=use_symmetry)
+        super().__init__(system=system,
+                         real_lattice=real_lattice, recip_lattice=recip_lattice, pointgroup=pointgroup,
+                         use_symmetry=use_symmetry, FFT=NKFFT)
         NKFFT_recommended = np.array(system.NKFFT_recommended)
         self.div, self.FFT = determineNK(
             system.periodic, NKdiv, NKFFT, NK, NKFFT_recommended, self.pointgroup, length=length, length_FFT=length_FFT)
 
-    #        self.findif = FiniteDifferences(self.recip_lattice, self.FFT)
 
     @property
     def str_short(self):
@@ -109,11 +146,11 @@ class Grid(GridAbstract):
     def dense(self):
         return self.div * self.FFT
 
-    def get_K_list(self, use_symmetry=True):
+    def get_K_list(self, use_symmetry=True, k_batch=None):
         """ returns the list of Symmetry-irreducible K-points"""
         dK = 1. / self.div
         factor = 1. / np.prod(self.div)
-        print("generating K_list")
+        logger.debug("generating K_list")
         t00 = time()
         K_list = [
             [
@@ -128,10 +165,10 @@ class Grid(GridAbstract):
                 ] for y in range(self.div[1])
             ] for x in range(self.div[0])
         ]
-        print(f"Done in {time() - t00} s ")
+        logger.debug("Done in %s s ", time() - t00)
         if use_symmetry:
             t0 = time()
-            print("excluding symmetry-equivalent K-points from initial grid")
+            logger.debug("excluding symmetry-equivalent K-points from initial grid")
             for z in range(self.div[2]):
                 for y in range(self.div[1]):
                     for x in range(self.div[0]):
@@ -142,10 +179,10 @@ class Grid(GridAbstract):
                                 if k != (x, y, z):
                                     KP.absorb(K_list[k[0]][k[1]][k[2]])
                                     K_list[k[0]][k[1]][k[2]] = None
-            print(f"Done in {time() - t0} s ")
+            logger.debug("Done in %s s ", time() - t0)
 
         K_list = [K for Kyz in K_list for Kz in Kyz for K in Kz if K is not None]
-        print(
+        logger.info(
             "K_list contains {} Irreducible points({}%) out of initial {}x{}x{}={} grid".format(
                 len(K_list), round(len(K_list) / np.prod(self.div) * 100, 2), self.div[0], self.div[1], self.div[2],
                 np.prod(self.div)))
@@ -160,7 +197,7 @@ def autoNK(NK, NKFFTrec, pointgroup):
     # frist determine all symmetric sets between NKFFTmin and 2*NKFFTmin
     FFT_symmetric = np.array([fft for fft in iterate_vector(NKFFTrec, NKFFTrec * 3) if pointgroup.symmetric_grid(fft)])
     NKFFTmin = FFT_symmetric[np.argmin(FFT_symmetric.prod(axis=1))]
-    print("Minimal symmetric FFT grid : ", NKFFTmin)
+    logger.info(f"Minimal symmetric FFT grid : {NKFFTmin}")
     FFT_symmetric = np.array(
         [fft for fft in iterate_vector(NKFFTmin, NKFFTmin * 2) if pointgroup.symmetric_grid(fft)])
     NKdiv_tmp = np.array(np.round(NK[None, :] / FFT_symmetric), dtype=int)
@@ -176,7 +213,7 @@ def autoNK(NK, NKFFTrec, pointgroup):
 
 
 def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, length=None, length_FFT=None):
-    # print(f"determining grids from NK={NK} ({type(NK)}), NKdiv={NKdiv} ({type(NKdiv)}), NKFFT={NKFFT} ({type(NKFFT)})")
+    logger.debug("determining grids from NK=%s (%s), NKdiv=%s (%s), NKFFT=%s (%s)", NK, type(NK), NKdiv, type(NKdiv), NKFFT, type(NKFFT))
     NKdiv = one2three(NKdiv)
     NKFFT = one2three(NKFFT)
     NK = one2three(NK)
@@ -184,17 +221,17 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
     if length is not None:
         if NK is None:
             NK = np.array(np.round(length / (2 * np.pi) * np.linalg.norm(pointgroup.recip_lattice, axis=1)), dtype=int)
-            # print(f"length={length} was converted into NK={NK}")
+            logger.info(f"length={length} was converted into NK={NK}")
         else:
-            warnings.warn("length is disregarded in presence of NK")
+            logger.warning("length is disregarded in presence of NK")
 
     if length_FFT is not None:
         if NKFFT is None:
             NKFFT = np.array(
                 np.round(length_FFT / (2 * np.pi) * np.linalg.norm(pointgroup.recip_lattice, axis=1)), dtype=int)
-            # print(f"length_FFT={length_FFT} was converted into NKFFT={NKFFT}")
+            logger.debug("length_FFT=%s was converted into NKFFT=%s", length_FFT, NKFFT)
         else:
-            warnings.warn("length_FFT is disregarded in presence of NKFFT")
+            logger.warning("length_FFT is disregarded in presence of NKFFT")
 
     for nkname in 'NKdiv', 'NK', 'NKFFT':
         nk = locals()[nkname]
@@ -203,12 +240,12 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
 
     if (NKdiv is not None) and (NKFFT is not None):
         if length is not None:
-            warnings.warn("length is disregarded in presence of NKdiv,NKFFT")
+            logger.warning("length is disregarded in presence of NKdiv,NKFFT")
         elif NK is not None:
-            warnings.warn("NK is disregarded in presence of NKdiv,NKFFT")
+            logger.warning("NK is disregarded in presence of NKdiv,NKFFT")
     elif NK is not None:
         if NKdiv is not None:
-            warnings.warn("NKdiv is disregarded in presence of NK or length")
+            logger.warning("NKdiv is disregarded in presence of NK or length")
         if NKFFT is not None:
             NKdiv = np.array(np.round(NK / NKFFT), dtype=int)
             NKdiv[NKdiv <= 0] = 1
@@ -220,10 +257,10 @@ def determineNK(periodic, NKdiv, NKFFT, NK, NKFFT_recommended, pointgroup, lengt
 
     if NK is not None:
         if not np.all(NK == NKFFT * NKdiv):
-            warnings.warn(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
+            logger.info(f" the requested k-grid {NK} was adjusted to {NKFFT * NKdiv}. ")
 
     notperiodic = np.logical_not(periodic)
     NKdiv[notperiodic] = 1
     NKFFT[notperiodic] = 1
-    # print(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
+    logger.info(f"The grids were set to NKdiv={NKdiv}, NKFFT={NKFFT}, NKtot={NKdiv * NKFFT}")
     return NKdiv, NKFFT

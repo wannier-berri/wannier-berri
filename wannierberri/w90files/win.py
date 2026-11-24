@@ -1,13 +1,14 @@
+from .io import SavableNPZ
+from .utility import get_mp_grid
+from scipy.constants import physical_constants
+import numpy as np
 import functools
 from typing import Iterable
-import warnings
-import numpy as np
-from scipy.constants import physical_constants
-from .utility import get_mp_grid
+import logging
+logger = logging.getLogger(__name__)
 
 
-
-class WIN:
+class WIN(SavableNPZ):
     """
     Class to read and store the wannier90.win input file
 
@@ -25,13 +26,29 @@ class WIN:
     """
 
     extension = "win"
+    blocks = ["unit_cell_cart", "projections", "kpoints", "kpoint_path", "atoms_frac"]
 
-    def __init__(self, seedname='wannier90', data=None, autoread=False):
-        if not autoread:
-            return
+    def __init__(self, seedname='wannier90'):
         self.data = {}
-        self.seedname = seedname
-        self.blocks = ["unit_cell_cart", "projections", "kpoints", "kpoint_path", "atoms_frac"]
+        self.data["seedname"] = seedname
+
+    @property
+    def seedname(self):
+        return self.data["seedname"]
+
+    def as_dict(self):
+        return {k: v for k, v in self.data.items() if v is not None}
+
+    @classmethod
+    def from_dict(cls, dic):
+        self = cls()
+        for k, v in dic.items():
+            self.data[k] = v
+        return self
+
+    @classmethod
+    def from_w90_file(cls, seedname='wannier90', data=None):
+        self = cls(seedname=seedname)
         if seedname is not None:
             name = seedname + ".win"
             self.parsed = parse_win_raw(name)
@@ -40,6 +57,9 @@ class WIN:
             self["kpoints"] = self.get_kpoints()
             self["projections"] = self.get_projections()
             self["atoms_frac"], self.data["atoms_names"] = self.get_atoms()
+            self["exclude_bands"] = self.get_exclude_bands()
+            if "fermi_energy" in self.parsed:
+                self["fermi_energy"] = self.parsed["fermi_energy"]
         if data is not None:
             for k, v in data.items():
                 self.data[k.lower()] = v
@@ -57,30 +77,7 @@ class WIN:
         for key in ["unit_cell_cart", "kpoints", "atoms_frac"]:
             if key in self.data:
                 self.data[key] = np.array(self.data[key], dtype=float)
-
-
-
-    # @functools.lru_cache()
-    # def _get_param(self, param):
-    #     """
-    #     Get the parameter from the parsed data
-
-    #     Parameters
-    #     ----------
-    #     param : str
-    #         the parameter to be retrieved
-
-    #     Returns
-    #     -------
-    #     Any
-    #         the value of the parameter
-    #     """
-    #     return self.parsed['parameters'][param]
-
-    # def __getitem__(self, key):
-    #     return self.data[key]
-
-        # self.data[key] = value
+        return self
 
 
     def __getitem__(self, key):
@@ -120,7 +117,7 @@ class WIN:
         if key in self.data:
             del self.data[key]
         else:
-            warnings.warn(f"key {key} not found in the data, nothing to delete")
+            logger.warning("key %s not found in the data, nothing to delete", key)
 
     def __contains__(self, key):
         """
@@ -145,6 +142,7 @@ class WIN:
         dic(dict) : the dictionary with the new parameters
         """
         self.data.update(dic)
+        return self
 
     def write(self, seedname=None, comment="written by WannierBerri"):
         """
@@ -259,6 +257,31 @@ class WIN:
             return atoms_frac, atoms_names
         else:
             return None, None
+
+    def get_exclude_bands(self):
+        if "exclude_bands" in self.parsed:
+            return self.parsed["exclude_bands"]["exclude_bands"]
+        else:
+            return np.array([], dtype=int)
+
+    @classmethod
+    def parse_exclude_bands(cls, exclude_bands: str):
+        """
+        parses the exclude_bands string  (1-based indexing) 
+        and returns a sorted numpy array of excluded bands (0-based indexing)"""
+        excluded = set()
+        for item in exclude_bands.split(','):
+            if item.strip():
+                ends = [int(x) for x in item.replace(':', '-').split('-')]
+                assert len(ends) in [1, 2], f"Invalid exclude_bands format: {item}"
+                if ends[-1] < ends[0]:
+                    raise ValueError(f"bands range should be in ascending order: {item}")
+                if np.any(np.array(ends) < 1):
+                    raise ValueError(f"bands index should be positive: {item}")
+                excluded.update(range(ends[0] - 1, ends[-1])) if len(ends) == 2 else excluded.add(ends[0] - 1)
+
+        return np.array(sorted(excluded))
+
 
 
 def parse_win_raw(filename=None, text=None):

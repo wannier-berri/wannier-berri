@@ -1,105 +1,126 @@
 import os
-import warnings
+import logging
+logger = logging.getLogger(__name__)
 
 
-class Parallel():
-    """ a class to store parameters of parallel evaluation
+def get_ray_runtime_env(runtime_env=None, use_current_checkout=True):
+    """Build a Ray runtime_env that ships the local wannierberri checkout.
 
     Parameters
-    -----------
-    num_cpus : int
-        number of parallel processes. If `None` - automatically chose by `Ray` (1 per CPU)
-    npar_k : int
-        additional parallelisation over k-points inside the FFT grid
-    cluster : bool
-        set to `True` to use a multi-node ray cluster ( see also `wannierberri.cluster <file:///home/stepan/github/wannier-berri-org/html/docs/parallel.html#multi-node-mode>`__  module)
-    ray_init : dict
-        parameters to be passed to `ray.init()`. Use only if you know wwhat you are doing.
-    progress_step_percent : int or float
-        progress (and estimated time to end) will be printed after each percent is completed
-"""
+    ----------
+    runtime_env : dict or None
+        Existing Ray runtime environment configuration.
+    use_current_checkout : bool
+        If ``True``, include the local ``wannierberri`` package directory in
+        ``py_modules`` so workers import the same checkout as the driver.
+    """
+    if runtime_env is None:
+        runtime_env_loc = {}
+    else:
+        runtime_env_loc = dict(runtime_env)
 
-    def __init__(
-        self,
-        num_cpus=None,
-        npar_k=0,
-        ray_init=None,  # add extra parameters for ray.init()
-        cluster=False,  # add parameters for ray.init() for the slurm cluster
-        progress_step_percent=1,
-        ignore_initialized=False,
-    ):
-        self.method = "ray"
+    if not use_current_checkout:
+        return runtime_env_loc or None
+
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    py_modules = list(runtime_env_loc.get("py_modules", []))
+    if package_dir not in py_modules:
+        py_modules.append(package_dir)
+    runtime_env_loc["py_modules"] = py_modules
+    return runtime_env_loc
+
+
+def get_ray_cpus_count():
+    try:
         import ray
         if ray.is_initialized():
-            if not ignore_initialized:
-                warnings.warn("Ray is already initialized, using the existing initialization, ignoring the parameters passed to Parallel()")
+            return int(round(ray.cluster_resources()['CPU']))
         else:
-
-            if ray_init is None:
-                ray_init = {}
-            ray_init_loc = {}
-            if cluster:
-                # The follwoing is done for testing, when __init__ is called with `cluster = True`,
-                # but no actual ray cluster was initialized (and hence the needed environmental variables are not set
-                def set_opt(opt, def_val):
-                    if opt not in ray_init:
-                        ray_init_loc[opt] = def_val()
-                    else:
-                        warnings.warn(f"the ray cluster will use '{opt}={ray_init[opt]}' provided in ray_init")
-                set_opt('address', lambda: 'auto')
-                set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
-                set_opt('_redis_password', lambda: os.environ["redis_password"])
-
-            ray_init_loc.update(ray_init)
-            ray_init_loc['num_cpus'] = num_cpus
-            print("initializing ray with ", ray_init_loc)
-            ray.init(**ray_init_loc)
-        self.progress_step_percent = progress_step_percent
-        self.num_cpus = int(round(ray.available_resources()['CPU']))
-        self.ray = ray
-        _, self.npar_k = pool(npar_k)
-        self.npar_K = int(round(self.num_cpus / self.npar_k))
-
-    def progress_step(self, n_tasks, npar):
-        return max(1, npar, int(round(n_tasks * self.progress_step_percent / 100)))
-
-    def shutdown(self):
-        self.ray.shutdown()
+            return 1
+    except ImportError:
+        return 1
 
 
-class Serial(Parallel):
-    """ a class defining the serial execution (although `npar_k` is allowed)
+def ray_init_cluster(
+    num_cpus=None,
+    ignore_initialized=False,
+    use_current_checkout=True,
+    **ray_init,
+):
+    """# The follwoing is done for testing, when __init__ is called with `cluster = True`,
+    # but no actual ray cluster was initialized (and hence the needed environmental variables are not set
+    """
+    import ray
+    if ray.is_initialized():
+        if not ignore_initialized:
+            logger.warning("Ray is already initialized, using the existing initialization, ignoring the parameters passed to ray_init_cluster")
+        return
+    ray_init_loc = {}
+
+    def set_opt(opt, def_val):
+        if opt not in ray_init:
+            ray_init_loc[opt] = def_val()
+        else:
+            logger.warning("the ray cluster will use '%s=%s' provided in ray_init", opt, ray_init[opt])
+    set_opt('address', lambda: 'auto')
+    set_opt('_node_ip_address', lambda: os.environ["ip_head"].split(":")[0])
+    set_opt('_redis_password', lambda: os.environ["redis_password"])
+
+    ray_init_loc.update(ray_init)
+    runtime_env = get_ray_runtime_env(ray_init_loc.get('runtime_env'), use_current_checkout=use_current_checkout)
+    if runtime_env is not None:
+        ray_init_loc['runtime_env'] = runtime_env
+    ray_init_loc['num_cpus'] = num_cpus
+    logger.info(f"initializing ray with {ray_init_loc}")
+    ray.init(**ray_init_loc)
+
+
+def ray_init(ignore_missing=True, use_current_checkout=True, **kwargs):
+    """tries to import and initialize ray, but does nothing if it cannot be imported, 
+    or if it is already initialized
 
     Parameters
-    -----------
-    npar_k : int
-        additional parallelisation ove k-points inside the FFT grid
-    progress_step_percent : int or float
-        progress (and estimated time to end) will be printed after each percent is completed
-"""
-
-    def __init__(self, npar_k=None, progress_step_percent=1):
-        self.progress_step_percent = progress_step_percent
-        self.method = "serial"
-        self.num_cpus = 1
-        if npar_k is None:
-            _, self.npar_k = pool(0)
+    ----------
+    kwargs:
+        parameters to be passed to ray.init() function. Please refer to ray `documentation <https://docs.ray.io/en/latest/>`__ for more options of ray.init() function.
+        Use ``use_current_checkout=False`` to disable automatic shipping of the
+        local ``wannierberri`` checkout to Ray workers.
+    """
+    try:
+        import ray
+        if ray.is_initialized():
+            logger.info(f"ray is already initialized with {get_ray_cpus_count()} cpus")
         else:
-            self.npar_k = npar_k
-        self.npar_K = 1
+            runtime_env = get_ray_runtime_env(kwargs.get('runtime_env'), use_current_checkout=use_current_checkout)
+            if runtime_env is not None:
+                kwargs['runtime_env'] = runtime_env
+            ray.init(**kwargs)
+    except ImportError as err:
+        if ignore_missing:
+            logger.info(f"write : unable to import ray, no initialization performed:{err}")
+        else:
+            raise RuntimeError(f"write : unable to import ray, no initialization performed:{err}. Exiting")
 
-    def shutdown(self):
-        print("No need to shutdown Serial()")
 
 
+def ray_shutdown():
+    """tries to shutdown ray, but does nothing if it cannot be imported, or if it is not initialized"""
+    try:
+        import ray
+        if ray.is_initialized():
+            ray.shutdown()
+    except ImportError:
+        pass
 
-def pool(npar):
-    if npar > 1:
-        try:
-            from multiprocessing import Pool
-            pool = Pool(npar).imap
-            print(f'created a pool of {npar} workers')
-            return pool, npar
-        except Exception as err:
-            print(f'failed to create a pool of {npar} workers : {err}\n doing in serial')
-    return (lambda fun, lst: [fun(x) for x in lst]), 1
+
+def check_ray_initialized():
+    try:
+        import ray
+        if ray.is_initialized():
+            return True
+        else:
+            logger.warning("ray package found, but ray is not initialized, running in serial mode")
+            return False
+    except ImportError:
+        logger.warning("Ray is not installed, running in serial mode")
+        return False

@@ -3,9 +3,9 @@ import multiprocessing
 import numpy as np
 from ..symmetry.projections import ProjectionsSet
 
-from ..symmetry.orbitals import Bessel_j_exp_int, Projector
-from .utility import str2arraymmn
 from .w90file import W90_file, auto_kptirr, check_shape
+import logging
+logger = logging.getLogger(__name__)
 
 
 class AMN(W90_file):
@@ -37,10 +37,31 @@ class AMN(W90_file):
     """
 
     extension = "amn"
+    npz_tags_optional = ["positions", "orbitals", "radial_nodes_list", "basis_list", "spread_list", "spinor", "wannier_names", "atom_centers_red", "wannier_to_atom_map"]
 
-    def __init__(self, data, NK=None):
+    def __init__(self,
+                 data,
+                 NK=None,
+                 positions=None,
+                 orbitals=None,
+                 radial_nodes_list=None,
+                 basis_list=None,
+                 spread_list=None,
+                 wannier_names=None,
+                 atom_centers_red=None,
+                 wannier_to_atom_map=None,
+                 spinor=None):
         super().__init__(data=data, NK=NK)
         self.NB, self.NW = check_shape(self.data)
+        self.positions = positions
+        self.orbitals = orbitals
+        self.radial_nodes_list = radial_nodes_list
+        self.basis_list = basis_list
+        self.spread_list = spread_list
+        self.spinor = spinor
+        self.wannier_names = wannier_names
+        self.atom_centers_red = atom_centers_red
+        self.wannier_to_atom_map = wannier_to_atom_map
 
     @property
     def num_wann(self):
@@ -52,30 +73,26 @@ class AMN(W90_file):
         if npar is None:
             npar = multiprocessing.cpu_count()
         f_amn_in = open(seedname + ".amn", "r").readlines()
-        print(f"reading {seedname}.amn: " + f_amn_in[0].strip())
+        logger.debug("reading %s.amn: %s", seedname, f_amn_in[0].strip())
         s = f_amn_in[1]
         NB, NK, NW = np.array(s.split(), dtype=int)
         block = NW * NB
         allmmn = (f_amn_in[2 + j * block:2 + (j + 1) * block] for j in range(NK))
         p = multiprocessing.Pool(npar)
+        from .utility import str2arraymmn
         data = np.array(p.map(str2arraymmn, allmmn)).reshape((NK, NW, NB)).transpose(0, 2, 1)
         return AMN(data=data)
 
     def to_w90_file(self, seedname):
-        f_amn_out = open(seedname + ".amn", "w")
+        f_amn_out = self.open_file(seedname, "w")
         f_amn_out.write(f"created by WannierBerri on {datetime.now()} \n")
-        print(f"writing {seedname}.amn: ")
+        logger.debug("writing %s.amn: ", seedname)
         f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
         for ik in range(self.NK):
             for iw in range(self.NW):
                 for ib in range(self.NB):
-                    f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik, ib, iw].real:17.12f} {self.data[ik, ib, iw].imag:17.12f}\n")
+                    f_amn_out.write(f"{ib + 1:4d} {iw + 1:4d} {ik + 1:4d} {self.data[ik][ib, iw].real:17.12f} {self.data[ik][ib, iw].imag:17.12f}\n")
 
-    # def get_disentangled(self, v_left, v_right):
-    #     print(f"v shape  {v_left.shape}  {v_right.shape} , amn shape {self.data.shape} ")
-    #     data = np.einsum("klm,kmn->kln", v_left, self.data)
-    #     print(f"shape of data {data.shape} , old {self.data.shape}")
-    #     return self.__class__(data=data)
 
     def spin_order_block_to_interlace(self):
         """
@@ -86,53 +103,13 @@ class AMN(W90_file):
         data[:, :, 1::2] = self.data[:, :, self.NW // 2:]
         self.data = data
 
+
     def spin_order_interlace_to_block(self):
         """ the reverse of spin_order_block_to_interlace"""
         data = np.zeros((self.NK, self.NB, self.NW), dtype=complex)
         data[:, :, :self.NW // 2] = self.data[:, :, 0::2]
         data[:, :, self.NW // 2:] = self.data[:, :, 1::2]
         self.data = data
-
-    # def write(self, seedname, comment="written by WannierBerri"):
-    #     comment = comment.strip()
-    #     f_amn_out = open(seedname + ".amn", "w")
-    #     print(f"writing {seedname}.amn: " + comment + "\n")
-    #     f_amn_out.write(comment + "\n")
-    #     f_amn_out.write(f"  {self.NB:3d} {self.NK:3d} {self.NW:3d}  \n")
-    #     for ik in range(self.NK):
-    #         f_amn_out.write("".join(" {:4d} {:4d} {:4d} {:17.12f} {:17.12f}\n".format(
-    #             ib + 1, iw + 1, ik + 1, self.data[ik, ib, iw].real, self.data[ik, ib, iw].imag)
-    #             for iw in range(self.NW) for ib in range(self.NB)))
-    #     f_amn_out.close()
-
-
-    # def from_bandstructure_s_delta(self, bandstructure, positions, normalize=True):
-    #     """
-    #     Create an AMN object from a BandStructure object
-    #     NOTE!!: Only for delta-localised s-orbitals
-
-    #     more complete implementation is in from_bandstructure()
-
-    #     Parameters
-    #     ----------
-    #     bandstructure : irrep.bandstructure.BandStructure
-    #         the band structure object
-    #     positions : array( (N, 3), dtype=float)
-    #         the positions of the orbitals
-    #     normalize : bool
-    #         if True, the wavefunctions are normalised
-    #     """
-    #     data = []
-    #     pos = np.array(positions)
-    #     for kp in bandstructure.kpoints:
-    #         igk = kp.ig[:3, :] + kp.k[:, None]
-    #         exppgk = np.exp(-2j * np.pi * (pos @ igk))
-    #         wf = kp.WF.conj()
-    #         if normalize:
-    #             wf /= np.linalg.norm(wf, axis=1)[:, None]
-    #         data.append(wf @ exppgk.T)
-    #     self.data = np.array(data)
-    #     return self
 
 
     @classmethod
@@ -154,33 +131,46 @@ class AMN(W90_file):
         normalize : bool
             if True, the wavefunctions are normalised
         """
+        from ..symmetry.orbitals import Bessel_j_radial_int, Projector
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
+
         positions = []
         orbitals = []
+        radial_nodes_list = []
         basis_list = []
-        print(f"Creating amn. Using projections_set \n{projections}")
+        spread_list = []
+        logger.info(f"Creating amn. Using projections_set \n{projections}")
         for proj in projections.projections:
             pos, orb = proj.get_positions_and_orbitals()
             positions += pos
             orbitals += orb
-            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site)]
+            radial_nodes_list += [proj.radial_nodes] * proj.num_wann_scalar
+            spread_list += [proj.spread_factor] * proj.num_wann_scalar
+            basis_list += [bas  for bas in proj.basis_list for _ in range(proj.num_wann_per_site_scalar)]
             if verbose:
-                print(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
+                logger.info(f"proj {proj} pos {pos} orb {orb} basis_list {basis_list}")
         spinor = projections.spinor
+        positions = np.array(positions)
+        orbitals = np.array(orbitals)
+        radial_nodes_list = np.array(radial_nodes_list)
+        basis_list = np.array(basis_list)
+
+
 
 
         if verbose:
-            print(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
+            logger.info(f"Creating amn. Positions = {positions} \n orbitals = {orbitals} \n basis_list = \n{basis_list}")
         data = {}
         pos = np.array(positions)
         rec_latt = bandstructure.RecLattice
-        bessel = Bessel_j_exp_int()
+        unit_cell_volume = np.linalg.det(bandstructure.spacegroup.lattice)
+        bessel = Bessel_j_radial_int()
 
-        for i, ikirr in enumerate(kptirr):
-            kp = bandstructure.kpoints[selected_kpoints[i]]
+        for ikirr in kptirr:
+            kp = bandstructure.kpoints[selected_kpoints[ikirr]]
             igk = kp.ig[:, :3] + kp.k[None, :]
             expgk = np.exp(-2j * np.pi * (pos @ igk.T))
             wf = kp.WF
@@ -193,13 +183,15 @@ class AMN(W90_file):
                 wf_down = wf[:, :, 1]
 
             gk = igk @ rec_latt
-            projector = Projector(gk, bessel)
-            prj = list([projector(orb, basis) for orb, basis in zip(orbitals, basis_list)])
-            # print(f"expgk shape {expgk.shape} igk shape {igk.shape} pos shape {pos.shape}")
-            # print(f"prj shapes {[p.shape for p in prj]} total {np.array(prj).shape}")
-            proj_gk = np.array(prj) * expgk
+            prj = []
+            projector_dict = {}
+            for orb, basis, radial_nodes, spread_factor in zip(orbitals, basis_list, radial_nodes_list, spread_list):
+                if spread_factor not in projector_dict:
+                    projector_dict[spread_factor] = Projector(gk, bessel, spread_factor=spread_factor)
+                projector = projector_dict[spread_factor]
+                prj.append(projector(orb, basis, radial_nodes))
+            proj_gk = np.array(prj) * expgk / np.sqrt(unit_cell_volume)
             if spinor:
-                # print(f"shapes proj_gk:{proj_gk.shape}, wf_up : {wf_up.shape}, wf_down : {wf_down.shape}, ")
                 proj_up = wf_up @ proj_gk.T
                 proj_down = wf_down @ proj_gk.T
                 datak = []
@@ -209,7 +201,12 @@ class AMN(W90_file):
                 data[ikirr] = np.array(datak).T
             else:
                 data[ikirr] = wf[:, :, 0] @ proj_gk.T
-        return AMN(data=data, NK=NK)
+        return AMN(data=data, NK=NK, positions=positions, orbitals=orbitals, radial_nodes_list=radial_nodes_list, basis_list=basis_list,
+                   spread_list=spread_list, spinor=spinor,
+                   wannier_names=projections.get_wannier_names(),
+                   atom_centers_red=projections.atom_centers_red,
+                   wannier_to_atom_map=projections.wannier_to_atom_map
+        )
 
     def equals(self, other, tolerance=1e-8):
         iseq, message = super().equals(other, tolerance)
@@ -219,52 +216,15 @@ class AMN(W90_file):
             return False, f"the number of Wannier functions is not equal: {self.NW} and {other.NW} correspondingly"
         return True, ""
 
-
-# def amn_from_bandstructure_s_delta(bandstructure, positions, normalize=True, return_object=True):
-#     """
-#     Create an AMN object from a BandStructure object
-#     NOTE!!: Only for delta-localised s-orbitals
-
-#     more complete implementation is in amn_from_bandstructure()
-
-#     Parameters
-#     ----------
-#     bandstructure : irrep.bandstructure.BandStructure
-#         the band structure object
-#     positions : array( (N, 3), dtype=float)
-#         the positions of the orbitals
-#     normalize : bool
-#         if True, the wavefunctions are normalised
-#     return_object : bool
-#         if True, return an AMN object, otherwise return the data as a numpy array
-#     """
-#     amn = AMN.from_bandstructure_s_delta(bandstructure, positions, normalize=normalize)
-#     if return_object:
-#         return amn
-#     else:
-#         return amn.data
-
-
-def amn_from_bandstructure(bandstructure, projections: ProjectionsSet,
-                           normalize=True, return_object=True, verbose=False):
-    """
-    Create an AMN object from a BandStructure object
-    this function is kept for backward compatibility,
-    use `AMN.from_bandstructure()` instead
-
-    Parameters
-    ----------
-    bandstructure : BandStructure
-        the band structure object
-    projections : ProjectionsSet
-        the projections set as an object
-    normalize : bool
-        if True, the wavefunctions are normalised
-    return_object : bool
-        if True, return an AMN object, otherwise return the data as a numpy array
-    """
-    amn = AMN.from_bandstructure(bandstructure, projections, normalize=normalize, verbose=verbose)
-    if return_object:
-        return amn
-    else:
-        return amn.data
+    def get_high_projectability(self, threshold=0.5, select_WF=None):
+        """
+        Get the maximum projection value over all k-points and bands
+        """
+        if select_WF is None:
+            select_WF = range(self.NW)
+        result = {}
+        for ik, data in self.data.items():
+            proj = (np.abs(data[:, select_WF])**2).sum(axis=1)
+            logger.info(f"ik={ik} proj = {proj}")
+            result[ik] = (proj >= threshold)
+        return result

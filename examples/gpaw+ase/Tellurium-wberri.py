@@ -2,7 +2,7 @@
 
 from matplotlib import pyplot as plt
 from gpaw import GPAW
-from wannierberri import System_ASE
+from wannierberri import System_R
 import wannierberri as wberri
 import numpy as np
 
@@ -22,31 +22,10 @@ wan = Wannier(nwannier=12, calc=calc, file='wannier-sp.pickle')
 
 print(wan.Gdir_dc)
 print(wan.kklst_dk)
-# print (wan.kpt_kc)
-# for k,kpt in enumerate(wan.kpt_kc):
-#    for d,G in enumerate(wan.Gdir_dc):
-#        print (k,kpt,G,wan.kklst_dk[d,k],wan.kpt_kc[wan.kklst_dk[d,k]])
-# system = System_ASE(wan,ase_calc=calc, berry=True,ase_R_vectors = False,transl_inv_MV = True)
-
-# for k,kpt in enumerate(system.kpt_red):
-#    for d,G in enumerate(system.mmn.bk_red):
-#        print (k,kpt,G,system.mmn.neighbours[k,d],system.kpt_red[system.mmn.neighbours[k,d]],system.mmn.G[k,d])
-
-
-# exit()
-# for kz in np.linspace(0,1,21):
-#    print (f"{kz:8.5f}",np.linalg.eigvalsh(wan.get_hamiltonian_kpoint([1./3,1./3,kz])))
-
-# system = System_ASE(wan,ase_calc=calc, berry=False)
-# exit()
-
-
-# for kz  in np.linspace(0,1,21):
-#    print (f"{kz:8.5f}",np.linalg.eigvalsh(wan.get_hamiltonian_kpoint([1./3,1./3,kz])))
 
 k1 = k2 = 1. / 3
 
-system = System_ASE(wan, berry=True)
+system = System_R.from_ase(wan, berry=True)
 
 print(system.wannier_centers_cart)
 

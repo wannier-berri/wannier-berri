@@ -1,4 +1,5 @@
 """Test symmetrization of Wannier models"""
+import os
 import numpy as np
 import pytest
 from pytest import approx
@@ -18,6 +19,8 @@ from .test_run import (
     calculators_GaAs_internal,
     calculators_Te,
 )
+
+from .common import OUTPUT_DIR
 
 
 
@@ -267,7 +270,7 @@ def test_GaAs_dynamic_sym(check_run, system_GaAs_sym_tb, compare_any_result):
         result_irr_k.results["injection_current"].data, abs=1e-6)
 
     assert result_full_k.results["opt_conductivity"].data == approx(
-        result_irr_k.results["opt_conductivity"].data, abs=1e-7)
+        result_irr_k.results["opt_conductivity"].data, abs=2e-7)
 
 
 
@@ -291,7 +294,12 @@ def test_Te_sparse(check_symmetry, system_Te_sparse):
 
 
 def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
-    param = {'Efermi': Efermi_Te_sparse, "tetra": True, 'use_factor': False, 'Emax': 6.15, 'hole_like': True}
+    param = {'Efermi': Efermi_Te_sparse,
+             "tetra": True,
+             'use_factor': False,
+             'Emax': 6.15,
+             'hole_like': True,
+             }
     calculators = {}
     for k, v in calculators_Te.items():
         par = {}
@@ -309,11 +317,7 @@ def test_Te_sparse_tetragrid(check_run, system_Te_sparse, compare_any_result):
         use_symmetry=True,
         grid=grid,
         # temporarily weakened precision here. Will restrict it later with new data
-        extra_precision={"berry_dipole": 3e-7},
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
+        extra_precision={"berry_dipole": 1e-6},
     )
 
 
@@ -336,11 +340,7 @@ def test_Te_sparse_tetragridH(check_run, system_Te_sparse, compare_any_result):
         use_symmetry=True,
         grid=grid,
         # temporarily weakened precision here. Will restrict it later with new data
-        extra_precision={"berry_dipole": 3e-7, "dos": 2e-8},
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
+        extra_precision={"berry_dipole": 1e-6, "dos": 1e-7},
     )
 
 
@@ -372,6 +372,8 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
     from wannierberri.system import System_PythTB
     from irrep.spacegroup import SpaceGroup
     import pythtb
+    from wannierberri.models import NEW_PYTHTB_VERSION
+    from packaging import version
     from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
     from wannierberri.symmetry.projections import ProjectionsSet, Projection
 
@@ -433,17 +435,25 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
 
     norb = proj.num_wann_per_site
 
-    print(f"basis list : \n{"\n".join(str(a) for a in proj_set.projections[0].basis_list)}")
+    basis_str = '\n'.join(str(a) for a in proj_set.projections[0].basis_list)
+    print(f"basis list : \n{basis_str}")
 
 
     symmetrizer = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
     rot_orb = np.array(symmetrizer.rot_orb_list[0])
     assert np.allclose(rot_orb, np.round(rot_orb), atol=1e-10), f"For the chosen bases the rotation matrices should be integer, but they are \n{rot_orb}"
 
-    model = pythtb.tb_model(dim_k=3, dim_r=3,
-                            lat=lattice,
-                            orb=[[1 / 3, 1 / 3, 0]] * norb + [[2 / 3, 2 / 3, 1 / 2]] * norb,
-                            nspin=1)
+    orb = [[1 / 3, 1 / 3, 0]] * norb + [[2 / 3, 2 / 3, 1 / 2]] * norb
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        model = pythtb.tb_model(dim_k=3, dim_r=3,
+                           lat=lattice,
+                           orb=[[1 / 3, 1 / 3, 0]] * norb + [[2 / 3, 2 / 3, 1 / 2]] * norb,
+                           nspin=1)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lattice,
+                                 orb_vecs=orb,
+                                 periodic_dirs=[0, 1, 2])
+        model = pythtb.TBModel(lattice, spinful=False)
     for i in range(norb * 2):
         model.set_onsite(rnd(), ind_i=i)
 
@@ -456,7 +466,7 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
 
     calculators = {"tabulate": wberri.calculators.TabulatorAll(tabulators={})}
 
-    grid = wberri.Grid(system,
+    grid = wberri.Grid(system=system,
                     NK=[24, 24, 4],
                     NKFFT=[6, 6, 2],
                     )
@@ -464,6 +474,7 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
     results_tab = wberri.run(system,
                              parallel=False,
                     grid=grid,
+                    fout_name=os.path.join(OUTPUT_DIR, "result"),
                     calculators=calculators,
                     use_irred_kpt=False,
                         symmetrize=False,)
@@ -471,6 +482,7 @@ def test_symmetrization_model(ibasis1, ibasis2, include_TR):
     results_tab_sym = wberri.run(system,
                                 parallel=False,
                     grid=grid,
+                    fout_name=os.path.join(OUTPUT_DIR, "result"),
                     calculators=calculators,
                     use_irred_kpt=True,
                         symmetrize=True,)

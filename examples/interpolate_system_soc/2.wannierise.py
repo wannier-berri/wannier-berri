@@ -1,0 +1,44 @@
+import numpy as np
+from gpaw import GPAW
+from irrep.spacegroup import SpaceGroup
+from wannierberri.symmetry.projections import Projection, ProjectionsSet
+from wannierberri import WannierDataSOC
+from wannierberri.system.system_soc import SystemSOC
+import wannierberri as wberri
+
+
+
+for m in 0.0, 2.2:
+    gpaw_calc = GPAW(f"Fe_m{m:.1f}-nscf-irred-444.gpw")
+    sg = SpaceGroup.from_gpaw(gpaw_calc)
+    projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
+    projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
+    proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
+
+    # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
+    # os.makedirs(path, exist_ok=True)
+    wandata = WannierDataSOC.from_gpaw(
+        calculator=gpaw_calc,
+        projections=proj_set,
+        mp_grid=(4, 4, 4),
+        spacegroup=sg,
+    )
+
+    wberri.wannierise(
+        wandata=wandata,
+        froz_min=-np.inf,
+        froz_max=17,
+        outer_min=-100,
+        outer_max=50,
+        num_iter=500,
+        print_progress_every=10,
+        sitesym=True,
+        localise=True,
+    )
+
+    theta = 0
+    phi = 0
+
+    system = SystemSOC.from_wannierdata(wandata=wandata, berry=True, silent=False)
+    system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
+    system.save_npz(f"system_soc_m{m:.1f}")

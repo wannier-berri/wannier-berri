@@ -2,10 +2,14 @@
 from .win import WIN
 from .eig import EIG
 from .mmn import MMN
-from .amn import AMN, amn_from_bandstructure
+from .amn import AMN
 from .xxu import UIU, UHU, SIU, SHU
 from .spn import SPN
 from .unk import UNK
+from .soc import SOC
 
 from .chk import CheckPoint
-from .w90data import Wannier90data
+from .wandata import WannierData
+from .wandata_soc import WannierDataSOC
+from .w90data import Wannier90data  # legacy, use WannierData instead
+from .w90data_soc import Wannier90dataSOC  # legacy, use WannierDataSOC instead

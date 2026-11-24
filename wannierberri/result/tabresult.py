@@ -3,9 +3,12 @@ from time import time
 import multiprocessing
 import functools
 from collections.abc import Iterable
-import warnings
 from .result import Result
 from .kbandresult import get_component
+from ..utility import savez
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class TABresult(Result):
@@ -22,7 +25,7 @@ class TABresult(Result):
         self.save_mode = save_mode
         self.results = results
         for k, res in results.items():
-            assert len(kpoints) == res.nk
+            assert len(kpoints) == res.nk, f"number of kpoints {len(kpoints)} does not match number of kpoints in result {res.nk} for quantity {k}"
             if hasattr(res, "nband"):
                 assert self.nband == res.nband
 
@@ -39,7 +42,7 @@ class TABresult(Result):
         return self
 
     def __add__(self, other):
-        if other == 0:
+        if other == 0 or other is None:
             return self
         assert self.mode == other.mode
         assert self.save_mode == other.save_mode
@@ -133,11 +136,11 @@ class TABresult(Result):
 
     def to_grid(self, grid, order='C'):
         assert (self.mode == "grid")
-        print("setting the grid")
+        logger.debug("setting the grid")
         grid1 = [np.linspace(0., 1., g, False) for g in grid]
-        print("setting new kpoints")
+        logger.debug("setting new kpoints")
         k_new = np.array(np.meshgrid(grid1[0], grid1[1], grid1[2], indexing='ij')).reshape((3, -1), order=order).T
-        print("finding equivalent kpoints")
+        logger.debug("finding equivalent kpoints")
         # check if each k point is on the regular grid
         kpoints_int = np.rint(self.kpoints * grid[None, :]).astype(int)
         on_grid = np.all(abs(kpoints_int / grid[None, :] - self.kpoints) < 1e-5, axis=1)
@@ -152,21 +155,38 @@ class TABresult(Result):
             if on_grid[ik]:
                 k_map[ind_grid[ik]].append(ik)
             else:
-                warnings.warn(f"k-point {ik}={self.kpoints[ik]} is not on the grid, skipping.")
+                logger.debug("k-point %s=%s is not on the grid, skipping.", ik, self.kpoints[ik])
         t0 = time()
-        print("collecting")
+        logger.debug("collecting")
         results = {r: self.results[r].to_grid(k_map) for r in self.results}
         t1 = time()
-        print(f"collecting: to_grid  : {t1 - t0}")
+        logger.debug("collecting: to_grid  : %s", t1 - t0)
         res = TABresult(k_new, recip_lattice=self.recip_lattice, results=results, mode=self.mode,
                         save_mode=self.save_mode)
         t2 = time()
-        print(f"collecting: TABresult  : {t2 - t1}")
+        logger.debug("collecting: TABresult  : %s", t2 - t1)
         res.grid = np.copy(grid)
         res.gridorder = order
         t3 = time()
-        print(f"collecting - OK : {t3 - t0} ({t3 - t2})")
+        logger.debug("collecting - OK : %s (%s)", t3 - t0, t3 - t2)
         return res
+
+    def self_to_path(self, path):
+        """reorder the k-points and results according to the path"""
+        kpoints_path = path.get_kpoints()
+        mapping = -np.ones(len(kpoints_path), dtype=int)
+        kpoints = self.kpoints
+        diff = abs(kpoints[:, None, :] - kpoints_path[None, :, :])
+        diff -= np.round(diff)  # account for periodicity
+        norm = np.linalg.norm(diff, axis=2)
+        mapping = np.argmin(norm, axis=0)
+        diff = abs(kpoints[mapping] - kpoints_path)
+        diff -= np.round(diff)  # account for periodicity
+        assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
+        self.results = {r: self.results[r].to_path(mapping) for r in self.results}
+        self.kpoints = kpoints_path.copy()
+
+
 
     def self_to_grid(self):
         res = self.to_grid(self.find_grid, order='C')
@@ -221,6 +241,9 @@ class TABresult(Result):
                            frmsf_name=frmsf_name
                            )
 
+    def get_eigenvalues(self, iband=None):
+        return self.get_data(quantity="Energy", iband=iband)
+
     def plot_path_fat(
             self,
             path,
@@ -233,7 +256,8 @@ class TABresult(Result):
             iband=None,
             mode="fatband",
             cmap="jet",
-            fatfactor=20,
+            fatfactor=3,
+            gain=20,
             kwargs_line={},
             label=None,
             fatmax=None,
@@ -267,7 +291,7 @@ class TABresult(Result):
             raise ValueError("iband should be either an integer, or array of intergers, or None")
 
         kline = path.getKline()
-        E = self.get_data(quantity='Energy', iband=iband) - Eshift
+        E = self.get_eigenvalues(iband=iband) - Eshift
 
         axes.set_ylabel(r"$E$, eV")
         if Emin is None:
@@ -311,10 +335,11 @@ class TABresult(Result):
                     e = E[:, ib]
                     selE = (e <= Emax) * (e >= Emin)
                     klineselE = kline[selE]
-                    y = data[selE][:, ib] * fatfactor
+                    y = data[selE][:, ib] * gain
                     select = abs(y) > 2
                     y[select] = np.log2(abs(y[select])) * np.sign(y[select])
                     y[~select] *= 0.5
+                    y *= fatfactor
                     e1 = e[selE]
                     for col, sel in [("red", (y > 0)), ("blue", (y < 0))]:
                         sz = abs(y[sel])
@@ -339,9 +364,15 @@ class TABresult(Result):
         x_ticks_labels = []
         x_ticks_positions = []
         for k, v in path.labels.items():
-            x_ticks_labels.append(v)
+            x_ticks_labels.append(label_to_latex(v))
             x_ticks_positions.append(kline[k])
-            axes.axvline(x=kline[k])
+
+        x_ticks_positions = np.array(x_ticks_positions)
+        borders = [0] + [i + 1 for i in np.where(x_ticks_positions[1:] - x_ticks_positions[:-1] > 1e-4)[0].tolist()] + [len(x_ticks_positions)]
+        x_ticks_positions = [x_ticks_positions[b1:b2].mean() for b1, b2 in zip(borders, borders[1:])]
+        x_ticks_labels = ["|".join(x_ticks_labels[b1:b2]) for b1, b2 in zip(borders, borders[1:])]
+        for x in x_ticks_positions:
+            axes.axvline(x=x)
         axes.set_xticks(x_ticks_positions, x_ticks_labels)
         axes.set_ylim([Emin, Emax])
         axes.set_xlim([kmin, kmax])
@@ -363,6 +394,13 @@ class TABresult(Result):
     @property
     def max(self):
         return np.array([-1.])  # tabulating does not contribute to adaptive refinement
+
+
+def label_to_latex(label):
+    if label == "GAMMA":
+        return r"$\Gamma$"
+    else:
+        return label
 
 
 def write_frmsf(frmsf_name,
@@ -429,7 +467,8 @@ def write_frmsf(frmsf_name,
     return ttxt, twrite
 
 
-def write_npz(npz_name, quantities, res, suffix=""):
+
+def write_npz(npz_name, quantities, res, suffix="", compressed=True):
     """
     Write the data to a npz file
 
@@ -453,10 +492,10 @@ def write_npz(npz_name, quantities, res, suffix=""):
     dic = {Q: res.get_data(quantity=Q) for Q in quantities}
     if len(suffix) > 0:
         suffix = "-" + suffix
-    np.savez_compressed(f"{npz_name}{suffix}.npz",
-                        recip_lattice=res.recip_lattice,
-                        **dic
-                        )
+    savez(f"{npz_name}{suffix}.npz",
+          recip_lattice=res.recip_lattice,
+          compressed=compressed,
+          **dic)
 
 
 def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
@@ -472,7 +511,7 @@ def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
         if limits is not None:
             raise ValueError("limits shpould not be used in parallel mode")
         nppproc = a.shape[0] // npar + (1 if a.shape[0] % npar > 0 else 0)
-        print(f"using a pool of {npar} processes to write txt frmsf of {nppproc} points per process")
+        logger.info(f"using a pool of {npar} processes to write txt frmsf of {nppproc} points per process")
         asplit = [(i, i + nppproc) for i in range(0, a.shape[0], nppproc)]
         p = multiprocessing.Pool(npar)
         res = p.map(functools.partial(_savetxt, a=a, fmt=fmt, npar=0), asplit)
@@ -482,7 +521,7 @@ def _savetxt(limits=None, a=None, fmt=".8f", npar=0):
 
 
 def fermiSurfer(recip_lattice, Enk, data=None, efermi=0, npar=0, frmsf_name=None):
-    print("Enk", Enk.shape)
+    logger.debug("Enk", Enk.shape)
     grid = Enk.shape[:3]
     nband = Enk.shape[3]
     FSfile = ""
@@ -493,7 +532,7 @@ def fermiSurfer(recip_lattice, Enk, data=None, efermi=0, npar=0, frmsf_name=None
     for ib in range(nband):
         FSfile += _savetxt(a=Enk[:, :, :, ib].flatten(order='C') - efermi, npar=npar)
     if data is not None:
-        print("Xnk", data.shape)
+        logger.debug("Xnk", data.shape)
         assert data.shape[:4] == Enk.shape
         for ib in range(nband):
             FSfile += _savetxt(a=data[:, :, :, ib].flatten(order='C'), npar=npar)

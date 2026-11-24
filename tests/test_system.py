@@ -4,18 +4,20 @@ import pytest
 import os
 from packaging import version
 
+from wannierberri.fourier.rvectors import Rvectors
+
 from .common import OUTPUT_DIR, REF_DIR
 
-from .common_systems import model_1d_pythtb
 import wannierberri as wberri
-
+from wannierberri.utility import alpha_A, beta_A
 from wannierberri.system.system_R import System_R
-from wannierberri.system.system_tb import System_tb
+from wannierberri.system.system_soc import SystemSOC
+
 
 properties_wcc = ['wannier_centers_cart', 'wannier_centers_red']
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def check_system():
     def _inner(system, name,
                properties=None,
@@ -37,7 +39,6 @@ def check_system():
         if len(suffix) > 0:
             suffix = "_" + suffix
         out_dir = os.path.join(OUTPUT_DIR, 'systems', name + suffix)
-        os.makedirs(out_dir, exist_ok=True)
 
         print(f"System {name} has the following attriburtes : {sorted(system.__dict__.keys())}")
         print(f"System {name} has the following matrices : {sorted(system._XX_R.keys())}")
@@ -49,30 +50,25 @@ def check_system():
 
         # we save each property as separate file, so that if in future we add more properties, we do not need to
         # rewrite the old files, so that the changes in a PR will be clearly visible
-        for key in properties:
-            print(f"saving {key}", end="")
-            if key == 'iRvec':
-                val = system.rvec.iRvec
-            elif key == 'nRvec':
-                val = system.rvec.nRvec
-            else:
-                val = getattr(system, key)
-            np.savez(os.path.join(out_dir, key + ".npz"), val)
-            print(" - Ok!")
-        for key in matrices:
-            print(f"saving {key}", end="")
-            np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
-            print(" - Ok!")
+        system.to_npz(out_dir, extra_properties=properties, R_matrices=matrices)
+        # for key in matrices:
+        #     print(f"saving {key}", end="")
+        #     np.savez_compressed(os.path.join(out_dir, key + ".npz"), system.get_R_mat(key))
+        #     print(" - Ok!")
 
         def check_property(key, prec, XX=False, sort=None, print_missed=False, legacy=False):
             if key in exclude_properties:
                 return
             print(f"checking {key} prec={prec} XX={XX}", end="")
             try:
+                data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))[key]
+            except KeyError:
                 data_ref = np.load(os.path.join(REF_DIR, "systems", name, key + ".npz"))['arr_0']
             except FileNotFoundError as err:
                 if XX:
                     data_ref = np.load(os.path.join(REF_DIR, "systems", name, "_XX_R_" + key + ".npz"))['arr_0']
+                elif key == 'nRvec':
+                    data_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"))['arr_0'].shape[0]
                 else:
                     raise err
             if XX:
@@ -86,7 +82,7 @@ def check_system():
             else:
                 data = getattr(system, key)
             data = np.array(data)
-            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape}", end="")
+            print(f"data.shape = {data.shape}, data_ref.shape = {data_ref.shape} data={data}", end="")
             print("sort = ", sort)
             if sort is not None:
                 data_ref = data_ref[sort]
@@ -101,15 +97,18 @@ def check_system():
                 req_precision = prec
             if not data == pytest.approx(data_ref, abs=req_precision):
                 diff = abs(data - data_ref).max()
+                if data.ndim == 0:
+                    raise ValueError(f"property {key} for system {name} gives an absolute difference of {diff} greater than the required precision {req_precision} \n new data : {data} \n ref data : {data_ref}")
                 missed = np.where(abs(data - data_ref) > req_precision)
                 n_missed = len(missed[0])
                 err_msg = (f"matrix elements {key} for system {name} give an "
                            f"absolute difference of {diff} greater than the required precision {req_precision}"
-                           f"wrong elements {n_missed} out of {data.size}")
+                           f"wrong elements {n_missed} out of {data.size}"
+                           f"the sum of absolute differences is {abs(data - data_ref).sum()}")
                 if XX or print_missed:
                     if n_missed < data.size / 10:
                         err_msg += "\n" + ("\n".join(
-                            f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])}"
+                            f"{i} | {system.rvec.iRvec[i[0]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {np.round(data[i] / data_ref[i], 8) if abs(data_ref[i]) > 1e-12 else 'inf'} "
                             for i in zip(*missed)) + "\n\n")
                     else:
                         all_i = np.where(abs(data - data_ref) >= -np.inf)
@@ -120,7 +119,7 @@ def check_system():
                         ratio[np.logical_not(select)] = None
                         if XX:
                             err_msg += "\n" + ("\n".join(
-                                f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision} "
+                                f"{i} | {system.rvec.iRvec[i[2]]} | {data[i]} | {data_ref[i]} | {abs(data[i] - data_ref[i])} | {ratio[i]} | {abs(data[i] - data_ref[i]) < req_precision}  "
                                 for i in zip(*all_i)) + "\n\n")
                             XX_R_sumR = data.sum(axis=2)
                             XX_R_sumR_ref = data_ref.sum(axis=2)
@@ -136,7 +135,7 @@ def check_system():
             print(" - Ok!")
 
         if sort_iR:
-            iRvec_ref = np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True)['arr_0'].tolist()
+            iRvec_ref = Rvectors.read_dict(np.load(os.path.join(REF_DIR, "systems", name, "iRvec.npz"), allow_pickle=True))['iRvec'].tolist()
             iRvec_new = system.rvec.iRvec.tolist()
             try:
                 assert len(iRvec_ref) == len(iRvec_new), f"iRvec_ref and iRvec_new have different lengths {len(iRvec_ref)} {len(iRvec_new)}"
@@ -174,6 +173,23 @@ def check_system():
                 prec_loc = precision_matrix_elements
             check_property(key, prec_loc, XX=True, sort=sort_R, print_missed=True, legacy=legacy)
             print(f"check matrix {key} - Ok!")
+        if system.has_R_mat_all(['FF', 'OO']):
+            FF = system.get_R_mat('FF')
+            OO = system.get_R_mat('OO')
+            FF = 1j * (FF[:, :, :, alpha_A, beta_A] - FF[:, :, :, beta_A, alpha_A])
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - OO).max()
+            assert diff < 1e-10, f"antisymmetric part of FF fiffers from  OO  by {diff}"
+            print("check antisymmetric part of FF - Ok!")
+        if system.has_R_mat_all(['FF', 'GG']):
+            FF = system.get_R_mat('FF')
+            GG = system.get_R_mat('GG')
+            FF = (FF + FF.swapaxes(3, 4)) / 2
+            FF = (FF + system.rvec.conj_XX_R(FF)) / 2
+            diff = abs(FF - GG).max()
+            assert diff < 1e-10, f"symmetric part of FF fiffers from  GG  by {diff}"
+            print("check symmetric part of FF - Ok!")
+
 
     return _inner
 
@@ -246,22 +262,6 @@ def test_system_Fe_W90_proj(check_system, system_Fe_W90_proj):
     )
 
 
-
-def test_system_Fe_sym_W90_interpolate(check_system, system_Fe_sym_W90,
-                                       system_Fe_sym_W90_TR):
-    interpolator = wberri.system.interpolate.SystemInterpolator(system0=system_Fe_sym_W90,
-                                                                system1=system_Fe_sym_W90_TR)
-    system_Fe_sym_W90_interpolate = interpolator.interpolate(0.4)
-
-
-    check_system(
-        system_Fe_sym_W90_interpolate, "Fe_sym_W90_interpolate_04",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'SS'],
-        sort_iR=True,
-        legacy=False,
-    )
-
-
 def test_system_GaAs_W90(check_system, system_GaAs_W90):
     check_system(
         system_GaAs_W90, "GaAs_W90",
@@ -273,6 +273,14 @@ def test_system_GaAs_W90(check_system, system_GaAs_W90):
 def test_system_GaAs_W90_JM(check_system, system_GaAs_W90_JM):
     check_system(
         system_GaAs_W90_JM, "GaAs_W90_JM",
+        matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
+        legacy=True,
+    )
+
+
+def test_system_GaAs_W90_JM_OOGG(check_system, system_GaAs_W90_JM_OOGG):
+    check_system(
+        system_GaAs_W90_JM_OOGG, "GaAs_W90_JM",
         matrices=['Ham', 'AA', 'BB', 'CC', 'SS', 'SH', 'SA', 'SHA', 'OO', 'GG'],
         legacy=True,
     )
@@ -311,7 +319,7 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     path = os.path.join(OUTPUT_DIR, name)
     system_GaAs_tb.save_npz(path)
     system = System_R()
-    system.load_npz(path, load_all_XX_R=True)
+    system.load_npz(path)
     check_system(
         system, "GaAs_tb",
         suffix="save-load",
@@ -320,40 +328,30 @@ def test_system_GaAs_tb_save_load(check_system, system_GaAs_tb):
     )
 
 
-def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
-    check_system(
-        system_Si_W90_JM, "Si_W90_JM",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
+kwargs_sym_Si = dict(matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
         sort_iR=True,
-        legacy=True,
-    )
+        legacy=True)
+
+
+def test_system_Si_W90_JM(check_system, system_Si_W90_JM):
+    check_system(system_Si_W90_JM, "Si_W90_JM", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_JM_sym(check_system, system_Si_W90_JM_sym):
-    check_system(
-        system_Si_W90_JM_sym, "Si_W90_JM_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_JM_sym, "Si_W90_JM_sym", **kwargs_sym_Si)
+
+
+def test_system_Si_W90_JM_sym_OOGGFF(check_system, system_Si_W90_JM_sym_OOGGFF):
+    check_system(system_Si_W90_JM_sym_OOGGFF, "Si_W90_JM_sym", **kwargs_sym_Si)
 
 
 def test_system_Si_W90(check_system, system_Si_W90):
-    check_system(
-        system_Si_W90, "Si_W90",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90, "Si_W90", **kwargs_sym_Si)
 
 
 def test_system_Si_W90_sym(check_system, system_Si_W90_sym):
-    check_system(
-        system_Si_W90_sym, "Si_W90_sym",
-        matrices=['Ham', 'AA', 'BB', 'CC', 'GG', 'OO'],
-        sort_iR=True,
-        legacy=True,
-    )
+    check_system(system_Si_W90_sym, "Si_W90_sym", **kwargs_sym_Si)
+
 
 
 
@@ -473,7 +471,11 @@ def test_system_Mn3Sn_sym_tb(check_system, system_Mn3Sn_sym_tb):
 
 
 def test_system_pythtb_spinor():
-    model1, model2 = model_1d_pythtb()
+    from wannierberri.models import model_1d_pythtb
+    rnd = np.random.random(8)
+
+    model1 = model_1d_pythtb(Delta=1, hoppings=rnd, spinor_manual=False)
+    model2 = model_1d_pythtb(Delta=1, hoppings=rnd, spinor_manual=True)
     k = np.linspace(0, 1, 20, endpoint=False)
     import pythtb
     if version.parse(pythtb.__version__) < version.parse("2.0.0"):
@@ -488,7 +490,7 @@ def test_system_pythtb_spinor():
     for model, comment, e in (model2, "in a scalar way", e2), (model1, "using spinors", e1), :
         system = wberri.system.System_PythTB(model)
         grid = wberri.Grid(system=system, NKFFT=[20, 1, 1], NKdiv=1)
-        datak = wberri.data_K.get_data_k(system=system, dK=[0, 0, 0], grid=grid)
+        datak = wberri.data_K.Data_K_R(system=system, dK=[0, 0, 0], grid=grid)
         ew = datak.E_K.T
         assert e == pytest.approx(ew), ("System gave eigenvalues different from the model "
                                       f"defined in pythtb {comment}"
@@ -517,7 +519,7 @@ def test_system_random_load_bare(check_system, system_random_load_bare):
 def test_system_random_to_tb_back(check_system, system_random_GaAs_load_bare):
     path = os.path.join(OUTPUT_DIR, "random_GaAS_tb")
     system_random_GaAs_load_bare.to_tb_file(path)
-    system_tb = System_tb(path, berry=True)
+    system_tb = System_R.from_tb_dat(path, berry=True)
     print(system_tb.wannier_centers_cart)
     print(system_random_GaAs_load_bare.wannier_centers_cart)
 
@@ -565,48 +567,95 @@ def test_system_random_GaAs_load_sym(check_system, system_random_GaAs_load_sym):
     )
 
 
-def test_system_Fe_gpaw_up(check_system, system_Fe_gpaw_up):
+@pytest.mark.parametrize("wannierise", [False, True])
+def test_system_Fe_gpaw_soc(check_system, system_Fe_gpaw_soc, system_Fe_gpaw_soc_dowannierise, wannierise):
+    kwargs = dict()
+    if wannierise:
+        system = system_Fe_gpaw_soc_dowannierise
+        kwargs['precision_matrix_elements'] = 1e-6
+        kwargs['precision_properties'] = 1e-7
+    else:
+        system = system_Fe_gpaw_soc
+        kwargs['precision_matrix_elements'] = 1e-7
+        kwargs['precision_properties'] = 1e-8
     check_system(
-        system_Fe_gpaw_up, "Fe_gpaw_up",
-        matrices=['Ham', 'AA'],
-    )
-
-
-def test_system_Fe_gpaw_dw(check_system, system_Fe_gpaw_dw):
-    check_system(
-        system_Fe_gpaw_dw, "Fe_gpaw_dw",
-        matrices=['Ham', 'AA'],
-    )
-
-
-def test_system_Fe_gpaw_soc_z(check_system, system_Fe_gpaw_soc_z):
-    check_system(
-        system_Fe_gpaw_soc_z, "Fe_gpaw_soc_theta0.00_phi0.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        system, "Fe_gpaw_soc",
+        matrices=['overlap_up_down', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        **kwargs
     )
-
-
-def test_system_Fe_gpaw_soc_111(check_system, system_Fe_gpaw_soc_111):
     check_system(
-        system_Fe_gpaw_soc_111, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
+        system.system_up, "Fe_gpaw_soc/system_up",
+        matrices=['Ham', 'AA', 'dV_soc'],
+        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec', ],
+        **kwargs
     )
-
-
-def test_system_Fe_gpaw_soc_111_irred(check_system, system_Fe_gpaw_soc_111_irred):
     check_system(
-        system_Fe_gpaw_soc_111_irred, "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
+        system.system_down, "Fe_gpaw_soc/system_down",
+        matrices=['Ham', 'AA', 'dV_soc'],
         properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-        precision_matrix_elements=5e-7
+        **kwargs
     )
 
 
-def test_system_Fe_gpaw_soc_angle(check_system, system_Fe_gpaw_soc_angle):
-    check_system(
-        system_Fe_gpaw_soc_angle, "Fe_gpaw_soc_theta49.00_phi33.00_alpha1.00",
-        matrices=['Ham_SOC', 'SS', 'overlap_up_down', 'dV_soc_wann_0_0', 'dV_soc_wann_0_1', 'dV_soc_wann_1_1'],
-        properties=['num_wann', 'real_lattice', 'periodic', 'is_phonon', 'wannier_centers_cart', 'iRvec'],
-    )
+@pytest.mark.parametrize("theta_deg, phi_deg, alpha_soc", [(0, 0, 1), (54.74, 45.00, 1), (49.00, 33.00, 1)])
+def test_system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc, theta_deg, phi_deg, alpha_soc):
+    name = f"theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"
+    system_Fe_gpaw_soc_111 = get_system_Fe_gpaw_soc(phi_deg=phi_deg, theta_deg=theta_deg, alpha_soc=alpha_soc)
+
+    out_data_dir = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc")
+    os.makedirs(out_data_dir, exist_ok=True)
+    out_data_file = os.path.join(out_data_dir, f"{name}.npz")
+    ref_data_file = os.path.join(REF_DIR, "systems", "Fe_gpaw_soc", f"{name}.npz")
+    out_dict = {key: getattr(system_Fe_gpaw_soc_111, key) for key in ['alpha_soc', 'pauli_rotated']}
+    np.savez(out_data_file, **out_dict)
+    ref_data = np.load(ref_data_file)
+    for key in out_dict:
+        assert out_dict[key] == pytest.approx(ref_data[key]), f"Mismatch in {key} for system Fe_gpaw_soc_{name}"
+
+
+def test_system_soc_nspin_1(system_Fe_gpaw_soc):
+    """Test that the system with SOC and nspin=1 is equivalent to the system without SOC"""
+    system_soc = system_Fe_gpaw_soc
+    system_nospin = SystemSOC(system_up=system_soc.system_up, cell=system_soc.cell)
+    assert system_nospin.nspin == 1, "System without spin should have nspin=1"
+    assert system_nospin.rvec is None, "System without spin should not have rvec"
+    assert system_nospin.has_soc, "System without spin should have SOC"
+    path_tmp = os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_nspin_1")
+    system_nospin.to_npz(path_tmp)
+    system_nospin_loaded = SystemSOC.from_npz(path_tmp)
+    assert system_nospin_loaded.nspin == 1, "Loaded system without spin should have nspin=1"
+    assert system_nospin_loaded.rvec is None, "Loaded system without spin should not have rvec"
+    assert system_nospin_loaded.has_soc, "Loaded system without spin should retain SOC"
+    system_nospin_loaded.set_soc_axis()
+
+
+def test_check_periodic_excludes_R_vectors_of_a_nonperiodic_axis():
+    """A non-periodic direction with R vectors must warn and exclude them.
+
+    Regression test for ``System_R.check_periodic``: the exclusion branch
+    formatted the nonexistent ``self.nRvec``, called the nonexistent
+    ``self.get_X_mat``, and sliced the Wannier axes instead of the R-vector axis
+    (upstream issue #610).
+    """
+
+    class _RVec(Rvectors):
+
+        def __init__(self):
+            self.iRvec = np.array([[0, 0, 0], [0, 0, 1], [0, 0, -1]])
+
+        def clear_cached(self):
+            pass
+
+    system = System_R()
+    system.num_wann = 2
+    system.periodic = np.array([True, True, False])
+    system.rvec = _RVec()
+    ham = np.arange(3 * 2 * 2, dtype=float).reshape(3, 2, 2)
+    system.set_R_mat("Ham", ham.copy())
+    system.set_R_mat("AA", np.ones((3, 2, 2)))
+    # system._XX_R = {"Ham": ham.copy(), "AA": np.ones((3, 2, 2))}
+    system.check_periodic()
+    assert system.rvec.iRvec.tolist() == [[0, 0, 0]]
+    assert system.get_R_mat("Ham").tolist() == ham[:1].tolist()
+    assert system.get_R_mat("AA").shape == (1, 2, 2)

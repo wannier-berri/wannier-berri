@@ -1,6 +1,6 @@
-from functools import cached_property, lru_cache
 import numpy as np
-import sympy
+
+from functools import cached_property, lru_cache
 from .unique_list import UniqueListMod1, all_close_mod1
 
 
@@ -24,12 +24,12 @@ class WyckoffPosition:
         The sympy expression defining the Wyckoff position.
 
     """
-
     xdef = 1 / np.e
     ydef = 1 / np.pi
     zdef = 1 / np.sqrt(2)
 
     def __init__(self, position_str, spacegroup, free_var_values=None):
+        import sympy
         self.string = position_str
         self.spacegroup = spacegroup
         self.sympy = sympy.sympify(self.string)
@@ -155,7 +155,7 @@ class WyckoffPosition:
 
     def contains_position(self, position):
         if self.num_free_vars == 0:
-            if all_close_mod1(position, self.positions[0]):
+            if any(all_close_mod1(position, p) for p in self.positions):
                 return []
             else:
                 return None

@@ -19,7 +19,7 @@ if do_scf:
             [1 / 4, 1 / 4, 1 / 4],
         ]
     )
-    typeat = [1, 1]
+    typat = [1, 1]
 
     atoms = Atoms(
         "C2", cell=lattice, pbc=[1, 1, 1], scaled_positions=positions

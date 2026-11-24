@@ -1,6 +1,8 @@
 """Here we define some models, that can be used to test the code, or just to play around"""
 
 import numpy as np
+from packaging import version
+NEW_PYTHTB_VERSION = version.parse("2.0.0")
 
 
 def Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
@@ -56,8 +58,11 @@ def Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     import pythtb
     lat = [[1.0, 0.0], [0.5, np.sqrt(3.0) / 2.0]]
     orb = [[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]
-
-    my_model = pythtb.tb_model(2, 2, lat, orb)
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        my_model = pythtb.tb_model(2, 2, lat, orb)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
+        my_model = pythtb.TBModel(lattice)
 
     delta = 0.2
     t2 = hop2 * np.exp(1.j * phi)
@@ -75,6 +80,62 @@ def Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2):
     my_model.set_hop(t2c, 0, 0, [0, 1])
 
     return my_model
+
+
+def Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3):
+    from wannierberri.system import System_R
+    """same as :func:`~wannierberri.models.Haldane_tbm`, but uses `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
+
+    Notes
+    -----
+    PythTB should be installed to use this (`pip install pythtb`)
+    """
+    import pythtb
+    lat = [[1.0, 0.0, 0], [0.5, np.sqrt(3.0) / 2.0, 0], [0, 0, 1]]
+    orb = [[1. / 3., 1. / 3., 0], [1. / 3., 1. / 3., 0], [2. / 3., 2. / 3., 0.2], [2. / 3., 2. / 3., 0.2]]
+    lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
+    my_model = pythtb.TBModel(lattice)
+    delta = 0.2
+    my_model.set_onsite([-delta, -delta, delta, delta])
+
+    t2 = hop2 * np.exp(1.j * phi)
+    t2c = t2.conjugate()
+
+    my_model.set_hop(soc_term, 0, 1, [0, 0, 0])
+    my_model.set_hop(soc_term, 2, 3, [0, 0, 0])
+
+
+    for i, _t2 in enumerate([t2, t2c]):
+        _t2c = _t2.conjugate()
+        my_model.set_hop(hop1, 0 + i, 2 + i, [0, 0, 0])
+        my_model.set_hop(hop1, 2 + i, 0 + i, [1, 0, 0])
+        my_model.set_hop(hop1, 2 + i, 0 + i, [0, 1, 0])
+        my_model.set_hop(_t2, 0 + i, 0 + i, [1, 0, 0])
+        my_model.set_hop(_t2, 2 + i, 2 + i, [1, -1, 0])
+        my_model.set_hop(_t2, 2 + i, 2 + i, [0, 1, 0])
+        my_model.set_hop(_t2c, 2 + i, 2 + i, [1, 0, 0])
+        my_model.set_hop(_t2c, 0 + i, 0 + i, [1, -1, 0])
+        my_model.set_hop(_t2c, 0 + i, 0 + i, [0, 1, 0])
+
+
+
+    system = System_R.from_pythtb(my_model)
+    system.force_internal_terms_only = False
+    system.set_periodic([True, True, False])
+    system.set_spin_eigenstates([1, -1, 1, -1])
+    system.set_fake_AA(exp_decay=1, factor=0.5)
+    # system.set_R_mat('AA', np.random.random((system.rvec.nRvec, 4,4,3)) )
+    A = system.get_R_mat('AA')
+    for i in 0, 2:
+        for j in 1, 3:
+            A[:, i, j] = 0
+            A[:, j, i] = 0
+    for i in 1, 3:
+        for j in 1, 3:
+            A[:, i, j] = A[:, i - 1, j - 1]
+    # system.set_pointgroup(["C3z"])
+    return system
+
 
 
 def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_left=0.2, hopz_vert=0.0):
@@ -116,7 +177,11 @@ def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_lef
     orb = [[1. / 3., 1. / 3., 0.0], [2. / 3., 2. / 3., 0.0]]
 
     # make tree dimensional (stacked) tight-binding Haldene model
-    my_model = pythtb.tb_model(3, 3, lat, orb)
+    if version.parse(pythtb.__version__) < version.parse("2.0.0"):
+        my_model = pythtb.tb_model(3, 3, lat, orb)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1, 2])
+        my_model = pythtb.TBModel(lattice)
 
     # set model parameters
     t2 = hop2 * np.exp(1.j * phi)
@@ -157,6 +222,40 @@ def Chiral(delta=2, hop1=1, hop2=1 / 3, phi=np.pi / 10, hopz_right=0.0, hopz_lef
     my_model.set_hop(hopz_right, 1, 1, [1, -1, -1])
     my_model.set_hop(hopz_right, 1, 1, [0, 1, -1])
 
+    return my_model
+
+
+def SSH_ptb(delta=0.2, hop1=1.0, hop2=0.15):
+    """Create a 1D SSH model using `PythTB <http://www.physics.rutgers.edu/pythtb/>`__
+
+    Parameters
+    -----------
+    delta : float
+        difference between the on-site potentials of the two atoms
+    hop1 : float
+        nearest-neighbour hopping on the strong bond
+    hop2 : float
+        nearest-neighbour hopping on the weak bond
+
+    Notes
+    -----
+    PythTB should be installed to use this (`pip install pythtb`)
+
+    """
+    import pythtb
+
+    lat = [[1.0]]
+    orb = [[0.], [0.4]]
+
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        my_model = pythtb.tb_model(1, 1, lat, orb)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0])
+        my_model = pythtb.TBModel(lattice)
+
+    my_model.set_onsite([-delta, delta])
+    my_model.set_hop(hop1, 0, 1, [0])
+    my_model.set_hop(hop2, 1, 0, [1])
     return my_model
 
 
@@ -214,7 +313,11 @@ def CuMnAs_2d(
     ny = ny / nabs
     nz = nz / nabs
 
-    my_model = pythtb.tb_model(2, 2, lat, orb)
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        my_model = pythtb.tb_model(2, 2, lat, orb, nspin=1)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
+        my_model = pythtb.TBModel(lattice, spinful=False)
 
     # set hoppings (one for each connected pair of orbitals)
     # (amplitude, i, j, [lattice vector to cell containing j])
@@ -276,7 +379,11 @@ def KaneMele_ptb(topological):
     orb = [[1. / 3., 1. / 3.], [2. / 3., 2. / 3.]]
 
     # make two dimensional tight-binding Kane-Mele model
-    ret_model = pythtb.tb_model(2, 2, lat, orb, nspin=2)
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        ret_model = pythtb.tb_model(2, 2, lat, orb, nspin=2)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1])
+        ret_model = pythtb.TBModel(lattice, spinful=True)
 
     # set model parameters depending on whether you are in the topological
     # phase or not
@@ -327,7 +434,7 @@ def Chiral_OSD():
     """ Chiral model to trest OSD
     """
 
-    from pythtb import tb_model
+    import pythtb
     # define lattice vectors
     a = 1.0
     c = 1.0
@@ -341,7 +448,11 @@ def Chiral_OSD():
            [1 / 3, 1 / 3, 0.0]]
 
     # make three dimensional tight-binding model
-    my_model = tb_model(3, 3, lat, orb, nspin=2)
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        my_model = pythtb.tb_model(3, 3, lat, orb, nspin=2)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0, 1, 2])
+        my_model = pythtb.TBModel(lattice, spinful=True)
 
     # set model parameters
     t1 = 1.0
@@ -382,3 +493,51 @@ def Chiral_OSD():
     my_model.set_hop((1.j * l2 / a) * (-a1[0] * P1 - a1[1] * P2 + a3[2] * P3), 1, 1, [-1, 0, 1])
     my_model.set_hop((1.j * l2 / a) * ((a1[0] - a2[0]) * P1 + (a1[1] - a2[1]) * P2 + a3[2] * P3), 1, 1, [1, -1, 1])
     return my_model
+
+
+def model_1d_pythtb(Delta=1, spinor_manual=False,
+                    hoppings=None):
+    """
+    Create a 1D model with two orbitals and spin, where the spin is 
+    either implemented manually (with 4 orbitals) or using the spinor 
+    features of PythTB (with 2 spinzul orbitals). 
+
+    Parameters
+    -----------
+    Delta : float
+        half difference between the on-site potentials of the two atoms
+    spinor_manual : bool
+        whether to implement the spin degree of freedom manually (with 4 orbitals) or using the spinor features of PythTB (with 2 spinful orbitals)
+    hoppings : list of 8 floats, optional
+        list of 8 hopping parameters. If None, random hoppings will be generated. The first 4 hoppings will be used for the spin-independent
+    """
+    import pythtb
+    from packaging import version
+    lat = [[1.0]]
+    double = 2 if spinor_manual else 1
+    orb = [[0]] * double + [[0.5]] * double
+    if version.parse(pythtb.__version__) < NEW_PYTHTB_VERSION:
+        model1d = pythtb.tb_model(1, 1, lat, orb,
+                                  nspin=1 if spinor_manual else 2)
+    else:
+        lattice = pythtb.Lattice(lat_vecs=lat, orb_vecs=orb, periodic_dirs=[0])
+        model1d = pythtb.TBModel(lattice, spinful=not spinor_manual)
+
+    model1d.set_onsite([-Delta] * double + [Delta] * double)
+
+    if hoppings is None:
+        hoppings = np.random.random(8)
+    a = hoppings[:4]
+    b = hoppings[4:8]
+
+    if spinor_manual:
+        pauli = np.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[0, -1j], [1j, 0]], [[1, 0], [0, -1]]])
+        for i in range(2):
+            for j in range(2):
+                model1d.set_hop(a.dot(pauli[:, i, j]), 0 + i, 2 + j, [0])
+                model1d.set_hop(b.dot(pauli[:, i, j]), 2 + i, 0 + j, [-1])
+    else:
+        model1d.set_hop(a, 0, 1, [0])
+        model1d.set_hop(b, 1, 0, [-1])
+
+    return model1d

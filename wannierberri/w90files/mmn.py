@@ -2,13 +2,14 @@ from collections import defaultdict
 import functools
 from itertools import islice
 import multiprocessing
-from time import time
 import numpy as np
 
 from .utility import convert
 from .w90file import W90_file, auto_kptirr, check_shape
-from ..io import sparselist_to_dict
+from .io import sparselist_to_dict
 from ..utility import cached_einsum
+import logging
+logger = logging.getLogger(__name__)
 
 
 class MMN(W90_file):
@@ -52,8 +53,9 @@ class MMN(W90_file):
         self.bk_reorder = bk_reorder
 
     @classmethod
-    def from_w90_file(cls, seedname, bkvec, npar=multiprocessing.cpu_count(), selected_kpoints=None):
-        t0 = time()
+    def from_w90_file(cls, seedname, bkvec, npar=None, selected_kpoints=None):
+        if npar is None:
+            npar = multiprocessing.cpu_count()
         f_mmn_in = open(seedname + ".mmn", "r")
         f_mmn_in.readline()
         NB, NK, NNB = np.array(f_mmn_in.readline().split(), dtype=int)
@@ -68,7 +70,7 @@ class MMN(W90_file):
         if npar > 0:
             pool = multiprocessing.Pool(npar)
         # TODO : do text conversion only for selected kpoints
-        for j in range(0, NNB * NK, npar * mult):
+        for j in range(0, NNB * NK, max(npar * mult, 1)):
             x = list(islice(f_mmn_in, int(block * npar * mult)))
             if len(x) == 0:
                 break
@@ -83,7 +85,6 @@ class MMN(W90_file):
             pool.close()
             pool.join()
         f_mmn_in.close()
-        t1 = time()
         data = [d[:, 0] + 1j * d[:, 1] for d in data]
         data = np.array(data).reshape(NK, NNB, NB, NB).transpose((0, 1, 3, 2))
         data = {ik: data[ik] for ik in selected_kpoints}
@@ -91,9 +92,6 @@ class MMN(W90_file):
         assert np.all(headstring[:, :, 0] - 1 == np.arange(NK)[:, None])
         neighbours = headstring[:, :, 1] - 1
         G = headstring[:, :, 2:]
-        t2 = time()
-        print(f"Time for MMN.__init__() : {t2 - t0} , read : {t1 - t0} , headstring {t2 - t1}")
-
         bk_reorder = [None for _ in range(NK)]
         for ik in selected_kpoints:
             bk_reorder[ik] = bkvec.reorder_bk_vectors(ik, neighbours[ik], G[ik], data[ik])
@@ -115,104 +113,20 @@ class MMN(W90_file):
                         f_mmn_out.write(f"{self.data[ik][ib, n, m].real} {self.data[ik][ib, n, m].imag}\n")
         f_mmn_out.close()
 
-    def select_bands(self, selected_bands):
-        return super().select_bands(selected_bands, dimensions=(1, 2))
+    def select_bands(self, selected_bands, var_select=False):
+        return super().select_bands(selected_bands, dimensions=(1, 2), var_select=var_select)
 
+    def write_epw(self, filename):
+        io = open(filename, "w")
 
-    # # TODO : combine with find_bk_vectors
-    # @staticmethod
-    # def get_bk(G, neighbours, NNB, NK, kpt_latt, recip_lattice, kmesh_tol=1e-7, bk_complete_tol=1e-5):
-    #     mp_grid = np.array(grid_from_kpoints(kpt_latt))
-    #     bk_latt_all = np.array(
-    #         np.round(
-    #             [
-    #                 (kpt_latt[nbrs] - kpt_latt + G) * mp_grid[None, :]
-    #                 for nbrs, G in zip(neighbours.T, G.transpose(1, 0, 2))
-    #             ]).transpose(1, 0, 2),
-    #         dtype=int)
+        for ik in range(self.NK):
+            for ib in range(self.NNB):
+                for n in range(self.NB):
+                    for m in range(self.NB):
+                        o = self.data[ik][ib, m, n]
+                        io.write(f"( {o.real:16.12f},  {o.imag:16.12f} )\n")
+        io.close()
 
-    #     bk_latt = bk_latt_all[0]
-
-    #     ## Reorder the bk_latt vectors to match the order of the first k-point
-    #     bk_latt_tuples_0 = [tuple(b) for b in bk_latt]
-    #     bk_reorder = []
-    #     for ik in range(NK):
-    #         bk_latt_tuples = [tuple(b) for b in bk_latt_all[ik]]
-    #         srt = [bk_latt_tuples.index(bk) for bk in bk_latt_tuples_0]
-    #         assert len(srt) == NNB, f"Reordering failed for k-point {ik}. Expected {NNB} neighbours, got {len(srt)}"
-    #         assert np.all(bk_latt == bk_latt_all[ik, srt]), \
-    #             f"Reordering failed for k-point {ik}. Expected {bk_latt}, got {bk_latt_all[ik, srt]}"
-    #         bk_reorder.append(srt)
-    #     bk_reorder = np.array(bk_reorder, dtype=int)
-
-    #     bk_cart = bk_latt.dot(recip_lattice / mp_grid[:, None])
-    #     bk_length = np.linalg.norm(bk_cart, axis=1)
-    #     srt = np.argsort(bk_length)
-    #     srt_inv = np.argsort(srt)
-    #     bk_length_srt = bk_length[srt]
-    #     brd = [
-    #         0,
-    #     ] + list(np.where(bk_length_srt[1:] - bk_length_srt[:-1] > kmesh_tol)[0] + 1) + [
-    #         NNB,
-    #     ]
-    #     shell_mat = []
-    #     shell_mat = np.array([bk_cart[srt[b1:b2]].T.dot(bk_cart[srt[b1:b2]]) for b1, b2 in zip(brd, brd[1:])])
-    #     shell_mat_line = shell_mat.reshape(-1, 9)
-    #     u, s, v = np.linalg.svd(shell_mat_line, full_matrices=False)
-    #     s = 1. / s
-    #     weight_shell = np.eye(3).reshape(1, -1).dot(v.T.dot(np.diag(s)).dot(u.T)).reshape(-1)
-    #     check_eye = sum(w * m for w, m in zip(weight_shell, shell_mat))
-    #     tol = np.linalg.norm(check_eye - np.eye(3))
-    #     if tol > bk_complete_tol:
-    #         raise RuntimeError(
-    #             f"Error while determining shell weights. the following matrix :\n {check_eye} \n"
-    #             f"failed to be identity by an error of {tol}. Further debug information :  \n"
-    #             f"bk_latt={bk_latt} \n bk_cart={bk_cart} \n"
-    #             f"bk_cart_length={bk_length}\n shell_mat={shell_mat}\n"
-    #             f"weight_shell={weight_shell}, srt={srt}\n")
-    #     weight = np.array([w for w, b1, b2 in zip(weight_shell, brd, brd[1:]) for i in range(b1, b2)])
-    #     wk = weight[srt_inv]
-
-    #     return bk_cart, bk_latt, wk, bk_reorder
-
-    # def reorder_bk(self,
-    #                bk_reorder=None,
-    #                bk_latt_new=None,
-    #                 ):
-    #     """
-    #     Reorder the bk vectors according to the given order
-
-    #     Parameters
-    #     ----------
-    #     bk_reorder : list of int or None
-    #         the new order of the bk vectors. If None, the order is taken from bk_latt_new
-    #     bk_latt_new : list of tuple or None
-    #         the new list of bk vectors in the basis of the reciprocal lattice divided by the Monkhorst-Pack grid.
-    #         If None, the order is taken from self.bk_latt
-    #     """
-    #     assert (bk_reorder is not None) != (bk_latt_new is not None), \
-    #         "Either bk_reorder or bk_latt_new should be provided, but not both."
-    #     if bk_reorder is None:
-    #         bk_latt_new = np.array(bk_latt_new, dtype=int)
-    #         assert bk_latt_new.shape == (self.NNB, 3), \
-    #             f"bk_latt_new should have shape (NNB, 3), got {bk_latt_new.shape}"
-    #         bk_reorder = [np.where((self.bk_latt == b).all(axis=1))[0][0] for b in bk_latt_new]
-    #     print(f"Reordering bk vectors with {bk_reorder} ")
-    #     self.bk_latt = self.bk_latt[bk_reorder]
-    #     if bk_latt_new is not None:
-    #         assert np.all(self.bk_latt == bk_latt_new), \
-    #             f"Reordered bk_latt {self.bk_latt} does not match the provided bk_latt_new {bk_latt_new}"
-    #     self.bk_cart = self.bk_cart[bk_reorder]
-    #     self.wk = self.wk[bk_reorder]
-
-    #     for ik, d in self.data.items():
-    #         self.data[ik] = d[bk_reorder, :]
-    #     for ik, g in self.G.items():
-    #         self.G[ik] = g[bk_reorder]
-    #     for ik, n in self.neighbours.items():
-    #         self.neighbours[ik] = n[bk_reorder]
-    #     for ik in self.bk_reorder.keys():
-    #         self.bk_reorder[ik] = self.bk_reorder[ik][bk_reorder]
 
 
     def equals(self, other, tolerance=1e-8, check_reorder=True):
@@ -221,12 +135,6 @@ class MMN(W90_file):
             return iseq, message
         if self.NNB != other.NNB:
             return False, f"the number of neighbouring bands is not equal: {self.NNB} and {other.NNB} correspondingly"
-        # if not np.all(self.bk_latt == other.bk_latt):
-        #     return False, f"the bk_latt vectors are not equal: {self.bk_latt} and {other.bk_latt} correspondingly"
-        # if not np.allclose(self.bk_cart, other.bk_cart):
-        #     return False, f"the bk_cart vectors are not equal: {self.bk_cart} and {other.bk_cart} correspondingly"
-        # if not np.allclose(self.wk, other.wk):
-        #     return False, f"the wk valuesare not equal: {self.wk} and {other.wk} correspondingly"
         if check_reorder:
             for ik in self.bk_reorder.keys():
                 if not np.all(self.bk_reorder[ik] == other.bk_reorder[ik]):
@@ -236,8 +144,8 @@ class MMN(W90_file):
 
     @classmethod
     def from_bandstructure(cls,
-                           bkvec,
                            bandstructure,
+                           bkvec,
                            bandstructure_left=None,
                            normalize=False,
                            verbose=False,
@@ -250,6 +158,7 @@ class MMN(W90_file):
                            irred_bk_only=True,
                            include_paw=True,
                            include_pseudo=True,
+                           use_disk=False
                            ):
         """
         Create an AMN object from a BandStructure object
@@ -263,11 +172,12 @@ class MMN(W90_file):
             if True, the wavefunctions are normalised
         param_search_bk : dict
             additional parameters for `:func:find_bk_vectors`
+        use_disk : bool
+            use disk space, instead of RAM to store transformed wavefunctions. This is useful for large systems with dense grids.
 
         Returns
         -------
-        MMN or np.ndarray
-            the MMN object ( if `return_object` is True ) or the data as a numpy array ( if `return_object` is False )
+        MMN 
         """
         if irreducible:
             assert symmetrizer is not None, "Symmetrizer should be provided if irreducible is True"
@@ -277,22 +187,21 @@ class MMN(W90_file):
                 kptirr = symmetrizer.kptirr
             kpt2kptirr = symmetrizer.kpt2kptirr
             kpt_from_kptirr_isym = symmetrizer.kpt_from_kptirr_isym
-            kpt_latt_grid = symmetrizer.kpoints_all
+            kpt_grid = symmetrizer.kpoints_all
         else:
-            kpt_latt_grid = np.array([kp.k for kp in bandstructure.kpoints])
+            kpt_grid = np.array([kp.k for kp in bandstructure.kpoints])
 
         NK, selected_kpoints, kptirr = auto_kptirr(
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
-        print(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
+        logger.info(f"NK= {NK}, selected_kpoints = {selected_kpoints}, kptirr = {kptirr}")
 
-        # NK = kpt_latt_grid.shape[0]
         identity_operation = bandstructure.spacegroup.get_identity_operation()
 
         spinor = bandstructure.spinor
         nspinor = 2 if spinor else 1
 
         if verbose:
-            print("Creating mmn. ")
+            logger.info("Creating mmn. ")
 
         if selected_kpoints is None:
             selected_kpoints = np.arange(NK)
@@ -304,22 +213,44 @@ class MMN(W90_file):
 
 
         # now get the neighbour kpoint' wavefunctions, if those points do not belong to the irreducible k-points
-        if hasattr(bandstructure, "kpoints_paw"):
+        if hasattr(bandstructure, "kpoints_paw") and bandstructure.kpoints_paw is not None:
             use_paw = True
             kpoints_in = bandstructure.kpoints_paw
+            logger.info(f"Using PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         else:
             use_paw = False
             kpoints_in = bandstructure.kpoints
+            logger.info(f"Using non-PAW kpoints for MMN: {[kp.k for kp in kpoints_in]}")
         kpoints_sel = [kpoints_in[ik] for ik in selected_kpoints]
         kpoints_dict_all = {ik: kpoints_sel[ik] for ik in kptirr}  # a dictionary to store kpoints that are not in the original bandstructure
 
         if symmetrizer is not None and irred_bk_only:
-            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bkvec.bk_latt, bkvec.neighbours)
+            bkirr, bk2bkirr, bk_from_bk_irr_isym, bk_map = symmetrizer.get_bk_mapping(bkvec.bk_grid, bkvec.neighbours)
         else:
             bkirr = [np.arange(NNB) for _ in kptirr]
             bk2bkirr = np.array([np.arange(NNB) for _ in kptirr])
             bk_from_bk_irr_isym = np.zeros((len(kptirr), NNB), dtype=int)
             bk_map = None
+
+        kpoints_dict_keys = set(kptirr)
+        num_times_needed = {ik: 0 for ik in kptirr}
+        for ikirr, kirr in enumerate(kptirr):
+            for ib, ik2 in enumerate(bkvec.neighbours[kirr]):
+                if ib in bkirr[ikirr]:
+                    ik2 = int(ik2)
+                    if ik2 not in kpoints_dict_all:
+                        kpoints_dict_keys.add(ik2)
+                        num_times_needed[ik2] = num_times_needed.get(ik2, 0) + 1
+        n_needed_kpoints = len(kpoints_dict_keys)
+        logger.debug("Total number of k-points used for mmn calculation: %s out of total %s %s k-points in the grid (%s irreducible k-points)", n_needed_kpoints, NK, len(kpt_grid), len(kptirr))
+        for i in range(max(num_times_needed.values(), default=0)):
+            logger.debug("Number of k-points needed %s times: %s", i, [ik for ik, n in num_times_needed.items() if ((n == i) and (ik not in kptirr))])
+        logger.debug("excluding irreducible k-points")
+
+        if use_disk:
+            store_kwargs = {"store": True}
+        else:
+            store_kwargs = {}
 
 
         for ikirr, kirr in enumerate(kptirr):
@@ -330,13 +261,14 @@ class MMN(W90_file):
                         # if use_paw:
                         #     raise RuntimeError("PAW k-points should be provided for all k-points in the Monkhorst-Pack grid")``
                         isym = kpt_from_kptirr_isym[ik2]
-                        # print(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
+                        # logger.info(f"isym = {isym}, ik2={ik2}, {kpt_from_kptirr_isym=}")
                         ik_origin = kpt2kptirr[ik2]
                         kp_origin = kpoints_sel[ik_origin]
                         symop = bandstructure.spacegroup.symmetries[isym]
                         kp2 = kp_origin.get_transformed_copy(symmetry_operation=symop,
-                                                        k_new=kpt_latt_grid[ik2])
+                                                        k_new=kpt_grid[ik2], **store_kwargs)
                         kpoints_dict_all[ik2] = kp2
+                        logger.debug("adding k-point %s  (in kpoints_dict_all = %s); the length is now %s", ik2, ik2 in kpoints_dict_all, len(kpoints_dict_all))
 
 
 
@@ -364,19 +296,14 @@ class MMN(W90_file):
         else:
             wavefunc_all_left = wavefunc_all
 
-
         # but are needed for the finite-difference scheme (obtained by symmetry)
         for ikirr, kirr in enumerate(kptirr):
-            bra = wavefunc_all_left.get_WF(kirr, conj=True)
-            # overlaps = wavefunc_all.product(bra, bra)
-            # overlaps_err = np.max(abs((overlaps - np.eye(NB))))
-            # print(f"Calculating overlaps for k-point {ikirr} orthonorm_error = {overlaps_err}")
-            # print(f"Calculating overlaps for k-point {ikirr}({kirr} on the grid) the little group  is {symmetrizer.isym_little[ikirr]}, {bk_from_bk_irr_isym[ikirr]=}")
+            bra = wavefunc_all_left.get_WF(kirr, G=0)
             ib_is_set = np.zeros(NNB, dtype=bool)
             for ib in bkirr[ikirr]:  # only calculate for irreducible bk points
                 assert not ib_is_set[ib], f"bk index {ib} for k-point {kirr} is already set."
                 ik2 = int(bkvec.neighbours[kirr][ib])
-                ket = wavefunc_all.get_WF(ik2, conj=False, G=bkvec.G[kirr][ib])
+                ket = wavefunc_all.get_WF(ik2, G=bkvec.G[kirr][ib])
                 data[kirr][ib, :, :] = wavefunc_all.product(bra, ket, bk=bkvec.bk_red[ib])
                 ib_is_set[ib] = True
 
@@ -387,12 +314,10 @@ class MMN(W90_file):
                     ikb_origin = int(bkvec.neighbours[kirr][ib_origin])
                     isym = bk_from_bk_irr_isym[ikirr][ib]
                     assert symmetrizer.kptirr2kpt[ikirr, isym] == kirr
-                    # print(f"  Symmetry operation {isym} is used to get the overlaps for k-point {ikirr} and bk index {ib} from bk index {ib_origin} (ikikirr={ikikirr})")
-                    # print(f"calling symmetrizer.transform_Mmn_kb with isym={isym}, ikirr={ikikirr}, ib={ib_origin}, ikb={ikb_origin}")
                     data[kirr][ib, :, :] = symmetrizer.transform_Mmn_kb(M=data[kirr][ib_origin],
                                                                         isym=isym, ikirr=ikirr, ib=ib_origin,
                                                                         ikb=ikb_origin,
-                                                                        bk_latt_map=bk_map, bk_cart=bkvec.bk_cart,
+                                                                        bk_grid_map=bk_map, bk_cart=bkvec.bk_cart,
                                                                         symmetrizer_left=symmetrizer_left)
                     ib_is_set[ib] = True
         return MMN(
@@ -409,10 +334,14 @@ class Grid_PAW_all:
         self.identity_operation = identity_operation
         self.product = product
 
-    def get_WF(self, ik, G=0, conj=False):
+    def get_WF(self, ik, G=0):
         kp = self.kpoints_dict_all[ik]
-        kp = kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
-        return kp
+        if np.all(G == 0):
+            return kp
+        else:
+            logger.debug("Transforming k-point with G = ", G)
+            return kp.get_transformed_copy(symmetry_operation=self.identity_operation, k_new=kp.k + G)
+
 
 
 class Grid_ig_all:
@@ -434,13 +363,13 @@ class Grid_ig_all:
         self.igmax_glob = igmax_k.max(axis=0) - Gloc.min(axis=(0, 1))
 
         self.ig_grid = self.igmax_glob - self.igmin_glob + 1
-        # print(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
+        # logger.info(f"ig_grid = {ig_grid}, igmin_glob = {igmin_glob}, igmax_glob = {igmax_glob}")
         self.normalize = normalize
         if normalize:
             self.norm = {ik2: np.linalg.norm(kp.WF.reshape(NB, -1), axis=1)
                          for ik2, kp in kpoints_dict_all.items()}
 
-    def get_WF(self, ik, conj=False, G=0):
+    def get_WF(self, ik, G=0):
         kp1 = self.kpoints_dict_all[ik]
         bra = np.zeros((self.NB, self.nspinor) + tuple(self.ig_grid), dtype=complex)
         for ig, g in enumerate(kp1.ig):
@@ -449,8 +378,6 @@ class Grid_ig_all:
                 f"g {_g} out of bounds for ig_grid {self.ig_grid} at ik1={ik}, ig={ig}"
             for ispinor in range(self.nspinor):
                 bra[:, ispinor, _g[0], _g[1], _g[2]] = kp1.WF[:, ig, ispinor]
-        if conj:
-            bra = bra.conj()
         if self.normalize:
             bra[:] = bra / self.norm[ik][:, None, None, None, None]
         return bra
@@ -460,4 +387,4 @@ class Grid_ig_all:
         Calculate the product <bra|ket> 
         bk is not used for the grid representation, but is kept for compatibility with the PAW representation
         """
-        return cached_einsum('asijk,bsijk->ab', bra, ket)
+        return cached_einsum('asijk,bsijk->ab', bra.conj(), ket)

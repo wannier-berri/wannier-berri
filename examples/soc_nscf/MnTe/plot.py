@@ -6,14 +6,14 @@ from wannierberri.evaluate_k import evaluate_k_path
 from wannierberri.w90files.soc import SOC
 from wannierberri.system.system_soc import SystemSOC
 from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.parallel import Parallel, Serial
+from wannierberri.parallel import ray_init
 
-system_dw = System_R().load_npz("system_dw")
-system_up = System_R().load_npz("system_up")
+ray_init()
 
-parallel = Parallel(num_cpus=16)
-# _interlaced()
+system_dw = System_R.from_npz("system_dw")
+system_up = System_R.from_npz("system_up")
 
+\
 
 phi_deg = 90
 theta_deg = 90
@@ -30,7 +30,7 @@ system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw,
 
 
 kz = 0.35 / system_dw.recip_lattice[2, 2]
-path = Path(system_dw,
+path = Path(system=system_dw,
             nodes=[
                 [2 / 3, -1 / 3, 0],
                 [0, 0, 0],

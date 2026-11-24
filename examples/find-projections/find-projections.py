@@ -12,15 +12,15 @@ print("calculating symmetrizer")
 
 path = "../../tests/data/diamond/"
 
-bandstructure = BandStructure(prefix=path + "di", code="espresso",
+bandstructure = BandStructure.from_espresso(prefix=path + "di",
                             Ecut=100, include_TR=False)
 spacegroup = bandstructure.spacegroup
 # spacegroup.show()
 
 try:
-    symmetrizer = SAWF().from_npz("diamond.sawf.npz")
+    symmetrizer = SAWF.from_npz("diamond.sawf.npz")
 except FileNotFoundError:
-    symmetrizer = SAWF().from_irrep(bandstructure)
+    symmetrizer = SAWF.from_irrep(bandstructure)
     symmetrizer.to_npz("diamond.sawf.npz")
 
 

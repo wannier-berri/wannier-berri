@@ -7,10 +7,10 @@
 #
 # Written by Stepan Tsirkin (University of the Basque Country)
 #    now at : Iniversity of Zurich
-import warnings
-import numpy as np
-from ..io import FortranFileW
 from ..utility import cached_einsum, time_now_iso
+import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 PAW_warning = """vaspspn uses pseudo-wavefunction instead of the full PAW
 (`Blöchl 1994 <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.50.17953>`__) wavefunction
@@ -66,7 +66,7 @@ def hlp():
 
 
 def main(argv):
-    warnings.warn(PAW_warning)
+    logger.warning(PAW_warning)
 
     fin = "WAVECAR"
     fout = "wannier90.spn"
@@ -116,12 +116,12 @@ def main(argv):
     if NBout <= 0:
         NBout = NBin
     if NBout + IBstart > NBin:
-        warnings.warn(f"NB+IBstart-1={NBout + IBstart} exceeds the number of bands in WAVECAR NBin={NBin}"
-                      f"We set NBout={NBin - IBstart}")
+        logger.warning("NB+IBstart-1=%s exceeds the number of bands in WAVECAR NBin=%s"
+                      "We set NBout=%s", NBout + IBstart, NBin, NBin - IBstart)
         NBout = NBin - IBstart
 
     print(f"WAVECAR contains {NK} k-points and {NBin} bands.\n Writing {NBout} bands in the output starting from")
-
+    from ..w90files.fortio import FortranFileW
     SPN = FortranFileW(fout)
     header = f"Created from WAVECAR at {time_now_iso()}"
     header = header[:60]
@@ -130,7 +130,7 @@ def main(argv):
     SPN.write_record(np.array([NBout, NK], dtype=np.int32))
 
     for ik in range(NK):
-        npw = int(record(2 + ik * (NBin + 1), 1))
+        npw = int(record(2 + ik * (NBin + 1), 1)[0])
         npw12 = npw // 2
         if npw != npw12 * 2:
             raise RuntimeError(f"odd number of coefs {npw}")

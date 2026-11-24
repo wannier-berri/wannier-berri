@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import numpy as np
 import wannierberri as wberri
+import wannierberri.calculators as calculators
+from wannierberri.symmetry import point_symmetry as SYM
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 
-## these linesline if you want to use the git version of the code, instead of the one installed by pip
+## Uncomment these lines if you want to use the git version of the code, instead of the one installed by pip
 local_code = True
 
 
@@ -22,24 +26,23 @@ else:
 
 
 
-SYM = wberri.point_symmetry
-
 Efermi = np.linspace(12., 13., 1001)
-system = wberri.system.System_w90('../../tests/data/Fe_Wannier90/Fe', berry=True)
+wandata = wberri.WannierData.from_w90_files(
+    '../../tests/data/Fe_Wannier90/Fe',
+    files=['mmn', 'eig', 'chk'],)
+system = System_R.from_wannierdata(wandata, berry=True)
 
 generators = [SYM.Inversion, SYM.C4z, SYM.TimeReversal * SYM.C2x]
 system.set_pointgroup(generators)
-grid = wberri.Grid(system, NKdiv=16, NKFFT=16)
+grid = wberri.Grid(system=system, NKdiv=16, NKFFT=16)
 
-parallel = wberri.Parallel(cluster=True)
-
+ray_init()
 
 wberri.run(system,
            grid=grid,
            calculators={
-               "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False),
+               "ahc": calculators.static.AHC(Efermi=Efermi, tetra=False),
            },
-           parallel=parallel,
            adpt_num_iter=0,
            fout_name='Fe',
            suffix="w90-ray",

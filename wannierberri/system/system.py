@@ -1,23 +1,12 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 
-import os
-import sys
-import warnings
-import numpy as np
-from functools import cached_property
-from ..symmetry.point_symmetry import PointGroup
+from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal, transform_ident, transform_odd
 from ..utility import real_recip_lattice
+from functools import cached_property
+import numpy as np
+import os
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 def num_cart_dim(key):
@@ -26,9 +15,9 @@ def num_cart_dim(key):
     """
     if key in ["Ham", "overlap_up_down"]:
         return 0
-    elif key in ["AA", "BB", "CC", "SS", "SH", "OO", "dV_soc_wann_0_0", "dV_soc_wann_0_1", "dV_soc_wann_1_1"]:
+    elif key in ["AA", "BB", "CC", "SS", "SH", "OO", "rotAA", "dV_soc"]:
         return 1
-    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF"]:
+    elif key in ["SHA", "SA", "SR", "SHR", "GG", "FF", "rotAAab"]:
         return 2
     else:
         raise ValueError(f"unknown matrix {key}")
@@ -38,7 +27,7 @@ class System:
 
     """
     The base class for describing a system. Does not have its own constructor,
-    please use the child classes, e.g  :class:`System_w90` or :class:`System_tb`
+    please use the child classes, e.g  :class:`System_R`, :class:`System_KP` or :class:`System_SOC`.
 
 
     Parameters
@@ -77,6 +66,8 @@ class System:
                  name='wberri',
                  silent=False,
                  spinor=None,
+                 wannier_names=None,
+                 number_of_electrons=None,
                  ):
 
         # TODO: move some initialization to child classes
@@ -85,7 +76,8 @@ class System:
         self.name = name
         self.silent = silent
         self.spinor = spinor
-
+        self.wannier_names = np.array(wannier_names) if wannier_names is not None else None
+        self.number_of_electrons = number_of_electrons
 
         if NKFFT is not None:
             self._NKFFT_recommended = NKFFT
@@ -95,13 +87,14 @@ class System:
         self.is_phonon = False
         self.force_internal_terms_only = force_internal_terms_only
 
-    @property
-    def logfile(self):
-        if self.silent:
-            return open(os.devnull, 'w')
-        else:
-            return sys.stdout
 
+    def save_npz(self, *args, **kwargs):
+        """alias for :func:`~wannierberri.system.System.to_npz`"""
+        self.to_npz(*args, **kwargs)
+
+    def to_npz(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
 
 
     def set_real_lattice(self, real_lattice=None, recip_lattice=None):
@@ -141,7 +134,7 @@ class System:
         Will be removed in the future.
         """
         # deprecation warning
-        warnings.warn("The method `set_symmetry` is deprecated. Use `set_pointgroup` instead", DeprecationWarning)
+        logger.warning("DeprecationWarning: The method `set_symmetry` is deprecated. Use `set_pointgroup` instead")
         self.set_pointgroup(symmetry_gen=symmetry_gen, pointgroup=pointgroup, spacegroup=spacegroup)
 
 
@@ -172,8 +165,8 @@ class System:
             assert np.allclose(pointgroup.recip_lattice, self.recip_lattice), f"the provided pointgroup has a different recip_lattice:\n{pointgroup.recip_lattice}\n than the system:\n{self.recip_lattice}"
             self.pointgroup = pointgroup
         elif spacegroup is not None:
-            assert np.allclose(spacegroup.Lattice, self.real_lattice), f"the provided spacegroup has a different real_lattice:\n{spacegroup.Lattice}\n than the system:\n{self.real_lattice}"
             self.pointgroup = PointGroup(spacegroup=spacegroup, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice, use_symmetries_index=use_symmetries_index)
+            self.set_structure_from_sg(spacegroup, ignore_no_atoms=True)
         else:
             self.pointgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
@@ -193,10 +186,314 @@ class System:
         """
         Returns
         -------
-        np.ndarray(num_wann) = [0,1,2,...,num_wann-1]
-            The range of the Wannier functions in the Cartesian coordinates
+        path object
+            The range of Wannier functions, i.e. the list of Wannier functions. By default, it is set to all Wannier functions, but it can be changed by the user.
         """
         return np.arange(self.num_wann)
+
+    def set_structure(self, positions, atom_labels, magnetic_moments=None):
+        """
+        Set atomic structure of the system.
+
+        Parameters
+        ----------
+        positions : (num_atom, 3) array_like of float
+            Atomic positions in fractional coordinates.
+        atom_labels: (num_atom,) list
+            labels (integer, string, etc.) to distinguish species.
+        magnetic_moments: (num_atom, 3) array_like of float (optional)
+            Magnetic moment vector of each atom.
+        """
+        if len(positions) != len(atom_labels):
+            raise ValueError("length of positions and atom_labels must be the same")
+        if magnetic_moments is not None:
+            if len(magnetic_moments) != len(positions):
+                raise ValueError("length of positions and magnetic_moments must be the same")
+            if not all([len(x) == 3 for x in magnetic_moments]):
+                raise ValueError("magnetic_moments must be a list of 3d vector")
+        self.positions = positions
+        self.atom_labels = atom_labels
+        self.magnetic_moments = magnetic_moments
+
+    def set_structure_from_sg(self, spacegroup, ignore_no_atoms=False):
+        """
+        Set the atomic structure from the space group. This method is useful when the space group is provided, but the atomic structure is not provided.
+
+        Parameters
+        ----------
+        spacegroup : :class:`irrep.spacegroup.SpaceGroup`
+            The space group of the system. The atomic structure will be extracted from the space group.
+
+        """
+        assert np.allclose(spacegroup.Lattice, self.real_lattice), f"the provided spacegroup has a different real_lattice:\n{spacegroup.Lattice}\n than the system:\n{self.real_lattice}"
+        if hasattr(spacegroup, 'positions') and hasattr(spacegroup, 'typat'):
+            self.positions = spacegroup.positions
+            self.atom_labels = spacegroup.typat
+        else:
+            if ignore_no_atoms:
+                self.positions = [[0, 0, 0]]
+                self.atom_labels = [0]
+            else:
+                raise AttributeError("spacegroup does not have positions or typat attributes")
+
+    def get_spglib_cell(self, ignore_no_atoms=False):
+        """Returns the atomic structure as a cell tuple in spglib format"""
+        # assign integer to self.atom_labels
+        has_atoms = hasattr(self, 'atom_labels') and hasattr(self, 'positions') and len(self.atom_labels) > 0 and len(self.positions) > 0
+        if not has_atoms:
+            if ignore_no_atoms:
+                Warning("atom_labels or positions are not set, using single atom in the unit cell")
+                atom_labels = [0]
+                positions = [[0, 0, 0]]
+            else:
+                raise AttributeError("atom_labels or positions are not set, cannot get spglib cell\n set_structure must be called before get_spglib_cell")
+        else:
+            atom_labels = self.atom_labels
+            positions = self.positions
+        atom_labels_unique = list(set(atom_labels))
+        atom_numbers = [atom_labels_unique.index(label) for label in atom_labels]
+        if not hasattr(self, 'magnetic_moments') or self.magnetic_moments is None:
+            return self.real_lattice, positions, atom_numbers
+        else:
+            return self.real_lattice, positions, atom_numbers, self.magnetic_moments
+
+    def set_symmetry_from_structure(self):
+        """
+        a wrapper for set_pointgroup_from_structure
+        This method is deprecated and will be removed in future versions.
+        """
+        logger.warning("DeprecationWarning: set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.")
+        self.set_pointgroup_from_structure()
+
+    def set_pointgroup_from_structure(self):
+        """
+        Set the symmetry group of the :class:`System`. Requires spglib to be installed.
+        :meth:`System.set_structure` must be called in advance.
+        """
+        import spglib
+
+        cell = self.get_spglib_cell()
+        if self.magnetic_moments is None:
+            spglib_symmetry = spglib.get_symmetry(cell)
+        else:
+            spglib_symmetry = spglib.get_magnetic_symmetry(cell)
+        symmetry_gen = []
+        for isym, W in enumerate(spglib_symmetry["rotations"]):
+            # spglib gives real-space rotations in reduced coordinates. Here,
+            # 1) convert to Cartesian coordinates, and
+            # 2) take transpose to go to reciprocal space.
+            W = spglib_symmetry["rotations"][isym]
+            Wcart = self.real_lattice.T @ W @ np.linalg.inv(self.real_lattice).T
+            R = Wcart.T
+            try:
+                TR = spglib_symmetry['time_reversals'][isym]
+                tr_found = True
+            except KeyError:
+                TR = False
+                tr_found = False
+            symmetry_gen.append(PointSymmetry(R, TR=TR))
+
+        if self.magnetic_moments is None:
+            symmetry_gen.append(TimeReversal)
+        elif not tr_found:
+            logger.warning(
+                "you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
+                f"probably it is because you have an old spglib version {spglib.__version__}. "
+                "we suggest upgrading to spglib>=2.0.2")
+        elif not all([len(x) for x in self.magnetic_moments]):
+            raise ValueError("magnetic_moments must be a list of 3d vector")
+
+
+        self.pointgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
+
+    def get_bandstructure(self,
+                          dk=0.05,
+                          parallel=True,
+                          return_path=None,
+                          path=None,
+                          **kwargs):
+        """Calculate the band structure along high-symmetry lines in the BZ. 
+
+        Parameters
+        ----------
+        dk : float
+            the distance between k-points in the path in units of 1/Angstrom.
+        parallel : bool
+            if True and Ray is initialized, will calculate the band structure in parallel
+        return_path : bool
+            if True, will return the path along with the band structure
+        path : Path, optional
+            the path along which to calculate the band structure. If None, a path will be autogenerated
+            by seekpath based on the lattice of the system. 
+        **kwargs
+            additional keyword arguments to pass to the evaluation function (quantities, calculators, etc.)
+
+        Returns
+        -------
+        path : Path
+            the path along which the band structure was calculated (if return_path is True)
+        bandstructure : TABresult
+            the band structure along the path
+        """
+        from ..grid.path import Path
+        from ..evaluate_k import evaluate_k_path
+        if return_path is None:
+            return_path = path is None
+        cell = self.get_spglib_cell(ignore_no_atoms=True)
+        if path is not None:
+            if not isinstance(path, Path):
+                raise ValueError("path must be an instance of Path class")
+        elif self.periodic.sum() == 0:
+            path = Path.from_nodes(cell[0], nodes=[[0, 0, 0]], labels=['G'], dk=dk)
+        elif self.periodic.sum() == 1:
+            directionk = np.where(self.periodic)[0][0]
+            X = np.zeros(3)
+            X[directionk] = 0.5
+            mX = np.zeros(3)
+            mX[directionk] = -0.5
+            path = Path.from_nodes(real_lattice=cell[0], nodes=[mX, [0, 0, 0], X], labels=['-X', 'G', 'X'], dk=dk)
+        else:
+            if self.periodic.sum() == 2:
+                direction = np.where(~self.periodic)[0][0]
+            else:
+                direction = None
+            path = Path.seekpath(cell, dk=dk, twoD_direction=direction)
+        bandstructure = evaluate_k_path(system=self,
+                                     path=path,
+                                     return_path=False,
+                                     parallel=parallel,
+                                        **kwargs
+        )
+        if return_path:
+            return path, bandstructure
+        else:
+            return bandstructure
+
+    def has_R_mat(self, key):
+        raise NotImplementedError("has_R_mat method is not implemented for the base System class. Please use a child class that implements this method, e.g. System_R.")
+
+    def has_R_mat_any(self, keys):
+        for k in keys:
+            if self.has_R_mat(k):
+                return True
+
+    def has_R_mat_all(self, keys):
+        for k in keys:
+            if not self.has_R_mat(k):
+                return False
+        return True
+
+
+    def check_symmetry(self,
+                       quantities=None,
+                       kpoint=None,
+    ):
+        """
+        Check the symmetry of the system by evaluating the given quantities 
+        at a random (or given) k-point
+        and its symmetry-related k-points, and comparing the results.
+
+        Parameters
+        ----------
+        quantities : list of str
+            the list of quantities to check. If None, the code will check "energy" and "berry_curvature_internal_terms" by default, and also "spin" if the system has spin, and "berry_curvature_external_terms" if the system has AA matrix.
+        kpoint : array-like, optional
+            the k-point at which to evaluate the quantities. If None, a random k-point will be used.
+
+        Returns
+        -------
+        differences : dict
+            a dictionary with keys (quantity, symmetry) and values the maximum difference between the quantity at the original k-point and the symmetry-related k-point.
+        kpoints : list of array
+            the list of symmetry-related k-points corresponding to the symmetries of the system.    
+        """
+        from ..evaluate_k import evaluate_k
+        if quantities is None:
+            quantities = ["energy", "berry_curvature_internal_terms"]
+            if self.has_R_mat('SS'):
+                quantities.append('spin')
+            if self.has_R_mat('AA'):
+                quantities.append('berry_curvature_external_terms')
+
+        if kpoint is None:
+            kpoint = np.random.rand(3)
+        result_0 = evaluate_k(self, k=kpoint, quantities=quantities, return_single_as_dict=True)
+        differences = {}
+        kpoints = []
+        for isym, sym in enumerate(self.pointgroup.symmetries):
+            k_sym = sym.transform_reduced_vector(kpoint, basis=self.recip_lattice)
+            kpoints.append(k_sym)
+            result_sym = evaluate_k(self, k=k_sym, quantities=quantities, return_single_as_dict=True)
+            for key in quantities:
+                if key.startswith('berry_curvature') or key.startswith('spin'):
+                    transform_TR = transform_odd
+                else:
+                    transform_TR = transform_ident
+                transform_Inv = transform_ident
+                rank = 0 if key == "energy" else 1
+                data_ref = sym.transform_tensor(data=result_0[key],
+                                                rank=rank,
+                                                transformTR=transform_TR,
+                                                transformInv=transform_Inv)
+                data_sym = result_sym[key]
+                differences[(key, isym)] = np.max(np.abs(data_ref - data_sym))
+        return differences, kpoints
+
+    def find_efermi(self, num_electrons=None, emin=None, emax=None, length=20, prec=1e-4, max_length=1000, gap_center=True):
+        if num_electrons is None:
+            if self.number_of_electrons is None:
+                raise ValueError("num_electrons must be provided or set in the system")
+            num_electrons = self.number_of_electrons
+        if emin is None or emax is None:
+            _emin, _emax = self.get_energy_range()
+            if emin is None:
+                emin = _emin
+            if emax is None:
+                emax = _emax
+
+        Efold = np.inf
+        Efnew = -np.inf
+        dn = 1
+        i = 0
+        while True:
+            Efermi = np.linspace(emin, emax, 1001)
+            cumdos = self.get_cumdos(Efermi, length=length)
+            Efold = Efnew
+            select = np.where((cumdos >= num_electrons - 1e-10) & (cumdos <= num_electrons + 1e-10))[0]
+            if len(select) > 5:
+                if gap_center:
+                    Efnew = Efermi[select].mean()
+                else:
+                    Efnew = Efermi[select].min()
+            else:
+                Efnew = np.interp(num_electrons, cumdos, Efermi)
+            logger.info(f"find_efermi: iteration {i}, Efermi={Efnew}, prec={abs(Efnew - Efold)}, length={length}, emin={emin}, emax={emax}, dn={dn}")
+            if abs(Efnew - Efold) < prec:
+                break
+            emin = np.interp(num_electrons - dn, cumdos, Efermi)
+            emax = np.interp(num_electrons + dn, cumdos, Efermi)
+            dn /= 2
+            i += 1
+            if i > 100:
+                logger.warning(f"find_efermi: did not converge after 100 iterations, last Efermi={Efnew}, last prec={abs(Efnew - Efold)}")
+                break
+            length = min(length * 2, max_length)
+        return Efnew.real
+
+
+    def get_cumdos(self, Efermi, length, tetra=True):
+        from ..run_grid import run
+        from ..grid.grid import Grid
+        from ..calculators.static import CumDOS
+        grid = Grid(system=self, length=length)
+        result = run(system=self, grid=grid, calculators={"cumdos": CumDOS(Efermi=Efermi, tetra=tetra)},
+                     fout_name=None)
+        return result.results["cumdos"].data.real
+
+
+
+
+
 
 
 

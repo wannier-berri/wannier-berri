@@ -10,11 +10,12 @@ from collections import defaultdict
 from math import ceil
 from copy import copy
 from ..formula import covariant as frml
-from ..formula import covariant_basic as frml_basic
+from ..formula import basic as frml_basic
+from ..formula import perturbation as frml_pert
 from .. import factors as factors
 from ..result import EnergyResult, K__Result
 from .calculator import Calculator
-from ..utility import alpha_A, beta_A, cached_einsum
+from ..utility import alpha_A, beta_A, cached_einsum, weight_select_bands
 
 
 # The base class for Static Calculators
@@ -22,18 +23,32 @@ from ..utility import alpha_A, beta_A, cached_einsum
 
 
 class StaticCalculator(Calculator):
+    """
+    Parameters
+    -----------
+    Efermi : array-like
+        Fermi energies (eV), in increasing order. Without the tetrahedron method (``tetra=False``) they must also
+        be evenly spaced: the states are sorted into bins of width ``Efermi[1] - Efermi[0]`` starting at
+        ``Efermi[0]``, and the Fermi-surface quantities are finite differences on this grid. With ``tetra=True``
+        the spacing may be uneven, but the bands are selected between ``Efermi[0]`` and ``Efermi[-1]``.
+    tetra : bool
+        use the tetrahedron method
+    """
 
     def __init__(self, Efermi, tetra=False, smoother=None, constant_factor=1., use_factor=True, kwargs_formula=None,
-                 Emin=-np.inf, Emax=np.inf, hole_like=False, k_resolved=False, Formula=None, fder=None, **kwargs):
+                 Emin=-np.inf, Emax=np.inf, hole_like=False, k_resolved=False, Formula=None, fder=None,
+                 select_bands=None,
+                 **kwargs):
         super().__init__(**kwargs)
         if kwargs_formula is None:
             kwargs_formula = {}
-        self.Efermi = Efermi
+        self.Efermi = np.array(Efermi, dtype=float)
         self.Emin = Emin
         self.Emax = Emax
         self.tetra = tetra
         self.kwargs_formula = copy(kwargs_formula)
         self.k_resolved = k_resolved
+        self.select_bands = select_bands
         self.smoother = smoother
         self.use_factor = use_factor
         self.hole_like = hole_like
@@ -47,9 +62,18 @@ class StaticCalculator(Calculator):
         self.constant_factor = constant_factor
         if self.hole_like and self.fder == 0:
             self.constant_factor *= -1
+        if np.any(np.diff(self.Efermi) < 0):
+            raise ValueError(f"Efermi must be in increasing order for static calculators; got {self.Efermi}")
         if not self.tetra:
+            Efermi = self.Efermi
             self.extraEf = 0 if self.fder == 0 else 1 if self.fder in (1, 2) else 2 if self.fder == 3 else None
             self.dEF = Efermi[1] - Efermi[0] if len(Efermi) > 1 else 0.001
+            if len(Efermi) > 1:
+                grid = Efermi[0] + self.dEF * np.arange(len(Efermi))
+                if self.dEF <= 0 or not np.allclose(Efermi, grid, rtol=0, atol=1e-6 * self.dEF):
+                    raise ValueError(
+                        "Efermi must be evenly spaced and increasing for static calculators without the tetrahedron "
+                        f"method (tetra=False); got {Efermi}. Use e.g. np.linspace, or tetra=True.")
             self.EFmin = Efermi[0] - self.extraEf * self.dEF
             self.EFmax = Efermi[-1] + self.extraEf * self.dEF
             self.nEF_extra = Efermi.shape[0] + 2 * self.extraEf
@@ -75,9 +99,11 @@ class StaticCalculator(Calculator):
 
         # get a list [{(ib1,ib2):W} for ik in op:ed]
         if self.tetra:
-            weights = data_K.tetraWeights.weights_all_band_groups(
+            weights = data_K.simplexWeights.weights_all_band_groups(
                 self.Efermi, der=-1 if self.hole_like else self.fder, degen_thresh=self.degen_thresh,
-                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax)  # here W is array of shape Efermi
+                degen_Kramers=self.degen_Kramers, Emin=self.Emin, Emax=self.Emax,
+                select_bands=self.select_bands
+            )  # here W is array of shape Efermi
         else:
             weights = data_K.get_bands_in_range_groups(
                 self.EFmin,
@@ -86,7 +112,8 @@ class StaticCalculator(Calculator):
                 degen_Kramers=self.degen_Kramers,
                 sea=(self.fder == 0),
                 Emin=self.Emin,
-                Emax=self.Emax
+                Emax=self.Emax,
+                select_bands=self.select_bands
             )  # here W is energy
 
         #        """formula  - TraceFormula to evaluate
@@ -124,10 +151,10 @@ class StaticCalculator(Calculator):
                 valuesik = values[ik]
                 for n, E in sorted(weights.items()):
                     if E < self.EFmin:
-                        restot[ik_to_result(ik)] += valuesik[n][None]
+                        restot[ik_to_result(ik)] += valuesik[n][None] * weight_select_bands(n[0], n[1], self.select_bands)
                     elif E <= self.EFmax:
                         iEf = ceil((E - self.EFmin) / self.dEF)
-                        restot[ik_to_result(ik), iEf:] += valuesik[n]
+                        restot[ik_to_result(ik), iEf:] += valuesik[n] * weight_select_bands(n[0], n[1], self.select_bands)
             if self.fder == 0:
                 pass
             elif self.fder == 1:
@@ -263,7 +290,7 @@ class GME_orb_FermiSurf(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = \int [dk] v_\alpha m^{orb}_\mu f'`
         | Where :math:`m^{orb} = H + G - 2E_f \cdot \Omega`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml.VelHplus
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -281,7 +308,7 @@ class GME_orb_FermiSea(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math:`m = H + G - 2E_f \cdot \Omega`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml.DerMorb
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -300,7 +327,7 @@ class GME_orb_FermiSea_test(StaticCalculator):
         | Output: :math:`K^{orb}_{\alpha :\mu} = -\int [dk] \partial_\alpha m_\mu f`
         | Where :math: `m = H + G - 2E_f \cdot \Omega` """
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_orb_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_orb, **kwargs):
         self.Formula = frml_basic.tildeHGc_d
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -319,7 +346,7 @@ class GME_spin_FermiSea(StaticCalculator):
         | With Fermi sea integral. Eq(30) in `Ref <https://www.nature.com/articles/s41524-021-00498-5>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = -\int [dk] \partial_\alpha s_\mu f`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_spin, **kwargs):
         self.Formula = frml.DerSpin
         self.fder = 0
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -337,7 +364,7 @@ class GME_spin_FermiSurf(StaticCalculator):
         | With Fermi surface integral. Eq(9) `Ref <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.116.077201>`__
         | Output: :math:`K^{spin}_{\alpha :\mu} = \tau \int [dk] v_\alpha s_\mu f'`"""
 
-    def __init__(self, constant_factor=factors.factor_gme * factors.fac_spin_Z, **kwargs):
+    def __init__(self, constant_factor=factors.factor_gme_spin, **kwargs):
         self.Formula = frml.VelSpin
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
@@ -481,6 +508,44 @@ class BerryDipole_FermiSea(StaticCalculator):
         return res
 
 
+class SpinBerryDipole_FermiSurf(StaticCalculator):
+    r"""Spin Berry-curvature dipole with a Fermi-surface integral.
+
+    Output raw tensor :math:`D_{\beta,ab,s} = -\int [dk] v_\beta
+    \Omega^{\mathrm{spin}}_{ab,s} f'`.
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.VelSpinOmega
+        self.fder = 1
+        super().__init__(**kwargs)
+
+
+class SpinBerryDipole_FermiSea(StaticCalculator):
+    r"""Spin Berry-curvature dipole with a Fermi-sea integral.
+
+    Output raw tensor :math:`D_{\beta,ab,s} = \int [dk]
+    \partial_\beta \Omega^{\mathrm{spin}}_{ab,s} f`.
+
+    Notes
+    -----
+    The present implementation is available for
+    ``spin_current_type='simple'`` with ``external_terms=False``.
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml.DerSpinOmegaSimple
+        self.fder = 0
+        super().__init__(**kwargs)
+
+    def __call__(self, data_K):
+        res = super().__call__(data_K)
+        # Formula outputs (a, b, s, beta); move beta to match the Fermi-surface
+        # convention (beta, a, b, s).
+        res.data = np.moveaxis(res.data, -1, 1)
+        return res
+
+
 class NLAHC_FermiSea(BerryDipole_FermiSea):
     r"""Nonlinear anomalous Hall conductivity  (:math:`S^2/A`)
 
@@ -603,10 +668,50 @@ class AHC_Zeeman_spin(StaticCalculator):
         | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
         | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
 
-    def __init__(self, constant_factor=factors.fac_spin_Z * factors.factor_ahc, **kwargs):
+    def __init__(self, **kwargs):
+        raise RuntimeError("This calculator is deprecated, it had a wrong sign. Please use LFAHE_spin_fsurf instead. Also note the new "
+        "LFAHE_spin_fsea calculator that takes into ")
+
+
+
+
+class LFAHE_spin_fsurf(StaticCalculator):
+    r"""AHC conductivity Zeeman correction term spin part (:math:`S/m/T`)
+
+        | With Fermi surface integral.
+        | Output: :math:`ZAHC^{spin}_{\alpha\beta :\mu} = e^2/\hbar \int [dk] \Omega_\delta * s_\mu f'`
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta :\mu} E_\beta B_\mu = \epsilon_{\alpha\beta\delta} ZAHC^{spin}_{\alpha\beta:\mu} E_\beta B_\mu` """
+
+    def __init__(self, constant_factor=-factors.fac_spin_Z * factors.factor_ahc, **kwargs):
         self.Formula = frml.OmegaS
         self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+
+class LFAHE_spin_fsea(StaticCalculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        self.Formula = frml_pert.PertOmegaZeemanSpin
+        self.fder = 0
+        super().__init__(constant_factor=factors.factor_lfahe_spin, **kwargs)
+
+
+class LFAHE_spin(Calculator):
+    r"""Evaluates a change in the Anomalous Hall conductivity with a small B-field (:math:`s^3 \cdot A^2 / (kg \cdot m^3\cdot T) = S/(m T)`)
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.fsea = LFAHE_spin_fsea(**kwargs)
+        self.fsurf = LFAHE_spin_fsurf(**kwargs)
+
+    def __call__(self, data_K):
+        fsea_res = self.fsea(data_K)
+        fsurf_res = self.fsurf(data_K)
+        return fsea_res + fsurf_res
 
 
 class OmegaOmega(StaticCalculator):
@@ -646,9 +751,61 @@ class SHC(StaticCalculator):
         | Ryoo type : with kwargs_formula={'spin_current_type':'ryoo'}. Eq(17,26-29) in `Ref <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.235113>`__
         | Simple type : with kwargs_formula={'spin_current_type':'siple'}. simplified description of spin-velocity, needs only the SS_R matrix elements
         | Output: :math:`\sigma_{\alpha\beta} = -e^2/\hbar \int [dk] Im(j_{nm,\alpha} v_{mn,\beta})/(\epsilon_n - \epsilon_m)^2 f`
-        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`"""
+        | Instruction: :math:`j_\alpha = \sigma_{\alpha\beta} E_\beta`
+        | This is the part of the spin conductivity that is even under time reversal (independent of the relaxation
+          time). Without time-reversal symmetry, the odd part is given by :class:`SpinOhmic_FermiSurf`."""
 
     def __init__(self, constant_factor=-factors.factor_ahc / 2, **kwargs):
         self.Formula = frml.SpinOmega
         self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class SpinOhmic_FermiSurf(StaticCalculator):
+    r"""Ohmic spin conductivity (:math:`S/m`), the part of the spin conductivity that is odd under time reversal
+
+        | With Fermi surface integral. The intraband (Drude-like) term of the Kubo formula for the spin current,
+          linear in the relaxation time :math:`\tau`. It vanishes with time-reversal symmetry, and adds to
+          :class:`SHC`, which gives the part that is even under time reversal. It includes the spin-polarized
+          longitudinal current of a ferromagnet and the magnetic spin Hall effect.
+        | The spin current is defined as in :class:`SHC`, with the same ``kwargs_formula``: in the simple type,
+          :math:`j^\gamma_\alpha = \{s_\gamma, v_\alpha\}/2` with the Pauli matrices :math:`s_\gamma` (``SS``).
+        | Output: :math:`\sigma_{\alpha\beta}^{\gamma} = e^2/(2\hbar) \tau \int [dk] j^\gamma_{\alpha} v_\beta f'`,
+          as ``[alpha, beta, gamma]``, as for :class:`SHC` (the factor 1/2 as in :class:`SHC`; with
+          :math:`s_\gamma` replaced by the identity, this is -1/2 of :class:`Ohmic_FermiSurf`)
+        | Instruction: :math:`j^\gamma_\alpha = \sigma_{\alpha\beta}^{\gamma} E_\beta`"""
+
+    def __init__(self, constant_factor=-factors.factor_ohmic / 2, **kwargs):
+        self.Formula = frml.SpinVelVel
+        self.fder = 1
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class QuantumMetric_FermiSea(StaticCalculator):
+    r"""Quantum metric of all occupied states (Angstrom^-1)
+    """
+
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.QuantumMetric_ab
+        self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class QuantumMetricDipole_FermiSea(StaticCalculator):
+    r"""Quantum Dipole metric of all occupied states (dimensionless)
+    """
+
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.DerQuantumMetric_ab_d
+        self.fder = 0
+        super().__init__(constant_factor=constant_factor, **kwargs)
+
+
+class QuantumMetric_Vel_DQ(StaticCalculator):
+    r"""Quantum metric dipole with velocity (Angstrom)
+    """
+
+    def __init__(self, constant_factor=1., **kwargs):
+        self.Formula = frml.VelDQM
+        self.fder = 1
         super().__init__(constant_factor=constant_factor, **kwargs)

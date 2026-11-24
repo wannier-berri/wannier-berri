@@ -1,7 +1,10 @@
 import numpy as np
 from .w90file import W90_file, check_shape
 from .utility import readstr
-from ..io import FortranFileR
+from ..utility import cached_einsum
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class UXU(W90_file):
@@ -25,18 +28,18 @@ class UXU(W90_file):
     @classmethod
     def from_w90_file(CLS, seedname='wannier90', formatted=False, suffix=None, bk_reorder=None):
         suffix = CLS.extension if suffix is None else suffix
-        print(f"----------\n  {suffix}   \n---------")
-        print(f'formatted == {formatted}')
+        logger.debug("reading object of class %s from file %s.%s with formatted=%s bk_reorder=%s", CLS.__name__, seedname, suffix, formatted, bk_reorder)
         if formatted:
             f_uXu_in = open(seedname + "." + suffix, 'r')
             header = f_uXu_in.readline().strip()
             NB, NK, NNB = (int(x) for x in f_uXu_in.readline().split())
         else:
+            from .fortio import FortranFileR
             f_uXu_in = FortranFileR(seedname + "." + suffix)
             header = readstr(f_uXu_in)
             NB, NK, NNB = f_uXu_in.read_record('i4')
 
-        print(f"reading {seedname}.{suffix} : <{header}>")
+        logger.debug("reading %s.%s : <%s>", seedname, suffix, header)
 
         data = np.zeros((NK, NNB, NNB, NB, NB), dtype=complex)
         if formatted:
@@ -52,7 +55,7 @@ class UXU(W90_file):
         if bk_reorder is not None:
             for ik in range(NK):
                 data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :][:, bk_reorder[ik], :, :]
-        print(f"----------\n {suffix} OK  \n---------\n")
+        logger.debug(" %s OK ", suffix)
         f_uXu_in.close()
         return CLS(data=data)
 
@@ -66,6 +69,19 @@ class UHU(UXU):
     """
     extension = 'uHu'
 
+    @classmethod
+    def from_mmn_eig(cls, mmn, eig):
+        """
+        Construct a UXU object from the MMn and EIG objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib1, ib2, m, n]
+            E = eig.data[ik]  # E[n]
+            data[ik] = cached_einsum('alm,l,bln->abmn', M.conj(), E, M)
+        return cls(data=data, NK=NK)
+
 
 class UIU(UXU):
     """
@@ -73,6 +89,17 @@ class UIU(UXU):
     """
     extension = 'uIu'
 
+    @classmethod
+    def from_mmn(cls, mmn):
+        """
+        Construct a UXU object from the MMn and EIG objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib1, ib2, m, n]
+            data[ik] = cached_einsum('alm,bln->abmn', M.conj(), M)
+        return cls(data=data, NK=NK)
 
 
 class SXU(W90_file):
@@ -123,21 +150,21 @@ class SXU(W90_file):
         """
 
         suffix = CLS.extension if suffix is None else suffix
-        print(f"----------\n  {suffix}   \n---------")
         file_name = seedname + "." + suffix
 
-        print(f"reading object of class {CLS.__name__} from file {file_name} with formatted={formatted} bk_reorder={bk_reorder}")
+        logger.debug("reading object of class %s from file %s with formatted=%s bk_reorder=%s", CLS.__name__, file_name, formatted, bk_reorder)
 
         if formatted:
             f_sXu_in = open(seedname + "." + suffix, 'r')
             header = f_sXu_in.readline().strip()
             NB, NK, NNB = (int(x) for x in f_sXu_in.readline().split())
         else:
+            from .fortio import FortranFileR
             f_sXu_in = FortranFileR(seedname + "." + suffix)
             header = readstr(f_sXu_in)
             NB, NK, NNB = f_sXu_in.read_record('i4')
 
-        print(f"reading {seedname}.{suffix} : <{header}>")
+        logger.debug("reading %s.%s : <%s>", seedname, suffix, header)
 
         data = np.zeros((NK, NNB, NB, NB, 3), dtype=complex)
 
@@ -156,7 +183,7 @@ class SXU(W90_file):
         if bk_reorder is not None:
             for ik in range(NK):
                 data[ik, :, :, :] = data[ik, bk_reorder[ik], :, :]
-        print(f"----------\n {suffix} OK  \n---------\n")
+        logger.debug("%s OK ", suffix)
         f_sXu_in.close()
         return CLS(data=data)
 
@@ -181,6 +208,19 @@ class SIU(SXU):
 
     extension = 'sIu'
 
+    @classmethod
+    def from_mmn_spn(cls, mmn, spn):
+        """
+        Construct a SIU object from the MMn and SPN objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib, m, n]
+            S = spn.data[ik]  # S[m, n, ipol]
+            data[ik] = cached_einsum('mlc,bln->bmnc', S, M)
+        return cls(data=data, NK=NK)
+
 
 class SHU(SXU):
     """
@@ -198,3 +238,17 @@ class SHU(SXU):
     """
 
     extension = 'sHu'
+
+    @classmethod
+    def from_mmn_eig_spn(cls, mmn, eig, spn):
+        """
+        Construct a SHU object from the MMn, EIG and SPN objects, using sum-over-states formula. 
+        """
+        NK = mmn.NK
+        data = {}
+        for ik in mmn.data:
+            M = mmn.data[ik]  # M[ib, m, n]
+            E = eig.data[ik]  # E[n]
+            S = spn.data[ik]  # S[m, n, ipol]
+            data[ik] = cached_einsum('mlc,l,bln->bmnc', S, E, M)
+        return cls(data=data, NK=NK)

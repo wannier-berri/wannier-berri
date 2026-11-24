@@ -1,26 +1,23 @@
 """Create system objects."""
 
+import copy
 import os
 import tarfile
-from gpaw import GPAW
 import pytest
 import numpy as np
 import pickle
 import wannierberri as wberri
-from wannierberri import point_symmetry as SYM
+from wannierberri.symmetry import point_symmetry as SYM
 from pathlib import Path
 from wannierberri import models as wb_models
-from irrep.spacegroup import SpaceGroup
-
+from wannierberri.system.needed_data import NeededData
 from wannierberri.system.system_R import System_R
-from wannierberri.w90files.soc import SOC
-from wannierberri.w90files.chk import CheckPoint as CHK
-from wannierberri.w90files.w90data_soc import Wannier90dataSOC
+from wannierberri.w90files.wandata import WannierData
+from wannierberri.w90files.wandata_soc import WannierDataSOC
+
 
 from wannierberri.system.system_soc import SystemSOC
-from wannierberri.symmetry.sawf import SymmetrizerSAWF as SAWF
-from wannierberri.symmetry.projections import Projection, ProjectionsSet
-from .common import OUTPUT_DIR, ROOT_DIR
+from .common import OUTPUT_DIR, REF_DIR, ROOT_DIR, DATA_DIR
 
 symmetries_Fe = [SYM.C4z, SYM.C2x * SYM.TimeReversal, SYM.Inversion]
 symmetries_Te = ["C3z", "C2x", "TimeReversal"]
@@ -34,6 +31,7 @@ Efermi_Te_sparse = Efermi_Te_qe
 Efermi_Fe_FPLO = np.linspace(-0.5, 0.5, 11)
 Efermi_GaAs = np.linspace(7, 9, 11)
 Efermi_Haldane = np.linspace(-3, 3, 11)
+Efermi_Si = np.linspace(-5, 7, 11)
 Efermi_CuMnAs_2d = np.linspace(-2, 2, 11)
 Efermi_Chiral = np.linspace(-5, 8, 27)
 omega_chiral = np.linspace(0, 1., 11)
@@ -64,8 +62,8 @@ def create_W90_files(seedname, tags_needed, data_dir, tags_untar=["mmn", "amn"])
         kwargs = {}
         for tag in tags_compute:
             kwargs["write" + tag.upper()] = True
-
-        nb_out_list = wberri.utils.mmn2uHu.run_mmn2uHu(
+        from wannierberri import utils
+        nb_out_list = utils.mmn2uHu.run_mmn2uHu(
             seedname, INPUTDIR=data_dir, OUTDIR=str(data_dir) + "/reduced", **kwargs)
         nb_out = nb_out_list[0]
 
@@ -84,15 +82,32 @@ def create_files_Fe_W90():
 
     seedname = "Fe"
     tags_needed = ["uHu", "uIu", "sHu", "sIu"]  # Files to calculate if they do not exist
-    data_dir = os.path.join(ROOT_DIR, "data", "Fe_Wannier90")
+    data_dir = os.path.join(DATA_DIR, "Fe_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
 
     return data_dir
 
 
+def load_wandata(seedname,
+                 files,
+                 readnnkp=False,  # to reproduce the old behavior
+                 **kwargs):
+    dir = os.path.dirname(seedname)
+    seed = os.path.basename(seedname)
+    path_npz = os.path.join(dir, 'NPZ', seed)
+    os.makedirs(os.path.dirname(path_npz), exist_ok=True)
+    try:
+        wandata = WannierData.from_npz(seedname=path_npz, files=files, ignore_missing_files=False)
+    except FileNotFoundError as e:
+        print(f"NPZ files not found for seedname {seedname} and files {files}. \n{e}\nTrying to load from w90 files.")
+        wandata = WannierData.from_w90_files(seedname=seedname, files=files, readnnkp=readnnkp, **kwargs)
+        wandata.to_npz(path_npz)
+    return wandata
+
+
 @pytest.fixture(scope="session")
-def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
+def create_files_Fe_W90_npz(create_files_Fe_W90):
     """Create symbolic links to the npz files"""
 
     seedname = "Fe"
@@ -100,16 +115,9 @@ def create_files_Fe_W90_npz(create_files_Fe_W90, system_Fe_W90):
     data_dir_new = data_dir.joinpath("NPZ")
     data_dir_new.mkdir(exist_ok=True)
 
-    def _link(ext):
-        f = seedname + "." + ext
-        try:
-            data_dir_new.joinpath(f).symlink_to(data_dir.joinpath(f))
-        except FileExistsError:
-            pass
-
-    _link("chk")
-    for ext in ["eig", "mmn", "spn", "uHu", "sHu", "sIu", "bkvec"]:
-        _link(ext + ".npz")
+    load_wandata(seedname=str(data_dir / seedname),
+                 files=["amn", "mmn", "eig", "chk", "spn", "win",
+                        "uHu", "uIu", "sHu", "sIu"])
     return data_dir_new
 
 
@@ -122,7 +130,6 @@ def create_files_GaAs_W90():
     data_dir = os.path.join(ROOT_DIR, "data", "GaAs_Wannier90")
 
     create_W90_files(seedname, tags_needed, data_dir)
-
     return data_dir
 
 
@@ -157,10 +164,17 @@ def system_Fe_W90(create_files_Fe_W90):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(
-        seedname, berry=True, morb=True, SHCqiao=True, SHCryoo=True, transl_inv_MV=False,
-        read_npz=False, overwrite_npz=True, write_npz_list=["uHu", "uIu", "spn", "sHu", "sIu", "bkvec"],
-        write_npz_formatted=True,
+    matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
+
+    wandata = load_wandata(
+        seedname=seedname,
+        files=NeededData(**matrices).files,
+        readnnkp=False,  # to reproduce the old behavior of not reading bkvec from nnkp file
+    )
+
+    system = System_R.from_wannierdata(
+        wandata=wandata,
+        **matrices,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
     return system
@@ -174,11 +188,14 @@ def system_Fe_W90_npz(create_files_Fe_W90_npz):
 
     # Load system
     seedname = os.path.join(data_dir, "Fe")
-    system = wberri.system.System_w90(
-        seedname, berry=True,
-        morb=True, SHCqiao=True, SHCryoo=True,
-        transl_inv_MV=False,
-        read_npz=True, write_npz_list=[], overwrite_npz=False, write_npz_formatted=False,
+    matrices = dict(berry=True, morb=True, SHCqiao=True, SHCryoo=True)
+    wandata = WannierData.from_npz(
+        seedname=seedname,
+        files=NeededData(**matrices).files,
+    )
+    system = System_R.from_wannierdata(
+        wandata=wandata,
+        **matrices,
         ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Fe)
     return system
@@ -189,7 +206,7 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
     """Create convert to sparse format (keeping all matrix elements) and back, to test interface"""
 
     params = system_Fe_W90.get_sparse({X: -1 for X in system_Fe_W90._XX_R.keys()})
-    system = wberri.system.SystemSparse(**params)
+    system = wberri.system.System_R.from_sparse(**params)
     system.set_pointgroup(symmetries_Fe)
     return system
 
@@ -197,12 +214,12 @@ def system_Fe_W90_sparse(create_files_Fe_W90, system_Fe_W90):
 @pytest.fixture(scope="session")
 def system_Fe_WB_irreducible():
     """Create system for Fe from WB wannierisation based on irreducible kpoints only"""
-    w90data = wberri.w90files.Wannier90data().from_npz(
+    wandata = wberri.WannierData.from_npz(
         seedname=os.path.join(ROOT_DIR, "data", "Fe-444-sitesym", "wann-irred", "Fe_wan"),
-        files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer'],
+        files=['chk', 'amn', 'mmn', 'spn', 'eig', 'symmetrizer', "bkvec"],
     )
-    return wberri.system.System_w90(
-        w90data=w90data, berry=True, spin=True, SHCqiao=True)
+    return System_R.from_wannierdata(
+        wandata=wandata, berry=True, spin=True, SHCqiao=True, ws_dist_tol=0.05)
 
 
 
@@ -216,11 +233,17 @@ def get_system_Fe_sym_W90(symmetrize=False,
 
     # Load system
     seedname = os.path.join(data_dir, "Fe_sym")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True, SHCryoo=True,
-                                      OSD=True, SHCqiao=True,
-                                      ws_dist_tol=1e-5,
-                                      transl_inv_MV=True,  # legacy
-                                      **kwargs)
+    matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True, FF=True, keepOOGG=True)
+    wandata = load_wandata(
+        seedname=seedname,
+        files=NeededData(**matrices).files,
+    )
+
+    system = System_R.from_wannierdata(wandata=wandata,
+                                   **matrices,
+                                   ws_dist_tol=1e-5,
+                                   transl_inv_MV=True,  # legacy
+                                   **kwargs)
     system.set_pointgroup(symmetries_Fe)
     if symmetrize:
         system.symmetrize(
@@ -254,75 +277,77 @@ def system_Fe_W90_proj(create_files_Fe_W90):
     return get_system_Fe_sym_W90()
 
 
-PATH_Fe_GPAW = os.path.join(ROOT_DIR, "data", "Fe_gpaw")
+PATH_Fe_GPAW = os.path.join(DATA_DIR, "Fe-gpaw-irred")
 
 
 @pytest.fixture(scope="session")
-def soc_Fe_gpaw():
-    """Create SOC object for Fe from GPAW calculation"""
-    selected_bands_up = np.load(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))['selected_bands']
-    selected_bands_down = np.load(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))['selected_bands']
-    soc = SOC.from_gpaw(os.path.join(PATH_Fe_GPAW, "Fe-nscf.gpw"))
-    soc.select_bands(selected_bands_up=selected_bands_up, selected_bands_down=selected_bands_down)
-    return soc
-
+def wandata_Fe_gpaw():
+    """Create wandata object for Fe from GPAW calculation"""
+    wandata = WannierDataSOC.from_npz(
+        seedname=os.path.join(PATH_Fe_GPAW, "Fe-gpaw-wandata/wannier_soc"),
+        files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
+    )
+    return wandata
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_up():
+def wandata_Fe_gpaw_wannierised():
+    """Create wandata object for Fe from GPAW calculation"""
+    wandata = WannierDataSOC.from_npz(
+        seedname=os.path.join(PATH_Fe_GPAW, "Fe-gpaw-wandata-wannierised/wannier_soc"),
+        files=["mmn", "eig", "soc", "amn", "chk", "symmetrizer"],
+    )
+    return wandata
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_up(wandata_Fe_gpaw_wannierised):
     """Create system for Fe up channel using GPAW wannierisation data"""
-    system = System_R().load_npz(os.path.join(PATH_Fe_GPAW, "system_up"), load_all_XX_R=True)
-    spacegroup = SpaceGroup.from_cell(real_lattice=system.real_lattice,
-                                positions=[[0, 0, 0]], typat=[1],
-                            magmom=[[0, 0, 0]])
-    system.set_pointgroup(spacegroup=spacegroup)
-    return system
+    return System_R.from_wannierdata(wandata_Fe_gpaw_wannierised.data_up, berry=True)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_dw():
+def system_Fe_gpaw_dw(wandata_Fe_gpaw_wannierised):
     """Create system for Fe down channel using GPAW wannierisation data"""
-    system = System_R().load_npz(os.path.join(PATH_Fe_GPAW, "system_dw"), load_all_XX_R=True)
-    spacegroup = SpaceGroup.from_cell(real_lattice=system.real_lattice,
-                                positions=[[0, 0, 0]], typat=[1],
-                            magmom=[[0, 0, 0]])
-    system.set_pointgroup(spacegroup=spacegroup)
+    return System_R.from_wannierdata(wandata_Fe_gpaw_wannierised.data_down, berry=True)
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc(wandata_Fe_gpaw_wannierised):
+    """Create system for Fe with SOC using GPAW wannierisation data"""
+    system = SystemSOC.from_wannierdata(wandata_Fe_gpaw_wannierised, berry=True)
+    system.to_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc"))
     return system
 
 
 @pytest.fixture(scope="session")
-def get_system_Fe_gpaw_soc(system_Fe_gpaw_up, system_Fe_gpaw_dw, soc_Fe_gpaw):
-    def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0,
-               do_symmetrize=False):
+def system_Fe_gpaw_soc_dowannierise(wandata_Fe_gpaw):
+    """Create system for Fe with SOC using GPAW wannierisation data"""
+    wandata = copy.deepcopy(wandata_Fe_gpaw)
+    wandata.wannierise(num_iter=100, sitesym=True,
+                    froz_min=-1000, froz_max=15,
+                    savechk=False,
+                    localise_num_iter=0)
+    system = SystemSOC.from_wannierdata(wandata, berry=True)
+    return system
+
+
+
+@pytest.fixture(scope="session")
+def system_Fe_gpaw_soc_ref():
+    """Create system for Fe with SOC using GPAW wannierisation data"""
+    return SystemSOC.from_npz(os.path.join(REF_DIR, "systems", "Fe_gpaw_soc"))
+
+
+@pytest.fixture(scope="session")
+def get_system_Fe_gpaw_soc(system_Fe_gpaw_soc_ref):
+    def _inner(phi_deg=0, theta_deg=0, alpha_soc=1.0):
         theta = theta_deg / 180 * np.pi
         phi = phi_deg / 180 * np.pi
-
-        sg = SpaceGroup.from_cell(real_lattice=2.87 * np.array([[1, 1, 1], [-1, 1, 1], [-1, -1, 1]]) / 2,
-                                positions=[[0, 0, 0]], typat=[1], include_TR=True, spinor=False)
-        cell = dict(positions=[[0, 0, 0]], typat=[1], magmoms_on_axis=[1])
-
-        system_dw = system_Fe_gpaw_dw
-        system_up = system_Fe_gpaw_up
-
-        soc = soc_Fe_gpaw
-        chk_up = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_up.chk.npz"))
-        chk_dw = CHK.from_npz(os.path.join(PATH_Fe_GPAW, "system_dw.chk.npz"))
-        system_soc = SystemSOC(system_up=system_up, system_down=system_dw, cell=cell)
-        system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw)
-        if do_symmetrize:
-            projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
-            projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
-            proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
-            symmetrizer_up = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
-            symmetrizer_dw = SAWF().set_spacegroup(sg).set_D_wann_from_projections(proj_set)
-            system_soc.symmetrize2(symmetrizer_up=symmetrizer_up, symmetrizer_down=symmetrizer_dw, silent=False)
-        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
-        # system_soc.set_pointgroup(spacegroup=mg)
-        path_save = os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}" +
-                                 f"{'_symmetrized' if do_symmetrize else ''}")
-        os.makedirs(os.path.dirname(path_save), exist_ok=True)
-        system_soc.save_npz(path_save)
-        return system_soc
+        system = copy.deepcopy(system_Fe_gpaw_soc_ref)
+        system.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        system.to_npz(os.path.join(OUTPUT_DIR, "systems", f"Fe_gpaw_soc_theta{theta_deg:.2f}_phi{phi_deg:.2f}_alpha{alpha_soc:.2f}"))
+        return system
     return _inner
 
 
@@ -332,18 +357,14 @@ def system_Fe_gpaw_soc_z(get_system_Fe_gpaw_soc):
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_z_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=0, theta_deg=0, do_symmetrize=True)
-
-
-@pytest.fixture(scope="session")
 def system_Fe_gpaw_soc_angle(get_system_Fe_gpaw_soc):
     return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0)
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_angle_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=33, theta_deg=49, alpha_soc=1.0, do_symmetrize=True)
+def system_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle):
+    return system_Fe_gpaw_soc_angle.get_system_R()
+
 
 
 @pytest.fixture(scope="session")
@@ -351,164 +372,58 @@ def system_Fe_gpaw_soc_111(get_system_Fe_gpaw_soc):
     return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0)
 
 
+
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_111_symmetrized(get_system_Fe_gpaw_soc):
-    return get_system_Fe_gpaw_soc(phi_deg=45, theta_deg=np.arccos(1 / np.sqrt(3)) * 180 / np.pi, alpha_soc=1.0, do_symmetrize=True)
+def get_system_GaAs_W90(create_files_GaAs_W90):
+    def _inner(transl_inv_JM, FF, qmetric=False):
+        """Create system for GaAs using Wannier90 data"""
 
-
-# @pytest.fixture(scope="session")
-# def _system_Fe_gpaw_soc_111_irred():
-#     PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
-
-#     gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
-#     sg = SpaceGroup.from_gpaw(gpaw_calc)
-#     projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
-#     projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
-#     proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
-#     path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
-#     os.makedirs(path, exist_ok=True)
-#     kwargs_w90data = dict(calculator=gpaw_calc,
-#                           projections=proj_set,
-#         #                     ecut_pw=300,
-#         # ecut_sym=150,
-#         mp_grid=(2, 2, 2),
-#         read_npz_list=[],
-#         spacegroup=sg,
-#         # write_npz_list=[],
-#         # irreducible=True,
-#         # files=["amn", "mmn", "eig", "symmetrizer"],
-#         unitary_params=dict(error_threshold=0.1,
-#                             warning_threshold=0.01,
-#                             nbands_upper_skip=8),
-#     )
-
-#     w90data_up = wberri.w90files.Wannier90data().from_gpaw(
-#         spin_channel=0,
-#         seedname=os.path.join(path, "Fe-irred-spin-0"),
-#         **kwargs_w90data)
-#     w90data_dw = wberri.w90files.Wannier90data().from_gpaw(
-#         spin_channel=1,
-#         seedname=os.path.join(path, "Fe-irred-spin-1"),
-#         **kwargs_w90data)
-#     w90data_dw.select_bands(win_min=-100,
-#                          win_max=50)
-#     w90data_up.select_bands(win_min=-100,
-#                             win_max=50)
-
-#     w90data_up.wannierise(
-#         froz_min=-np.inf,
-#         froz_max=17,
-#         num_iter=500,
-#         print_progress_every=10,
-#         sitesym=True,
-#         localise=True,
-#     )
-
-#     w90data_dw.wannierise(
-#         froz_min=-np.inf,
-#         froz_max=17,
-#         num_iter=500,
-#         print_progress_every=10,
-#         sitesym=True,
-#         localise=True,
-#     )
-#     system_up = System_w90(w90data=w90data_up, berry=True)
-#     system_dw = System_w90(w90data=w90data_dw, berry=True)
-#     system_soc = SystemSOC(system_up=system_up, system_down=system_dw)
-#     chk_up = w90data_up.get_file('chk')
-#     chk_dw = w90data_dw.get_file('chk')
-#     soc = SOC.from_gpaw(gpaw_calc)
-#     kptirr, weights_k = w90data_up.kptirr_system
-#     system_soc.set_soc_R(soc, chk_up=chk_up, chk_down=chk_dw, kptirr=kptirr, weights_k=weights_k)
-#     system_soc.symmetrize2(symmetrizer_up=w90data_up.get_file('symmetrizer'),
-#                            symmetrizer_down=w90data_dw.get_file('symmetrizer'),)
-#     theta = np.arccos(1 / np.sqrt(3))
-#     phi = np.pi / 4
-#     system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
-#     mg = SpaceGroup.from_gpaw_magnetic(gpaw_calc, theta=theta, phi=phi)
-#     system_soc.set_pointgroup(spacegroup=mg)
-#     return system_soc
+        data_dir = create_files_GaAs_W90
+        # Load system
+        seedname = os.path.join(data_dir, "GaAs")
+        matrices = dict(berry=True, morb=True, spin=True, SHCqiao=True, SHCryoo=True, OSD=True,
+                        FF=FF, keepOOGG=True,
+                        OOGG_to_FF=False, qmetric=qmetric)
+        wandata = load_wandata(
+            seedname=seedname,
+            files=NeededData(**matrices).files,
+            readnnkp=False,
+        )
+        system = System_R.from_wannierdata(wandata=wandata,
+                                    **matrices,
+                                    transl_inv_MV=not transl_inv_JM,  # legacy
+                                    transl_inv_JM=transl_inv_JM,
+                                    ws_dist_tol=-1e-5)
+        system.set_pointgroup(symmetries_GaAs)
+        return system
+    return _inner
 
 
 @pytest.fixture(scope="session")
-def system_Fe_gpaw_soc_111_irred():
-    PATH_Fe_GPAW_irred = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
-
-    gpaw_calc = GPAW(os.path.join(PATH_Fe_GPAW_irred, "Fe-nscf-irred-222.gpw"))
-    sg = SpaceGroup.from_gpaw(gpaw_calc)
-    projection_sp3d2 = Projection(position_num=[0, 0, 0], orbital='sp3d2', spacegroup=sg)
-    projection_t2g = Projection(position_num=[0, 0, 0], orbital='t2g', spacegroup=sg)
-    proj_set = ProjectionsSet([projection_sp3d2, projection_t2g])
-
-    # path = os.path.join(OUTPUT_DIR, "Fe-gpaw-soc-irred")
-    # os.makedirs(path, exist_ok=True)
-    w90data = Wannier90dataSOC.from_gpaw(
-        calculator=gpaw_calc,
-        projections=proj_set,
-        mp_grid=(2, 2, 2),
-        read_npz_list=[],
-        spacegroup=sg,
-    )
-
-    w90data.select_bands(win_min=-100,
-                         win_max=50)
-
-    w90data.wannierise(
-        froz_min=-np.inf,
-        froz_max=17,
-        num_iter=500,
-        print_progress_every=10,
-        sitesym=True,
-        localise=True,
-    )
-
-    theta = np.arccos(1 / np.sqrt(3))
-    phi = np.pi / 4
-
-    system = SystemSOC.from_wannier90data_soc(w90data=w90data, berry=True, silent=False)
-    system.set_soc_axis(theta=theta, phi=phi, alpha_soc=1.0)
-    system.save_npz(os.path.join(OUTPUT_DIR, "systems", "Fe_gpaw_soc_theta54.74_phi45.00_alpha1.00_irred"))
-
-    return system
+def system_GaAs_W90(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=False, FF=True, qmetric=True)
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data"""
-
-    data_dir = create_files_GaAs_W90
-
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, berry=True, morb=True, spin=True,
-                                      transl_inv_MV=True,
-                                      read_npz=False,
-                                      ws_dist_tol=-1e-5)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
+def system_GaAs_W90_OOGG(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=False, FF=False)
 
 
 @pytest.fixture(scope="session")
-def system_GaAs_W90_JM(create_files_GaAs_W90):
-    """Create system for GaAs using Wannier90 data with wcc phases"""
+def system_GaAs_W90_JM(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=True, FF=True)
 
-    data_dir = create_files_GaAs_W90
-    # Load system
-    seedname = os.path.join(data_dir, "GaAs")
-    system = wberri.system.System_w90(seedname, morb=True,
-                                      transl_inv_JM=True, spin=True,
-                                      OSD=True, SHCryoo=True,
-                                      read_npz=False,
-                                      ws_dist_tol=-1e-5)
-    system.set_pointgroup(symmetries_GaAs)
-    return system
+
+@pytest.fixture(scope="session")
+def system_GaAs_W90_JM_OOGG(get_system_GaAs_W90):
+    return get_system_GaAs_W90(transl_inv_JM=True, FF=False)
 
 
 def get_system_GaAs_tb(symmetrize=True, berry=True):
     """Create system for GaAs using sym_tb.dat data"""
     seedname = create_files_tb(dir="GaAs_Wannier90", file=f"GaAs{'_sym' if symmetrize else ''}_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=berry, ws_dist_tol=-1e-5,)
-    system.do_ws_dist(mp_grid=(2, 2, 2))
+    system = System_R.from_tb_dat(seedname, berry=berry)
+    system.do_ws_dist(mp_grid=(2, 2, 2), ws_dist_tol=-1e-5)
 
     system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     if symmetrize:
@@ -542,7 +457,7 @@ def system_GaAs_tb_noAA():
 
 
 def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
-                         matrices=dict(OSD=True),
+                         matrices=dict(OSD=True, FF=True, keepOOGG=True),
                          symmetrize=False,
                          double=False,
                          ):
@@ -555,16 +470,17 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
                 tar.extract(tarinfo, data_dir)
     # Load system
     seedname = os.path.join(data_dir, "Si")
-    system = wberri.system.System_w90(seedname,
-                                      transl_inv_MV=transl_inv,
-                                      transl_inv_JM=transl_inv_JM,
-                                      **matrices)
+    wandata = load_wandata(
+        seedname=seedname,
+        files=NeededData(**matrices).files,
+    )
+    system = System_R.from_wannierdata(wandata=wandata,
+                                   transl_inv_MV=transl_inv,
+                                   transl_inv_JM=transl_inv_JM,
+                                   **matrices)
     if double:
         system.double_spin()
     if symmetrize:
-        iRold = [tuple(R) for R in system.rvec.iRvec]
-        print("Rvectors before symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
-        print(f"wannier-diff {system.wannier_centers_red[:, None, :] - system.wannier_centers_red[None, :, :]}")
         system.symmetrize(
             positions=np.array([[-0.125, -0.125, 0.375],
                                 [0.375, -0.125, -0.125],
@@ -573,17 +489,13 @@ def get_system_Si_W90_JM(data_dir, transl_inv=False, transl_inv_JM=False,
             atom_name=['bond'] * 4,
             proj=['bond:s'],
             soc=double)
-        print("Rvectors after symmetrization", system.rvec.nRvec, "\n", system.rvec.iRvec)
-        iRnew = [tuple(R) for R in system.rvec.iRvec]
-        for rnew in iRnew:
-            if rnew not in iRold:
-                print("New Rvector", rnew)
-                for r in iRold:
-                    if np.all(np.array(rnew) - np.array(r) % 2 == 0):
-                        print("    Old Rvector", r)
-
 
     return system
+
+
+matrices_Si_GGOO = dict(OSD=True, keepOOGG=True, OOGG_to_FF=False)
+matrices_Si_GGOOFF = dict(OSD=True, keepOOGG=True, OOGG_to_FF=True)
+matrices_Si_FF = dict(OSD=True, keepOOGG=False, OOGG_to_FF=True)
 
 
 @pytest.fixture(scope="session")
@@ -594,16 +506,75 @@ def system_Si_W90_JM(create_files_Si_W90):
                                 transl_inv_JM=True)
 
 
-
 @pytest.fixture(scope="session")
 def system_Si_W90_JM_sym(create_files_Si_W90):
     """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
     data_dir = create_files_Si_W90
     system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOO,
                                   symmetrize=True)
     return system
 
 
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_OOGGFF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=True)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_OOGGFF_uc(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=True)
+    system.shift_wannier_centers_to_unit_cell()
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_sym_FF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_FF,
+                                  symmetrize=True)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_OOGG(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOO,
+                                  symmetrize=False)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_OOGGFF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_GGOOFF,
+                                  symmetrize=False)
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_Si_W90_JM_FF(create_files_Si_W90):
+    """Create system for Si using Wannier90 data with Jae-Mo's approach for real-space matrix elements"""
+    data_dir = create_files_Si_W90
+    system = get_system_Si_W90_JM(data_dir, transl_inv_JM=True,
+                                  matrices=matrices_Si_FF,
+                                  symmetrize=False)
+    return system
 
 
 @pytest.fixture(scope="session")
@@ -651,7 +622,7 @@ def system_Haldane_TBmodels():
     except (ImportError, ModuleNotFoundError):
         pytest.xfail("failed to import tbmodels")
     model_tbmodels_Haldane = wb_models.Haldane_tbm(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = wberri.system.System_TBmodels(model_tbmodels_Haldane)
+    system = System_R.from_tbmodels(model_tbmodels_Haldane)
     system.set_pointgroup(["C3z"])
     return system
 
@@ -663,8 +634,17 @@ def system_Haldane_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
     model_pythtb_Haldane = wb_models.Haldane_ptb(delta=0.2, hop1=-1.0, hop2=0.15)
-    system = wberri.system.System_PythTB(model_pythtb_Haldane)
+    system = System_R.from_pythtb(model_pythtb_Haldane)
     system.set_pointgroup(["C3z"])
+    return system
+
+
+@pytest.fixture(scope="session")
+def system_SSH_PythTB():
+    """Create system for SSH model using PythTB"""
+    # Load system
+    model_pythtb_SSH = wb_models.SSH_ptb(delta=0.1, hop1=1.0, hop2=0.5)
+    system = System_R.from_pythtb(model_pythtb_SSH)
     return system
 
 
@@ -673,7 +653,7 @@ def system_KaneMele_odd_PythTB():
     """Create system for Haldane model using PythTB"""
     # Load system
     model_pythtb_KaneMele_odd = wb_models.KaneMele_ptb('odd')
-    system = wberri.system.System_PythTB(model_pythtb_KaneMele_odd, spin=True)
+    system = System_R.from_pythtb(model_pythtb_KaneMele_odd, spin=True)
     system.set_pointgroup(["C3z", "TimeReversal"])
     return system
 
@@ -683,7 +663,7 @@ def system_Chiral_OSD():
     """Create system for Haldane model using PythTB"""
     # Load system
     model_pythtb_Chiral_OSD = wb_models.Chiral_OSD()
-    system = wberri.system.System_PythTB(model_pythtb_Chiral_OSD, spin=True)
+    system = System_R.from_pythtb(model_pythtb_Chiral_OSD, spin=True)
     # system.set_pointgroup(["C3z","TimeReversal"])
     return system
 
@@ -696,7 +676,7 @@ def system_Chiral_OSD():
 def system_Chiral_left():
     model_Chiral_left = wb_models.Chiral(
         delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
-    system = wberri.system.System_PythTB(model_Chiral_left)
+    system = System_R.from_pythtb(model_Chiral_left)
     system.set_pointgroup(["C3z"])
     system.set_spin_eigenstates([1, -1])
     return system
@@ -706,7 +686,7 @@ def system_Chiral_left():
 def system_Chiral_left_TR():
     model_Chiral_left_TR = wb_models.Chiral(
         delta=2, hop1=1, hop2=1. / 3, phi=-np.pi / 10, hopz_left=0.2, hopz_right=0.0, hopz_vert=0)
-    system = wberri.system.System_PythTB(model_Chiral_left_TR)
+    system = System_R.from_pythtb(model_Chiral_left_TR)
     system.set_pointgroup(["C3z"])
     system.set_spin_eigenstates([-1, 1])
     return system
@@ -716,7 +696,7 @@ def system_Chiral_left_TR():
 def system_Chiral_right():
     model_Chiral_right = wb_models.Chiral(
         delta=2, hop1=1, hop2=1. / 3, phi=np.pi / 10, hopz_left=0.0, hopz_right=0.2, hopz_vert=0)
-    system = wberri.system.System_PythTB(model_Chiral_right)
+    system = System_R.from_pythtb(model_Chiral_right)
     system.set_pointgroup(["C3z"])
     system.set_spin_eigenstates([1, -1])
     return system
@@ -727,7 +707,7 @@ def system_Chiral_right():
 def system_Fe_FPLO():
     """Create system for Fe using  FPLO  data"""
     path = os.path.join(ROOT_DIR, "data", "Fe_FPLO", "+hamdata")
-    system = wberri.system.System_fplo(path, morb=True, spin=True, mp_grid=2)
+    system = System_R.from_fplo(path, morb=True, spin=True, mp_grid=2)
     system.set_pointgroup(symmetries_Fe)
     return system
 
@@ -738,7 +718,7 @@ def system_CuMnAs_2d_broken():
     # These parameters provide ~0.4eV gap between conduction and valence bands
     # and splitting into subbands is within 0.04 eV
     model_CuMnAs_2d_broken = wb_models.CuMnAs_2d(nx=0, ny=1, nz=0, hop1=1, hop2=0.08, l=0.8, J=1, dt=0.01)
-    system = wberri.system.System_PythTB(model_CuMnAs_2d_broken)
+    system = System_R.from_pythtb(model_CuMnAs_2d_broken)
     return system
 
 
@@ -754,7 +734,7 @@ def data_Te_ASE():
     import ase.dft.wannier
 
     path = os.path.join(ROOT_DIR, "data", "Te_ASE")
-    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"))
+    calc = gpaw.GPAW(os.path.join(path, "Te.gpw"), legacy_gpaw=True)
     wan = ase.dft.wannier.Wannier(nwannier=12, calc=calc, file=os.path.join(path, 'wannier-12.json'))
     return wan
 
@@ -763,7 +743,7 @@ def data_Te_ASE():
 def system_Te_ASE(data_Te_ASE):
     """Create system for Te using  ASE+GPAW data"""
     wan = data_Te_ASE
-    system = wberri.system.System_ASE(wan, ws_dist_tol=1e-5)
+    system = System_R.from_ase(wan, ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Te)
     return system
 
@@ -775,7 +755,7 @@ def system_Te_sparse():
     param = pickle.load(open(path, "rb"))
     param["wannier_centers_red"] = param["wannier_centers_reduced"]
     del param["wannier_centers_reduced"]
-    system = wberri.system.SystemSparse(**param)
+    system = wberri.system.System_R.from_sparse(**param)
     system.set_pointgroup(symmetries_Te)
     return system
 
@@ -784,7 +764,7 @@ def system_Te_sparse():
 def system_Phonons_Si():
     """Create system of phonons of Si using  QE data"""
     path = os.path.join(ROOT_DIR, "data", "Si_phonons/si")
-    system = wberri.system.System_Phonon_QE(path, asr=True, ws_dist_tol=1e-5)
+    system = System_R.from_phonons_qe(path, asr=True, ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_Si)
     return system
 
@@ -793,7 +773,7 @@ def system_Phonons_Si():
 def system_Phonons_GaAs():
     """Create system of phonons of Si using  QE data"""
     path = os.path.join(ROOT_DIR, "data", "GaAs_phonons/GaAs")
-    system = wberri.system.System_Phonon_QE(path, asr=True, ws_dist_tol=1e-5)
+    system = System_R.from_phonons_qe(path, asr=True, ws_dist_tol=1e-5)
     system.set_pointgroup(symmetries_GaAs)
     return system
 
@@ -806,8 +786,8 @@ def get_system_Mn3Sn_sym_tb():
             tar.extract(tarinfo, data_dir)
 
     seedname = os.path.join(data_dir, "Mn3Sn_tb.dat")
-    system = wberri.system.System_tb(seedname, berry=True, ws_dist_tol=-1e-5)
-    system.do_ws_dist(mp_grid=(2, 2, 2))
+    system = System_R.from_tb_dat(seedname, berry=True)
+    system.do_ws_dist(mp_grid=(2, 2, 2), ws_dist_tol=-1e-5)
     system.spin_block2interlace()  # the stored system is from old VASP, with spin-block ordering
     system.symmetrize(
         positions=np.array([
@@ -916,62 +896,31 @@ def system_kp_mass_aniso_2():
 
 
 
-def model_1d_pythtb():
-    import pythtb
-    lat = [[1.0]]
-    orb = [[0], [0.5]]
-    orb2 = [orb[0]] * 2 + [orb[1]] * 2
-
-    model1d_1 = pythtb.tb_model(1, 1, lat, orb, nspin=2)
-    model1d_2 = pythtb.tb_model(1, 1, lat, orb2, nspin=1)
-    Delta = 1
-    model1d_1.set_onsite([-Delta, Delta])
-    model1d_2.set_onsite([-Delta] * 2 + [Delta] * 2)
-    a = np.random.random(4)
-    b = np.random.random(4)
-    model1d_1.set_hop(a, 0, 1, [0])
-    model1d_1.set_hop(b, 1, 0, [-1])
-
-    pauli = np.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[0, -1j], [1j, 0]], [[1, 0], [0, -1]]])
-    for i in range(2):
-        for j in range(2):
-            model1d_2.set_hop(a.dot(pauli[:, i, j]), 0 + i, 2 + j, [0])
-            model1d_2.set_hop(b.dot(pauli[:, i, j]), 2 + i, 0 + j, [-1])
-
-    return model1d_1, model1d_2
-
-
 @pytest.fixture(scope="session")
 def system_random():
-    system = wberri.system.SystemRandom(num_wann=6, nRvec=20, max_R=4,
+    system = wberri.system.System_R.from_random(num_wann=6, nRvec=20, max_R=4,
                                         berry=True, morb=True, spin=True,
-                                        SHCryoo=True, SHCqiao=True, OSD=True,
-                                        ws_dist_tol=-1e-5,)
+                                        SHCryoo=True, SHCqiao=True, OSD=True)
     # system.save_npz("randomsys")
     return system
 
 
 @pytest.fixture(scope="session")
 def system_random_load_bare():
-    system = wberri.system.System_R(berry=True, morb=True, spin=True,
-                                    SHCryoo=True, SHCqiao=True, OSD=True,
-                                    ws_dist_tol=-1e-5)
-    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random"), legacy=True)
+    system = System_R.from_npz(path=os.path.join(ROOT_DIR, "data", "random"), legacy=True)
     return system
 
 
 @pytest.fixture(scope="session")
 def system_random_GaAs():
-    return wberri.system.SystemRandom(num_wann=16, nRvec=30, max_R=4,
+    return wberri.system.System_R.from_random(num_wann=16, nRvec=30, max_R=4,
                                       real_lattice=np.ones(3) - np.eye(3),
                                       berry=True, spin=True, SHCryoo=True,
-                                      ws_dist_tol=-1e-5,
                                       )
 
 
 def get_system_random_GaAs_load_sym(sym=False, use_ws=True):
-    system = wberri.system.System_R(berry=True, spin=True, SHCryoo=True, ws_dist_tol=-1e-5)
-    system.load_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"), legacy=True)
+    system = System_R.from_npz(path=os.path.join(ROOT_DIR, "data", "random_GaAs"), legacy=True)
     if use_ws:
         system.do_ws_dist(mp_grid=6)
     if sym:
@@ -1002,7 +951,11 @@ def system_random_GaAs_load_sym():
 @pytest.fixture(scope="session")
 def system_Te_QE():
     """Create system for Te using QE data"""
-    system = wberri.system.System_R(berry=True, morb=True, spin=True,
-                                    ).load_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"), legacy=True)
+    system = System_R.from_npz(os.path.join(ROOT_DIR, "data", "Te_qe", "system"), legacy=True)
     system.set_pointgroup(symmetries_Te)
     return system
+
+
+@pytest.fixture(scope="session")
+def system_Haldane_double():
+    return wb_models.Haldane_double(delta=0.2, hop1=-1.0, hop2=0.15, phi=np.pi / 2, soc_term=0.3)

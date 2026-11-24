@@ -1,15 +1,3 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 # This is an auxiliary class for the __evaluate.py  module
 
 from typing import Iterable
@@ -94,5 +82,5 @@ class KpointBZtetra(KpointBZ):
                     NKFFT=self.NKFFT
                 ))
         #        print (f"split {self.size} intp {[k.size for k in add_list]}")
-        self.factor = 0.
+        self.set_factor(0)  # the K-point is "dead" but can be used for starting calculation on a different grid  - not implemented
         return add_list

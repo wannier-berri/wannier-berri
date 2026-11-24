@@ -1,0 +1,109 @@
+
+Diagonalizing LCAO Hamiltonian
+Converting LCAO to pw mode
+convergence criteria:
+- Maximum integral of absolute [eigenst]ate change: 4e-08 eV^2 / valence electron
+maximum number of iterations: 333
+
+SCF iterations
+|iter     |     time |      energy | eigst |  dens |  magmom |
+|---------|----------|-------------|-------|-------|---------|
+|iter:   1| 17:05:04 |             | +4.05 |       |  +2.1655|
+|iter:   2| 17:05:08 |             | +2.27 |       |  +2.1655|
+|iter:   3| 17:05:12 |             | +0.71 |       |  +2.1655|
+|iter:   4| 17:05:16 |             | -0.27 |       |  +2.1655|
+|iter:   5| 17:05:19 |             | -0.79 |       |  +2.1655|
+|iter:   6| 17:05:22 |             | -0.91 |       |  +2.1655|
+|iter:   7| 17:05:25 |             | -1.08 |       |  +2.1655|
+|iter:   8| 17:05:27 |             | -1.12 |       |  +2.1655|
+|iter:   9| 17:05:30 |             | -1.03 |       |  +2.1655|
+|iter:  10| 17:05:32 |             | -0.93 |       |  +2.1655|
+|iter:  11| 17:05:34 |             | -0.93 |       |  +2.1655|
+|iter:  12| 17:05:36 |             | -1.01 |       |  +2.1655|
+|iter:  13| 17:05:38 |             | -1.04 |       |  +2.1655|
+|iter:  14| 17:05:40 |             | -1.18 |       |  +2.1655|
+|iter:  15| 17:05:42 |             | -1.42 |       |  +2.1655|
+|iter:  16| 17:05:44 |             | -1.56 |       |  +2.1655|
+|iter:  17| 17:05:46 |             | -1.62 |       |  +2.1655|
+|iter:  18| 17:05:48 |             | -1.82 |       |  +2.1655|
+|iter:  19| 17:05:50 |             | -2.05 |       |  +2.1655|
+|iter:  20| 17:05:52 |             | -2.21 |       |  +2.1655|
+|iter:  21| 17:05:54 |             | -2.34 |       |  +2.1655|
+|iter:  22| 17:05:56 |             | -2.53 |       |  +2.1655|
+|iter:  23| 17:05:58 |             | -2.78 |       |  +2.1655|
+|iter:  24| 17:06:00 |             | -2.91 |       |  +2.1655|
+|iter:  25| 17:06:02 |             | -3.05 |       |  +2.1655|
+|iter:  26| 17:06:04 |             | -3.11 |       |  +2.1655|
+|iter:  27| 17:06:06 |             | -3.40 |       |  +2.1655|
+|iter:  28| 17:06:08 |             | -3.68 |       |  +2.1655|
+|iter:  29| 17:06:10 |             | -3.94 |       |  +2.1655|
+|iter:  30| 17:06:12 |             | -4.10 |       |  +2.1655|
+|iter:  31| 17:06:14 |             | -4.14 |       |  +2.1655|
+|iter:  32| 17:06:16 |             | -4.36 |       |  +2.1655|
+|iter:  33| 17:06:18 |             | -4.56 |       |  +2.1655|
+|iter:  34| 17:06:20 |             | -4.64 |       |  +2.1655|
+|iter:  35| 17:06:22 |             | -4.69 |       |  +2.1655|
+|iter:  36| 17:06:24 |             | -5.00 |       |  +2.1655|
+|iter:  37| 17:06:26 |             | -5.53 |       |  +2.1655|
+|iter:  38| 17:06:28 |             | -6.18 |       |  +2.1655|
+|iter:  39| 17:06:30 |             | -6.86 |       |  +2.1655|
+|iter:  40| 17:06:32 |             | -7.47c|       |  +2.1655|
+SCF steps: 40
+  __  _  _
+ | _ |_)|_||  |
+ |__||  | ||/\| - 26.7.0
+
+User:   stepan@C3MP-C019202L
+Date:   Sun Nov  8 17:06:32 2026
+Arch:   x86_64
+Pid:    344693
+CWD:    /home/stepan/storage/github/wannier-berri/tests/data/Fe-gpaw-irred-new
+units:  Angstrom and eV
+cores:  1
+OpenMP: False
+
+Versions:
+  Python: 3.13.13
+  ASE:    3.29.0
+  Numpy:  2.5.4
+  Scipy:  1.18.1
+  Libxc:  5.2.3
+
+Paths:
+  gpaw:  /home/stepan/storage/github/wannier-berri/.conda/lib/python3.13/site-packages/gpaw
+  _gpaw: /home/stepan/storage/github/wannier-berri/.conda/lib/python3.13/site-packages/
+        _gpaw.cpython-313-x86_64-linux-gnu.so
+  ase:   /home/stepan/storage/github/wannier-berri/.conda/lib/python3.13/site-packages/ase
+  numpy: /home/stepan/storage/github/wannier-berri/.conda/lib/python3.13/site-packages/numpy
+  scipy: /home/stepan/storage/github/wannier-berri/.conda/lib/python3.13/site-packages/scipy
+
+Git-hashes:
+
+OMP_NUM_THREADS: 
+
+
+Environment variables:
+  GPAW_CPUPY:          False
+  GPAW_DEBUG:          False
+  GPAW_MPI_BACKEND:    serial
+  GPAW_MPI_OPTIONS:    None
+  GPAW_NO_C_EXTENSION: False
+  GPAW_NO_GPU_MPI:     False
+  GPAW_TRACE:          False
+  GPAW_USE_GPUS:       False
+
+Input parameters:
+  mode=PW(ecut=600.0),
+  convergence={'bands': 32},
+  gpts=array([15, 15, 15]),
+  kpts=KPoints(kpts=array([[0. , 0. , 0. ],
+         [0. , 0. , 0.5],
+         [0.5, 0.5, 0.5]])),
+  nbands=40
+# Writing to Fe-nscf-irred-222.gpw (mode='all')
+
+
+timing:  # [seconds]
+  Total: 0.110  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Max RSS: 255.844  # MiB

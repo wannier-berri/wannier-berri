@@ -1,10 +1,9 @@
 import numpy as np
-from .orbitals import num_orbitals
 from .unique_list import UniqueListMod1
-from irrep.symmetry_operation import get_atom_map
 
 
 class Dwann:
+
 
     """
     A class to generate the Wannier transformation matrices D_wann 
@@ -50,13 +49,14 @@ class Dwann:
     Notes
     -----
     * the spin ordering is always assumed "iterlaced", i.e. like in QE (or new VASP). If you are using an old VASP version,
-    you should change the spin_ordering to "block" in the of w90data.amn object.
+    you should change the spin_ordering to "block" in the of wandata.amn object.
     """
 
     def __init__(self, spacegroup, positions, orbital="_",
                 orbitalrotator=None,
                 basis_list=None,
                 spinor=False):
+
 
         self.nsym = spacegroup.size
         if spinor:
@@ -75,6 +75,7 @@ class Dwann:
         if orbital != "_":
             assert orbitalrotator is not None
             assert basis_list is not None
+            from .orbitals import num_orbitals
             self.num_orbitals_scal = num_orbitals(orbital)
         else:
             self.num_orbitals_scal = 1
@@ -88,6 +89,7 @@ class Dwann:
         self.atommap = -np.ones((self.num_points, self.nsym), dtype=int)
         self.T = np.zeros((self.num_points, self.nsym, 3), dtype=int)
 
+        from irrep.symmetry_operation import get_atom_map
         for isym, symop in enumerate(spacegroup.symmetries):
             self.atommap[:, isym], self.T[:, isym, :] = get_atom_map(symop=symop, positions=self.orbit)
 

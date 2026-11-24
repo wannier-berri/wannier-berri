@@ -1,11 +1,14 @@
+from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
+from .unique_list import UniqueListMod1
+from ..utility import cached_einsum
 import copy
 from functools import cached_property
 import itertools
 import numpy as np
 import scipy
+import logging
+logger = logging.getLogger(__name__)
 
-from wannierberri.utility import cached_einsum
-from ..symmetry.orbitals import orbitals_sets_dic
 
 try:
     from jax import config
@@ -14,41 +17,46 @@ try:
     from jax.scipy.optimize import minimize as jminimize
     from jax import jit as jjit
 except ImportError:
-    # warnings.warn("jax not found, will use numpy insrtead")
+    # logger.warning("jax not found, will use numpy insrtead")
     import numpy as jnp
     from scipy.optimize import minimize as jminimize
     from functools import partial as jjit
 
 
-from ..symmetry.orbitals import Orbitals, num_orbitals
-from .unique_list import UniqueListMod1
-from .wyckoff_position import WyckoffPosition, WyckoffPositionNumeric, get_shifts
-
-ORBITALS = Orbitals()
-
 
 orbital_moment_matrix = {
-    's' : np.zeros( (1,1) ),
-    'p' : np.zeros( (3,3) ),
-    'd' : np.zeros( (5,5) ),
+    's': np.zeros((1, 1)),
+    'p': np.zeros((3, 3)),
+    'd': np.zeros((5, 5)),
 }
+
 
 class Projection:
     """	
-    A class to store initial projections. 
+    A class to store initial projection. One object correspondsto a set of projections related by symmetry.
+    If it is on a wyckoff position with multiplicity >1, all the points in the orbit should be included, 
+    (or by spacegroup, they will be added automatically).
 
     Parameters
     ----------
     position_num : np.array(shape=(n,3,), dtype=float) or str
-        The position of the projection if fractional coordinates. 
+        The position of the projection if fractional coordinates.
+        provided less positions than in the orbit, then the rest will be generated 
+        by spacegroup symmetries. If provided more - only the provided ones will be used, but the spacegroup symmetries will not be applied to them. 
     position_str : str
         comma-separated positions with x,y,z being the free variables, 
         e.g.  "x,y,z", "x,x-y,1/2", etc.
+        in fractional coordinates. If provided, the position_num is ignored
     orbital : str
         The orbital of the projection.  e.g. "s", "p", "sp3 etc. or several separated by a semicolon (e.g. "s;p")	
     spacegroup : irrep.spacegroup.SpaceGroup
         The spacegroup of the structure. All points equivalent to the given ones are also added 
         (not needed if wyckoff_position is provided)
+    radial_nodes : int
+        number of nodes in the radial function (e.g. 0 is equivalent to r=1 in wannier90 projections)
+    spread_factor : float
+        multiplier for the spread of the radial function (in Bohr). The radial function is proportional exp(-r/((nodes+1)*spread_factor))
+        equivalent to zona=1/spread_factor in wannier90 projections
     void : bool
         if true, create an empty object, to be filled later
     wyckoff_position : WyckoffPosition or WyckoffPositionNumeric
@@ -83,16 +91,6 @@ class Projection:
         If True, the projection is a spinor
     basis_list : list(np.array(shape=(3,3), dtype=float))
         The basis for each site (row-vectors)
-    positions : np.array(shape=(n,3), dtype=float)
-        The positions of the projections
-    num_wann_per_site : int
-        The number of Wannier functions per site
-    num_points : int
-        The number of points
-    num_wann : int
-        The total number of Wannier functions
-    orbitals_str : str
-        The orbitals of the projection as one string separated by semicolons `;`
     """
 
     def __init__(self,
@@ -104,17 +102,27 @@ class Projection:
                  void=False,
                  free_var_values=None,
                  spinor=None,
-                 rotate_basis=False,
+                 rotate_basis=True,
                  basis_list=None,
+                 radial_nodes=0,
+                 spread_factor=1.0,
                  zaxis=None,
                  xaxis=None,
-                 do_not_split_projections=False):
+                 do_not_split_projections=False,
+                 atom_name=None):
         if void:
             return
         if do_not_split_projections:
             self.orbitals = [orbital]
         else:
             self.orbitals = orbital.split(";")
+        self.radial_nodes = radial_nodes
+        self.spread_factor = spread_factor
+
+        # if none - generate a random 5-letter name for the atom,
+        if atom_name is None:
+            atom_name = ''.join([np.random.choice(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) for _ in range(5)])
+        self.atom_name = atom_name
 
         if wyckoff_position is not None:
             self.wyckoff_position = wyckoff_position
@@ -127,7 +135,7 @@ class Projection:
                                                     free_var_values=free_var_values)
             else:
                 assert position_sym is None, "position_num and position_str should NOT be provided together"
-                position_num = np.array(position_num)
+                position_num = np.array(position_num, dtype=float)
                 if position_num.ndim == 1:
                     position_num = position_num[None, :]
                 self.wyckoff_position = WyckoffPositionNumeric(positions=position_num,
@@ -142,17 +150,43 @@ class Projection:
         self.spinor = spinor
 
         if basis_list is not None:
-            assert not rotate_basis, "rotate_basis is not allowed if basis_list is provided"
+            if rotate_basis:
+                logger.warning("basis list is provided, rotate_basis is ignored")
             for i, b in enumerate(basis_list):
                 b = np.array(b, dtype=float)
                 assert b.shape == (3, 3), f"basis_list[{i}] should be a 3x3 matrix, not {b.shape}"
                 assert np.allclose(b @ b.T, np.eye(3), atol=1e-8), f"basis_list[{i}] should be an orthogonal matrix, not {b}"
             self.basis_list = np.array(basis_list)
-        elif rotate_basis:
-            basis0 = read_xzaxis(xaxis, zaxis)
-            self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
         else:
-            self.basis_list = [np.eye(3, dtype=float)] * self.num_points
+            basis0 = read_xzaxis(xaxis, zaxis)
+            if rotate_basis:
+                self.basis_list = [basis0 @ rot.T for rot in self.wyckoff_position.rotations_cart]
+            else:
+                self.basis_list = [basis0] * self.num_points
+
+    @property
+    def wannier_centers_red(self):
+        """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
+        return np.array([pos for pos in self.wyckoff_position.positions for _ in range(self.num_wann_per_site)], dtype=float)
+
+    @property
+    def atom_centers_red(self):
+        """Wannier centers in reduced coordinates. Shape (num_wann, 3)"""
+        return self.wyckoff_position.positions.copy()
+
+    @property
+    def wannier_to_atom_map(self):
+        """Map from wannier functions to atoms. Shape (num_wann,)"""
+        return np.array([i for i in range(self.num_points) for _ in range(self.num_wann_per_site)], dtype=int)
+
+    @property
+    def wannier_centers_cart(self):
+        return self.wannier_centers_red @ self.wyckoff_position.spacegroup.lattice
+
+
+    @property
+    def spacegroup(self):
+        return self.wyckoff_position.spacegroup
 
     def get_orbital_moment_matrix(self):
         L_list = []
@@ -163,7 +197,7 @@ class Projection:
                 raise KeyError(f"orbital {orb} does not have a known orbital moment matrix defined")
         # make a block diagonal matrix
         L_mat_atom = scipy.linalg.block_diag(*L_list)
-        print (f"L_mat_atom for {self.orbitals} {L_mat_atom}")
+        print(f"L_mat_atom for {self.orbitals} {L_mat_atom}")
         L_list = []
         for basis in self.basis_list:
             if np.allclose(basis, np.eye(3)):
@@ -176,24 +210,41 @@ class Projection:
 
     @property
     def positions(self):
+        """Positions of the projections in fractional coordinates. Shape (n_points, 3)"""
         return self.wyckoff_position.positions
 
     @property
-    def num_wann_per_site(self):
+    def num_wann_per_site_scalar(self):
         """number of wannier functions per site (without spin)"""
+        from .orbitals import num_orbitals
         return sum(num_orbitals(o) for o in self.orbitals)
 
     @property
-    def num_wann_per_site_spinor(self):
+    def num_wann_per_site(self):
         """number of wannier functions per site (with spin)"""
-        return self.num_wann_per_site * (2 if self.spinor else 1)
+        return self.num_wann_per_site_scalar * self.nspinor
 
     @property
     def num_points(self):
+        """number of points in the projection (i.e. number of sites in the orbit)"""
         return self.wyckoff_position.num_points
 
     @property
+    def num_wann_scalar(self):
+        """total number of wannier functions in the projection (number of sites in the orbit multiplied by number of wannier functions per site)
+        with spin NOT TAKEN into account"""
+        return self.num_points * self.num_wann_per_site_scalar
+
+
+    @property
+    def nspinor(self):
+        return 2 if self.spinor else 1
+
+
+    @property
     def num_wann(self):
+        """total number of wannier functions in the projection (number of sites in the orbit multiplied by number of wannier functions per site)
+        with spin TAKEN into account"""
         return self.num_points * self.num_wann_per_site
 
     @property
@@ -212,12 +263,16 @@ class Projection:
         new.orbitals = self.orbitals
         new.spinor = self.spinor
         new.wyckoff_position = self.wyckoff_position
+        new.basis_list = self.basis_list
+        new.radial_nodes = 0
+        new.spread_factor = 1.0
         return new
 
     def __add__(self, other):
         new = self.copy()
         if other is not None:
             assert self.wyckoff_position == other.wyckoff_position, f"Cannot add projections from different wyckoff positions {self.wyckoff_position} and {other.wyckoff_position}"
+            assert np.allclose(self.basis_list, other.basis_list), f"Cannot add projections with different basis_list {self.basis_list} and {other.basis_list}"
             new.orbitals += other.orbitals
         return new
 
@@ -225,7 +280,7 @@ class Projection:
         return self.__add__(other)
 
     def __str__(self):
-        return (f"Projection {self.wyckoff_position.string}:{self.orbitals} with {self.num_wann} Wannier functions"
+        return (f"Projection {self.wyckoff_position.string}:{self.orbitals} with {self.num_wann} Wannier functions ({self.num_wann_scalar} per spin x{self.nspinor} spins) \n" +
                 f" on {self.num_points} points ({self.num_wann_per_site} per site)"
                # + self.wyckoff_position.__str__()
         )
@@ -233,10 +288,21 @@ class Projection:
     def write_wannier90(self, mod1=False):
         string = ""
         for o in self.orbitals:
-            for pos in self.wyckoff_position.positions:
+            for i, pos in enumerate(self.wyckoff_position.positions):
                 if mod1:
                     pos = pos % 1
-                string += f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}\n"
+                s1 = f"f={pos[0]:.12f}, {pos[1]:.12f}, {pos[2]:.12f}: {o}"
+                basis_loc = self.basis_list[i]
+                if not np.allclose(basis_loc, np.eye(3)):
+                    zaxis = basis_loc[2, :]
+                    xaxis = basis_loc[0, :]
+                    s1 += f":z={zaxis[0]:.12f},{zaxis[1]:.12f},{zaxis[2]:.12f}"
+                    s1 += f":x={xaxis[0]:.12f},{xaxis[1]:.12f},{xaxis[2]:.12f}"
+                if self.radial_nodes > 0:
+                    s1 += f":r={self.radial_nodes + 1}"
+                if abs(self.spread_factor - 1.0) > 1e-6:
+                    s1 += f":zona={1. / self.spread_factor:.6f}"
+                string += f"{s1}\n"
         return string
 
     @cached_property
@@ -252,6 +318,7 @@ class Projection:
         list(str)
             The orbitals of the projections (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
         """
+        from .orbitals import orbitals_sets_dic
         orbitals = []
         positions = []
         for pos in self.positions:
@@ -261,15 +328,42 @@ class Projection:
                     positions.append(pos)
         return positions, orbitals
 
+    def get_wannier_names(self):
+        """
+        Returns
+        -------
+        list(str)
+            The names of the wannier functions (each orbital , e.g. pz, sp3-2, dx2-y2, etc.)
+        """
+        from .orbitals import orbitals_sets_dic
+        lst = [f"{self.atom_name}-{i}-{o}" for i in range(len(self.positions)) for orb in self.orbitals for o in orbitals_sets_dic[orb]]
+        if self.spinor:
+            lst = [f"{s}-{spin}" for s in lst for spin in ["up", "down"]]
+        return lst
+
+    @property
+    def num_free_vars(self):
+        return self.wyckoff_position.num_free_vars
+
 
 class ProjectionsSet:
 
     """
-    class to store the set of projections and corresponding windows
+    class to store the set of projections. Unifies several object of the :class:`Projection` class.
+
+    Parameters
+    ------------
+    projections : list(Projection) or Projection or ProjectionsSet
+        The projections to be included in the set. 
     """
 
     def __init__(self,
                  projections=[]):
+        if isinstance(projections, ProjectionsSet):
+            self.__dict__.update(projections.__dict__)
+            return
+        elif isinstance(projections, Projection):
+            projections = [projections]
         self.spinor = None
         for i, p in enumerate(projections):
             assert isinstance(p, Projection), f"element {i} of list 'projections' should be a Projection, not {p}"
@@ -280,7 +374,14 @@ class ProjectionsSet:
         return ProjectionsSet(projections=[p.copy() for p in self.projections])
 
     def set_spinor(self, spinor: bool):
-        self.spinor = spinor
+        """Set if the projection is a spinor or not. 
+        If it is already set, the new value should be the same as the old one, otherwise an error is raised.
+
+        Parameters
+        ----------
+        spinor : bool
+            If True, the projection is a spinor
+        """
         if self.spinor is None:
             self.spinor = spinor
         else:
@@ -290,11 +391,11 @@ class ProjectionsSet:
         L_list = []
         for p in self.projections:
             L_list.append(p.get_orbital_moment_matrix())
-        L_scalar =  scipy.linalg.block_diag(*L_list)
+        L_scalar = scipy.linalg.block_diag(*L_list)
         if self.spinor:
-            L = np.zeros( (2*L_scalar.shape[0], 2*L_scalar.shape[1]) )
-            L[0::2,0::2] = L_scalar
-            L[1::2,1::2] = L_scalar
+            L = np.zeros((2 * L_scalar.shape[0], 2 * L_scalar.shape[1]))
+            L[0::2, 0::2] = L_scalar
+            L[1::2, 1::2] = L_scalar
             return L
         else:
             return L_scalar
@@ -302,19 +403,33 @@ class ProjectionsSet:
 
     @property
     def num_proj(self):
+        """number of :class:`Projection` objects in the set"""
         return len(self.projections)
 
     def __len__(self):
+        """same as num_proj, to make it possible to use len() function on ProjectionsSet"""
         return self.num_proj
 
-    @cached_property
+    @property
     def num_points(self):
-        print(f"finding num points from {self.num_proj} projections")
+        """number of points in all projections in the set (i.e. number of sites in all orbits)"""
+        logger.info(f"finding num points from {self.num_proj} projections")
         return sum([p.wyckoff_position.num_points for p in self.projections])
 
-    @cached_property
+    @property
     def num_wann(self):
+        """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
+        with spin TAKEN into account (i.e. multiplied by 2 if spinor)"""
         return sum([p.num_wann for p in self.projections])
+
+    def get_wannier_names(self):
+        return sum((p.get_wannier_names() for p in self.projections), [])
+
+    @property
+    def num_wann_scalar(self):
+        """total number of wannier functions in all projections in the set (number of sites in all orbits multiplied by number of wannier functions per site)
+        with spin NOT TAKEN into account"""
+        return sum([p.num_wann_scalar for p in self.projections])
 
     def add(self, projection):
         self.projections.append(projection)
@@ -329,6 +444,22 @@ class ProjectionsSet:
         return (f"ProjectionsSet with {self.num_wann} Wannier functions and {self.num_free_vars} free variables\n" +
                 "\n".join([str(p) for p in self.projections])
                 )
+
+    @property
+    def wannier_centers_red(self):
+        """Initial Wannier centers in reduced coordinates (corresponding to the sites of the projections). Shape (num_wann, 3) The final Wannier centers after wannierisation may be different"""
+        return np.concatenate([p.wannier_centers_red for p in self.projections], axis=0)
+
+    @property
+    def real_lattice(self):
+        if len(self.projections) == 0:
+            return np.eye(3)
+        return self.projections[0].wyckoff_position.spacegroup.lattice
+
+    @property
+    def wannier_centers_cart(self):
+        """Initial Wannier centers in cartesian coordinates (corresponding to the sites of the projections). Shape (num_wann, 3) The final Wannier centers after wannierisation may be different"""
+        return self.wannier_centers_red @ self.real_lattice
 
     @cached_property
     def num_free_vars_wyckoff(self):
@@ -350,9 +481,9 @@ class ProjectionsSet:
 
         Returns
         -------
-        np.ndarray(shape=(num_points, 3, num_free_vars_wyckoff), dtype=float)
+        np.ndarray(shape=(n_points, 3, num_free_vars_wyckoff), dtype=float)
             The rotation matrices of the symmetry operations
-        np.ndarray(shape=(num_points, 3), dtype=float)
+        np.ndarray(shape=(n_points, 3), dtype=float)
             The translation vectors of the symmetry operations
         """
 
@@ -377,16 +508,31 @@ class ProjectionsSet:
     def num_free_vars(self):
         return self.map_free_vars[0].shape[2]
 
+    @property
+    def spacegroup(self):
+        if len(self.projections) == 0:
+            return None
+        return self.projections[0].spacegroup
 
-    @cached_property
+    @property
     def num_wann_per_site_list(self):
         """
         Returns:
         --------
-        np.array(int, shape=(num_points))
+        np.array(int, shape=(n_points,))
             for each point - a value od how many wannier functioons there are on this point
         """
         return np.array(sum(([p.num_wann_per_site] * p.num_points for p in self.projections), []))
+
+    @property
+    def num_wann_per_site_scalar_list(self):
+        """
+        Returns:
+        --------
+        np.array(int, shape=(n_points,))
+            for each point - a value od how many wannier functioons there are on this point, with spin NOT TAKEN into account
+        """
+        return np.array(sum(([p.num_wann_per_site_scalar] * p.num_points for p in self.projections), []))
 
 
     @property
@@ -444,19 +590,19 @@ class ProjectionsSet:
                         proj1 = set(p.orbitals)
                         proj2 = set(p2.orbitals)
                         # check if they may be merged
-                        print(f"checking if they may be merged {proj1} and {proj2}")
+                        logger.info(f"checking if they may be merged {proj1} and {proj2}")
                         merge = True
                         for p1, p2 in itertools.product(proj1, proj2):
-                            print(p1, p2)
+                            logger.info(p1, p2)
                             if (p1 == p2 or
                                     (p1, p2) in unmergable_loc or
                                     (p2, p1) in unmergable_loc
                                     ):
-                                print("not merging")
+                                logger.info("not merging")
                                 merge = False
                                 break
                         else:
-                            print("merging")
+                            logger.info("merging")
                         if not merge:
                             break
                     else:
@@ -478,6 +624,14 @@ class ProjectionsSet:
         self.projections = new_projections
         self.clear_cached_properties()
 
+    @property
+    def atom_centers_red(self):
+        return np.concatenate([p.atom_centers_red for p in self.projections], axis=0)
+
+    @property
+    def wannier_to_atom_map(self):
+        return np.concatenate([p.wannier_to_atom_map + start for p, start in zip(self.projections, np.cumsum([0] + [p.num_points for p in self.projections]))], axis=0)
+
 
     def clear_cached_properties(self, attributes=None):
         """
@@ -490,7 +644,8 @@ class ProjectionsSet:
         """
         if attributes is None:
             attributes = ["map_free_vars_cached", "_free_vars", "num_wann_per_site",
-                     "num_points", "num_wann", "num_free_vars_wyckoff",]
+                # "num_points", "num_wann",
+                "num_free_vars_wyckoff",]
         for attr in attributes:
             if hasattr(self, attr):
                 delattr(self, attr)
@@ -531,8 +686,8 @@ class ProjectionsSet:
         rot, trans = self.map_free_vars
         self.clear_cached_properties(["_free_vars"])
         self.map_free_vars_cached = rot @ new_map, rot @ new_map_fix + trans
-        # print(f"updated rot,trans  {self.map_free_vars[0].shape}, {self.map_free_vars[1].shape}")
-        # print(f"updated rot,trans  {self.map_free_vars_cached[0].shape}, {self.map_free_vars_cached[1].shape}")
+        # logger.info(f"updated rot,trans  {self.map_free_vars[0].shape}, {self.map_free_vars[1].shape}")
+        # logger.info(f"updated rot,trans  {self.map_free_vars_cached[0].shape}, {self.map_free_vars_cached[1].shape}")
 
 
     def write_wannier90(self, mod1=False, beginend=True, numwann=True):
@@ -544,6 +699,12 @@ class ProjectionsSet:
         ----------
         mod1 : bool
             If True, the positions are printed modulo 1
+        beginend : bool
+            If True, the begin projections and end projections lines are added
+        numwann : bool
+            If True, the num_wann line is added
+        basis : bool
+            If True, the basis for each projection is also printed (zaxis, xaxis)
 
         Returns
         -------
@@ -633,21 +794,21 @@ class ProjectionsSet:
 
         if num_free_vars > 0:
             free_var_values = self.free_var_values
-            print(f"starting minimization with free vars {free_var_values} ")
-            print(f"starting potential {jit_potential(free_var_values)}")
-            print(f"minimal distance {self.get_min_distance()}")
+            logger.info(f"starting minimization with free vars {free_var_values} ")
+            logger.info(f"starting potential {jit_potential(free_var_values)}")
+            logger.info(f"minimal distance {self.get_min_distance()}")
             res = jminimize(jit_potential, free_var_values, method='BFGS')
             v = res.x
-            print(f"minimized free vars {v}")
-            print(f"minimized potential {jit_potential(v)}")
+            logger.info(f"minimized free vars {v}")
+            logger.info(f"minimized potential {jit_potential(v)}")
         else:
             v = jnp.zeros(0)
         pot = jit_potential(v)
         self.free_var_values = v
         self.potential = pot
-        print(f"minimal distance {self.get_min_distance()}")
-        print(f"positions\n {self.get_positions().round(4)}")
-        print(f"distances\n {self.get_distances().round(2)}")
+        logger.info(f"minimal distance {self.get_min_distance()}")
+        logger.info(f"positions\n {self.get_positions().round(4)}")
+        logger.info(f"distances\n {self.get_distances().round(2)}")
 
     @property
     def free_var_values(self):
@@ -670,13 +831,13 @@ class RepulsivePotential:
 
     Parameters
     ----------
-    rotation : np.ndarray(shape=(num_points, 3, nfree_vars), dtype=float)
+    rotation : np.ndarray(shape=(n_points, 3, nfree_vars), dtype=float)
         The rotation matrices to get the symmetry operations
-    translation : np.ndarray(shape=(num_points, 3), dtype=float)
+    translation : np.ndarray(shape=(n_points, 3), dtype=float)
         The translation vectors of the symmetry operations
-    weights : np.ndarray(shape=(num_points, dtype=float)
+    weights : np.ndarray(shape=(n_points,), dtype=float)
         The weights of the symmetry operations
-    same_site : np.ndarray(shape=(num_points, num_points), dtype=bool)
+    same_site : np.ndarray(shape=(n_points, n_points), dtype=bool)
 
     """
 
@@ -822,7 +983,14 @@ def read_xzaxis(xaxis, zaxis):
         case (_, None):
             zaxis = get_perpendicular_coplanar_vector(xaxis, np.array([0, 0, 1]))
         case (_, _):
-            assert np.abs(np.dot(xaxis, zaxis)) < 1e-3, f"xaxis and zaxis should be orthogonal, found dot product of normalized vectors : {np.dot(xaxis, zaxis)}"
+            assert np.abs(np.dot(xaxis, zaxis)) < 0.99, f"xaxis and zaxis should not be parallel, found dot product of normalized vectors : {np.dot(xaxis, zaxis)}"
+            yaxis = np.cross(zaxis, xaxis)
+            yaxis = yaxis / np.linalg.norm(yaxis)
+            xaxis_new = np.cross(yaxis, zaxis)
+            if np.linalg.norm(xaxis_new - xaxis) > 1e-3:
+                logger.warning(f"xaxis and zaxis are not perpendicular, changing xaxis from {xaxis} to {xaxis_new}, to be in the same plane as zaxis and the old xaxis")
+            xaxis = xaxis_new
+
     yaxis = np.cross(zaxis, xaxis)
     return np.array([xaxis, yaxis, zaxis])
 

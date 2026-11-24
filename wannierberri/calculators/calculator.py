@@ -1,5 +1,7 @@
 from termcolor import cprint
 
+from ..result.result import VoidResult
+
 
 class Calculator:
     """
@@ -31,6 +33,10 @@ class Calculator:
     def allow_grid(self):
         return True  # change for those who can be calculated ONLY on a path
 
+    @property
+    def allow_symmetrize(self):
+        return True  # change for those whose result is not symmetric under the point group
+
     def _set_comment(self, print_comment=True):
         if not hasattr(self, 'comment'):
             if self.__doc__ is not None:
@@ -53,4 +59,4 @@ class MultitermCalculator(Calculator):
 
 
     def __call__(self, data_K):
-        return sum(cal(data_K) for cal in self.terms)
+        return sum([cal(data_K) for cal in self.terms], VoidResult())

@@ -7,5 +7,4 @@ Utilities
 
    mmn2uHu
    vaspspn
-   postw90
    cluster

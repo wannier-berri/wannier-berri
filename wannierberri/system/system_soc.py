@@ -1,8 +1,7 @@
+import copy
 from functools import cached_property
 import os
-import warnings
 import numpy as np
-from irrep.spacegroup import SpaceGroup
 
 from ..symmetry.point_symmetry import PointGroup
 
@@ -11,8 +10,8 @@ from ..fourier.rvectors import Rvectors
 from ..w90files.soc import SOC
 
 from .system_R import System_R
-from .system_w90 import System_w90
-
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SystemSOC(System_R):
@@ -22,13 +21,14 @@ class SystemSOC(System_R):
 
     """
 
-    half_wann_matrices = set(["overlap_up_down", "dV_soc_wann_0_0", "dV_soc_wann_0_1", "dV_soc_wann_1_1"])
+    half_wann_matrices = ['dV_soc', 'overlap_up_down']
 
     def __init__(self,
                  system_up,
                  system_down=None,
                  silent=True,
-                 cell=None
+                 cell=None,
+                 number_of_electrons=None,
                  ):
         self.needed_R_matrices = set()
         self.silent = silent
@@ -50,6 +50,14 @@ class SystemSOC(System_R):
                 f"Periodicities of up and down systems should match {system_up.periodic} != {system_down.periodic}"
             assert not system_up.is_phonon, "SystemSOC does not support phonons in down system"
 
+        if number_of_electrons is None:
+            if system_up.number_of_electrons is not None and system_down.number_of_electrons is not None:
+                self.number_of_electrons = system_up.number_of_electrons + system_down.number_of_electrons
+            else:
+                self.number_of_electrons = None
+        else:
+            self.number_of_electrons = number_of_electrons
+
 
         self.is_phonon = False
         self.num_wann_scalar = system_up.num_wann
@@ -61,119 +69,35 @@ class SystemSOC(System_R):
         self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
         self.wannier_centers_cart[1::2] = self.system_down.wannier_centers_cart
 
-        self.pointgroup = PointGroup()
+        self.pointgroup = PointGroup(real_lattice=self.real_lattice)
         self.force_internal_terms_only = any(
             [self.system_up.force_internal_terms_only, self.system_down.force_internal_terms_only])
         self.rvec = None
         self._XX_R = dict()
-        self.has_soc = False
         if cell is not None:
             self.set_cell(**cell)
         else:
             self.cell = None
 
-    def set_cell(self, positions, typat, magmoms_on_axis):
+    def swap_spin_channels(self):
+        if self.nspin == 1:
+            return self
+        self.system_up, self.system_down = self.system_down, self.system_up
+        self.wannier_centers_cart[::2], self.wannier_centers_cart[1::2] = self.wannier_centers_cart[1::2], self.wannier_centers_cart[::2].copy()
+        if self.nspin == 2:
+            self.rvec = self.rvec.get_reversed()
+            for key in ["overlap_up_down", "dV_soc"]:
+                if self.has_R_mat(key):
+                    self.set_R_mat(key, self.get_R_mat(key).conj().swapaxes(1, 2), reset=True)
+
+
+
+    def set_cell(self, positions, typat, magmoms_on_axis, **kwargs):
         self.cell = dict(positions=np.array(positions),
                          typat=np.array(typat),
                          magmoms_on_axis=np.array(magmoms_on_axis))
         return self
 
-
-    def set_soc_R(self, soc,
-                  chk_up, chk_down=None,
-                  kptirr=None, weights_k=None, ws_dist_tol=1e-5,
-                  theta=0, phi=0, alpha_soc=1.0):
-        """
-        Set the spin-orbit coupling matrix for a given k-point.
-
-        Parameters:
-        soc : wannierberri.w90files.soc.SOC
-            the object containing the SOC Hamiltonian and overlap (between up and down) matrices.
-        chk_up : bool
-            Flag to check if the up-spin system is valid.
-        chk_down : bool
-            Flag to check if the down-spin system is valid.(needed for magnetic systems)
-        kptirr : np.array, optional
-            Irreducible k-points (only save data for these k-points).
-        weights_k : np.array, optional
-            Weights for the k-points (if kptirr is provided).
-        ws_dist_tol : float, optional
-            Tolerance for the Wiggins-Seitz distance for the R-vectors.
-        theta : float, optional
-            Polar angle for the spin-orbit coupling. (radians)
-        phi : float, optional
-            Azimuthal angle for the spin-orbit coupling. (radians)
-        alpha_soc : float, optional
-            Scaling factor for the spin-orbit coupling matrix.
-        """
-        assert isinstance(soc, SOC), "soc must be an instance of wannierberri.w90files.soc.SOC"
-
-        # chack number of spin channels
-        nspin = soc.nspin
-        assert self.nspin == nspin, f"Number of spin channels in SystemSOC ({self.nspin}) does not match that in SOC ({nspin})"
-        print(f"nspin in SOC: {nspin}")
-        if nspin == 1:
-            chk_list = [chk_up]
-        elif nspin == 2:
-            assert chk_down is not None, "chk_down must be provided for nspin=2 SOC"
-            assert chk_up.num_kpts == chk_down.num_kpts, f"Number of k-points must match for up and down systems ({chk_up.num_kpts} != {chk_down.num_kpts})"
-            assert np.all(chk_up.mp_grid == chk_down.mp_grid)
-            assert np.allclose(chk_up.kpt_latt, chk_down.kpt_latt), f"k-point grids should match for up and down systems ({chk_up.kpt_latt} != {chk_down.kpt_latt})"
-            chk_list = [chk_up, chk_down]
-
-        assert (kptirr is None) == (weights_k is None), f"kptirr and weights_k must both be provided or both be None ({kptirr=}, {weights_k=})"
-        overlap_q_H = soc.overlap
-        dV_soc = soc.data
-
-        if overlap_q_H is None:
-            eye = np.eye(chk_up.num_bands, dtype=complex)
-            overlap_q_H = {i: eye for i in range(chk_up.num_kpts)}
-
-        mp_grid = chk_up.mp_grid
-
-        # selected_bands_list = [chk.get_selected_bands() for chk in [chk_up, chk_down]]
-
-        # print(f"setting the Rvectors with wannier centers (cart): \n {self.wannier_centers_cart}\n (red): \n {self.wannier_centers_red}")
-        self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
-        self.rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=ws_dist_tol)
-
-        self.rvec.set_fft_q_to_R(chk_up.kpt_latt, numthreads=1, fftlib='fftw')
-        NK = chk_up.num_kpts
-
-        if kptirr is None:
-            kptirr = np.arange(NK)
-            weights_k = np.ones(NK, dtype=float)
-
-        rng = np.arange(self.num_wann_scalar) * 2
-
-        for i1 in range(nspin):
-            # sel_i = selected_bands_list[i1]
-            for j1 in range(i1, nspin):
-                # sel_j = selected_bands_list[j1]
-                dV_soc_wann_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar, 3), dtype=complex)
-                for ik, w in zip(kptirr, weights_k):
-                    vt = chk_list[i1].v_matrix[ik].T.conj()
-                    v = chk_list[j1].v_matrix[ik]
-                    # dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, sel_i, :][:, :, sel_j], v)
-                    dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][i1, j1][:, :, :][:, :, :], v)
-                if i1 == j1:
-                    assert np.allclose(dV_soc_wann_ik, dV_soc_wann_ik.transpose(0, 2, 1, 3).conj()), "The diagonal spin components of SOC should be Hermitian"
-                    # dV_soc_wann_ik = (dV_soc_wann_ik + dV_soc_wann_ik.transpose(0,2,1,3).conj())/2.0
-                key = f"dV_soc_wann_{i1}_{j1}"
-                mat = self.rvec.q_to_R(dV_soc_wann_ik, select_left=rng + i1, select_right=rng + j1)
-                self.set_R_mat(key, mat)
-        if nspin == 2:
-            overlap_ik = np.zeros((NK, self.num_wann_scalar, self.num_wann_scalar), dtype=complex)
-            for ik, w in zip(kptirr, weights_k):
-                vt = chk_list[0].v_matrix[ik].T.conj()
-                v = chk_list[1].v_matrix[ik]
-                # overlap_loc = overlap_q_H[ik][selected_bands_list[0], :][:, selected_bands_list[1]]
-                # overlap_ik[ik] = w * (vt @ overlap_loc @ v)
-                overlap_ik[ik] = w * (vt @ overlap_q_H[ik] @ v)
-            overlap_Rud = self.rvec.q_to_R(overlap_ik, select_left=rng, select_right=rng + 1)
-            self.set_R_mat('overlap_up_down', overlap_Rud)
-        self.has_soc = True
-        return self.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
 
 
     def set_soc_axis(self, theta=0, phi=0, alpha_soc=1.0, units="radians"):
@@ -186,46 +110,14 @@ class SystemSOC(System_R):
         else:
             raise ValueError(f"units must be 'radians' or 'degrees', got {units}, which is not recognized")
         assert self.has_soc, "SOC matrix must be set before setting the SOC axis"
-        pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
-
-        nRvec = self.rvec.nRvec
-        soc_R_W = np.zeros((nRvec, self.num_wann, self.num_wann), dtype=complex)
-        soc_R_W[:, ::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 0, :])
-        if self.nspin == 2:
-            soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_1'), pauli_rotated[1, 1, :])
-            dV01 = self.get_R_mat('dV_soc_wann_0_1')
-            soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", dV01, pauli_rotated[0, 1, :])
-            # soc_R_W[:,1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_1_0'), pauli_rotated[1, 0, :])
-            soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.rvec.conj_XX_R(dV01), pauli_rotated[1, 0, :])
-        elif self.nspin == 1:
-            soc_R_W[:, 1::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 1, :])
-            soc_R_W[:, ::2, 1::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[0, 1, :])
-            soc_R_W[:, 1::2, ::2] = cached_einsum("rmnc,c->rmn", self.get_R_mat('dV_soc_wann_0_0'), pauli_rotated[1, 0, :])
-        self.set_R_mat('Ham_SOC', soc_R_W * alpha_soc, reset=True)
-
-        # Spin operator
-        rng = np.arange(self.num_wann_scalar) * 2
-        iR0 = self.rvec.iR0
-        SS_R_W = np.zeros((nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
-        SS_R_W[iR0, rng, rng, :] = pauli_rotated[None, 0, 0, None, None, :]
-        SS_R_W[iR0, rng + 1, rng + 1, :] = pauli_rotated[None, 1, 1, None, None, :]
-        if self.nspin == 2:
-            overlap = self.get_R_mat('overlap_up_down')
-            SS_R_W[:, 0::2, 1::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 0, 1, None, None, :]
-            overlap = self.rvec.conj_XX_R(overlap)
-            SS_R_W[:, 1::2, 0::2, :] = overlap[:, :, :, None] * pauli_rotated[None, 1, 0, None, None, :]
-        elif self.nspin == 1:
-            SS_R_W[iR0, rng, rng + 1, :] = pauli_rotated[None, 0, 1, None, None, :]
-            SS_R_W[iR0, rng + 1, rng, :] = pauli_rotated[None, 1, 0, None, None, :]
-        else:
-            raise ValueError(f"Invalid nspin: {self.nspin}")
-
-        self.set_R_mat('SS', SS_R_W, reset=True)
+        self.pauli_rotated = SOC.get_pauli_rotated(theta=theta, phi=phi)
+        self.alpha_soc = alpha_soc
 
         if self.cell is not None:
             axis = np.array([np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)])
             magmoms = self.cell["magmoms_on_axis"][:, None] * axis[None, :]
-            print(f"using magmoms \n {magmoms}")
+            logger.info(f"using magmoms \n {magmoms}")
+            from irrep.spacegroup import SpaceGroup
             mag_group = SpaceGroup.from_cell(real_lattice=self.real_lattice,
                                     positions=self.cell["positions"],
                                     typat=self.cell["typat"],
@@ -234,164 +126,301 @@ class SystemSOC(System_R):
                                     magmom=magmoms)
             self.set_pointgroup(spacegroup=mag_group)
 
-        return self.get_R_mat('Ham_SOC'), self.get_R_mat('SS')
-
     @cached_property
     def essential_properties(self):
         return super().essential_properties + ['cell']
 
-    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None,
+               overwrite=True, compressed=True):
         # if not self.silent:
-        print(f"Saving SystemSOC to {path}")
-        super().save_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices, overwrite=overwrite)
-        self.system_up.save_npz(path=os.path.join(path, "system_up"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+        logger.info(f"Saving SystemSOC to {path}")
+        super().to_npz(path, extra_properties=extra_properties, exclude_properties=exclude_properties, R_matrices=R_matrices,
+                       overwrite=overwrite)
+        if R_matrices is not None:
+            R_matrices = set(R_matrices) - set(["overlap_up_down"])
+        self.system_up.to_npz(path=os.path.join(path, "system_up"),
+                              overwrite=overwrite, exclude_properties=exclude_properties,
+                              R_matrices=R_matrices, compressed=compressed)
         if self.nspin == 2:
-            self.system_down.save_npz(path=os.path.join(path, "system_down"), overwrite=overwrite, exclude_properties=exclude_properties, R_matrices=R_matrices)
+            self.system_down.to_npz(path=os.path.join(path, "system_down"),
+                                    overwrite=overwrite, exclude_properties=exclude_properties,
+                                    R_matrices=R_matrices, compressed=compressed)
 
     @property
-    def has_soc_R(self):
+    def has_soc(self):
+        logger.debug("checking hassoc, nspin=%s, XXR keys : %s", self.nspin, list(self._XX_R.keys()))
         if self.nspin == 2:
-            return self.has_R_mat_all(['dV_soc_wann_0_0', 'dV_soc_wann_1_1', 'dV_soc_wann_0_1', 'overlap_up_down'])
+            return (self.has_R_mat_all(['dV_soc', 'overlap_up_down']) and
+                    self.system_up.has_R_mat('dV_soc') and
+                    self.system_down.has_R_mat('dV_soc'))
         else:
-            return self.has_R_mat(['dV_soc_wann_0_0'])
+            return self.system_up.has_R_mat('dV_soc')
 
 
     @classmethod
-    def from_npz(cls, path, silent=True, load_all_XX_R=True, exclude_properties=()):
+    def from_npz(cls, path, silent=True, exclude_properties=(), matrices=None):
         if not silent:
-            print(f"Loading SystemSOC from {path}")
+            logger.info(f"Loading SystemSOC from {path}")
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
-        system_up = System_R().load_npz(path=os.path.join(path, "system_up"), load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+        system_up = System_R.from_npz(path=os.path.join(path, "system_up"), exclude_properties=exclude_properties, matrices=matrices)
         path_down = os.path.join(path, "system_down")
         if os.path.exists(path_down):
-            system_down = System_R().load_npz(path=path_down, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
+            system_down = System_R.from_npz(path=path_down, exclude_properties=exclude_properties, matrices=matrices)
         else:
             system_down = None
         system_soc = cls(system_up=system_up, system_down=system_down, silent=silent)
-        system_soc.load_npz(path, load_all_XX_R=load_all_XX_R, exclude_properties=exclude_properties, legacy=False)
-        if system_soc.has_soc_R:
-            system_soc.has_soc = True
+        system_soc.load_npz(path, exclude_properties=exclude_properties, matrices=matrices)
         return system_soc
-
-    def symmetrize2(self, symmetrizer=None,
-                    symmetrizer_up=None,
-                    symmetrizer_down=None,
-                    silent=None, use_symmetries_index=None,
-                    cutoff=-1, cutoff_dict=None):
-        """
-        Symmetrize the system according to the Symmetrizer object.
-
-        Parameters
-        ----------
-        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
-            The symmetrizer object that will be used for symmetrization. (make sure it is consistent with the order of projections)
-        silent : bool
-            If True, do not print the symmetrization process. (set to False to see more debug information)
-        use_symmetries_index : list of int
-            List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
-        """
-        from ..symmetry.sym_wann_2 import SymWann
-        assert symmetrizer is not None or symmetrizer_up is not None, "Either symmetrizer or symmetrizer_up must be provided"
-        if symmetrizer_up is None:
-            symmetrizer_up = symmetrizer
-        if symmetrizer_down is None:
-            symmetrizer_down = symmetrizer_up
-            warnings.warn("symmetrizer_down is not provided, using symmetrizer_up for both spin channels")
-        if silent is None:
-            silent = self.silent
-        if not hasattr(self.system_up, 'symmetrized') or not self.system_up.symmetrized:
-            self.system_up.symmetrize2(symmetrizer=symmetrizer_up, silent=silent,
-                                    use_symmetries_index=use_symmetries_index,
-                                    cutoff=cutoff, cutoff_dict=cutoff_dict)
-            self.wannier_centers_cart[::2] = self.system_up.wannier_centers_cart
-        if self.nspin == 2:
-            if not hasattr(self.system_down, 'symmetrized') or not self.system_down.symmetrized:
-                self.system_down.symmetrize2(symmetrizer=symmetrizer_down, silent=silent,
-                                            use_symmetries_index=use_symmetries_index,
-                                            cutoff=cutoff, cutoff_dict=cutoff_dict)
-                self.wannier_centers_cart[1::2] = self.system_down.wannier_centers_cart
-
-
-        symmetrize_wann_up_up = SymWann(
-            symmetrizer_left=symmetrizer_up,
-            symmetrizer_right=symmetrizer_up,
-            iRvec=self.rvec.iRvec,
-            silent=silent,
-            use_symmetries_index=use_symmetries_index,
-        )
-        if self.nspin == 2:
-            symmetrize_wann_down_down = SymWann(
-                symmetrizer_left=symmetrizer_down,
-                symmetrizer_right=symmetrizer_down,
-                iRvec=self.rvec.iRvec,
-                silent=silent,
-                use_symmetries_index=use_symmetries_index,
-            )
-            symmetrize_wann_up_down = SymWann(
-                symmetrizer_left=symmetrizer_up,
-                symmetrizer_right=symmetrizer_down,
-                iRvec=self.rvec.iRvec,
-                silent=silent,
-                use_symmetries_index=use_symmetries_index,
-            )
-
-        # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
-        logfile = self.logfile
-
-        if not silent:
-            logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-            logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
-
-        iRvec_new_dict = {}
-        XX_new_dict = {}
-
-        def symmetrize_part(sym_wann, key_list):
-            _XX_dict = {k: self.get_R_mat(k) for k in key_list}
-            _XX_dict_new, iRvec_new = sym_wann.symmetrize(XX_R=_XX_dict,
-                                            cutoff=cutoff, cutoff_dict=cutoff_dict)
-            for k, v in _XX_dict_new.items():
-                XX_new_dict[k] = v
-                iRvec_new_dict[k] = iRvec_new
-
-        symmetrize_part(symmetrize_wann_up_up, ['dV_soc_wann_0_0'])
-        if self.nspin == 2:
-            symmetrize_part(symmetrize_wann_down_down, ['dV_soc_wann_1_1'])
-            symmetrize_part(symmetrize_wann_up_down, ['dV_soc_wann_0_1', 'overlap_up_down'])
-
-        iRvec_all = np.unique(np.vstack(list(iRvec_new_dict.values())), axis=0)
-        iRvec_index = {tuple(R): i for i, R in enumerate(iRvec_all)}
-
-        self.rvec.iRvec = iRvec_all
-        self.rvec.clear_cached()
-
-        for key in XX_new_dict:
-            reorder = np.array([iRvec_index[tuple(R)] for R in iRvec_new_dict[key]])
-            XX = XX_new_dict[key]
-            XX_new = np.zeros((len(iRvec_all),) + XX.shape[1:], dtype=XX.dtype)
-            XX_new[reorder] = XX
-            self.set_R_mat(key, XX_new, reset=True)
 
 
 
     @classmethod
-    def from_wannier90data_soc(cls, w90data, theta=0, phi=0, alpha_soc=1.0, symmetrize=True, **kwargs):
-        system_up = System_w90(w90data=w90data.data_up, **kwargs)
-        if w90data.nspin == 2:
-            system_down = System_w90(w90data=w90data.data_down, **kwargs)
+    def from_wannierdata(cls, wandata, symmetrize=True, ignore_soc=False,
+                         theta=0, phi=0, alpha_soc=1.0, angle_units="radians",
+                         **kwargs):
+        # exit()
+        if wandata.irreducible:
+            symmetrize = True
+        if wandata.has_file("soc"):
+            soc = wandata.get_file("soc")
+        else:
+            if not ignore_soc:
+                raise FileNotFoundError("SOC file not found in wandata, creating SystemSOC without SOC")
+            soc = None
+
+        system_up = System_R.from_wannierdata(wandata=wandata.data_up, symmetrize=symmetrize,
+                                              soc=soc, soc_ispin=0, **kwargs)
+
+        cell = wandata.cell
+        if "altermagnetic_rotation_latt" in cell:
+            altermag_rot = cell["altermagnetic_rotation_latt"]
+            altermag_trans = cell["altermagnetic_translation_latt"]
+            altermag_kmap = cell["altermagnetic_k_mapping"]
+            altermag_kmap_isym = cell["altermagnetic_k_mapping_isym"]
+            altermagnetic = True
+            from irrep.symmetry_operation import SymmetryOperation
+            symop = SymmetryOperation(rot=altermag_rot,
+                                      trans=altermag_trans,
+                                      Lattice=system_up.real_lattice,
+                                      spinor=False, time_reversal=False)
+        else:
+            altermagnetic = False
+            altermag_kmap = None
+            altermag_kmap_isym = None
+
+        if symmetrize:
+            symmetrizer_up = wandata.data_up.symmetrizer
+
+        if wandata.nspin == 2 and not altermagnetic:
+            system_down = System_R.from_wannierdata(wandata=wandata.data_down, symmetrize=symmetrize,
+                                                    soc=soc, soc_ispin=1, **kwargs)
+        elif altermagnetic:
+            system_down = copy.deepcopy(system_up)
+            system_down.transform(symop)
         else:
             system_down = None
-        system_soc = cls(system_up=system_up, system_down=system_down, cell=w90data.cell)
-        kptirr, weights_k = w90data.data_up.kptirr_system
-        system_soc.set_soc_R(w90data.get_file("soc"),
-                             chk_up=w90data.get_file_ud("up", "chk"),
-                             chk_down=w90data.get_file_ud("down", "chk"),
-                             kptirr=kptirr, weights_k=weights_k
-        )
-        if w90data.is_irreducible:
-            symmetrize = True
-        if symmetrize:
-            system_soc.symmetrize2(symmetrizer_up=w90data.get_file_ud('up', 'symmetrizer'),
-                           symmetrizer_down=w90data.get_file_ud('down', 'symmetrizer'))
-        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc)
+        system_soc = cls(system_up=system_up, system_down=system_down, cell=wandata.cell)
+
+        kptirr, weights_k = wandata.data_up.kptirr_system
+
+
+        if soc is not None and ((wandata.nspin == 2) or altermagnetic):
+            chk_up = wandata.data_up.chk
+            v_matrix_list_up = wandata.data_up.chk.v_matrix
+            if altermagnetic:
+                v_matrix_list_down = [symmetrizer_up.rotate_U(v_matrix_list_up[ik1],
+                                                            ikirr=ik1,
+                                                            isym=isym)
+                                      for ik1, isym in zip(altermag_kmap, altermag_kmap_isym)]
+                symmetrizer_down = symmetrizer_up.get_transformed_copy(symop)
+            else:
+                assert wandata.data_up.chk.num_kpts == wandata.data_down.chk.num_kpts, f"Number of k-points must match for up and down systems ({wandata.data_up.chk.num_kpts} != {wandata.data_down.chk.num_kpts})"
+                assert np.all(wandata.data_up.chk.mp_grid == wandata.data_down.chk.mp_grid)
+                assert np.allclose(wandata.data_up.chk.kpt_red, wandata.data_down.chk.kpt_red), f"k-point grids should match for up and down systems ({wandata.data_up.chk.kpt_red} != {wandata.data_down.chk.kpt_red})"
+                v_matrix_list_down = wandata.data_down.chk.v_matrix
+                if symmetrize:
+                    symmetrizer_down = wandata.data_down.symmetrizer
+
+
+            mp_grid = chk_up.mp_grid
+            NK = chk_up.num_kpts
+
+            ## up-down part
+            rvec = Rvectors(lattice=system_up.real_lattice,
+                            shifts_left_red=system_up.wannier_centers_red,
+                            shifts_right_red=system_down.wannier_centers_red)
+            rvec.set_Rvec(mp_grid=mp_grid, ws_tolerance=kwargs.get("ws_dist_tol", 1e-8))
+            rvec.set_fft_q_to_R(kpt_red=chk_up.kpt_red, fftlib='fftw')
+
+            overlap_q_H = soc.overlap
+            dV_soc = soc.data
+            overlap_ik = np.zeros((NK, system_up.num_wann, system_down.num_wann), dtype=complex)
+            dV_soc_wann_ik = np.zeros((NK, system_up.num_wann, system_down.num_wann, 3), dtype=complex)
+            for ik, w in zip(kptirr, weights_k):
+                vt = v_matrix_list_up[ik].T.conj()
+                v = v_matrix_list_down[ik]
+                overlap_ik[ik] = w * (vt @ overlap_q_H[ik] @ v)
+                dV_soc_wann_ik[ik] = w * cached_einsum("mi,cij,jn->mnc", vt, dV_soc[ik][0, 1][:, :, :][:, :, :], v)
+            dV_soc_wann_R_01 = rvec.q_to_R(dV_soc_wann_ik)
+            overlap_Rud = rvec.q_to_R(overlap_ik)
+            system_soc.rvec = rvec
+            system_soc.set_R_mat('dV_soc', dV_soc_wann_R_01)
+            system_soc.set_R_mat('overlap_up_down', overlap_Rud)
+            if symmetrize:
+                from ..symmetry.sym_wann_2 import SymWann
+                symm_wann_up_down = SymWann(
+                    symmetrizer_left=symmetrizer_up,
+                    symmetrizer_right=symmetrizer_down,
+                    iRvec=system_soc.rvec.iRvec,
+                    silent=True,
+                )
+                system_soc._XX_R, iRvec_new = symm_wann_up_down.symmetrize(XX_R=system_soc._XX_R)
+                logger.debug("system_soc has matrices %s after symmetrization", list(system_soc._XX_R.keys()))
+                rvec.iRvec = iRvec_new
+                rvec.mp_grid = system_soc.rvec.mp_grid,
+                rvec.clear_cached()
+                system_soc.rvec = rvec
+        system_soc.set_soc_axis(theta=theta, phi=phi, alpha_soc=alpha_soc, units=angle_units)
         return system_soc
+
+    def get_energy_range(self):
+        if self.system_down is None:
+            return self.system_up.get_energy_range()
+        else:
+            E_min_up, E_max_up = self.system_up.get_energy_range()
+            E_min_down, E_max_down = self.system_down.get_energy_range()
+            return min(E_min_up, E_min_down), max(E_max_up, E_max_down)
+
+    def get_system_R(self):
+        atoms_up = self.system_up.atom_centers_red
+        atoms_down = self.system_down.atom_centers_red
+        if atoms_up is not None and atoms_down is not None:
+            from ..symmetry.unique_list import UniqueListMod1
+            atoms_centers_red_merged = UniqueListMod1(atoms_up) + UniqueListMod1(atoms_down)
+            print(f"atoms_centers_red_merged = {atoms_centers_red_merged}, len = {len(atoms_centers_red_merged)}")
+            map_up_to_merged = []
+            map_down_to_merged = []
+            shifts_atom_up = []
+            shifts_atom_down = []
+            for atom in atoms_up:
+                idx = atoms_centers_red_merged.index(atom)
+                map_up_to_merged.append(idx)
+                shifts_atom_up.append(atoms_centers_red_merged[idx] - atom)
+            for atom in atoms_down:
+                idx = atoms_centers_red_merged.index(atom)
+                map_down_to_merged.append(idx)
+                shifts_atom_down.append(atoms_centers_red_merged[idx] - atom)
+            map_wan_to_atoms_merged = []
+            shifts_wan_merged = []
+            for i, (at_up, at_dw) in enumerate(zip(self.system_up.wannier_to_atom_map, self.system_down.wannier_to_atom_map)):
+                map_wan_to_atoms_merged.append(map_up_to_merged[at_up])
+                map_wan_to_atoms_merged.append(map_down_to_merged[at_dw])
+                shifts_wan_merged.append(shifts_atom_up[at_up])
+                shifts_wan_merged.append(shifts_atom_down[at_dw])
+            map_wan_to_atoms_merged = np.array(map_wan_to_atoms_merged, dtype=int)
+            shifts_wan_merged = np.round(shifts_wan_merged).astype(int)
+        else:
+            atoms_centers_red_merged = None
+            map_wan_to_atoms_merged = None
+            shifts_wan_merged = None
+
+
+        from ..fourier.rvectors import merge_Rvectors
+        rvectors_merged, rvectors_map_list = merge_Rvectors([self.system_up.rvec, self.system_down.rvec, self.rvec, self.rvec.get_reversed()])
+        shifts_red = np.zeros((self.num_wann, 3))
+        shifts_red[::2] = self.rvec.shifts_left_red
+        shifts_red[1::2] = self.rvec.shifts_right_red
+        rvectors_merged.shifts_left_red = shifts_red
+        rvectors_merged.shifts_right_red = shifts_red
+
+
+        wannames_up = self.system_up.wannier_names
+        wannames_down = self.system_down.wannier_names
+        if wannames_up is not None and wannames_down is not None:
+            wannames_merged = []
+            for n1, n2 in zip(wannames_up, wannames_down):
+                wannames_merged.append(n1 + "_up")
+                wannames_merged.append(n2 + "_down")
+        else:
+            wannames_merged = None
+        system_R = System_R(
+            wannier_names=wannames_merged,
+            atom_centers=atoms_centers_red_merged,
+            wannier_to_atom_map=map_wan_to_atoms_merged,
+        )
+
+
+
+        system_R.rvec = rvectors_merged
+        system_R.is_phonon = self.is_phonon
+        system_R.num_wann = self.num_wann
+        system_R.real_lattice = self.real_lattice
+        system_R.periodic = self.periodic.copy()
+        system_R.wannier_centers_cart = self.wannier_centers_cart.copy()
+        system_R.pointgroup = self.pointgroup
+        system_R.force_internal_terms_only = self.force_internal_terms_only
+        system_R.cell = self.cell.copy() if self.cell is not None else None
+
+        for key in list(self.system_up._XX_R.keys()) + ["SS"]:
+            if key == "dV_soc":
+                continue
+            if key != "SS":
+                shape = self.system_up._XX_R[key].shape[3:]
+                # shape = tuple()
+            else:
+                shape = (3,)
+            logger.info(f"setting matrix {key} from system_up")
+            matrix = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann) + shape, dtype=complex)
+            if key == 'Ham':
+                matrix[rvectors_map_list[0], ::2, ::2] = self.system_up.get_R_mat(key)
+                matrix[rvectors_map_list[1], 1::2, 1::2] = self.system_down.get_R_mat(key)
+                dVsoc = np.zeros((rvectors_merged.nRvec, 2, 2, self.num_wann // 2, self.num_wann // 2, 3), dtype=complex)
+                dVsoc[rvectors_map_list[0], 0, 0] = self.system_up.get_R_mat('dV_soc')
+                dVsoc[rvectors_map_list[1], 1, 1] = self.system_down.get_R_mat('dV_soc')
+                dVsoc[rvectors_map_list[2], 0, 1] = self.get_R_mat('dV_soc')
+                dVsoc[rvectors_map_list[3], 1, 0] = self.get_R_mat('dV_soc').conj().swapaxes(1, 2)
+                for i in range(2):
+                    for j in range(2):
+                        matrix[:, i::2, j::2] += cached_einsum("rmnc...,c->rmn...", dVsoc[:, i, j, :, :, :], self.pauli_rotated[i, j, :]) * self.alpha_soc
+            elif key == 'SS':
+                iR0 = rvectors_merged.iR0
+                SSk = np.zeros((rvectors_merged.nRvec, self.num_wann, self.num_wann, 3), dtype=complex)
+                rng = np.arange(0, self.num_wann, 2)
+                SSk[iR0, rng, rng, :] = self.pauli_rotated[0, 0, None, None, :]
+                SSk[iR0, rng + 1, rng + 1, :] = self.pauli_rotated[1, 1, None, None, :]
+                if self.nspin == 2:
+                    overlap = self.get_R_mat('overlap_up_down')[:, :, :, None]
+                    SSk[rvectors_map_list[2], 0::2, 1::2, :] = overlap * self.pauli_rotated[None, 0, 1, None, None, :]
+                    SSk[rvectors_map_list[3], 1::2, 0::2, :] = overlap.conj().swapaxes(1, 2) * self.pauli_rotated[None, 1, 0, None, None, :]
+                else:
+                    SSk[iR0, rng, rng + 1, :] = self.pauli_rotated[0, 1, None, None, :]
+                    SSk[iR0, rng + 1, rng, :] = self.pauli_rotated[1, 0, None, None, :]
+                matrix = SSk
+            else:
+                matrix[rvectors_map_list[0], ::2, ::2] += self.system_up.get_R_mat(key)
+                matrix[rvectors_map_list[1], 1::2, 1::2] += self.system_down.get_R_mat(key)
+            system_R.set_R_mat(key, matrix)
+
+        def interleave(a, b):
+            res = []
+            for i in range(max(len(a), len(b))):
+                if i < len(a):
+                    res.append(a[i])
+                if i < len(b):
+                    res.append(b[i])
+            return np.array(res)
+
+        if shifts_wan_merged is not None:
+            system_R.shift_wannier_centers(shifts=shifts_wan_merged)
+            map_up = map_wan_to_atoms_merged[::2]
+            map_down = map_wan_to_atoms_merged[1::2]
+            nat = len(atoms_centers_red_merged)
+            new_wann_indices = []
+            for i in range(nat):
+                wann_up = np.where(map_up == i)[0] * 2
+                wann_down = np.where(map_down == i)[0] * 2 + 1
+                new_wann_indices.append(interleave(wann_up, wann_down))
+            new_wann_indices = np.concatenate(new_wann_indices)
+            system_R.reorder(new_wann_indices)
+        return system_R

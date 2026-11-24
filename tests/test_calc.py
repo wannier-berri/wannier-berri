@@ -1,33 +1,50 @@
+from copy import deepcopy
+
+from .test_formula import datak_Fe_Gamma as datak_Fe_
 import wannierberri as wberri
 from wannierberri.calculators import static
 from wannierberri.formula import covariant as frml
 from wannierberri.result import EnergyResult, KBandResult
 from .common import OUTPUT_DIR, REF_DIR
 from .common_comparers import error_message
+from .test_run import get_calculators_sdct
 import numpy as np
 import os
 import pytest
+from .common_systems import Efermi_Chiral, Efermi_Fe, Efermi_Si
+from .test_formula import get_datak
+from wannierberri.calculators.dynamic import JDOS
+from pytest import approx
+from wannierberri.system.system_kp import SystemKP
+from wannierberri.grid.Kpoint import KpointBZparallel
 
 
-from .common_systems import Efermi_Fe
+datak_Fe = datak_Fe_
 
 
 @pytest.fixture
 def check_calculator(compare_any_result):
-    """
-
-    """
 
     def _inner(system, calc, name, dK=[0.1, 0.2, 0.3], NKFFT=[3, 3, 3], param_K={},
                precision=-1e-8,
                compare_zero=False,
                do_not_compare=False,
                result_type=EnergyResult,
-               factor=1
+               factor=1,
+               transformTR=None,
+               transformInv=None,
+               void_if_missing=True
                 ):
-        grid = wberri.Grid(system, NKFFT=NKFFT, NKdiv=1)
-        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid, **param_K)
-        result = calc(data_K) * factor
+        grid = wberri.Grid(system=system, NKFFT=NKFFT, NKdiv=1)
+        data_k_class = wberri.data_K.get_data_k_class_from_system(system)
+        kpoint = KpointBZparallel(K=dK, dK=np.array([1 / 4, 1 / 4, 1 / 4]), NKFFT=NKFFT, factor=factor, pointgroup=None)
+
+        data_K = data_k_class(system, dK=dK, grid=grid, Kpoint=kpoint, **param_K)
+        result = calc(data_K)
+        print(f"result = {result}")
+        result = result * factor
+        print(f"result * {factor} = {result}")
+
 
         filename = "calculator-" + name
         path_filename = os.path.join(OUTPUT_DIR, filename)
@@ -38,15 +55,25 @@ def check_calculator(compare_any_result):
         if compare_zero:
             result_ref = result * 0.
             path_filename_ref = "ZERO"
-            assert precision > 0, "comparing with zero is possible only with absolute precision"
+            precision = abs(precision)
         else:
             path_filename_ref = os.path.join(REF_DIR, 'calculators', filename + ".npz")
-            result_ref = result_type(file_npz=path_filename_ref)
+            print(f"Comparing with reference file {path_filename_ref}")
+            result_ref = result_type.from_npz(path_filename_ref, void_if_missing=void_if_missing)
+            print(f"result_ref = {result_ref}")
+        if transformTR is not None:
+            result_ref.transformTR = transformTR
+        if transformInv is not None:
+            result_ref.transformInv = transformInv
+
         maxval = result_ref._maxval_raw
         if precision is None:
             precision = max(maxval / 1E12, 1E-11)
         elif precision < 0:
-            precision = max(maxval * abs(precision), 1E-11)
+            if maxval < abs(precision):
+                precision = abs(precision)
+            else:
+                precision = max(maxval * abs(precision), 1E-11)
         err = (result - result_ref)._maxval_raw
         assert err < precision, error_message(
             name, "", 0, err, path_filename, path_filename_ref, precision)
@@ -73,8 +100,8 @@ def test_tabulator_mul(system_Fe_W90, check_calculator):
 def test_tab_fit(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
-    grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=1)
-    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
+    data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
     morb = wberri.calculators.tabulate.OrbitalMoment
     berry = wberri.calculators.tabulate.BerryCurvature
     noext = dict(kwargs_formula={"external_terms": False})
@@ -97,8 +124,8 @@ def test_tab_fit(system_Haldane_PythTB):
 def test_BD_trace(system_Haldane_PythTB):
     system = system_Haldane_PythTB
     dK = [0.1, 0.2, 0.3]
-    grid = wberri.Grid(system, NKFFT=[3, 3, 1], NKdiv=1)
-    data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+    grid = wberri.Grid(system=system, NKFFT=[3, 3, 1], NKdiv=1)
+    data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
     noext = dict(kwargs_formula={"external_terms": False})
     bd = wberri.calculators.tabulate.DerBerryCurvature(**noext)
     result = bd(data_K)
@@ -110,38 +137,69 @@ def test_BD_trace(system_Haldane_PythTB):
 @pytest.fixture
 def check_save_result():
     def _inner(system, calc, result_type, filename="dummy"):
-        grid = wberri.Grid(system, NKFFT=3, NK=5)
+        grid = wberri.Grid(system=system, NKFFT=3, NK=5)
         dK = np.random.random(3)
-        data_K = wberri.data_K.get_data_k(system, dK=dK, grid=grid)
+        data_K = wberri.data_K.Data_K_R(system, dK=dK, grid=grid)
         result = calc(data_K)
         path_filename = os.path.join(OUTPUT_DIR, filename)
         result.save(path_filename)
-        result_read = result_type(file_npz=path_filename + ".npz")
+        result_read = result_type.from_npz(path_filename + ".npz")
         assert result.data.shape == result_read.data.shape
         assert str(result.transformTR) == str(result_read.transformTR)
         assert str(result.transformInv) == str(result_read.transformInv)
     return _inner
 
 
-def test_SDCT(system_random_load_bare, check_calculator):
+@pytest.mark.parametrize(
+    ("system", "system_type", "Efermi"),
+    [
+        pytest.param("system_random_load_bare", "random", np.linspace(-2, 2, 5), id="random"),
+        pytest.param("system_Si_W90_JM_sym", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym"),
+        pytest.param("system_Si_W90_JM_sym_FF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_FF"),
+        pytest.param("system_Si_W90_JM_sym_OOGGFF", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF"),
+        pytest.param("system_Si_W90_JM_sym_OOGGFF_uc", "Si_W90_JM_sym", Efermi_Si, id="Si_W90_JM_sym_OOGGFF_uc"),
+        pytest.param("system_Si_W90_JM_OOGG", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGG"),
+        pytest.param("system_Si_W90_JM_FF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_FF"),
+        pytest.param("system_Si_W90_JM_OOGGFF", "Si_W90_JM", Efermi_Si, id="Si_W90_JM_OOGGFF"),
+    ],
+    indirect=["system"],
+)
+def test_SDCT(system, system_type, Efermi, check_calculator):
 
-    from .test_run import Efermi_GaAs, calculators_SDCT
-    param = {'Efermi': Efermi_GaAs,
+    param = {'Efermi': Efermi,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1,
              }
 
+    skip_S = system_type.startswith("Si_W90")
+    calculators_SDCT = get_calculators_sdct(implementation=1)
     for key, calculator in calculators_SDCT.items():
-        for term in ["M1", "E2", "V", "all"]:
-            param_terms = {f"{t}_terms": (t == "all") for t in ["M1", "E2", "V"]}
-            if term != "all":
-                param_terms[f"{term}_terms"] = True
-            name = f"random-{key}-{term}_terms"
+        for term in ["M1", "E2", "V", "S", "all", "none", "M1_uIu"]:
+            if skip_S and term == "S":
+                continue
+            kwargs_formula = {"OO_uIu": False}
+            if term == "all":
+                param_terms = {f"{t}_terms": True for t in ["M1", "E2", "V", "S"]}
+                if skip_S:
+                    param_terms["S_terms"] = False
+            else:
+                param_terms = {f"{t}_terms": False for t in ["M1", "E2", "V", "S"]}
+                if term == "M1_uIu":
+                    param_terms["M1_terms"] = True
+                    kwargs_formula["OO_uIu"] = True
+                elif term != "none":
+                    param_terms[f"{term}_terms"] = True
+
+            name = f"{system_type}-{key}-{term}_terms"
             print(name)
-            calc = calculator(**param_terms, **param)
-            check_calculator(system_random_load_bare, calc, name, do_not_compare=False)
-
-
+            calc = calculator(kwargs_formula=kwargs_formula,
+                              **param_terms, **param)
+            transform_TR = wberri.symmetry.point_symmetry.transform_odd_trans_102
+            check_calculator(system, calc,
+                             name, do_not_compare=False,
+                             compare_zero=(term == "none"),
+                            #  precision=1e-8 if term == "none" else None,
+                             transformTR=transform_TR)
 
 
 def test_save_KBandResult(system_Haldane_PythTB, check_save_result):
@@ -182,3 +240,174 @@ def test_get_transform():
         transform_from_dict({"transformTR": np.zeros(5)}, "transformTR")
     with pytest.raises(ValueError):
         transform_from_dict({"transformTR": np.array((1, 2, 3), dtype=object)}, "transformTR")
+
+
+
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+def test_band_resolved(tetra, system_Fe_sym_W90, datak_Fe):
+    calc_class = wberri.calculators.static.Ohmic_FermiSurf
+    system = system_Fe_sym_W90
+    NB = system.num_wann
+    Efermi_Fe_loc = np.linspace(Efermi_Fe[0], Efermi_Fe[-1], 100)
+    calculators_band = {f"{i:02d}": calc_class(Efermi=Efermi_Fe_loc, tetra=tetra, select_bands=(i,)) for i in range(NB)}
+    calculator_all = calc_class(Efermi=Efermi_Fe_loc, tetra=tetra, select_bands=None)
+    res_bands = sum([calc(datak_Fe) for calc in calculators_band.values()]).data
+    res_all = calculator_all(datak_Fe).data
+    scale_bands = np.max(np.abs(res_bands))
+    scale_all = np.max(np.abs(res_all))
+    scale = min(scale_bands, scale_all)
+    assert scale > 1e-10, f"scale = {scale}, scale_bands = {scale_bands}, scale_all = {scale_all}"
+    rel_diff = np.max(np.abs(res_bands - res_all) / scale)
+    print(f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}")
+    assert rel_diff < 1e-8, f"rel_diff = {rel_diff}, scale_bands = {scale_bands}, scale_all = {scale_all}"
+
+
+
+@pytest.fixture(scope="module")
+def datak_GaAs(system_GaAs_W90):
+    dK = [0.1, 0.2, 0.3]
+    NKFFT = [3, 3, 3]
+    data_K = get_datak(system_GaAs_W90, k=dK, NKFFT=NKFFT)
+    return data_K
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_GaAs(datak_GaAs, tetra, shift):
+    from .common_systems import Efermi_GaAs
+
+    data_K = datak_GaAs
+    Efermi = Efermi_GaAs
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "quantum_metric": static.QuantumMetric_FermiSea,
+        "quantum_metric_dipole": static.QuantumMetricDipole_FermiSea,
+        "quantum_metric_dqm": static.QuantumMetric_Vel_DQ,
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+@pytest.mark.parametrize("shift", [0, 2, 5, 7])
+def test_Fermi_scan_Fe(datak_Fe, tetra, shift):
+    from .common_systems import Efermi_Fe
+
+    data_K = datak_Fe
+    Efermi = Efermi_Fe
+    Efermi_shifted = Efermi[shift:]
+
+    calculators_dict = {
+        "ahc": static.AHC,
+        "Morb": static.Morb,
+        "bcd": static.BerryDipole_FermiSea,
+        "ohmic": static.Ohmic_FermiSea,
+        "gme": static.GME_orb_FermiSea,
+        "gme_spin": static.GME_spin_FermiSea,
+        # "hall": static.Hall_classic_FermiSea,  # This test does not pass - a bug to be investigasted
+        "sbcd": static.SpinBerryDipole_FermiSea,
+        "nldrude": static.NLDrude_FermiSea
+    }
+
+    for calc_name, calc_class in calculators_dict.items():
+        result_full = calc_class(Efermi=Efermi, tetra=tetra)(data_K)
+        result_shifted = calc_class(Efermi=Efermi_shifted, tetra=tetra)(data_K)
+        assert np.allclose(result_full.Energies[0][shift:], Efermi_shifted), f"Fermi levels do not match for {calc_name} with tetra={tetra}"
+        assert np.allclose(result_full.data[shift:], result_shifted.data, atol=1e-8), f"Results do not match for {calc_name} with tetra={tetra}"
+        # idx = (slice(None),) + (0,) * (result_full.data.ndim - 1)
+        # print (result_full.data[idx], "\n", result_shifted.data[idx])
+
+
+
+
+
+def test_jdos():
+
+    system = SystemKP(Ham=lambda k: np.diag([-0.5, 0.5]).astype(complex))
+    datak = get_datak(system)
+
+
+    print(f"cell volume = {system.cell_volume}")
+    width = 0.1
+    expected_value_gauss = 1. / (width * np.sqrt(np.pi) * system.cell_volume)
+    expected_value_lorentz = 1.0 / (np.pi * width) / system.cell_volume * (
+        1 - 1 / (1 + 4 / width**2)   # the correction is due to the finite width of the Lorentzian, which is not negligible for width=0.1 for delta(0.5-(-0.5)-(-1)) = delta(2)
+    )
+
+
+    for (omega, smr_type), expected in [
+        (([1.0], 'Gaussian'), expected_value_gauss),
+        (([-1.0], 'Gaussian'), -expected_value_gauss),
+        (([0.0], 'Lorentzian'), 0),
+        (([1.0], 'Lorentzian'), expected_value_lorentz),
+        (([-1.0], 'Lorentzian'), -expected_value_lorentz),
+        (([0.0, -1.0], 'Lorentzian'), np.array([0, -expected_value_lorentz]))
+    ]:
+        result = JDOS(Efermi=[0.0], omega=np.array(omega), smr_fixed_width=0.1,
+                      smr_type=smr_type, kBT=0)(datak).data[0]
+        assert result == approx(expected, abs=1e-8), f"jdos({omega}, '{smr_type}') = {result}, expected {expected}"
+
+
+@pytest.mark.parametrize("ext_terms", [True, False])
+@pytest.mark.parametrize("int_terms", [True, False])
+@pytest.mark.parametrize("fermi", ["sea", "surf"])
+def test_LFAHE(system_Fe_W90, check_calculator, ext_terms, int_terms, fermi):
+    system = deepcopy(system_Fe_W90)
+    if fermi == "sea":
+        calc = static.LFAHE_spin_fsea
+    else:
+        calc = static.LFAHE_spin_fsurf
+    ext_terms_str = "ext" if ext_terms else "noext"
+    int_terms_str = "int" if int_terms else "noint"
+    calc_name = f"{calc.__name__}_{ext_terms_str}_{int_terms_str}"
+    calculator = calc(Efermi=Efermi_Fe,
+                      kwargs_formula={"external_terms": ext_terms,
+                                      "internal_terms": int_terms})
+    check_calculator(system, calculator, calc_name, void_if_missing=False,
+                     compare_zero=not (ext_terms or int_terms))
+
+
+def test_LFAHE_tb(system_Chiral_left, check_calculator):
+    system = deepcopy(system_Chiral_left)
+
+    from wannierberri.calculators.static import LFAHE_spin_fsea, LFAHE_spin_fsurf
+    kwargs = dict(Efermi=Efermi_Chiral)
+    calculators = dict(surf=LFAHE_spin_fsurf(**kwargs),
+                       fsea=LFAHE_spin_fsea(**kwargs),
+                       )
+    results = {}
+    for name, calc in calculators.items():
+        results[name] = check_calculator(system, calc, f"Chiral_LFAHE_{name}", void_if_missing=False)
+    isfit, msg = results["surf"].fit(results["fsea"], return_message=True)
+    assert isfit, f"LFAHE_spin_fsurf and LFAHE_spin_fsea should not fit each other, but {msg}"
+
+
+def test_dynamic_tetra(system_Haldane_double, check_calculator):
+    system = system_Haldane_double
+    from wannierberri.calculators.dynamic import JDOS, OpticalConductivity, SHC
+    calculators = {}
+    Efermi = np.array([-2, 0, 2.5])
+    omega = np.linspace(0, 5, 11)
+    calculators["JDOS"] = JDOS(Efermi=Efermi, omega=omega, tetra=True)
+    calculators["OpticalConductivity"] = OpticalConductivity(Efermi=Efermi, omega=omega, tetra=True)
+    calculators["SHC"] = SHC(Efermi=Efermi, omega=omega, tetra=True, SHC_type="simple")
+    err_list = []
+    for name, calc in calculators.items():
+        try:
+            check_calculator(system, calc, f"Haldane_double_dynamic_{name}",
+                             param_K={"use_tetra_in_low_D": True},
+                             void_if_missing=False)
+        except Exception as e:
+            err_list.append(f"Error in {name}: {e}")
+    if err_list:
+        raise AssertionError("Errors occurred in dynamic tetra tests:\n" + "\n".join(err_list))

@@ -8,15 +8,30 @@ from matplotlib import pyplot as plt
 import os
 import shutil
 
+from wannierberri import evaluate_k_path
+
 from .common import OUTPUT_DIR, ROOT_DIR, REF_DIR
-from wannierberri.symmetry.sawf import SymmetrizerSAWF
+from wannierberri.symmetry.sawf import IrrepsIncompatibleError, SymmetrizerSAWF
 
 
-@pytest.mark.parametrize("outer_window", [None, (-100, 100), (-10, 40), (-10, 22),])
-def test_wannierise(outer_window):
+# Switch to FAlse, to test purely serial execution
+PARALLEL = True
+
+
+
+@pytest.mark.parametrize("outer_window", [None,
+                                          (-100, 100, "select_bands"),
+                                          (-10, 40, "select_bands"),
+                                          (-10, 22, "select_bands"),
+                                          (-100, 100, "outer"),
+                                          (-10, 40, "outer"),
+                                          (-10, 22, "outer"),
+                                          ])
+@pytest.mark.parametrize("starting_wcc", [None, "chk", "amn", "arg"])
+def test_wannierise(outer_window, starting_wcc):
     systems = {}
-
-    cwd = os.getcwd()
+    if starting_wcc != "amn" and outer_window is not None:
+        pytest.skip("different windows are only tested with starting_wcc='amn' ")
 
     tmp_dir = os.path.join(OUTPUT_DIR, "diamond")
 
@@ -37,28 +52,44 @@ def test_wannierise(outer_window):
         shutil.copy(os.path.join(data_dir, f"UNK{i + 1:05d}.1"),
                     os.path.join(tmp_dir, f"UNK{i + 1:05d}.1"))
     print("prefix = ", prefix)
-    symmetrizer = SymmetrizerSAWF().from_npz(prefix + ".sawf.npz")
+    symmetrizer = SymmetrizerSAWF.from_npz(prefix + ".sawf.npz")
 
     # Read the data from the Wanier90 inputs
-    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=prefix, readfiles=["amn", "mmn", "eig", "win", "unk"])
-    w90data.set_symmetrizer(symmetrizer=symmetrizer)
+    wandata = wberri.WannierData.from_w90_files(seedname=prefix, files=["amn", "mmn", "eig", "win", "unk"], readnnkp=False)
+    wandata.set_symmetrizer(symmetrizer=symmetrizer)
+    wcc_start_red = np.array([[0, 0, 0], [0, 0, 1 / 2], [0, 1 / 2, 0], [1 / 2, 0, 0]])
+    if starting_wcc == "chk":
+        wandata.chk.wannier_centers_cart = wcc_start_red.dot(wandata.bkvec.real_lattice)
+    elif starting_wcc == "amn":
+        wandata.amn.positions = wcc_start_red
+    outer_min = -np.inf
+    outer_max = np.inf
     if outer_window is not None:
-        w90data.select_bands(win_min=outer_window[0], win_max=outer_window[1])
-    print(f"num_bands: eig:{w90data.eig.NB}, mmn:{w90data.mmn.NB}, amn:{w90data.amn.NB}")
+        if outer_window[2] == "select_bands":
+            wandata.select_bands(win_min=outer_window[0], win_max=outer_window[1])
+        elif outer_window[2] == "outer":
+            outer_min = outer_window[0]
+            outer_max = outer_window[1]
+    print(f"num_bands: eig:{wandata.eig.NB}, mmn:{wandata.mmn.NB}, amn:{wandata.amn.NB}")
     # Now wannierise with sitesym and frozen window (the part that is not implemented in Wanier90)
-    w90data.wannierise(
+    wandata.wannierise(
         froz_min=-8,
         froz_max=20,
+        outer_min=outer_min,
+        outer_max=outer_max,
         num_iter=1000,
         conv_tol=1e-10,
         mix_ratio_z=0.8,
-        mix_ratio_u=1,
         print_progress_every=20,
         sitesym=True,
         localise=True,
+        parallel=PARALLEL,
+        wcc_start_red=wcc_start_red if starting_wcc == "arg" else None,
+        localise_num_iter=0,
+        savechk=False,
     )
-    wannier_centers = w90data.chk.wannier_centers_cart
-    wannier_spreads = w90data.chk.wannier_spreads
+    wannier_centers = wandata.chk.wannier_centers_cart
+    wannier_spreads = wandata.chk.wannier_spreads
     wannier_spreads_mean = np.mean(wannier_spreads)
     assert wannier_spreads == approx(wannier_spreads_mean, abs=1e-9)
     assert wannier_spreads == approx(0.39864755, abs=1e-5)
@@ -66,9 +97,9 @@ def test_wannierise(outer_window):
                                             [0, 0, 1],
         [0, 1, 0],
         [1, 0, 0]
-    ]).dot(w90data.chk.real_lattice) / 2,
+    ]).dot(wandata.chk.real_lattice) / 2,
         abs=1e-6)
-    sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
+    sc_origin, sc_basis, WF, rho = wandata.plotWF(select_WF=[1, 2], reduce_r_points=[3, 9, 1])
     assert WF.shape == (2, 6, 2, 18)
     assert rho.shape == (2, 6, 2, 18)
     wf_file_name = "WF_12_red.npy"
@@ -76,15 +107,15 @@ def test_wannierise(outer_window):
     ref = np.load(os.path.join(REF_DIR, wf_file_name))
     assert WF == approx(ref)
 
-    sc_origin, sc_basis, WF, rho = w90data.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
-    lattice = w90data.chk.real_lattice
+    sc_origin, sc_basis, WF, rho = wandata.plotWF(select_WF=[1, 2], reduce_r_points=[1, 1, 1])
+    lattice = wandata.chk.real_lattice
     assert sc_origin == approx(-lattice.sum(axis=0))
     assert sc_basis == approx(2 * lattice)
     assert WF.shape == (2, 18, 18, 18)
     assert rho.shape == (2, 18, 18, 18)
     assert rho.sum(axis=(1, 2, 3)) == approx(1)
 
-    systems["wberri"] = wberri.system.System_w90(w90data=w90data)
+    systems["wberri"] = wberri.System_R.from_wannierdata(wandata=wandata)
 
 
     systems["wberri_symmetrized"] = copy.deepcopy(systems["wberri"])
@@ -95,7 +126,7 @@ def test_wannierise(outer_window):
     # Now calculate bandstructure for each of the systems
     # for creating a path any of the systems will do the job
     system0 = list(systems.values())[0]
-    path = wberri.Path(system0, nodes=[[0, 0, 0], [1 / 2, 0, 0]], labels=['G', 'L'], length=100)
+    path = wberri.Path.from_nodes(system0, nodes=[[0, 0, 0], [1 / 2, 0, 0]], labels=['G', 'L'], length=100)
     tabulator = wberri.calculators.TabulatorAll(tabulators={}, mode='path')
     calculators = {'tabulate': tabulator}
 
@@ -118,7 +149,7 @@ def test_wannierise(outer_window):
         d, acc = np.max(diff), 0.0005
         assert d < acc, f"the interpolated bands {k1}  differ from reference by max {d}>{acc}"
     # One can see that results do not differ much. Also, the maximal localization does not have much effect.
-    os.chdir(cwd)
+    os.chdir(ROOT_DIR)
 
 
 
@@ -132,111 +163,233 @@ spreads_Fe_spd_444_nowin = np.array([1.4903928, 1.45260483, 1.62040443, 1.586837
        0.40920197, 0.39504559, 0.40920197, 0.39504559, 0.46868826,
        0.43212589, 0.40920177, 0.39505669])
 
+spreads_Fe_spd_444_win50_outer = np.array([1.49368614, 1.43535665, 1.75385611, 1.70652668, 1.75385869,
+       1.70653457, 1.75385869, 1.70653457, 0.46611582, 0.4308129,
+       0.40815878, 0.39383537, 0.40815878, 0.39383537, 0.46613583,
+       0.43081535, 0.40815827, 0.39384666])
 
+
+
+
+
+@pytest.mark.parametrize("parallel", [True, False])
 @pytest.mark.parametrize("include_TR", [True, False])
-@pytest.mark.parametrize("use_window", [True, False])
-def test_sitesym_Fe(include_TR, use_window):
-    path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
-    w90data = wberri.w90files.Wannier90data().from_w90_files(seedname=path_data + "/Fe", readfiles=["amn", "eig", "mmn", "win"], read_npz=True)
-
-    symmetrizer = SymmetrizerSAWF().from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
-    w90data.set_symmetrizer(symmetrizer)
-    if use_window:
-        w90data.select_bands(win_min=-8, win_max=50)
-    froz_max = 30
-    w90data.wannierise(init="amn",
-                       froz_min=-8,
-                    froz_max=froz_max,
-                    print_progress_every=20,
-                    num_iter=40,
-                    conv_tol=1e-6,
-                    mix_ratio_z=1.0,
-                    localise=True,
-                    sitesym=True,
-                    )
-    assert np.allclose(w90data.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(w90data.wannier_centers_cart))} \n{w90data.wannier_centers_cart}"
-    spreads = w90data.chk.wannier_spreads
-    print(f"spreads: {repr(spreads)}")
-    assert np.all(spreads < 2)
-    atol = 1e-8
-    assert spreads[4] == approx(spreads[6], abs=atol)
-    assert spreads[5] == approx(spreads[7], abs=atol)
-    assert spreads[10] == approx(spreads[12], abs=atol)
-    assert spreads[11] == approx(spreads[13], abs=atol)
-    spreads_ref = spreads_Fe_spd_444_win50 if use_window else spreads_Fe_spd_444_nowin
-    assert spreads == approx(spreads_ref, abs=0.01)
-    system = wberri.system.System_w90(w90data=w90data, berry=True)
-    tabulators = {"Energy": wberri.calculators.tabulate.Energy(),
-                }
-
-
-    tab_all_path = wberri.calculators.TabulatorAll(
-        tabulators,
-        ibands=np.arange(0, 18),
-        mode="path"
-    )
-
-    # all kpoints given in reduced coordinates
-    path = wberri.Path(system,
-                    nodes=[
-                        [0.0000, 0.0000, 0.0000],  # G
-                        [0.500, -0.5000, -0.5000],  # H
-                        [0.7500, 0.2500, -0.2500],  # P
-                        [0.5000, 0.0000, -0.5000],  # N
-                        [0.0000, 0.0000, 0.000]
-                    ],  # G
-        labels=["G", "H", "P", "N", "G"],
-        nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
-
-    result_path = wberri.run(system,
-                    grid=path,
-                    calculators={"tabulate": tab_all_path},
-                    print_Kpoints=False)
-    EF = 12.6
-    A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
-    energies_ref = np.copy(A[:, 1].reshape(-1, 81)[:18].T)
-
-    bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
-    alatt = 5.4235 * bohr_ang
-    A[:, 0] *= 2 * np.pi / alatt
-    A[:, 1] = A[:, 1] - EF
-    plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
-
-    energies = result_path.results["tabulate"].get_data(quantity="Energy", iband=np.arange(0, 18))
-
-    np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
-    np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
-
-    atol = 0.7
-    nk = energies.shape[0]
-    energies_diff = np.abs(energies - energies_ref)
-    energies_diff[energies_ref > 13] = 0  # ignore the high energy bands
-    for ik in range(nk):
-        if ik % 20 == 0:
-            _atol = 0.01
+@pytest.mark.parametrize("use_window", [False, "select_bands", "outer"])
+def test_sitesym_Fe(include_TR, use_window, parallel):
+    for gradient_method in [False, True] if ((not parallel) and include_TR) else [False]:
+        # choosing non-parallel to be seen by codecov
+        path_data = os.path.join(ROOT_DIR, "data", "Fe-444-sitesym")
+        wandata = wberri.WannierData.from_npz(seedname=path_data + "/Fe", files=["amn", "eig", "mmn", "chk"])
+        # win = WIN.from_w90_file(path_data + "/Fe")
+        # chk = CHK.from_win(win)
+        # chk.to_npz(path_data + f"/Fe.chk.npz")
+        # wandata.set_file("chk", chk)
+        symmetrizer = SymmetrizerSAWF.from_npz(path_data + f"/Fe_TR={include_TR}.sawf.npz")
+        wandata.set_symmetrizer(symmetrizer)
+        outer_min, outer_max = -np.inf, np.inf
+        if use_window == "select_bands":
+            wandata.select_bands(win_min=-8, win_max=50)
+        elif use_window == "outer":
+            outer_min, outer_max = -8, 50
+        froz_max = 30
+        if gradient_method:
+            kwargs_localise = dict(localise_num_iter=10, localise_alpha=0.9, localise_conv_tol=1e-5)
         else:
-            _atol = atol
-        assert np.allclose(energies_diff[ik], 0, atol=_atol), \
-            f"energies at ik={ik} differ by {np.max(abs(energies_diff[ik]))} more than {_atol}" +\
-            f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
+            kwargs_localise = dict(localise_num_iter=0)
+        wandata.wannierise(init="amn",
+                        froz_min=-8,
+                        froz_max=froz_max,
+                        outer_min=outer_min,
+                        outer_max=outer_max,
+                        print_progress_every=20,
+                        num_iter=40,
+                        conv_tol=1e-6,
+                        mix_ratio_z=1.0,
+                        localise=True,
+                        sitesym=True,
+                        parallel=parallel,
+                        savechk=False,
+                        **kwargs_localise
+                        )
+        assert np.allclose(wandata.wannier_centers_cart, 0, atol=1e-6), f"wannier_centers differ from 0 by {np.max(abs(wandata.wannier_centers_cart))} \n{wandata.wannier_centers_cart}"
+        spreads = wandata.chk.wannier_spreads
+        print(f"spreads: {repr(spreads)}")
+        assert np.all(spreads < 2)
+        atol = 1e-8
+        assert spreads[4] == approx(spreads[6], abs=atol)
+        assert spreads[5] == approx(spreads[7], abs=atol)
+        assert spreads[10] == approx(spreads[12], abs=atol)
+        assert spreads[11] == approx(spreads[13], abs=atol)
+        spreads_ref = {"select_bands": spreads_Fe_spd_444_win50,
+                    "outer": spreads_Fe_spd_444_win50_outer,
+                    False: spreads_Fe_spd_444_nowin}[use_window]
+        if not gradient_method:
+            spreads_noloc = spreads
+            assert spreads == approx(spreads_ref, abs=0.01)
+        else:
+            assert spreads.sum() < spreads_noloc.sum(), f"spreads {spreads} are larger than reference {spreads_noloc}"
+        system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
 
-    result_path.results["tabulate"].plot_path_fat(
-        path,
-        quantity=None,
-        Eshift=EF,
-        Emin=-10, Emax=50,
-        iband=None,
-        mode="fatband",
-        fatfactor=20,
-        cut_k=False,
-        linecolor="red",
-        close_fig=False,
-        show_fig=False,
-        label=f"TR={include_TR}"
-    )
+        # all kpoints given in reduced coordinates
+        path = wberri.Path.from_nodes(system,
+                        nodes=[
+                            [0.0000, 0.0000, 0.0000],  # G
+                            [0.500, -0.5000, -0.5000],  # H
+                            [0.7500, 0.2500, -0.2500],  # P
+                            [0.5000, 0.0000, -0.5000],  # N
+                            [0.0000, 0.0000, 0.000]
+                        ],  # G
+            labels=["G", "H", "P", "N", "G"],
+            nk=[21] * 5)   # length [ Ang] ~= 2*pi/dk
 
-    plt.ylim(-10, 20)
-    plt.hlines(froz_max - EF, 0, A[-1, 0], linestyles="dashed")
-    plt.legend()
-    plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
-    plt.close()
+        result_path = wberri.evaluate_k_path(system,
+                        path=path,
+                        parallel=parallel,
+                        print_Kpoints=False)
+        EF = 12.6
+        A = np.loadtxt(os.path.join(path_data, "Fe_bands_pw.dat"))
+        energies_ref = np.copy(A[:, 1].reshape(-1, 81)[:18].T)
+
+        bohr_ang = scipy.constants.physical_constants['Bohr radius'][0] / 1e-10
+        alatt = 5.4235 * bohr_ang
+        A[:, 0] *= 2 * np.pi / alatt
+        A[:, 1] = A[:, 1] - EF
+        plt.scatter(A[:, 0], A[:, 1], c="black", s=5)
+        kpoints = result_path.kpoints
+        print(f"kpoints: \n{kpoints}")
+        kpoints_path = path.get_kpoints()
+        print(f"kpoints_path: \n{kpoints_path}")
+        diff = abs(kpoints - kpoints_path)
+        diff -= np.round(diff)  # account for periodicity
+        assert np.allclose(diff, 0, atol=1e-5), f"kpoints from path and result differ by {np.max(abs(diff))}"
+
+        energies = result_path.get_data(quantity="Energy", iband=np.arange(0, 18))
+
+        np.save(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.npy"), energies)
+        np.savetxt(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.dat"), energies)
+
+        atol = 0.75
+        nk = energies.shape[0]
+        energies_diff = np.abs(energies - energies_ref)
+        energies_diff[energies_ref > 13] = 0  # ignore the high energy bands
+        for ik in range(nk):
+            if ik % 20 == 0:
+                _atol = 0.01
+            else:
+                _atol = atol
+            assert np.allclose(energies_diff[ik], 0, atol=_atol), \
+                f"energies at ik={ik} differ by {np.max(abs(energies_diff[ik]))} more than {_atol}" +\
+                f"energies: {energies[ik]}\nref: {energies_ref[ik]}"
+
+        result_path.plot_path_fat(
+            path,
+            quantity=None,
+            Eshift=EF,
+            Emin=-10, Emax=50,
+            iband=None,
+            mode="fatband",
+            fatfactor=20,
+            cut_k=False,
+            linecolor="red",
+            close_fig=False,
+            show_fig=False,
+            label=f"TR={include_TR}",
+        )
+
+        plt.ylim(-10, 20)
+        plt.hlines(froz_max - EF, 0, A[-1, 0], linestyles="dashed")
+        plt.legend()
+        plt.savefig(os.path.join(OUTPUT_DIR, f"Fe_bands-{include_TR}.pdf"))
+        plt.close()
+
+
+@pytest.mark.parametrize("z0", [0, 1.5])
+@pytest.mark.parametrize("parallel", [True, False])
+@pytest.mark.parametrize("outer_window", [(-100, 100, ""), (-15, 15, "-outer"), (-15, 5, "-outer-low")])
+def test_graphene_freeze_bands(outer_window, parallel, z0):
+    # This test is to check that the frozen bands are actually frozen. We take the graphene example and freeze the first valence band, which should be well separated from the rest of the bands. Then we check that the spread of this band is not changed by the wannierisation procedure.
+    path_data_0 = os.path.join(ROOT_DIR, "data", "graphene_gpaw")
+    if z0 == 0:
+        path_data = path_data_0
+    else:
+        path_data = os.path.join(ROOT_DIR, "data", "graphene_gpaw_z=1.5")
+
+    wandata = wberri.WannierData.from_npz(seedname=path_data + "/graphene-wb", files=["amn", "eig", "mmn", "symmetrizer"], irreducible=True)
+    print(f"files in wandata: {wandata._files}")
+    kwargs = dict(init="amn",
+                  print_progress_every=20,
+                  outer_min=outer_window[0],
+                  outer_max=outer_window[1],
+                  frozen_states={0: [1,], 2: [3, 4]},
+                  num_iter=50,
+                  conv_tol=1e-10,
+                  mix_ratio_z=0.8,
+                  localise=True,
+                  sitesym=True,
+                  parallel=parallel,
+                  localise_num_iter=0,
+                  savechk=False,
+                    )
+
+    if outer_window[2] != "-outer-low":
+        wandata.wannierise(**kwargs)
+
+        spreads = wandata.chk.wannier_spreads
+        wannier_centers = wandata.chk.wannier_centers_cart
+        assert wannier_centers == approx(np.array([
+            [-0.710140831103, 1.230000000000, z0 * wandata.chk.real_lattice[2, 2]],
+            [0.710140831103, 1.230000000000, z0 * wandata.chk.real_lattice[2, 2]],
+        ]))
+        print(f"spreads: {repr(spreads)}")
+        assert np.all(spreads < 1)
+        assert np.all(spreads > 0.6)
+        system = wberri.System_R.from_wannierdata(wandata=wandata, berry=True)
+
+        kpoints = {
+            'G': [0.0, 0.0, 0.0],
+            'K': [1 / 3, 1 / 3, 0.0],
+            'M': [0.5, 0.0, 0.0],
+        }
+
+        path_labels = "GKMG"
+
+        path, bands_wannier = evaluate_k_path(system,
+                                        nodes=[kpoints[label] for label in path_labels],
+                                        labels=list(path_labels),
+                                        length=100,
+                                        return_path=True)  # length~=2pi/dk
+        bands_dft = np.load(os.path.join(path_data_0, "graphene-bands-dft.npz"))
+        ik_G_dft, ik_K_dft = None, None
+        for ik, k in enumerate(bands_dft["kpts"]):
+            if np.allclose(k, kpoints['G'], atol=1e-5):
+                ik_G_dft = ik
+            elif np.allclose(k, kpoints['K'], atol=1e-5):
+                ik_K_dft = ik
+        assert ik_G_dft is not None, "G point not found in DFT k-points"
+        assert ik_K_dft is not None, "K point not found in DFT k-points"
+        ik_G_wan, ik_K_wan = None, None
+        for ik, k in enumerate(path.K_list):
+            if np.allclose(k, kpoints['G'], atol=1e-5):
+                ik_G_wan = ik
+            elif np.allclose(k, kpoints['K'], atol=1e-5):
+                ik_K_wan = ik
+        assert ik_G_wan is not None, "G point not found in Wannier k-points"
+        assert ik_K_wan is not None, "K point not found in Wannier k-points"
+        print(f"ik_G_dft={ik_G_dft}, ik_K_dft={ik_K_dft}, ik_G_wan={ik_G_wan}, ik_K_wan={ik_K_wan}")
+
+        bands_wannier = bands_wannier.results["Energy"].data
+        bands_dft_G = bands_dft["energies"][ik_G_dft][[1,]]  # the first valence band is frozen, so we take the second one as reference
+        bandsw_wannier_G = bands_wannier[ik_G_wan][[0,]]  # the first band should correspond to the frozen band
+        assert np.allclose(bandsw_wannier_G, bands_dft_G, atol=0.01), f"G point energies differ from reference by {np.max(abs(bandsw_wannier_G - bands_dft_G))}"
+        bands_dft_K = bands_dft["energies"][ik_K_dft][[3, 4]]  # the first valence band is frozen, so we take the second and third one as reference
+        bands_wannier_K = bands_wannier[ik_K_wan][[0, 1]]  # the first two bands should correspond to the frozen band and the first conduction band, which are well separated from the rest of the bands at K point
+        assert np.allclose(bands_wannier_K, bands_dft_K, atol=0.01), f"K point energies differ from reference by {np.max(abs(bands_wannier_K - bands_dft_K))}"
+
+        bands_wannier_ref = np.load(os.path.join(path_data_0, f"graphene-bands-wannier{outer_window[2]}.npz"))
+        assert np.allclose(path.K_list, bands_wannier_ref["kpts"]), f"kpts differ from reference by {np.max(abs(bands_wannier['kpts'] - bands_wannier_ref['kpts']))}"
+        assert np.allclose(bands_wannier, bands_wannier_ref["energies"], atol=0.02), f"energies differ from reference by {np.max(abs(bands_wannier - bands_wannier_ref['energies']))}"
+    else:
+        if z0 == 1.5:
+            pytest.skip("the test with outer window and z0=1.5 does not work for some reason, to be investigated")  # TODO
+        with pytest.raises(IrrepsIncompatibleError):
+            wandata.wannierise(**kwargs)

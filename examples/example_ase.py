@@ -8,6 +8,11 @@ from gpaw import GPAW
 from ase.dft.wannier import Wannier
 from matplotlib import pyplot as plt
 import numpy as np
+import wannierberri as wberri
+import wannierberri.calculators as wb_calculators
+from wannierberri.parallel import ray_init
+from wannierberri.system import System_R
+
 
 # you may set some of those flags to False to speed-up further runs
 do_gpaw = False
@@ -50,19 +55,17 @@ else:
 k1 = k2 = 1. / 3
 
 if do_wberri:
-    import wannierberri as wberri
-    system = wberri.System_ASE(wan, berry=True)
+    system = System_R.from_ase(wan, berry=True)
+    ray_init()
 
-    parallel = wberri.parallel.Parallel(num_cpus=4)
-#    parallel = wberri.parallel.Serial()
 
     path = wberri.Path(
         system, nodes=[[k1, k2, 0.35], [k1, k2, 0.5], [k1, k2, 0.65]], labels=["K<-", "H", "->K"], length=500)
 
 
-    calculators = {"tabulate": wberri.calculators.TabulatorAll({
-        "Energy": wberri.calculators.tabulate.Energy(),
-        "berry": wberri.calculators.tabulate.BerryCurvature(),
+    calculators = {"tabulate": wb_calculators.TabulatorAll({
+        "Energy": wb_calculators.tabulate.Energy(),
+        "berry": wb_calculators.tabulate.BerryCurvature(),
     }, mode="path"
     )
     }
@@ -85,7 +88,7 @@ if do_wberri:
             "color": "green",
             "linestyle": "-"
         },
-        label="WanniewrBerri",
+        label="WannierBerri",
         fatfactor=5,
         fatmax=200,
         cut_k=True,
@@ -102,16 +105,15 @@ if do_wberri:
     plt.xlim(0, 0.31)
     plt.ylim(5, 6)
 
-    grid = wberri.Grid(system, length=200, NKFFT=[6, 6, 8])
+    grid = wberri.Grid(system=system, length=200, NKFFT=[6, 6, 8])
     if do_integrate:
         Efermi = np.linspace(-10, 10, 1001)
         wberri.run(system,
             grid=grid,
             calculators={
-                "ahc": wberri.calculators.static.AHC(Efermi=Efermi, tetra=False, kwargs_formula={"external_terms": False}),
-                "dos": wberri.calculators.static.DOS(Efermi=Efermi, tetra=False),
+                "ahc": wb_calculators.static.AHC(Efermi=Efermi, tetra=False, kwargs_formula={"external_terms": False}),
+                "dos": wb_calculators.static.DOS(Efermi=Efermi, tetra=False),
             },
-            parallel=parallel,
             adpt_num_iter=0,
             fout_name='Fe',
             suffix="run",

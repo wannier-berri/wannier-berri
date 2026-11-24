@@ -2,11 +2,10 @@ import functools
 from matplotlib import pyplot as plt
 from wannierberri.grid import Path
 from wannierberri.evaluate_k import evaluate_k_path
+from wannierberri.parallel import ray_init
 from wannierberri.system.system_soc import SystemSOC
-from wannierberri.parallel import Parallel, Serial
 
-# parallel = Parallel(num_cpus=16)
-parallel = Serial()
+ray_init()
 
 system_soc = SystemSOC.from_npz("system_soc")
 theta = 90
@@ -14,7 +13,7 @@ phi = 90
 system_soc.set_soc_axis(theta=theta, phi=phi, units="degrees")
 
 kz = 0.35 / system_soc.recip_lattice[2, 2]
-path = Path(system_soc,
+path = Path(system=system_soc,
             nodes=[
                 [2 / 3, -1 / 3, 0],
                 [0, 0, 0],
@@ -37,7 +36,6 @@ path = Path(system_soc,
 evaluate_k_path_loc = functools.partial(
     evaluate_k_path,
     path=path,
-    parallel=parallel,
 )
 
 

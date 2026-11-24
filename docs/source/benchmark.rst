@@ -7,7 +7,6 @@ Benchmarking with ``postw90.x``
 
 As you may notice, the results given by WannierBerri, e.g. for anomalous Hall conductivity are not exactly the same as given by postw90.x. 
 This is understood, because different numerical algorithms are used for refinement, for symmetry account, and other technicalities.  
-And you might want to make sure that it is not a bug, not a misuse of parameters, and that the speed of WannierBerri is achieved honestly without any fraud.
 In principle the results should agree, when they are both converged with respect to k-points. However, this convergence is hard to achieve. 
 Moreover,  the use of symmetries in WannierBerri does not affect the result only if the Wannier functions are perfectly symmetric, 
 which is often not the case due to numerical inaccuracies.

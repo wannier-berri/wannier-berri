@@ -1,46 +1,51 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file 'LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 
+import opt_einsum as oe
+import numba
+import datetime
+from collections.abc import Iterable
 import os
 from functools import lru_cache
+import shutil
 import numpy as np
-import warnings
+import logging
+logger = logging.getLogger(__name__)
 
-from collections.abc import Iterable
-import datetime
 
 
 # Global cache to store einsum paths
-EINSUM_PATH_CACHE = {}
+# EINSUM_PATH_CACHE = {}
 
 
-def cached_einsum(subscripts, *operands,
-                  optimize='greedy',
-                  **kwargs):
-    """
-    A wrapper for np.einsum that caches the contraction path.
-    The cache key is a combination of the subscripts string and the
-    shapes of the operand arrays.
-    """
+
+NUMBA_CACHE = True   # flip to False in one place
+
+
+def njit(*args, **kwargs):
+    kwargs.setdefault("cache", NUMBA_CACHE)
+    if len(args) == 1 and callable(args[0]):  # bare @njit
+        return numba.njit(**kwargs)(args[0])
+    return numba.njit(*args, **kwargs)        # @njit(...) or @njit("sig", ...)
+
+
+
+EINSUM_CACHE = {}
+NAIVE_COST_THRESHOLD = 1e5   # tune on your machine
+
+
+def cached_einsum(subscripts, *operands, optimize='greedy', **kwargs):
     shapes = tuple(op.shape for op in operands)
-    cache_key = (subscripts, shapes)
-
-    if cache_key in EINSUM_PATH_CACHE:
-        path = EINSUM_PATH_CACHE[cache_key]
-    else:
-        path = np.einsum_path(subscripts, *operands, optimize=optimize)[0]
-        EINSUM_PATH_CACHE[cache_key] = path
-    return np.einsum(subscripts, *operands, optimize=path, **kwargs)
+    key = (subscripts, shapes, optimize)
+    fn = EINSUM_CACHE.get(key)
+    if fn is None:
+        _, info = oe.contract_path(subscripts, *shapes, shapes=True, optimize=optimize)
+        if info.naive_cost < NAIVE_COST_THRESHOLD:
+            logger.debug("Using np.einsum for %s with shapes %s (naive cost %s)", subscripts, shapes, info.naive_cost)
+            fn = lambda *ops, **kw: np.einsum(subscripts, *ops, **kw)
+        else:
+            logger.debug("Using opt_einsum for %s with shapes %s (naive cost %s)", subscripts, shapes, info.naive_cost)
+            fn = oe.contract_expression(subscripts, *shapes, optimize=optimize)
+        EINSUM_CACHE[key] = fn
+    return fn(*operands, **kwargs)
 
 
 def time_now_iso():
@@ -65,7 +70,7 @@ def conjugate_basis(basis):
 def real_recip_lattice(real_lattice=None, recip_lattice=None):
     if recip_lattice is None:
         if real_lattice is None:
-            warnings.warn("usually need to provide either with real or reciprocal lattice."
+            logger.warning("usually need to provide either with real or reciprocal lattice."
                           "If you only want to generate a random symmetric tensor - that it fine")
             return None, None
         else:
@@ -209,6 +214,11 @@ def remove_file(filename):
         os.remove(filename)
 
 
+def remove_dir(dirname):
+    if os.path.isdir(dirname):
+        shutil.rmtree(dirname)
+
+
 def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
     """decorator to vectorize the function over the positional arguments
 
@@ -242,7 +252,7 @@ def vectorize(func, *args, kwargs={}, sum=False, to_array=False):
     return lst
 
 
-def get_max_eig(matrix, nvec, nBfree):
+def get_max_eig(matrix, nvec):
     """ return the nvec column-eigenvectors of matrix with maximal eigenvalues.
 
     Parameters
@@ -259,10 +269,14 @@ def get_max_eig(matrix, nvec, nBfree):
     numpy.ndarray(n,nvec)
         eigenvectors
     """
-    assert matrix.shape[0] == matrix.shape[1]
-    assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
+    if nvec == 0:
+        return np.zeros((matrix.shape[0], 0), dtype=complex)
+    # assert matrix.shape[0] == matrix.shape[1]
+    # assert matrix.shape[0] >= nvec, f"nvec={nvec}, matrix.shape={matrix.shape}"
     e, v = np.linalg.eigh(matrix)
-    return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
+    # n = matrix.shape[0]
+    return v[:, -nvec:]
+    # return v[:, np.argsort(e)[nBfree - nvec:nBfree]]
 
 
 def orthogonalize(u):
@@ -283,7 +297,7 @@ def orthogonalize(u):
         U, _, VT = np.linalg.svd(u, full_matrices=False)
         return U @ VT
     except np.linalg.LinAlgError as e:
-        warnings.warn(f"SVD failed with error '{e}', using non-orthogonalized matrix")
+        logger.warning("SVD failed with error '%s', using non-orthogonalized matrix", e)
         return u
 
 
@@ -308,7 +322,8 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
         the boolean array of the frozen bands  (True for frozen)
     """
     NB = len(E)
-    ind = list(np.where((E <= win_max) * (E >= win_min))[0])
+    inside = (E <= win_max) & (E >= win_min)
+    ind = list(np.where(inside)[0])
     if len(ind) == 0:
         if return_indices:
             return []
@@ -319,28 +334,26 @@ def select_window_degen(E, thresh=1e-2, win_min=np.inf, win_max=-np.inf,
     for i in range(ind[-1], NB - 1):
         if E[i + 1] - E[i] < thresh:
             if include_degen:
-                ind[i + 1] = True
+                inside[i + 1] = True
             else:
-                ind[i] = False
+                inside[i] = False
                 break
         else:
             break
 
     # The lower bound
-    for i in range(ind[0], 1, -1):
+    for i in range(ind[0], 0, -1):
         if E[i] - E[i - 1] < thresh:
             if include_degen:
-                ind[i - 1] = True
+                inside[i - 1] = True
             else:
-                ind[i] = False
+                inside[i] = False
                 break
         else:
             break
     if return_indices:
-        return ind
+        return list(np.where(inside)[0])
     else:
-        inside = np.zeros(E.shape, dtype=bool)
-        inside[ind] = True
         return inside
 
 
@@ -400,3 +413,56 @@ def group_numbers(lst, precision):
         avg_num = np.mean(group_num)
         lst_out[group_ind] = avg_num
     return lst_out
+
+
+def weight_select_bands(ib1, ib2, select_bands=None):
+    """return the weight of the bands in the range [ib1, ib2)"""
+    if select_bands is None:
+        return 1.0
+    else:
+        return np.sum((select_bands >= ib1) * (select_bands < ib2)) / (ib2 - ib1)
+
+
+def normalize_type(obj, recursive=True):
+    """convert a scalar-like object with np.ndarray type (typically from a file created with np.savez) to a Python scalar"""
+    if isinstance(obj, np.ndarray) and obj.ndim == 0:
+        return obj.item()
+    if recursive and isinstance(obj, dict):
+        return {k: normalize_type(v, recursive=True) for k, v in obj.items()}
+    return obj
+
+
+def get_alat_espresso(seedname_pw):
+    """
+    get the lattice parameter in angstrom from the pwscf input file
+
+    Parameters
+    ----------
+    seedname_pw : str
+        the seedname of the pwscf input file (including relative/absolute path, but not including the extension)
+
+    Returns
+    -------
+    alat_angstrom : float
+        the lattice parameter in angstrom
+    """
+    from irrep.parsers.espresso import ParserEspresso
+    parser = ParserEspresso(prefix=seedname_pw)
+    from scipy import constants
+    bohr_angstrom = constants.physical_constants['Bohr radius'][0] / constants.angstrom
+    _Lattice, _positions, _typat, alat_bohr = parser.parse_lattice()
+    alat_angstrom = alat_bohr * bohr_angstrom
+    return alat_angstrom
+
+
+def savez(file, *val, compressed=True, **arrays):
+    return (np.savez_compressed if compressed else np.savez)(file, *val, **arrays)
+
+
+@njit
+def hermitize(M, axis1=-2, axis2=-1):
+    return (M + np.swapaxes(M, axis1, axis2).conj()) * 0.5
+
+
+def hermitize1032(M):
+    return (M + np.swapaxes(np.swapaxes(M.conj(), 0, 1), 3, 2)) * 0.5

@@ -1,37 +1,48 @@
+import logging
+
 import numpy as np
-from .result import Result
+from .result import Result, VoidResult
 import itertools
 import abc
 from ..symmetry.point_symmetry import transform_from_dict
 
+logger = logging.getLogger(__name__)
+
 
 class K__Result(Result, abc.ABC):
 
-    def __init__(self, data=None, transformTR=None, transformInv=None, file_npz=None, rank=None,
+    def __init__(self, data, transformTR=None, transformInv=None, rank=None,
                  other_properties=None):
         if other_properties is None:
             other_properties = {}
-        assert (data is not None) or (file_npz is not None)
-        if file_npz is not None:
-            res = np.load(open(file_npz, "rb"), allow_pickle=True)
-            self.__init__(
-                data=res['data'],
-                transformTR=transform_from_dict(res, 'transformTR'),
-                transformInv=transform_from_dict(res, 'transformInv'),
-            )
-        else:
-            if data is not None:
-                if isinstance(data, list):
-                    self.data_list = data
-                else:
-                    self.data_list = [data]
-            self.transformTR = transformTR
-            self.transformInv = transformInv
+        if data is not None:
+            if isinstance(data, list):
+                self.data_list = data
+            else:
+                self.data_list = [data]
+        self.transformTR = transformTR
+        self.transformInv = transformInv
         if rank is None:
             self.rank = self.get_rank()
         else:
             self.rank = rank
         self.other_properties = other_properties
+
+    @classmethod
+    def from_npz(cls, file_npz, void_if_missing=False):
+        try:
+            res = np.load(open(file_npz, "rb"), allow_pickle=True)
+            return cls(
+                data=res['data'],
+                transformTR=transform_from_dict(res, 'transformTR'),
+                transformInv=transform_from_dict(res, 'transformInv'),
+            )
+        except FileNotFoundError as err:
+            if void_if_missing:
+                return VoidResult()
+            else:
+                raise err
+
 
     def get_rank(self):
         raise NotImplementedError()
@@ -39,7 +50,7 @@ class K__Result(Result, abc.ABC):
     def fit(self, other):
         for var in ['transformTR', 'transformInv', 'rank']:
             if getattr(self, var) != getattr(other, var):
-                print(f"parameters {var} are not fit : `{getattr(self, var)}` and `{getattr(other, var)}` ")
+                logger.warning("parameters %s are not fit : `%s` and `%s` ", var, getattr(self, var), getattr(other, var))
                 return False
         return True
 
@@ -129,6 +140,16 @@ class K__Result(Result, abc.ABC):
                               other_properties=self.other_properties
                               )
 
+    def to_path(self, k_map):
+        dataall = self.data
+        data = np.array([dataall[ik] for ik in k_map])
+        return self.__class__(data=data,
+                              transformTR=self.transformTR,
+                              transformInv=self.transformInv,
+                              rank=self.rank,
+                              other_properties=self.other_properties
+                              )
+
     def average_deg(self, deg):
         for i, D in enumerate(deg):
             for ib1, ib2 in D:
@@ -175,7 +196,7 @@ class KBandResult(K__Result):
 
     def fit(self, other):
         if self.nband != other.nband:
-            print(f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
+            logger.info(f"parameter 'nband' does  not match : `{self.nband}` and `{other.nband}` ")
             return False
         return super().fit(other)
 
@@ -226,7 +247,7 @@ def get_component(data, ndim, component=None):
         else:
             dims = tuple(np.arange(data.ndim))
             _data = data.transpose(dims[-ndim:] + dims[:-ndim])
-            print(f"dims={dims}, data_shape={data.shape}, , _data_shape={_data.shape}")
+            logger.info(f"dims={dims}, data_shape={data.shape}, , _data_shape={_data.shape}")
             if component == "trace":
                 return sum([_data[((i,) * ndim)] for i in range(3)])
             else:

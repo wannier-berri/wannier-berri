@@ -7,6 +7,7 @@ from .common import ROOT_DIR, OUTPUT_DIR, REF_DIR, OUTPUT_DIR_RUN, REF_DIR_INTEG
 from .common_systems import (
     create_files_Fe_W90,
     get_system_Fe_gpaw_soc,
+    get_system_GaAs_W90,
     create_files_Fe_W90_npz,
     create_files_GaAs_W90,
     create_files_Si_W90,
@@ -22,26 +23,36 @@ from .common_systems import (
     system_Fe_FPLO,
     system_Fe_gpaw_up,
     system_Fe_gpaw_dw,
-    soc_Fe_gpaw,
+    system_SSH_PythTB,
+    wandata_Fe_gpaw,
+    wandata_Fe_gpaw_wannierised,
+    system_Fe_gpaw_soc,
+    system_Fe_gpaw_soc_dowannierise,
+    system_Fe_gpaw_soc_ref,
     system_Fe_gpaw_soc_angle,
-    system_Fe_gpaw_soc_angle_symmetrized,
+    system_Fe_gpaw_soc_angle_R,
     system_Fe_gpaw_soc_z,
-    system_Fe_gpaw_soc_z_symmetrized,
     system_Fe_gpaw_soc_111,
-    system_Fe_gpaw_soc_111_irred,
-    system_Fe_gpaw_soc_111_symmetrized,
     data_Te_ASE,
     system_Te_ASE,
     system_Te_QE,
     system_Te_sparse,
     system_GaAs_W90,
+    system_GaAs_W90_OOGG,
     system_GaAs_W90_JM,
+    system_GaAs_W90_JM_OOGG,
     system_GaAs_tb,
     system_GaAs_sym_tb,
     system_GaAs_tb_noAA,
     system_Si_W90_JM,
     system_Si_W90,
     system_Si_W90_JM_sym,
+    system_Si_W90_JM_sym_OOGGFF,
+    system_Si_W90_JM_sym_OOGGFF_uc,
+    system_Si_W90_JM_sym_FF,
+    system_Si_W90_JM_OOGG,
+    system_Si_W90_JM_OOGGFF,
+    system_Si_W90_JM_FF,
     system_Si_W90_sym,
     system_Si_W90_double,
     system_Si_W90_sym_double,
@@ -67,6 +78,7 @@ from .common_systems import (
     system_random_GaAs,
     system_random_GaAs_load_bare,
     system_random_GaAs_load_sym,
+    system_Haldane_double,
 )
 
 # Comparers for tests
@@ -78,11 +90,32 @@ from .common_comparers import (
 )
 
 
-from .test_cluster import check_command_output
 from .test_run import check_run
+from .test_system import check_system
 
-# Parallel objects
-from .common_parallel import parallel_serial, parallel_ray
+from .common_parallel import init_parallel_ray
+
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--serial",
+        action="store_true",
+        default=False,
+        help="Run tests in serial mode without Ray parallelization"
+    )
+
+
+def pytest_configure(config):
+    """Configure pytest based on command line options."""
+    if not config.getoption("--serial"):
+        init_parallel_ray()
+
+
+@pytest.fixture
+def system(request):
+    """Fixture to enable indirect parametrization with system fixtures."""
+    return request.getfixturevalue(request.param)
 
 
 @pytest.fixture(scope="session", autouse=True)

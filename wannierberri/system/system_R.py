@@ -1,17 +1,19 @@
-import copy
-import warnings
-import numpy as np
-import os
-from functools import cached_property
-from collections import defaultdict
 import glob
-
-from ..fourier.rvectors import Rvectors
-from .system import System
-from ..utility import clear_cached, one2three, pauli_xyz
-from ..symmetry.point_symmetry import PointSymmetry, PointGroup, TimeReversal
-from ..symmetry.wyckoff_position import split_into_orbits
+from collections import defaultdict
+from functools import cached_property
+import os
+import numpy as np
 from packaging import version
+from ..symmetry.wyckoff_position import split_into_orbits
+from ..symmetry.point_symmetry import PointGroup
+from ..utility import clear_cached, one2three, pauli_xyz, savez
+from .system import System, num_cart_dim
+from ..fourier.rvectors import Rvectors
+from ..factors import bohr, factor_spin
+import copy
+import logging
+logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class System_R(System):
@@ -39,8 +41,8 @@ class System_R(System):
             set ``True`` if quantities derived from Ryoo's spin-current elements will be used. (RPS 2019)
         SHCqiao : bool
             set ``True`` if quantities derived from Qiao's approximated spin-current elements will be used. (QZYZ 2018).
-        _getFF : bool
-            generate the FF_R matrix based on the uIu file. May be used for only testing so far. Default : ``{_getFF}``
+        FF : bool
+            generate the FF_R matrix based on the uIu file. 
         npar : int
             number of nodes used for parallelization in the `__init__` method. Default: `multiprocessing.cpu_count()`
         ws_dist_tol : float
@@ -76,39 +78,15 @@ class System_R(System):
     half_wann_matrices = set()
 
     def __init__(self,
-                 berry=False,
-                 morb=False,
-                 spin=False,
-                 SHCryoo=False,
-                 SHCqiao=False,
-                 OSD=False,
-                 _getFF=False,
-                 ws_dist_tol=0.05,
+                 atom_centers=None,
+                 wannier_to_atom_map=None,
                  **parameters):
 
         super().__init__(**parameters)
-        self.needed_R_matrices = {'Ham'}
-
-        if morb:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC'])
-        if berry:
-            self.needed_R_matrices.add('AA')
-        if spin:
-            self.needed_R_matrices.add('SS')
-        if _getFF:
-            self.needed_R_matrices.add('FF')
-        if SHCryoo:
-            self.needed_R_matrices.update(['AA', 'SS', 'SA', 'SHA', 'SH'])
-        if SHCqiao:
-            self.needed_R_matrices.update(['AA', 'SS', 'SR', 'SH', 'SHR'])
-        if OSD:
-            self.needed_R_matrices.update(['AA', 'BB', 'CC', 'GG', 'OO'])
-
-        if self.force_internal_terms_only:
-            self.needed_R_matrices = self.needed_R_matrices.intersection(['Ham', 'SS'])
-
+        self.atom_centers_red = np.array(atom_centers) if atom_centers is not None else None
+        self.wannier_to_atom_map = np.array(wannier_to_atom_map) if wannier_to_atom_map is not None else None
         self._XX_R = dict()
-        self.ws_dist_tol = ws_dist_tol
+
 
     def set_wannier_centers(self, wannier_centers_cart=None, wannier_centers_red=None):
         """
@@ -130,18 +108,6 @@ class System_R(System):
                 self.wannier_centers_cart = np.zeros((self.num_wann, 3))
         self.clear_cached_wcc()
 
-    def need_R_any(self, keys):
-        """returns True is any of the listed matrices is needed in to be set
-
-        keys : str or list of str
-            'AA', 'BB', 'CC', etc
-        """
-        if not isinstance(keys, (list, tuple)):
-            keys = [keys]
-        for k in keys:
-            if k in self.needed_R_matrices:
-                return True
-
     def get_R_mat(self, key):
         try:
             return self._XX_R[key]
@@ -151,17 +117,6 @@ class System_R(System):
 
     def has_R_mat(self, key):
         return key in self._XX_R
-
-    def has_R_mat_any(self, keys):
-        for k in keys:
-            if self.has_R_mat(k):
-                return True
-
-    def has_R_mat_all(self, keys):
-        for k in keys:
-            if not self.has_R_mat(k):
-                return False
-        return True
 
     def set_R_mat(self, key, value, diag=False, R=None, reset=False, add=False, Hermitian=False):
         """
@@ -225,7 +180,17 @@ class System_R(System):
 
     def set_LL_from_projections(self, projections_set):
         LL = projections_set.get_orbital_moment_matrix()
-        self.set_R_mat('LL', LL, R=[0,0,0], reset=True)
+        self.set_R_mat('LL', LL, R=[0, 0, 0], reset=True)
+
+    def add_minus_R(self):
+        self.rvec.add_minus_R(self._XX_R)
+
+    def clear_R_mat(self, keys):
+        if not isinstance(keys, (list, tuple)):
+            keys = [keys]
+        for key in keys:
+            if key in self._XX_R:
+                del self._XX_R[key]
 
     def spin_block2interlace(self, backward=False):
         """
@@ -259,7 +224,44 @@ class System_R(System):
     def Ham_R(self):
         return self.get_R_mat('Ham')
 
-    def symmetrize2(self, symmetrizer, silent=True, use_symmetries_index=None,
+    def make_slab(self, M, nslab=1, reorder=True, use_atoms=True):
+        M = np.array(M, dtype=int, copy=True)
+        M[2, :] *= nslab
+        if use_atoms:
+            assert self.atom_centers_red is not None, "atom_centers_red is not set in the system. Please set it before calling make_slab with use_atoms=True"
+            assert self.wannier_to_atom_map is not None, "wannier_to_atom_map is not set in the system. Please set it before calling make_slab with use_atoms=True"
+        slab = self.make_supercell(M)
+        print(f"supercell has atoms {slab.atom_centers_red} and mapping {slab.wannier_to_atom_map}")
+
+        if use_atoms:
+            shifts = np.zeros((len(slab.atom_centers_red), 3), dtype=float)
+            shifts[:, 2] = -np.floor(slab.atom_centers_red[:, 2])
+            slab.shift_atoms(shifts)
+        else:
+            shifts = np.zeros((slab.num_wann, 3), dtype=float)
+            shifts[:, 2] = -np.floor(slab.wannier_centers_red[:, 2])
+            slab.shift_wannier_centers(shifts)
+        slab.set_periodic([True, True, False])
+        print(f"slab lattice vectors: {slab.real_lattice}")
+        normal_vector = get_nonperiodic_normal(slab.real_lattice)
+        if slab.atom_centers_red is not None:
+            atom_centers_cart = slab.atom_centers_red @ slab.real_lattice
+        slab.real_lattice[2, :] = normal_vector
+        if slab.atom_centers_red is not None:
+            slab.atom_centers_red = atom_centers_cart @ np.linalg.inv(slab.real_lattice)
+
+        print(f"slab lattice vectors after set_nonperiodic_normal: {slab.real_lattice}")
+        if use_atoms:
+            slab.shift_atoms_to_unit_cell()
+            if reorder:
+                slab.reorder_atoms(np.argsort(slab.atom_centers_red[:, 2]))
+        else:
+            slab.shift_wannier_centers_to_unit_cell()
+            if reorder:
+                slab.reorder(np.argsort(slab.wannier_centers_red[:, 2]))
+        return slab
+
+    def symmetrize2(self, symmetrizer, silent=None, use_symmetries_index=None,
                     cutoff=-1, cutoff_dict=None):
         """
         Symmetrize the system according to the Symmetrizer object.
@@ -270,27 +272,28 @@ class System_R(System):
             The symmetrizer object that will be used for symmetrization. (make sure it is consistent with the order of projections)
         silent : bool
             If True, do not print the symmetrization process. (set to False to see more debug information)
+            If None - the self.silent is used
         use_symmetries_index : list of int
             List of symmetry indices to use for symmetrization. If None, all symmetries will be used.
         """
         from ..symmetry.sym_wann_2 import SymWann
+        if silent is None:
+            silent = self.silent
         symmetrize_wann = SymWann(
             symmetrizer=symmetrizer,
             iRvec=self.rvec.iRvec,
-            silent=self.silent or silent,
+            silent=silent,
             use_symmetries_index=use_symmetries_index,
         )
 
         # self.check_AA_diag_zero(msg="before symmetrization", set_zero=True)
-        logfile = self.logfile
 
-        if not silent:
-            logfile.write(f"Wannier Centers cart (raw):\n {self.wannier_centers_cart}\n")
-            logfile.write(f"Wannier Centers red: (raw):\n {self.wannier_centers_red}\n")
-
+        logger.debug("Wannier Centers cart (raw):\n %s\n", self.wannier_centers_cart)
+        logger.debug("Wannier Centers red: (raw):\n %s\n", self.wannier_centers_red)
+        logger.info(f"number o R-vectors before symmetrization: {len(self.rvec.iRvec)}")
         self._XX_R, iRvec = symmetrize_wann.symmetrize(XX_R=self._XX_R, cutoff=cutoff, cutoff_dict=cutoff_dict)
         self.wannier_centers_cart = symmetrizer.symmetrize_WCC(self.wannier_centers_cart)
-
+        logger.info(f"number o R-vectors after symmetrization: {len(iRvec)}")
         self.clear_cached_wcc()
         rvec_new = Rvectors(
             lattice=self.real_lattice,
@@ -303,17 +306,17 @@ class System_R(System):
             pass
         self.rvec = rvec_new
         self.set_pointgroup(spacegroup=symmetrizer.spacegroup, use_symmetries_index=use_symmetries_index)
+        self.set_structure_from_sg(symmetrizer.spacegroup)
 
-        if not silent:
-            logfile.write(f"Wannier Centers cart (symetrized):\n {self.wannier_centers_cart}\n")
-            logfile.write(f"Wannier Centers red: (symmetrized):\n {self.wannier_centers_red}\n")
+        logger.debug("Wannier Centers cart (symetrized):\n %s\n", self.wannier_centers_cart)
+        logger.debug("Wannier Centers red: (symmetrized):\n %s\n", self.wannier_centers_red)
 
         self.clear_cached_R()
         self.clear_cached_wcc()
         self.symmetrized = True
 
 
-    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=True,
+    def symmetrize(self, proj, positions, atom_name, soc=False, magmom=True, silent=None,
                    reorder_back=False):
         """
         Symmetrize Wannier matrices in real space: Ham_R, AA_R, BB_R, SS_R,... , as well as Wannier centers
@@ -327,33 +330,26 @@ class System_R(System):
         atom_name: list
             Name of each atom.
         proj: list
-            Should be the same with projections card in relative Wannier90.win.
+            Projections from the corresponding ``wannier90.win`` file.
 
-            eg: ``['Te: s','Te:p']``
+            Examples:
 
-            If there is hybrid orbital, grouping the other orbitals.
+            - ``['Te:s', 'Te:p']``
+            - ``['Fe:sp3d2;t2g']`` instead of ``['Fe:sp3d2;dxz,dyz,dxy]``
+            - ``['X:sp;p2']`` instead of ``['X:sp;pz,py]``
 
-            eg: ``['Fe':sp3d2;t2g]`` Plese don't use ``['Fe':sp3d2;dxz,dyz,dxy]``
-
-                ``['X':sp;p2]`` Plese don't use ``['X':sp;pz,py]``
-
-            Note: If in `wannier90.win` file one sets several projections in one line like ``['Fe':d;sp3]``
-            the actual order (as written to the `wannier90.nnkp` file) may be different. It is ordered by the orbital number l,
-            and the hybrids are assigned negative numbers (e.g. for sp3 l=-3, see
-            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__
-            chapter 3). So, the actual order will be ``['Fe':sp3;d]``. To  avoid confusion, it is recommended to put the different groups of projectons
-            as separate lines of the `wannier90.win` file. See also `here <https://github.com/wannier-developers/wannier90/issues/463>`__
+            If ``wannier90.win`` contains several projections in one line, for example
+            ``['Fe:d;sp3]``, the actual order written to ``wannier90.nnkp`` may differ.
+            It is ordered by the orbital quantum number `l`, and hybrids are assigned
+            negative values (for example, for `sp3`, `l=-3`; see the
+            `Wannier90 user guide <https://raw.githubusercontent.com/wannier-developers/wannier90/v3.1.0/doc/compiled_docs/user_guide.pdf>`__, chapter 3).
+            In that case the actual order becomes ``['Fe:sp3;d]``. To avoid confusion,
+            it is recommended to put different projection groups on separate lines of
+            ``wannier90.win``. See also `Wannier90 issue #463 <https://github.com/wannier-developers/wannier90/issues/463>`__.
         soc: bool
             Spin orbital coupling.
         magmom: 2D array
             Magnetic momens of each atoms.
-        store_symm_wann: bool
-            Store the (temporary) SymWann object in the `sym_wann` attribute of the System object.
-            Can be useful for evaluating symmetry eigenvalues of wavefunctions, etc.
-        rotations: array-like (shape=(N,3,3))
-            Rotations of the symmetry operations. (optional)
-        translations: array-like (shape=(N,3))
-            Translations of the symmetry operations. (optional)
         silent: bool
             If True, do not print the symmetrization process.
         reorder_back: bool
@@ -361,17 +357,21 @@ class System_R(System):
 
         Returns
         -------
-        symmetrizer : :class:`wanierberri.symmetry.sawf.SymmetrizerSAWF`
+        symmetrizer : :class:`~wannierberri.symmetry.sawf.SymmetrizerSAWF`
             the symmetrizer object that was used for symmetrization. Can be used for further analysis of the symmetry properties of the system.
 
         Notes
         -----
-        * after symmetrization, the wannier functions may be reordered, to group the atoms 
-        by same wyckoff positions. In this case, the symmetrizer is not returned, because it would be 
-        inconsistent with the order of the projections.
+                * After symmetrization, the Wannier functions may be reordered to group atoms
+                    by the same Wyckoff positions. In this case, the symmetrizer is not returned,
+                    because it would be inconsistent with the order of the projections.
 
-        * Works only with phase convention I (`use_wcc_phase=True`) (which anyway is now the ONLY option)
-        Spin ordering is assumed to be interlaced (like in the amn file of QE and new versions of VASP). If it is not, use :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
+                * Works only with phase convention I (`use_wcc_phase=True`), which is now the
+                    only supported option.
+
+                * Spin ordering is assumed to be interlaced (like in the amn file of QE and
+                    new versions of VASP). If it is not, use
+                    :func:`~wannierberri.system.System.spin_block2interlace` to convert it.
         """
         from irrep import __version__ as irrep_version
         from irrep.spacegroup import SpaceGroup
@@ -386,10 +386,16 @@ class System_R(System):
                                 magmom=magmom, include_TR=True,
                                 spinor=soc,)
         else:
-            spacegroup = SpaceGroup.from_cell(cell=(self.real_lattice, positions, atom_num),
-                                magmom=magmom, include_TR=True,
-                                spinor=soc,)
-        spacegroup.show()
+            spacegroup = SpaceGroup.from_cell(real_lattice=self.real_lattice,
+                                              positions=positions,
+                                              typat=atom_num,
+                                              magmom=magmom,
+                                              include_TR=True,
+                                              spinor=soc,)
+        try:
+            spacegroup.show(short=True, print=False)
+        except Exception as e:
+            logger.warning("spacegroup.show() failed with error: %s", e)
 
         assert len(atom_name) == len(positions), "atom_name and positions should have the same length"
 
@@ -407,30 +413,30 @@ class System_R(System):
             pos = np.array([positions[i] for i, name in enumerate(atom_name) if name == atom])
             suborbit_list = split_into_orbits(pos, spacegroup=spacegroup)
             if len(suborbit_list) > 1:
-                warnings.warn(f"Positions of  {atom} belong to different wyckoff positions. This case is not much tested."
-                         "it is recommentded to name atoms at different wyckoff positions differently:\n"
-                         "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
+                logger.warning("Positions of  %s belong to different wyckoff positions. This case is not much tested."
+                         "it is recommentded to name atoms at different wyckoff positions differently:\n%s",
+                         atom, "\n".join(f"{atom}{i + 1}:" + ";".join(str(pos[j]) for j in suborbit) for i, suborbit in enumerate(suborbit_list))
                 )
-            print(f"pos_list: {suborbit_list}")
+            logger.info(f"pos_list: {suborbit_list}")
             if ";" in orbital:
-                warnings.warn("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
+                logger.warning("for effeciency of symmetrization, it is recommended to give orbitals separately, not combined by a ';' sign."
                               "But you need to do it consistently in wannier90 ")
             for suborbit in suborbit_list:
                 pos_loc = pos[suborbit]
                 proj = Projection(position_num=pos_loc, orbital=orbital, spacegroup=spacegroup,
                                   do_not_split_projections=True, rotate_basis=False)
                 proj_list.append(proj)
-                print(f"proj: {proj}")
-                num_wann_per_position = proj.num_wann_per_site_spinor
-                print(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
+                logger.info(f"proj: {proj}")
+                num_wann_per_position = proj.num_wann_per_site
+                logger.info(f"orbital = {orbital}, num wann per site = {num_wann_per_position}")
                 for i in suborbit:
                     for j in range(num_wann_per_position):
                         new_wann_indices.append(num_wann_loc + i * num_wann_per_position + j)
             num_wann_loc = len(new_wann_indices)
 
-        print(f"new_wann_indices: {new_wann_indices}")
+        logger.info(f"new_wann_indices: {new_wann_indices}")
         self.reorder(new_wann_indices)
-        symmetrizer = SymmetrizerSAWF().set_spacegroup(spacegroup).set_D_wann_from_projections(projections=proj_list)
+        symmetrizer = SymmetrizerSAWF.from_spacegroup_and_projections(spacegroup=spacegroup, projections=proj_list)
         self.symmetrize2(symmetrizer, silent=silent)
         if reorder_back:
             self.reorder(np.argsort(new_wann_indices))
@@ -441,7 +447,7 @@ class System_R(System):
         else:
             return symmetrizer
 
-    def reorder(self, new_wann_indices):
+    def reorder(self, new_wann_indices, complete=True):
         """
         Reorder the wannier functions according to the new indices
 
@@ -449,16 +455,56 @@ class System_R(System):
         ----------
         new_wann_indices : list
             list of new indices for the wannier functions. The length should be equal to the number of wannier functions.
+        complete : bool
+            if True, the reordering will be complete, i.e., all the matrices will be reordered. If False, only the wannier centers will be reordered.
         """
-        assert len(new_wann_indices) == self.num_wann, f"new_wann_indices should have length {self.num_wann}, found {len(new_wann_indices)}"
+        if complete:
+            assert len(new_wann_indices) == self.num_wann, f"new_wann_indices should have length {self.num_wann}, found {len(new_wann_indices)}"
+        else:
+            self.num_wann = len(new_wann_indices)
         self.wannier_centers_cart = self.wannier_centers_cart[new_wann_indices]
         for key, val in self._XX_R.items():
             self._XX_R[key] = val[:, :, new_wann_indices][:, new_wann_indices, :]
         self.rvec.reorder(new_wann_indices)
-        if hasattr(self, 'wannier_names'):
+        if self.wannier_names is not None:
             self.wannier_names = self.wannier_names[new_wann_indices]
+        if self.wannier_to_atom_map is not None:
+            self.wannier_to_atom_map = self.wannier_to_atom_map[new_wann_indices]
         self.clear_cached_wcc()
         self.clear_cached_R()
+        return self
+
+    def order_to_group_on_atoms(self):
+        """
+        Reorder the wannier functions to group them according to the atoms they belong to.
+        """
+        if self.wannier_to_atom_map is None:
+            raise ValueError("wannier_to_atom_map is not set in the system. Please set it before calling order_to_group_on_atoms")
+        new_wann_indices = np.concatenate([np.where(self.wannier_to_atom_map == i)[0] for i in range(len(self.atom_centers_red))])
+        self.reorder(new_wann_indices)
+        return self
+
+    def reorder_atoms(self, new_atom_indices):
+        """
+        Reorder the atoms according to the new indices
+
+        Parameters
+        ----------
+        new_atom_indices : list
+            list of new indices for the atoms. The length should be equal to the number of atoms.
+        """
+        assert len(new_atom_indices) <= len(self.atom_centers_red), f"new_atom_indices should have length {len(self.atom_centers_red)}, found {len(new_atom_indices)}"
+        assert len(set(new_atom_indices)) == len(new_atom_indices), "new_atom_indices should not contain duplicates"
+        self.atom_centers_red = self.atom_centers_red[new_atom_indices]
+        new_wannier_index = np.concatenate([np.where(self.wannier_to_atom_map == i)[0] for i in new_atom_indices])
+        reverse_index = {i: j for j, i in enumerate(new_atom_indices)}
+        self.wannier_to_atom_map = np.array([reverse_index[i] for i in self.wannier_to_atom_map])
+        self.reorder(new_wannier_index)
+        return self
+
+    @property
+    def atom_centers_cart(self):
+        return self.atom_centers_red @ self.real_lattice
 
     def double_spin(self):
         """
@@ -491,30 +537,38 @@ class System_R(System):
             A_diag = self.get_R_mat('AA')[self.rvec.iR0].diagonal().T
             A_diag_max = abs(A_diag).max()
             if A_diag_max > threshold:
-                warnings.warn(
+                logger.warning(
                     f"the maximal value of diagonal position matrix elements {msg} is {A_diag_max}."
                     f"This may signal a problem\n {A_diag}")
                 if set_zero:
-                    warnings.warn("setting AA diagonal to zero")
+                    logger.warning("setting AA diagonal to zero")
             if set_zero:
                 self.get_R_mat('AA')[self.rvec.iR0, self.range_wann, self.range_wann, :] = 0
 
-    def check_periodic(self):
+    def check_periodic(self, warn=True):
         exclude = np.zeros(self.rvec.nRvec, dtype=bool)
         for i, per in enumerate(self.periodic):
             if not per:
                 sel = (self.rvec.iRvec[:, i] != 0)
                 if np.any(sel):
-                    warnings.warn(f"you declared your system as non-periodic along direction {i},"
-                                  f"but there are {sum(sel)} of total {self.nRvec} R-vectors with R[{i}]!=0."
-                                  "They will be excluded, please make sure you know what you are doing")
+                    if warn:
+                        logger.warning("you declared your system as non-periodic along direction %s,"
+                                       "but there are %s of total %s R-vectors with R[%s]!=0."
+                                       "They will be excluded, please make sure you know what you are doing", i, sum(sel), self.rvec.nRvec, i)
                     exclude[sel] = True
         if np.any(exclude):
             notexclude = np.logical_not(exclude)
-            self.iRvec = self.iRvec[notexclude]
-            for X in ['Ham', 'AA', 'BB', 'CC', 'SS', 'FF']:
-                if X in self._XX_R:
-                    self.set_R_mat(X, self.get_X_mat(X)[:, :, notexclude], reset=True)
+            self.rvec.iRvec = self.rvec.iRvec[notexclude]
+            self.rvec.clear_cached()
+            print(f"number of R-vectors after excluding non-periodic directions: {self.rvec.nRvec}, self.rvec.iRvec.shape = {self.rvec.iRvec.shape}")
+            for X in list(self._XX_R):
+                self.set_R_mat(X, self.get_R_mat(X)[notexclude], reset=True)
+
+
+    def set_periodic(self, periodic):
+        self.periodic = np.array(periodic, dtype=bool)
+        self.check_periodic(warn=False)
+        return self
 
     def set_spin_eigenstates(self, spins, axis=(0, 0, 1), **kwargs):
         """
@@ -534,7 +588,7 @@ class System_R(System):
         """
         spins = np.array(spins)
         if max(abs(spins) - 1) > 1e-3:
-            warnings.warn("some of your spins are not +1 or -1, are you sure you want it like this?")
+            logger.warning("some of your spins are not +1 or -1, are you sure you want it like this?")
         axis = np.array(axis) / np.linalg.norm(axis)
         value = np.array([s * axis for s in spins], dtype=complex)
         self.set_R_mat(key='SS', value=value, diag=True, **kwargs)
@@ -559,13 +613,13 @@ class System_R(System):
             f"indices of states should be 0<=i<num_wann-{self.num_wann}, found {pairs}")
         assert len(set(all_states)) == len(all_states), "some states appear more then once in pairs"
         if len(pairs) < self.num_wann / 2:
-            warnings.warn(f"number of spin pairs {len(pairs)} is less then num_wann/2 = {self.num_wann / 2}."
-                          "For other states spin properties will be set to zero. are yoiu sure ?")
+            logger.warning("number of spin pairs %s is less then num_wann/2 = %s."
+                          "For other states spin properties will be set to zero. are yoiu sure ?", len(pairs), self.num_wann / 2)
         SS_R0 = np.zeros((self.num_wann, self.num_wann, 3), dtype=complex)
         for i, j in pairs:
             dist = np.linalg.norm(self.wannier_centers_cart[i] - self.wannier_centers_cart[j])
             if dist > 1e-3:
-                warnings.warn(f"setting spin pair for Wannier function {i} and {j}, distance between them {dist}")
+                logger.warning("setting spin pair for Wannier function %s and %s, distance between them %s", i, j, dist)
             SS_R0[i, i] = pauli_xyz[0, 0]
             SS_R0[i, j] = pauli_xyz[0, 1]
             SS_R0[j, i] = pauli_xyz[1, 0]
@@ -604,15 +658,13 @@ class System_R(System):
     def do_at_end_of_init(self):
         self.set_pointgroup()
         self.check_periodic()
-        logfile = self.logfile
-        logfile.write(f"Real-space lattice:\n {self.real_lattice}\n")
-        logfile.write(f"Number of wannier functions: {self.num_wann}\n")
-        logfile.write(f"Number of R points: {self.rvec.nRvec}\n")
-        logfile.write(f"Recommended size of FFT grid {self.NKFFT_recommended}\n")
+        logger.debug("Real-space lattice:\n %s", self.real_lattice)
+        logger.debug("Number of wannier functions: %s", self.num_wann)
+        logger.debug("Number of R points: %s", self.rvec.nRvec)
+        logger.debug("Recommended size of FFT grid %s", self.NKFFT_recommended)
 
 
-    def do_ws_dist(self, mp_grid, wannier_centers_cart=None):
-        logfile = self.logfile
+    def do_ws_dist(self, mp_grid, wannier_centers_cart=None, ws_dist_tol=1e-5):
         try:
             mp_grid = one2three(mp_grid)
             assert mp_grid is not None
@@ -623,53 +675,194 @@ class System_R(System):
             wannier_centers_cart = self.wannier_centers_cart
         iRvec_old = self.rvec.iRvec
         self.rvec = Rvectors(lattice=self.real_lattice, shifts_left_red=self.wannier_centers_red)
-        self.rvec.set_Rvec(mp_grid, ws_tolerance=self.ws_dist_tol)
+        self.rvec.set_Rvec(mp_grid, ws_tolerance=ws_dist_tol)
         for key, val in self._XX_R.items():
-            logfile.write(f"using new ws_dist for {key}\n")
+            logger.debug("using new ws_dist for %s\n", key)
             self.set_R_mat(key, self.rvec.remap_XX_R(val, iRvec_old=iRvec_old), reset=True)
         self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
 
+    def shift_wannier_centers(self, shifts):
+        """
+        Shift the Wannier centers by a given vector. This is useful for changing the origin of the system.
 
-    def to_tb_file(self, tb_file=None, use_convention_II=True):
+        Parameters
+        ----------
+        shifts : array-like
+            The vector by which to shift the Wannier centers. Should be of shape (num_wann, 3).
         """
-        Write the system in the format of the wannier90_tb.dat file
-        Note : it is written in phase convention II (as inb wannier90), unless use_convention_II=False
+        shifts_int = np.round(shifts).astype(int)
+        assert np.allclose(shifts, shifts_int), f"shifts should be integer, found {shifts}"
+        assert shifts_int.shape == (self.num_wann, 3), f"shifts should have shape (num_wann, 3), found {shifts.shape}"
+        shifts_int_list = [tuple(shift) for shift in shifts_int]
+
+        shifts_set = set(shifts_int_list)
+        shift_set_neg = set(tuple(-np.array(shift)) for shift in shifts_set)
+        dshifts_set = set(tuple(np.array(s1) - np.array(s2)) for s1 in shifts_set for s2 in shifts_set)
+        shifts_set_full = shifts_set.union(dshifts_set).union(shift_set_neg)
+
+        iRvec_old = self.rvec.iRvec.copy()
+        nRvec_old = self.rvec.nRvec
+        iRvec_old_set = set(tuple(iRvec) for iRvec in iRvec_old)
+        iRvec_new_set = iRvec_old_set.copy()
+        for shift in shifts_set_full:
+            for iRold in self.rvec.iRvec:
+                iRnew = tuple(np.array(iRold) + np.array(shift))
+                iRvec_new_set.add(iRnew)
+        iRvec_add_set = iRvec_new_set - iRvec_old_set
+        iRvec_add_array = np.array(sorted(list(iRvec_add_set), key=lambda x: (x[0], x[1], x[2])))
+        if len(iRvec_add_array) > 0:
+            iRvec_new = np.vstack([iRvec_old, iRvec_add_array])
+        else:
+            iRvec_new = iRvec_old.copy()
+        nRvec_new = len(iRvec_new)
+        logger.info(f"shifting Wannier centers number of R-vectors changed from {nRvec_old} to {len(iRvec_new)}")
+
+        sum_abs = {key: np.sum(np.abs(val)) for key, val in self._XX_R.items()}
+        sums = {key: np.sum(val) for key, val in self._XX_R.items()}
+
+
+        self.set_wannier_centers(wannier_centers_red=self.wannier_centers_red + shifts)
+        self.rvec = Rvectors(lattice=self.real_lattice, iRvec=iRvec_new, shifts_left_red=self.wannier_centers_red)
+        for k in self._XX_R:
+            val = self._XX_R[k]
+            tmp = np.zeros((nRvec_new, ) + val.shape[1:], dtype=val.dtype)
+            tmp[:nRvec_old] = val
+            self._XX_R[k] = tmp
+            assert abs(self._XX_R[k].sum() - sums[k]) < 1e-10, f"the sum of the matrix {k} changed after shifting Wannier centers, from {sums[k]} to {self._XX_R[k].sum()}"
+            assert abs(np.sum(np.abs(self._XX_R[k])) - sum_abs[k]) < 1e-10, f"the sum of the absolute values of the matrix {k} changed after shifting Wannier centers, from {sum_abs[k]} to {np.sum(np.abs(self._XX_R[k]))}"
+
+
+        def find_remapping_indices(shift):
+            R_shifted = self.rvec.iRvec + np.array(shift)[None, :]
+            list_old, list_new, list_missing = [], [], []
+            for i, R in enumerate(R_shifted):
+                j = self.rvec.iR(R, allow_none=True)
+                if j is not None:
+                    list_old.append(i)
+                    list_new.append(j)
+                else:
+                    list_missing.append(i)
+            assert len(set(list_new)) == len(list_new), f"some of the new indices are not unique for shift {shift}"
+            idx_new_missing = set(np.arange(self.rvec.nRvec)) - set(list_new)
+            return np.array(list_old), np.array(list_new), np.array(list_missing), np.array(sorted(list(idx_new_missing)))
+
+
+        for shift in shifts_set - {(0, 0, 0)}:
+            idx_old, idx_new, idx_missing, idx_new_missing = find_remapping_indices(shift)
+            for iw, shift_w in enumerate(shifts_int_list):
+                if shift_w == shift:
+                    for key, val in self._XX_R.items():
+                        val[idx_new, iw, :] = val[idx_old, iw, :]
+                        val[idx_new_missing, iw, :] = 0
+                        val[idx_old, :, iw] = val[idx_new, :, iw]
+                        val[idx_missing, :, iw] = 0
+
+
+        for k in self._XX_R:
+            assert abs(self._XX_R[k].sum() - sums[k]) < 1e-10, f"the sum of the matrix {k} changed after shifting Wannier centers, from {sums[k]} to {self._XX_R[k].sum()}"
+            assert abs(np.sum(np.abs(self._XX_R[k])) - sum_abs[k]) < 1e-10, f"the sum of the absolute values of the matrix {k} changed after shifting Wannier centers, from {sum_abs[k]} to {np.sum(np.abs(self._XX_R[k]))}"
+
+
+        self.remove_zero_Rvec()
+
+
+    def shift_atoms(self, shifts):
+        self.atom_centers_red += shifts
+        shifts_wannier = np.array([shifts[at] for at in self.wannier_to_atom_map])
+        self.shift_wannier_centers(shifts_wannier)
+
+    def add_Zeeman_spin(self, B):
+        "B is in Tesla"
+        Bfield_spin = np.array(B) * factor_spin
+        self.set_R_mat('Ham', self.get_R_mat('SS') @ Bfield_spin, add=True)
+
+    @property
+    def wannier_shifts_from_atoms_red(self):
+        return self.wannier_centers_red - self.atom_centers_red[self.wannier_to_atom_map]
+
+    @property
+    def wannier_shifts_from_atoms_cart(self):
+        return self.wannier_shifts_from_atoms_red @ self.real_lattice
+
+    def shift_wannier_centers_to_unit_cell(self):
         """
-        logfile = self.logfile
-        if tb_file is None:
-            tb_file = self.seedname + "_fromchk_tb.dat"
-        f = open(tb_file, "w")
-        f.write("written by wannier-berri form the chk file\n")
-        logfile.write(f"writing TB file {tb_file}\n")
-        np.savetxt(f, self.real_lattice)
-        f.write(f"{self.num_wann}\n")
-        f.write(f"{self.rvec.nRvec}\n")
-        Ndegen = np.ones(self.rvec.nRvec, dtype=int)
-        for i in range(0, self.rvec.nRvec, 15):
-            a = Ndegen[i:min(i + 15, self.rvec.nRvec)]
-            f.write("  ".join(f"{x:2d}" for x in a) + "\n")
-        for iR in range(self.rvec.nRvec):
-            f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
-            _ham = self.Ham_R[iR] * Ndegen[iR]
-            f.write(
-                "".join(
-                    f"{m + 1:3d} {n + 1:3d} {_ham[m, n].real:15.8e} {_ham[m, n].imag:15.8e}\n"
-                    for n in self.range_wann for m in self.range_wann)
-            )
-        if self.has_R_mat('AA'):
-            AA = np.copy(self.get_R_mat('AA'))
-            if use_convention_II:
-                AA[self.rvec.iR0, self.range_wann, self.range_wann] += self.wannier_centers_cart
-            for iR in range(self.rvec.nRvec):
-                f.write("\n  {0:3d}  {1:3d}  {2:3d}\n".format(*tuple(self.rvec.iRvec[iR])))
-                _aa = AA[iR] * Ndegen[iR]
-                f.write(
-                    "".join(
-                        f"{m + 1:3d} {n + 1:3d} " + " ".join(f"{a.real:15.8e} {a.imag:15.8e}" for a in _aa[m, n]) + "\n"
-                        for n in self.range_wann for m in self.range_wann
-                    )
-                )
-        f.close()
+        Shift the Wannier centers to the unit cell. This is useful for changing the origin of the system.
+        """
+        shifts = np.floor(self.wannier_centers_red).astype(int)
+        self.shift_wannier_centers(-shifts)
+
+    def shift_atoms_to_unit_cell(self):
+        """
+        Shift the atoms and associated Wannier centers to the unit cell. This is useful for changing the origin of the system.
+        """
+        shifts = np.floor(self.atom_centers_red).astype(int)
+        self.shift_atoms(-shifts)
+
+    def remove_zero_Rvec(self):
+        self._XX_R, self.rvec = self.rvec.exclude_zeros(self._XX_R)
+        return self
+
+    def exclude_atoms(self, atom_indices):
+        """
+        Exclude atoms from the system. Useful for slabs
+
+        Parameters
+        ----------
+        atom_indices : list of int
+            The indices of the atoms to exclude.
+        """
+        if not hasattr(self, 'wannier_to_atom_map'):
+            raise RuntimeError("the system does not have wannier_to_atom_map, cannot exclude atoms")
+        if len(atom_indices) == 0:
+            return self
+        wf_indices = np.array([i for i in range(self.num_wann) if self.wannier_to_atom_map[i] in atom_indices], dtype=int)
+        self.exclude_WF_indices(wf_indices)
+        num_atoms_old = len(self.atom_centers_red)
+        new_atoms_index = np.delete(np.arange(num_atoms_old), atom_indices)
+        new_atoms_dict = {old: new for new, old in enumerate(new_atoms_index)}
+        self.wannier_to_atom_map = np.array([new_atoms_dict[at] for at in self.wannier_to_atom_map], dtype=int)
+        self.atom_centers_red = self.atom_centers_red[new_atoms_index]
+        return self
+
+
+
+    def exclude_WF_indices(self, wf_indices):
+        """
+        Exclude Wannier functions from the system. Useful for slabs
+
+        Parameters
+        ----------
+        wf_indices : list of int
+            The indices of the Wannier functions to exclude.
+        """
+        keep_wf = np.array([i for i in range(self.num_wann) if i not in wf_indices], dtype=int)
+        return self.reorder(keep_wf, complete=False)
+
+    def exclude_WF_mask(self, name_masks):
+        """
+        Exclude Wannier functions from the system. Useful for slabs
+
+        Parameters
+        ----------
+        wf_masks : str
+            the mask for the Wannier functions to exclude. For example '*-1-*'
+        """
+        if name_masks is None or len(name_masks) == 0:
+            return self
+        from fnmatch import fnmatch
+
+        if not isinstance(name_masks, list) and not isinstance(name_masks, tuple):
+            name_masks = [name_masks]
+        indices_to_exclude = []
+        for iname, name in enumerate(self.wannier_names):
+            for mask in name_masks:
+                if fnmatch(name, mask):
+                    indices_to_exclude.append(iname)
+                    break
+        return self.exclude_WF_indices(indices_to_exclude)
+
+
+
 
     @property
     def NKFFT_recommended(self):
@@ -692,95 +885,6 @@ class System_R(System):
     def wannier_centers_red(self):
         return self.wannier_centers_cart.dot(np.linalg.inv(self.real_lattice))
 
-    def set_structure(self, positions, atom_labels, magnetic_moments=None):
-        """
-        Set atomic structure of the system.
-
-        Parameters
-        ----------
-        positions : (num_atom, 3) array_like of float
-            Atomic positions in fractional coordinates.
-        atom_labels: (num_atom,) list
-            labels (integer, string, etc.) to distinguish species.
-        magnetic_moments: (num_atom, 3) array_like of float (optional)
-            Magnetic moment vector of each atom.
-        """
-        if len(positions) != len(atom_labels):
-            raise ValueError("length of positions and atom_labels must be the same")
-        if magnetic_moments is not None:
-            if len(magnetic_moments) != len(positions):
-                raise ValueError("length of positions and magnetic_moments must be the same")
-            if not all([len(x) == 3 for x in magnetic_moments]):
-                raise ValueError("magnetic_moments must be a list of 3d vector")
-        self.positions = positions
-        self.atom_labels = atom_labels
-        self.magnetic_moments = magnetic_moments
-
-    def get_spglib_cell(self):
-        """Returns the atomic structure as a cell tuple in spglib format"""
-        try:
-            # assign integer to self.atom_labels
-            atom_labels_unique = list(set(self.atom_labels))
-            atom_numbers = [atom_labels_unique.index(label) for label in self.atom_labels]
-            if self.magnetic_moments is None:
-                return self.real_lattice, self.positions, atom_numbers
-            else:
-                return self.real_lattice, self.positions, atom_numbers, self.magnetic_moments
-        except AttributeError:
-            raise AttributeError("set_structure must be called before get_spglib_cell")
-
-    def set_symmetry_from_structure(self):
-        """
-        a wrapper for set_pointgroup_from_structure
-        This method is deprecated and will be removed in future versions.
-        """
-        warnings.warn(
-            "set_symmetry_from_structure is deprecated. Use set_pointgroup_from_structure instead.",
-            DeprecationWarning
-        )
-        self.set_pointgroup_from_structure()
-
-    def set_pointgroup_from_structure(self):
-        """
-        Set the symmetry group of the :class:`System`. Requires spglib to be installed.
-        :meth:`System.set_structure` must be called in advance.
-
-        For magnetic systems, symmetries involving time reversal are not detected because
-        spglib does not support time reversal symmetry for noncollinear systems.
-        """
-        import spglib
-
-        spglib_symmetry = spglib.get_symmetry(self.get_spglib_cell())
-        symmetry_gen = []
-        for isym, W in enumerate(spglib_symmetry["rotations"]):
-            # spglib gives real-space rotations in reduced coordinates. Here,
-            # 1) convert to Cartesian coordinates, and
-            # 2) take transpose to go to reciprocal space.
-            W = spglib_symmetry["rotations"][isym]
-            Wcart = self.real_lattice.T @ W @ np.linalg.inv(self.real_lattice).T
-            R = Wcart.T
-            try:
-                TR = spglib_symmetry['time_reversals'][isym]
-                tr_found = True
-            except KeyError:
-                TR = False
-                tr_found = False
-            symmetry_gen.append(PointSymmetry(R, TR=TR))
-
-        if self.magnetic_moments is None:
-            symmetry_gen.append(TimeReversal)
-        elif not tr_found:
-            warnings.warn(
-                "you specified magnetic moments but spglib did not detect symmetries involving time-reversal. "
-                f"proobably it is because you have an old spglib version {spglib.__version__}."
-                "We suggest upgrading to spglib>=2.0.2")
-        else:
-            if not all([len(x) for x in self.magnetic_moments]):
-                raise ValueError("magnetic_moments must be a list of 3d vector")
-            warnings.warn("spglib does not find symmetries including time reversal operation. "
-                          "To include such symmetries, use set_symmetry.")
-
-        self.pointgroup = PointGroup(symmetry_gen, recip_lattice=self.recip_lattice, real_lattice=self.real_lattice)
 
     def get_sparse(self, min_values={'Ham': 1e-3}):
         min_values = copy.copy(min_values)
@@ -812,12 +916,31 @@ class System_R(System):
 
     @cached_property
     def optional_properties(self):
-        return ["positions", "magnetic_moments", "atom_labels"]
+        return ["positions", "magnetic_moments", "atom_labels", "atom_centers_red",
+                "wannier_names", "wannier_to_atom_map",
+                "number_of_electrons"]
 
-    def _R_mat_npz_filename(self, key):
-        return "_XX_R_" + key + ".npz"
+    def _R_mat_npz_filename(self, key, xxr=True):
+        if xxr:
+            return "_XX_R_" + key + ".npz"
+        else:
+            return key + ".npz"
 
-    def save_npz(self, path, extra_properties=(), exclude_properties=(), R_matrices=None, overwrite=True):
+    def to_tb_file(self, *args, **kwargs):
+        from .system_tb import write_tb_file
+        write_tb_file(self, *args, **kwargs)
+
+    def to_hr_file(self, *args, **kwargs):
+        from .system_hr import write_hr_file
+        write_hr_file(self, *args, **kwargs)
+
+    @property
+    def nRvec(self):
+        return self.rvec.nRvec
+
+    def to_npz(self, path, extra_properties=(), exclude_properties=(),
+               compressed=True,
+               R_matrices=None, overwrite=True):
         """
         Save system to a directory of npz files
         Parameters
@@ -833,10 +956,10 @@ class System_R(System):
         overwrite : bool
             if the directory already exiists, it will be overwritten
         """
-        logfile = self.logfile
+        super().to_npz(path)
 
         properties = [x for x in self.essential_properties + list(extra_properties) if x not in exclude_properties]
-        print(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
+        logger.info(f"saving system of class {self.__class__.__name__} to {path}\n properties: {properties}")
         if R_matrices is None:
             R_matrices = list(self._XX_R.keys())
 
@@ -845,41 +968,65 @@ class System_R(System):
         except FileExistsError:
             raise FileExistsError(f"Directorry {path} already exists. To overwrite it set overwrite=True")
 
-        for key in properties:
-            logfile.write(f"saving {key}\n")
+        for key in set(properties):
             fullpath = os.path.join(path, key + ".npz")
-            print(f"saving {key} to {fullpath}")
+            logger.debug("saving %s to %s", key, fullpath)
             if key == 'iRvec':
-                val = self.rvec.iRvec
+                val = self.rvec
             else:
                 val = getattr(self, key)
-            if key in ['pointgroup']:
-                np.savez(fullpath, **val.as_dict())
+
+            if key in ['pointgroup', 'iRvec']:
+                if val is not None:
+                    savez(fullpath, compressed=compressed, **val.as_dict())
+                elif overwrite and os.path.exists(fullpath):
+                    os.remove(fullpath)
             elif key in ['cell']:
-                np.savez(fullpath, **val)
+                savez(fullpath, **val, compressed=compressed)
             else:
-                np.savez(fullpath, val)
-            logfile.write(" - Ok!\n")
+                savez(fullpath, val, compressed=compressed)
+            logger.debug(" - Ok!\n")
         for key in self.optional_properties:
             if key not in properties:
                 fullpath = os.path.join(path, key + ".npz")
-                if hasattr(self, key):
+                if hasattr(self, key) and getattr(self, key) is not None:
                     val = getattr(self, key)
-                    np.savez(fullpath, val)
+                    savez(fullpath, val, compressed=compressed)
         for key in R_matrices:
-            logfile.write(f"saving {key}")
-            np.savez_compressed(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key))
-            logfile.write(" - Ok!\n")
+            logger.debug("saving %s", key)
+            savez(os.path.join(path, self._R_mat_npz_filename(key)), self.get_R_mat(key), compressed=compressed)
+            logger.debug(" - Ok!\n")
 
-    def load_npz(self, path, load_all_XX_R=False, exclude_properties=(), legacy=False):
+
+    @classmethod
+    def from_npz(cls, path, exclude_properties=(), legacy=False, matrices=None):
+        """
+        Load system from a directory of npz files
+        Parameters
+        ----------
+        matrices : list of str
+            list of the R matrices, e.g. ```['Ham','AA',...]``` to be loaded. if None: all R-matrices will be loaded
+        path : str
+            path to saved files. If does not exist - will be created (unless overwrite=False)
+        exclude_properties : list of str
+            dp not save certain properties - duse on your own risk
+        legacy : bool
+            if True, the order of indices in the XX_R matrices will be expected as in older verisons of wannierberri : [m,n,iR, ...]
+            in the newer versions the order is [iR, m ,n,...]
+        """
+        system = cls()
+        system.load_npz(path, exclude_properties=exclude_properties, legacy=legacy, matrices=matrices)
+        return system
+
+    def load_npz(self, path, exclude_properties=(), legacy=False, matrices=None):
         """
         Save system to a directory of npz files
         Parameters
         ----------
+        matrices : list of str
+            list of the R matrices, e.g. ```['Ham','AA',...]``` to be loaded. if None: all R-matrices will be loaded
         path : str
             path to saved files. If does not exist - will be created (unless overwrite=False)
-        load_all_XX_R : list of str
-            load all matrices which were saved
         exclude_properties : list of str
             dp not save certain properties - duse on your own risk
         legacy : bool
@@ -888,18 +1035,18 @@ class System_R(System):
         """
         if not os.path.exists(path):
             raise FileNotFoundError(f"directory {path} does not exist")
-        logfile = self.logfile
         all_files = glob.glob(os.path.join(path, "*.npz"))
         all_names = [os.path.splitext(os.path.split(x)[-1])[0] for x in all_files]
-        properties = [x for x in all_names if not x.startswith('_XX_R_') and x not in exclude_properties]
+        properties = [x for x in all_names if not x.startswith('_XX_R_') and not x.startswith('theta') and x not in exclude_properties]  # This is very unstable, TODO: write a list of possible properties
         assert "real_lattice" in properties, "real_lattice is required to load the system"
         properties = ["real_lattice", "wannier_centers_cart"] + properties
         keys_processed = set()
+        logger.debug("properties to load: %s", properties)
         for key in properties:
             if key in keys_processed:
                 continue
-            logfile.write(f"loading {key}")
-            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=False)
+            logger.debug("loading %s\n ", key)
+            a = np.load(os.path.join(path, key + ".npz"), allow_pickle=True)
 
             # pointgroup was previouslly named symgroup. This is for backward compatibility
             if key == 'symgroup':
@@ -909,32 +1056,205 @@ class System_R(System):
 
             if key_loc == 'pointgroup':
                 val = PointGroup(dictionary=a)
-            elif key_loc == 'cell':
+            elif key_loc in ['cell', 'iRvec']:
                 val = dict(**a)
             else:
                 val = a['arr_0']
 
             if key == "iRvec":
+                logger.debug("val=%r", val)
+                rvecdict = Rvectors.read_dict(val)
+                ## legacy - to read old systems, where the shifts are not written in the Rvectors file.
+                if "shifts_left_red" not in rvecdict:
+                    rvecdict["shifts_left_red"] = self.wannier_centers_red
+                if "shifts_right_red" not in rvecdict:
+                    rvecdict["shifts_right_red"] = self.wannier_centers_red
                 self.rvec = Rvectors(lattice=self.real_lattice,
-                                     iRvec=val,
-                                     shifts_left_red=self.wannier_centers_red
-                                     )
+                                     **rvecdict)
             elif "key" == "pointgroup":
                 self.set_pointgroup(pointgroup=val)
             else:
                 setattr(self, key_loc, val)
-            logfile.write(" - Ok!\n")
+            logger.debug(" - Ok!\n")
             keys_processed.add(key)
 
-        if load_all_XX_R:
+        if matrices is None:
             R_files = glob.glob(os.path.join(path, "_XX_R_*.npz"))
-            R_matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
-            self.needed_R_matrices.update(R_matrices)
-        for key in self.needed_R_matrices:
-            logfile.write(f"loading R_matrix {key}")
+            matrices = [os.path.splitext(os.path.split(x)[-1])[0][6:] for x in R_files]
+        for key in matrices:
+            logger.debug("loading R_matrix %s", key)
             a = np.load(os.path.join(path, self._R_mat_npz_filename(key)), allow_pickle=False)['arr_0']
+
             if legacy:
                 a = np.transpose(a, (2, 0, 1) + tuple(range(3, a.ndim)))
             self.set_R_mat(key, a)
-            logfile.write(" - Ok!\n")
+            logger.debug("loading %s - Ok!\n", key)
         return self
+
+    @classmethod
+    def from_wannierdata(cls,
+        wandata,
+        *args, **kwargs,
+    ):
+        """
+        Create a System_R object from a Wannier90 data object (wandata). 
+        Wannierized either by wannier90 or by WannierBerri
+
+        see :func:`~wannierberri.system.system_w90.get_system_w90` for input data and details
+        """
+        from .system_w90 import get_system_w90
+        return get_system_w90(wandata=wandata, *args, **kwargs)
+
+
+    @classmethod
+    def from_tb_dat(cls, *args, **kwargs):
+        """
+        Create a System_R object from a wannier90_tb.dat file. 
+        see :func:`~wannierberri.system.system_tb.get_system_tb` for input data and details
+        """
+        from .system_tb import get_system_tb
+        return get_system_tb(*args, **kwargs)
+
+    @classmethod
+    def from_tb_file(cls, *args, **kwargs):
+        """ alias for from_tb_dat, to be consistent with from_hr_file """
+        return cls.from_tb_dat(*args, **kwargs)
+
+    @classmethod
+    def from_hr_file(cls, *args, **kwargs):
+        """
+        Create a System_R object from a wannier90_hr.dat file. 
+        see :func:`~wannierberri.system.system_tb.get_system_hr` for input data and details
+        """
+        from .system_hr import get_system_hr
+        return get_system_hr(*args, **kwargs)
+
+    @classmethod
+    def from_pythtb(cls, *args, **kwargs):
+        """
+        Create a System_R object from a pythtb model. 
+        see :func:`~wannierberri.system.system_tb_py.get_system_pythtb` for input data and details
+        """
+        from .system_tb_py import get_system_pythtb
+        return get_system_pythtb(*args, **kwargs)
+
+    @classmethod
+    def from_tbmodels(cls, *args, **kwargs):
+        """
+        Create a System_R object from a TBmodels model. 
+        see :func:`~wannierberri.system.system_tb_py.get_system_tbmodels` for input data and details
+        """
+        from .system_tb_py import get_system_tbmodels
+        return get_system_tbmodels(*args, **kwargs)
+
+    @classmethod
+    def from_fplo(cls, *args, **kwargs):
+        """
+        Create a System_R object from a FPLO calculation. 
+        see :func:`~wannierberri.system.system_fplo.get_system_fplo` for input data and details
+        """
+        from .system_fplo import get_system_fplo
+        return get_system_fplo(*args, **kwargs)
+
+    @classmethod
+    def from_ase(cls, *args, **kwargs):
+        """
+        Create a System_R object from an ASE Atoms object. 
+        see :func:`~wannierberri.system.system_ase.get_system_ase` for input data and details
+        """
+        from .system_ase import get_system_ase
+        return get_system_ase(*args, **kwargs)
+
+    @classmethod
+    def from_phonons_qe(cls, *args, **kwargs):
+        """
+        Create a System_R object for phonons from a Quantum Espresso calculation. 
+        see :func:`~wannierberri.system.system_phonon_qe.get_system_phonons_qe` for input data and details
+        """
+        from .system_phonon_qe import get_system_phonons_qe
+        return get_system_phonons_qe(*args, **kwargs)
+
+    @classmethod
+    def from_random(cls, *args, **kwargs):
+        """
+        Create a System_R object with random parameters. 
+        see :func:`~wannierberri.system.system_random.get_system_random` for input data and details
+        """
+        from .system_random import get_system_random
+        return get_system_random(*args, **kwargs)
+
+    @classmethod
+    def from_sparse(cls, *args, **kwargs):
+        """
+        Create a System_R object from a sparse representation. 
+        see :func:`~wannierberri.system.system_sparse.get_system_sparse` for input data and details
+        """
+        from .system_sparse import get_system_sparse
+        return get_system_sparse(*args, **kwargs)
+
+    def make_supercell(self, supercell_matrix, **parameters):
+        """
+        Create a supercell of the system.
+        see :func:`~wannierberri.system.system_supercell.get_system_supercell` for input data and details
+        """
+        from .system_supercell import get_system_supercell
+        return get_system_supercell(self, supercell_matrix, **parameters)
+
+
+    def transform(self, symop):
+        wannier_centers_red = self.wannier_centers_red
+        wannier_centers_red_new = symop.transform_r(wannier_centers_red)
+        self.set_wannier_centers(wannier_centers_red=wannier_centers_red_new)
+        if self.atom_centers_red is not None:
+            self.atom_centers_red = symop.transform_r(self.atom_centers_red)
+        self.rvec.transform(symop)
+        self.clear_cached_wcc()
+        from ..symmetry.sym_wann_2 import parity_I, parity_TR
+        for key in self._XX_R:
+            XX_R = self.get_R_mat(key)
+            XX_R_new = np.copy(XX_R)
+            n_cart = num_cart_dim(key)
+            for _ in range(XX_R.ndim - 3):
+                # every np.tensordot rotates the first dimension and puts it last. So, repeateing this procedure
+                # n_cart times puts dimensions on the right place
+                XX_R_new = np.tensordot(XX_R, symop.rotation_cart, axes=((-n_cart,), (1,)))
+            if symop.inversion:
+                XX_R_new *= (-1)**n_cart * parity_I[key]  # parity of the operator
+            if symop.time_reversal:
+                XX_R_new = XX_R_new.conj() * parity_TR[key]
+            self.set_R_mat(key, XX_R_new, reset=True)
+        return self
+
+    def set_fake_AA(self, reset=False, factor=1, exp_decay=bohr, decay_function=None):
+        if decay_function is None:
+            decay_function = lambda r: r * np.exp(-r / exp_decay)
+        Ham = self.get_R_mat('Ham')
+        weights = factor * decay_function(np.linalg.norm(self.rvec.cRvec_shifted, axis=-1)) * np.abs(Ham) / np.max(np.abs(Ham))
+        onsite = self.get_R_mat('Ham')[self.rvec.iR0, self.range_wann, self.range_wann]
+        fakeAA = self.rvec.cRvec_shifted * (onsite[None, :, None, None] - onsite[None, None, :, None]) * weights[:, :, :, None]
+        fakeAA_conj = self.rvec.conj_XX_R(fakeAA)
+        # fakeAA = 0.5 * (fakeAA + fakeAA_conj)
+        assert np.allclose(fakeAA_conj, fakeAA), "fakeAA is not hermitian"
+        self.set_R_mat('AA', fakeAA, reset=reset)
+        self.force_internal_terms_only = False
+
+    def get_energy_range(self):
+        """rough estimate of the minimal and maximal energy of the system"""
+        Ham = self.get_R_mat('Ham').copy()
+        iR0 = self.rvec.iR0
+        H_diag = Ham[iR0, self.range_wann, self.range_wann]
+        Ham[iR0, self.range_wann, self.range_wann] = 0
+        dE = np.linalg.norm(Ham) * 3
+        E_min = np.min(H_diag) - dE
+        E_max = np.max(H_diag) + dE
+        return E_min, E_max
+
+
+def get_nonperiodic_normal(real_lattice):
+    surface_vectors = real_lattice[[0, 1], :]
+    normal_vector = np.cross(surface_vectors[0], surface_vectors[1])
+    old_vector = real_lattice[2, :]
+    if np.dot(normal_vector, old_vector) < 0:
+        normal_vector = -normal_vector
+    normal_vector = normal_vector * np.dot(normal_vector, old_vector) / np.linalg.norm(normal_vector)**2
+    return normal_vector

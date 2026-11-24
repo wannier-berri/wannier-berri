@@ -11,6 +11,10 @@ except ImportError as err:
 
 import wannierberri as wberri
 
+# from wannierberri.logging import configure_logging
+# import logging
+# configure_logging(loglevel=logging.DEBUG)
+
 print(f"sys.version: {sys.version}")
 print(f"sys.path: {sys.path}")
 
@@ -26,4 +30,4 @@ OUTPUT_DIR = os.path.join(ROOT_DIR, "_output")
 OUTPUT_DIR_RUN = os.path.join(OUTPUT_DIR, 'integrate_files')
 REF_DIR = os.path.join(ROOT_DIR, 'reference')
 REF_DIR_INTEGRATE = os.path.join(REF_DIR, 'integrate_files')
-TMP_DATA_DIR = os.path.join(ROOT_DIR, "_tmp_data_postw90")
+DATA_DIR = os.path.join(ROOT_DIR, 'data')

@@ -1,20 +1,11 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file 'LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 
 import numpy as np
 
 from .system import System_k
 from .__finite_differences import find_shells, Derivative3D
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SystemKP(System_k):
@@ -114,8 +105,14 @@ class SystemKP(System_k):
         self.der3Ham_cart = lambda k: self.der3Ham(self.k_cart2red(k))
 
         self.set_pointgroup()
-        print("Number of wannier functions:", self.num_wann)
+        logger.info(f"Number of wannier functions: {self.num_wann}")
 
     @property
     def NKFFT_recommended(self):
         return np.array([1, 1, 1])
+
+    def has_R_mat(self, key):
+        if key == "Ham":
+            return True
+        else:
+            return False

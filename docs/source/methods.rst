@@ -207,7 +207,7 @@ set of :math:`{\bf k}` points.
 .. math::
    :label: eq-kgrid
 
-   {\bf k}_{n_1,n_2,n_3}=\frac{n_1}{N_{\bf k}^1}{\bf b}_1 +\frac{n_2}{N_{\bf k}^2}{\bf b}_2 +\frac{n_3}{N_{\bf k}^3}{\bf b}_3 ,   \label{eq:kgrid}
+   {\bf k}_{n_1,n_2,n_3}=\frac{n_1}{N_{\bf k}^1}{\bf b}_1 +\frac{n_2}{N_{\bf k}^2}{\bf b}_2 +\frac{n_3}{N_{\bf k}^3}{\bf b}_3 ,
 
 where :math:`0\le n_i< N_{\bf k}^i` – integers (:math:`i=1,2,3`),
 :math:`N_{\bf k}^i` – size of interpolation grid, :math:`{\bf b}_i` —
@@ -217,10 +217,10 @@ points (:eq:`eq-kgrid`) is equivalent to a set of points
 :math:`{\bf k}={\bf K}+\boldsymbol{\kappa}`, where
 
 .. math::
-   :label: eq-Kgrid
+   :label: eq-k-grid-split
 
    \begin{aligned}
-   {\bf K}_{l_1,l_2,l_3}&=&\frac{l_1}{N_{\bf k}^1}{\bf b}_1 +\frac{l_2}{N_{\bf k}^2}{\bf b}_2 +\frac{l_3}{N_{\bf k}^3}{\bf b}_3,  \label{eq:Kgrid}  \\
+   {\bf K}_{l_1,l_2,l_3}&=&\frac{l_1}{N_{\bf k}^1}{\bf b}_1 +\frac{l_2}{N_{\bf k}^2}{\bf b}_2 +\frac{l_3}{N_{\bf k}^3}{\bf b}_3,  \\
    \boldsymbol{\kappa}_{m_1,m_2,m_3}&=&\frac{m_1}{N_{\rm FFT}^1}{\bf b}_1 +\frac{m_2}{N_{\rm FFT}^2}{\bf b}_2 +\frac{m_3}{N_{\rm FFT}^3}{\bf b}_3,    \end{aligned}
 
 where :math:`0\le l_i< N_{\bf K}^i`,
@@ -301,7 +301,7 @@ vector :math:`\Omega_\gamma` or the conductivity tensor
    {\cal X}=\sum_{\bf K}^{\rm all}  X({\bf K})w_{\bf K}\label{eq:sumK}
 
 and we initially set :math:`\{{\bf K}\}` as a regular grid
-:eq:`eq-Kgrid` and :math:`w_{\bf K}=1/N_{\bf K}`. Suppose
+:eq:`eq-k-grid-split` and :math:`w_{\bf K}=1/N_{\bf K}`. Suppose
 :math:`G` is the magnetic point group of the system. [3]_ We define the
 set of symmetry-irreducible :math:`{\bf K}` points :math:`\rm irr` as a
 a set of points that :math:`\forall {\bf K},{\bf K}'\in{\rm irr}`,

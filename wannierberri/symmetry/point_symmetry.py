@@ -1,15 +1,3 @@
-#                                                            #
-# This file is distributed as part of the WannierBerri code  #
-# under the terms of the GNU General Public License. See the #
-# file `LICENSE' in the root directory of the WannierBerri   #
-# distribution, or http://www.gnu.org/copyleft/gpl.txt       #
-#                                                            #
-# The WannierBerri code is hosted on GitHub:                 #
-# https://github.com/stepan-tsirkin/wannier-berri            #
-#                     written by                             #
-#           Stepan Tsirkin, University of Zurich             #
-#                                                            #
-# ------------------------------------------------------------
 """ module to define the Pointgroup Symmetry operations, acting on the tensors in the reciprocal space
 
 Contains a general class for Rotation, Mirror, and also some pre-defined shortcuts:
@@ -46,14 +34,13 @@ Contains a general class for Rotation, Mirror, and also some pre-defined shortcu
 
 """
 
+from collections.abc import Iterable
+from ..utility import real_recip_lattice
+from copy import deepcopy
 import numpy as np
 import scipy
-# import scipy.spatial
-# import scipy.spatial.transform
-import warnings
-from copy import deepcopy
-from ..utility import real_recip_lattice
-from collections.abc import Iterable
+import logging
+logger = logging.getLogger(__name__)
 
 
 SYMMETRY_PRECISION = 1e-6
@@ -93,7 +80,7 @@ class PointSymmetry:
         return dict(R=self.R * (-1 if self.Inv else 1), TR=self.TR)
 
     def show(self):
-        print(self)
+        logger.info(self)
 
     def __str__(self):
         return f"rotation:\n{np.round(self.R, decimals=4)} , TR: {self.TR} , I: {self.Inv}"
@@ -126,11 +113,6 @@ class PointSymmetry:
                               (i,))).transpose(tuple(range(i)) + (dim - 1,) + tuple(range(i, dim - 1)))
         if self.TR:
             transformTR(res)
-        #            res = res.conj()
-        #        if (self.TR and TRodd) != (self.Inv and Iodd):
-        #            res = -res
-        #        if self.TR and TRtrans:
-        #            res = res.swapaxes(dim - rank, dim - rank + 1).conj()
         if self.Inv:
             transformInv(res)
         return res
@@ -234,7 +216,7 @@ def from_string_prod(string):
         raise ValueError(f"The symmetry {string} could not be recognized:  {e}")
 
 
-class PointGroup():
+class PointGroup:
     r"""Class to store a symmetry point group.
 
     Parameters
@@ -465,14 +447,16 @@ class Transform:
         + `transform_trans = Transform(transpose_axes=(1,0))`
         """
 
-    def __init__(self, factor=1, conj=False, transpose_axes=None):
+    def __init__(self, factor=1, conj=False, transpose_axes=None, swap_axes=None):
         self.conj = conj
         self.factor = factor
         assert factor in (1, -1), f"factor is {factor}"
+        assert None in (transpose_axes, swap_axes), "cannot use both transpose_axes and swap_axes"
         self.transpose_axes = transpose_axes
+        self.swap_axes = swap_axes
 
     def as_dict(self):
-        return {k: self.__getattribute__(k) for k in ["conj", "factor", "transpose_axes"]}
+        return {k: self.__getattribute__(k) for k in ["conj", "factor", "transpose_axes", "swap_axes"]}
 
     def __str__(self):
         return f"Transform(factor={self.factor}, conj={self.conj}, transpose_axes={self.transpose_axes}"
@@ -482,6 +466,8 @@ class Transform:
             dim0 = res.ndim - len(self.transpose_axes)
             trans = tuple(i for i in range(dim0)) + tuple(dim0 + a for a in self.transpose_axes)
             res[:] = res.transpose(trans)
+        elif self.swap_axes is not None:
+            res[:] = res.swapaxes(*self.swap_axes)
         if self.conj:
             res[:] = res[:].conj()
         res[:] *= self.factor
@@ -509,6 +495,8 @@ class TransformProduct(Transform):
                 "either ALL of NONE of the transformations in a product should have conjugation .  {conj_list}")
         if np.any([t.transpose_axes is not None for t in transform_list]):
             raise NotImplementedError("Product of transformations including transposing is not implemented")
+        if np.any([t.swap_axes is not None for t in transform_list]):
+            raise NotImplementedError("Product of transformations including swapaxes is not implemented")
         super().__init__(factor=np.prod([t.factor for t in transform_list]), conj=conj_list[0])
 
 
@@ -516,6 +504,7 @@ transform_ident = Transform()
 transform_odd = Transform(factor=-1)
 transform_odd_conj = Transform(factor=-1, conj=True)
 transform_odd_trans_021 = Transform(factor=-1, transpose_axes=(0, 2, 1))
+transform_odd_trans_102 = Transform(factor=-1, transpose_axes=(1, 0, 2))
 transform_trans = Transform(transpose_axes=(1, 0))
 
 
@@ -531,7 +520,18 @@ def transform_from_dict(dic, key):
         if isinstance(d, dict):
             return Transform(**d)
         elif isinstance(d, str):
-            warnings.warn("transform read as string from file, recognized as None")
+            logger.warning("transform read as string from file, recognized as None")
             return None
         else:
             return ValueError(f"wrong type of transform[{key}] in the npz file:{type(d)}")
+
+
+
+
+def get_site_symmetry(spacegroup, point_red):
+    rotations = []
+    for sym in spacegroup.symmetries:
+        shift = sym.transform_r(point_red) - point_red
+        if np.linalg.norm(shift - shift.round()) < 1e-6:
+            rotations.append(PointSymmetry(sym.rotation_cart, sym.time_reversal))
+    return PointGroup(generator_list=rotations, real_lattice=spacegroup.Lattice)

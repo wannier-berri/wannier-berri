@@ -1,6 +1,9 @@
 from .w90file import W90_file, check_shape, auto_kptirr
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class EIG(W90_file):
 
@@ -25,11 +28,11 @@ class EIG(W90_file):
         data = {ik: data[ik] for ik in selected_kpoints}
         return EIG(data=data, NK=NK)
 
-    def to_w90_file(self, seedname):
-        file = open(seedname + ".eig", "w")
+    def to_w90_file(self, seedname, ignore_extension=False):
+        file = self.open_file(seedname, "w", ignore_extension=ignore_extension)
         for ik in range(self.NK):
             for ib in range(self.NB):
-                file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik, ib]:17.12f}\n")
+                file.write(f" {ib + 1:4d} {ik + 1:4d} {self.data[ik][ib]:17.12f}\n")
 
 
     @classmethod
@@ -50,7 +53,7 @@ class EIG(W90_file):
             bandstructure, selected_kpoints=selected_kpoints, kptirr=kptirr, NK=NK)
 
         if verbose:
-            print("Creating eig.")
+            logger.info("Creating eig.")
         data = {}
         for ikirr in kptirr:
             data[ikirr] = bandstructure.kpoints[selected_kpoints[ikirr]].Energy_raw

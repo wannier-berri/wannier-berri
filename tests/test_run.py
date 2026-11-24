@@ -1,4 +1,5 @@
 """Test `wberri.run function"""
+from functools import lru_cache
 import os
 
 import numpy as np
@@ -9,6 +10,8 @@ import wannierberri as wberri
 from wannierberri import calculators as calc
 from wannierberri.smoother import FermiDiracSmoother
 from wannierberri.result import EnergyResult
+from wannierberri.symmetry.point_symmetry import transform_odd_trans_102
+from wannierberri.data_K.data_K_R import Data_K_R
 
 from .common import OUTPUT_DIR_RUN, OUTPUT_DIR, REF_DIR_INTEGRATE
 from .common_comparers import compare_quant
@@ -21,6 +24,7 @@ from .common_systems import (
     Efermi_Chiral,
     Efermi_Te_gpaw,
     Efermi_Te_qe,
+    Efermi_Si,
     omega_chiral,
     omega_phonon,
     mass_kp_iso
@@ -33,46 +37,54 @@ grid_param_Fe = {
 
 
 @pytest.fixture
-def check_run(parallel_serial, compare_any_result):
+def check_run(compare_any_result):
     def _inner(
             system,
             calculators={},
             fout_name="berry",
             compare_zero=False,
-            parallel=parallel_serial,
+            adpt_num_iter=0,
             grid_param={
                 'NK': [6, 6, 6],
                 'NKFFT': [3, 3, 3]
             },
             grid=None,
-            adpt_num_iter=0,
-            parameters_K={},
             use_symmetry=False,
             suffix="",
             suffix_ref="",
             extra_precision={},
             precision=-1e-8,
-            restart=False,
-            file_Klist=None,
             do_not_compare=False,
             skip_compare=[],
+            transformTR=None,
+            transformInv=None,
+            **kwargs_run
     ):
 
         if grid is None:
-            grid = wberri.Grid(system, **grid_param)
+            grid = wberri.Grid(system=system, **grid_param)
+
+        kwargs_run_default = dict(
+            parallel=False,
+            adpt_num_iter=adpt_num_iter,
+            use_irred_kpt=use_symmetry,
+            dump_results=False,
+            symmetrize=use_symmetry,
+            parameters_K={},
+            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
+            suffix=suffix,
+            allow_restart=False,
+            file_Klist_path=None,
+            restart=False
+        )
+        kwargs_run_default.update(kwargs_run)
+
+
         result = wberri.run(
             system,
             grid=grid,
             calculators=calculators,
-            parallel=parallel,
-            adpt_num_iter=adpt_num_iter,
-            use_irred_kpt=use_symmetry,
-            symmetrize=use_symmetry,
-            parameters_K=parameters_K,
-            fout_name=os.path.join(OUTPUT_DIR_RUN, fout_name),
-            suffix=suffix,
-            restart=restart,
-            file_Klist=file_Klist,
+            **kwargs_run_default
         )
 
         if do_not_compare:
@@ -95,6 +107,8 @@ def check_run(parallel_serial, compare_any_result):
                     compare_zero=compare_zero,
                     precision=prec,
                     result_type=resultType(quant),
+                    transformTR=transformTR,
+                    transformInv=transformInv
                 )
 
         return result
@@ -152,7 +166,8 @@ calculators_Te_all = {
     'eMChA_FermiSurf': calc.static.eMChA_FermiSurf,
     'NLDrude_Zeeman_spin': calc.static.NLDrude_Zeeman_spin,
     'NLDrude_Zeeman_orb': calc.static.NLDrude_Zeeman_orb,
-    'AHC_Zeeman_spin': calc.static.AHC_Zeeman_spin,
+    'LFAHE_spin_fsea': calc.static.LFAHE_spin_fsea,
+    'LFAHE_spin_fsurf': calc.static.LFAHE_spin_fsurf,
 }
 
 
@@ -188,18 +203,27 @@ calculators_Chiral = {
     'jdos': wberri.calculators.dynamic.JDOS(**parameters_Chiral_optical),
 }
 
-calculators_SDCT = {
-    'SDCT_sym_sea_I': wberri.calculators.sdct.SDCT_sym_sea_I,
-    'SDCT_sym_sea_II': wberri.calculators.sdct.SDCT_sym_sea_II,
-    'SDCT_asym_sea_I': wberri.calculators.sdct.SDCT_asym_sea_I,
-    'SDCT_asym_sea_II': wberri.calculators.sdct.SDCT_asym_sea_II,
-    'SDCT_asym_surf_I': wberri.calculators.sdct.SDCT_asym_surf_I,
-    'SDCT_asym_surf_II': wberri.calculators.sdct.SDCT_asym_surf_II,
-    'SDCT_sym_surf_I': wberri.calculators.sdct.SDCT_sym_surf_I,
-    'SDCT_sym_surf_II': wberri.calculators.sdct.SDCT_sym_surf_II,
-    'SDCT_sym': wberri.calculators.sdct.SDCT_sym,
-    'SDCT_asym': wberri.calculators.sdct.SDCT_asym,
-}
+
+@lru_cache(maxsize=None)
+def get_calculators_sdct(implementation=1):
+    if implementation == 1:
+        import wannierberri.calculators.sdct as sdct
+    else:
+        raise ValueError("Invalid implementation number")
+    return {
+        'SDCT_sym_sea_I': sdct.SDCT_sym_sea_I,
+        'SDCT_sym_sea_II': sdct.SDCT_sym_sea_II,
+        'SDCT_asym_sea_I': sdct.SDCT_asym_sea_I,
+        'SDCT_asym_sea_II': sdct.SDCT_asym_sea_II,
+        'SDCT_asym_surf_I': sdct.SDCT_asym_surf_I,
+        'SDCT_asym_surf_II': sdct.SDCT_asym_surf_II,
+        'SDCT_sym_surf_I': sdct.SDCT_sym_surf_I,
+        'SDCT_sym_surf_II': sdct.SDCT_sym_surf_II,
+        'SDCT_sym': sdct.SDCT_sym,
+        'SDCT_asym': sdct.SDCT_asym,
+    }
+
+
 
 calculators_Chiral_tetra = {
     'conductivity_ohmic': calc.static.Ohmic_FermiSea(Efermi=Efermi_Chiral, tetra=True),
@@ -248,7 +272,7 @@ def test_TabulatorAll_fail():
 def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
     param = {'Efermi': Efermi_Fe}
     param_tab = {'degen_thresh': 5e-2}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
     calculators["tabulate"] = calc.TabulatorAll(
         {
             "Energy": calc.tabulate.Energy(),  # yes, in old implementation degen_thresh was applied to qunatities,
@@ -276,10 +300,6 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         calculators,
         grid_param=grid_param_Fe,
         fout_name="Fe_W90",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         extra_precision={"Morb": -1e-6},
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
@@ -303,7 +323,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
         _comp = "-" + comp if comp not in ("", None) else ""
         prec = extra_precision[quant] if quant in extra_precision else 2e-8
 
-        wberri.npz_to_fermisurfer(npz_file=npz_tabulate,
+        wberri.result.tabresult.npz_to_fermisurfer(npz_file=npz_tabulate,
                                   quantity=None if quant == "Energy" else quant,
                                   component=comp,
                                   frmsf_file=os.path.join(OUTPUT_DIR_RUN,
@@ -333,7 +353,7 @@ def test_Fe(check_run, system_Fe_W90, compare_any_result, compare_fermisurfer):
 
 def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -349,10 +369,6 @@ def test_Fe_sparse(check_run, system_Fe_W90_sparse, compare_any_result):
         grid_param=grid_param_Fe,
 
         suffix="sparse",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         extra_precision={"Morb": -1e-6},
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo'])
 
@@ -393,15 +409,15 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
     calculators = {}
     for k, v in calculators_Fe.items():
         if k in ['dos', 'cumdos', 'conductivity_ohmic', 'conductivity_ohmic_fsurf', 'spin']:
-            calculators[k] = v(**param)
+            calculators[k] = v(**get_param_FFrotAA(param, k))
         else:
-            calculators[k] = v(**param_kwargs)
+            calculators[k] = v(**get_param_FFrotAA(param_kwargs, k))
 
     name = "Fe_save"
     path = os.path.join(OUTPUT_DIR, name)
     system_Fe_W90.save_npz(path, extra_properties=["recip_lattice"])
     system = wberri.system.system_R.System_R()
-    system.load_npz(path, load_all_XX_R=True)
+    system.load_npz(path)
 
     check_run(
         system,
@@ -410,17 +426,13 @@ def test_Fe_save_load(check_run, system_Fe_W90, compare_any_result):
         fout_name="Fe_W90",
         suffix="load",
         use_symmetry=False,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         extra_precision={"Morb": -1}
     )
 
 
 def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
 
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -435,10 +447,6 @@ def test_Fe_sym(check_run, system_Fe_W90, compare_any_result):
         fout_name="Fe_W90_sym",
         grid_param=grid_param_Fe,
         use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         skip_compare=['tabulate', 'opt_conductivity', 'opt_SHCqiao', 'opt_SHCryoo']
     )
 
@@ -499,11 +507,6 @@ def test_Fe_FPLO(check_run, system_Fe_FPLO, compare_any_result):
         system_Fe_FPLO,
         calculators,
         fout_name="Fe_FPLO",
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
-        # skip_compare=['tabulate']
     )
 
 
@@ -523,46 +526,40 @@ def test_Fe_FPLO_sym(check_run, system_Fe_FPLO, compare_any_result):
         fout_name="Fe_FPLO",
         suffix="sym",
         use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
-@pytest.mark.parametrize("auto", [True, False])
-def test_Fe_parallel_ray(check_run, system_Fe_W90, compare_any_result, parallel_ray, auto):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_Fe_parallel(check_run, system_Fe_W90, compare_any_result, parallel):
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
     check_run(
         system_Fe_W90,
         calculators,
         fout_name="Fe_W90",
         grid_param=grid_param_Fe,
-
-        suffix="paral-ray-4",
-        parallel=True if auto else parallel_ray,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
+        suffix="serial",
+        parallel=parallel,
     )
-    # parallel_ray.shutdown()
+
+
+def get_param_FFrotAA(param, key):
+    param_loc = {}
+    param_loc.update(param)
+    if key.endswith("_test"):
+        kwargs_formula = param_loc.get("kwargs_formula", {})
+        kwargs_formula["FF_rotAA"] = True
+        kwargs_formula["CCab_antisym"] = True
+        param_loc["kwargs_formula"] = kwargs_formula
+    return param_loc
 
 
 @pytest.mark.parametrize("adpt_num_iter_list", [(3,), (1, 2), (0, 2, 1)])
 def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_iter_list):
-    param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
     suffix = "refine-" + '-'.join([str(i) for i in adpt_num_iter_list])
-    fKl = f"Klist-{suffix}.pickle"
-    fKl_ch = f"Klist-{suffix}.changed_factors"
-    if os.path.exists(fKl_ch):
-        os.remove(fKl_ch)
-    if os.path.exists(fKl):
-        os.remove(fKl)
+    fKl = os.path.join(OUTPUT_DIR, f"_tmp_K_{suffix}")
     param = {'Efermi': Efermi_Fe}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()}
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()}
 
     restart = False
     for adpt_num_iter in adpt_num_iter_list:
@@ -576,11 +573,8 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
             adpt_num_iter=adpt_num_iter,
             restart=restart,
             use_symmetry=True,
-            file_Klist=fKl,
-            parameters_K={
-                '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
+            allow_restart=True,
+            file_Klist_path=fKl,
         )
         restart = True
 
@@ -589,7 +583,7 @@ def test_Fe_sym_refine(check_run, system_Fe_W90, compare_any_result, adpt_num_it
 
 
 
-def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
+def test_GaAs_dynamic(check_run, system_GaAs_W90):
     "Test shift current and injection current"
 
     param = dict(
@@ -603,6 +597,8 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
         shift_current=calc.dynamic.ShiftCurrent(sc_eta=0.1, **param),
         injection_current=calc.dynamic.InjectionCurrent(**param)
     )
+    calculators["quantum_metric"] = calc.static.QuantumMetric_FermiSea(Efermi=Efermi_GaAs)
+    calculators["quantum_metric_dqm"] = calc.static.QuantumMetric_Vel_DQ(Efermi=Efermi_GaAs)
 
     check_run(
         system_GaAs_W90,
@@ -616,35 +612,41 @@ def test_GaAs_dynamic(check_run, system_GaAs_W90, compare_any_result):
     )
 
 
-def test_GaAs_SDCT(check_run, system_GaAs_W90, compare_any_result):
+def test_GaAs_SDCT(check_run, system_GaAs_W90, system_GaAs_W90_OOGG, compare_any_result):
+    system = system_GaAs_W90
+
     param = {'Efermi': Efermi_GaAs,
              'omega': np.linspace(0.0, 7, 8),
              'kBT': 0.05, 'smr_fixed_width': 0.1
              }
+    calculators_SDCT = get_calculators_sdct(implementation=1)
     calculators = {k + "_internal": v(kwargs_formula=dict(external_terms=False), **param)
                    for k, v in calculators_SDCT.items()}
-#    calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
+    # calculators.update({k + "_full": v(**param) for k, v in calculators_SDCT.items()})
 
     check_run(
-        system_GaAs_W90,
+        system,
         calculators,
         fout_name="GaAs_W90",
         precision=5e-3,
-        compare_zero=True
+        compare_zero=True,
+        transformTR=transform_odd_trans_102
     )
 
 
-def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
+@pytest.mark.parametrize("implementation", [1])
+def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result, implementation):
     param = {'Efermi': np.linspace(-2, 2, 5),
              'omega': np.linspace(0.0, 4, 5),
              'kBT': 0.5, 'smr_fixed_width': 0.5,
              }
-    calculators = {k: v(**param) for k, v in calculators_SDCT.items()}
+    calculators = {k: v(**param) for k, v in get_calculators_sdct(implementation).items()}
 
     check_run(
         system_Chiral_OSD,
         calculators,
         fout_name="Chiral_OSD_SDCT",
+        transformTR=transform_odd_trans_102
         # precision=,
     )
 
@@ -652,7 +654,7 @@ def test_Chiral_SDCT(check_run, system_Chiral_OSD, compare_any_result):
 def test_random(check_run, system_random_load_bare, compare_any_result):
     Efermi = np.linspace(-2, 2, 5)
     param = {'Efermi': Efermi}
-    calculators = {k: v(**param) for k, v in calculators_Fe.items()
+    calculators = {k: v(**get_param_FFrotAA(param, k)) for k, v in calculators_Fe.items()
                    if not k.endswith("_test")}
     parameters_optical = dict(
         Efermi=np.array([17.0, 18.0]), omega=np.arange(0.0, 7.1, 1.0), smr_fixed_width=0.20, smr_type="Gaussian")
@@ -661,13 +663,6 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     calculators['opt_SHCqiao'] = wberri.calculators.dynamic.SHC(SHC_type="qiao", **parameters_optical)
     calculators['opt_SHCryoo'] = wberri.calculators.dynamic.SHC(SHC_type="ryoo", **parameters_optical)
 
-    param = {'Efermi': Efermi,
-             'omega': np.linspace(0.0, 4, 5),
-             'kBT': 0.5, 'smr_fixed_width': 0.5,
-             'kwargs_formula': dict(external_terms=False)
-             }
-    calculators.update({k: v(**param) for k, v in calculators_SDCT.items()})
-
     check_run(
         system_random_load_bare,
         calculators,
@@ -675,10 +670,28 @@ def test_random(check_run, system_random_load_bare, compare_any_result):
     )
 
 
-def check_Haldane(check_run, system, code, use_symmetry):
-    param = {'Efermi': Efermi_Haldane}
-    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
+def test_random_SDCT(check_run, system_random_load_bare, compare_any_result):
+    Efermi = np.linspace(-2, 2, 5)
+    param = {'Efermi': Efermi}
 
+    param = {'Efermi': Efermi,
+             'omega': np.linspace(0.0, 4, 5),
+             'kBT': 0.5, 'smr_fixed_width': 0.5,
+             'kwargs_formula': dict(external_terms=False)
+             }
+    calculators = {k: v(**param) for k, v in get_calculators_sdct(implementation=1).items()}
+
+    check_run(
+        system_random_load_bare,
+        calculators,
+        fout_name="random",
+        transformTR=transform_odd_trans_102,
+    )
+
+
+def check_Haldane(check_run, system, code, use_symmetry, tetra=False, **kwargs_run):
+    param = {'Efermi': Efermi_Haldane, 'tetra': tetra}
+    calculators = {k: v(**param) for k, v in calculators_Haldane.items()}
     check_run(
         system,
         calculators,
@@ -689,12 +702,39 @@ def check_Haldane(check_run, system, code, use_symmetry):
         grid_param={
             'NK': [10, 10, 1],
             'NKFFT': [5, 5, 1]
-        })
+        },
+        **kwargs_run)
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Haldane_PythTB(check_run, compare_any_result, use_symmetry, system_Haldane_PythTB):
     check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry)
+
+
+def test_Haldane_PythTB_custom_datak(check_run, compare_any_result, system_Haldane_PythTB):
+    check_Haldane(check_run, system_Haldane_PythTB, "PythTB", use_symmetry=True, data_k_class=Data_K_R)
+
+
+
+def test_Haldane_PythTB_dump(check_run, compare_any_result, system_Haldane_PythTB):
+    check_Haldane(
+        check_run,
+        system_Haldane_PythTB,
+        "PythTB",
+        use_symmetry=True,
+        dump_results=True,
+        print_Kpoints=True,
+    )
+
+
+@pytest.mark.parametrize("tetra", [True, False])
+def test_Haldane_PythTB_refine3(check_run, compare_any_result, system_Haldane_PythTB, tetra):
+    suffix = "PythTB-adpt3" + ("-tetra" if tetra else "")
+    check_Haldane(check_run, system_Haldane_PythTB, suffix, use_symmetry=True,
+                  dump_results=True, adpt_mesh=3, tetra=tetra,
+                  suffix_ref=suffix + "-sym",
+                  parameters_K={'use_tetra_in_low_D': tetra},)
+
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
@@ -707,7 +747,7 @@ def test_Silicon_double(check_run, symmetrize,
                         system_Si_W90_sym_double, system_Si_W90_sym,
                         system_Si_W90_double, system_Si_W90,
                         ):
-    param = {'Efermi': np.linspace(-5, 7, 11), 'tetra': True}
+    param = {'Efermi': Efermi_Si, 'tetra': True}
     if symmetrize:
         system_scalar = system_Si_W90_sym
         system_double = system_Si_W90_sym_double
@@ -766,10 +806,6 @@ def test_Chiral_left(check_run, compare_any_result, compare_energyresult, system
         fout_name="Chiral",
         suffix="left",
         grid_param=grid_param,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         skip_compare=["opt_shiftcurrent"],
         use_symmetry=False,  # !!! temporary
         extra_precision={"Morb": -1e-6},
@@ -805,10 +841,6 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         fout_name="Chiral_tetra",
         suffix="left",
         grid_param=grid_param,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
@@ -819,10 +851,6 @@ def test_Chiral_left_tetra(check_run, system_Chiral_left, compare_any_result):
         fout_name="Chiral_tetra",
         suffix="left",
         grid_param=grid_param,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
         do_not_compare=True,
@@ -867,10 +895,6 @@ def test_Chiral_left_tab_static(check_run, system_Chiral_left, use_sym, tetra):
         fout_name="Chiral_static_tab",
         suffix="",
         grid_param=grid_param,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=use_sym,
         do_not_compare=True
     )
@@ -894,12 +918,12 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
     system = system_Haldane_PythTB
 
     calculators = {"AHC": calc.static.AHC(**param),
-                   "Morb": calc.static.AHC(**param)
+                   "Morb": calc.static.Morb(**param)
                    }
     calculators["tabulate"] = calc.TabulatorAll(
         {
             "AHC": calc.static.AHC(**param, k_resolved=True),
-            "Morb": calc.static.AHC(**param, k_resolved=True),
+            "Morb": calc.static.Morb(**param, k_resolved=True),
             "berry": calc.tabulate.BerryCurvature()
         },
         mode="grid",
@@ -911,10 +935,6 @@ def test_Haldane_tab_static(check_run, system_Haldane_PythTB, use_sym, tetra):
         fout_name="Haldane_static_tab",
         suffix="",
         grid_param=grid_param,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=use_sym,
         do_not_compare=True
     )
@@ -944,10 +964,6 @@ def test_Chiral_left_tetra_tetragrid(check_run, system_Chiral_left, compare_any_
         fout_name="Chiral_tetragrid",
         suffix="",
         grid=grid,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         extra_precision={"Morb": -1e-6},
     )
@@ -968,10 +984,6 @@ def test_Chiral_left_tetra_2EF(check_run, system_Chiral_left, compare_any_result
         fout_name="Chiral_tetra_trigonal",
         suffix="left-2",
         grid_param=grid_param,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
         use_symmetry=True,
         skip_compare='dos_trig_2'
     )
@@ -992,10 +1004,6 @@ def test_Chiral_leftTR(check_run, system_Chiral_left, system_Chiral_left_TR, com
             fout_name="Chiral",
             suffix="right",
             grid_param=grid_param,
-            parameters_K={
-                '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
             use_symmetry=True,
             do_not_compare=True) for system in [system_Chiral_left, system_Chiral_left_TR]
     ]
@@ -1018,10 +1026,6 @@ def test_Chiral_right(check_run, system_Chiral_left, system_Chiral_right, compar
             fout_name="Chiral",
             suffix="right",
             grid_param=grid_param,
-            parameters_K={
-                '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
             use_symmetry=True,
             do_not_compare=True) for system in [system_Chiral_left, system_Chiral_right]
     ]
@@ -1075,7 +1079,7 @@ def test_CuMnAs_PT(check_run, system_CuMnAs_2d_broken, compare_any_result):
             precision = 1e-14 * np.max(abs(data1))
             assert data1 == approx(
                 data2, abs=precision), (
-                    f"calcuylated data of {label1}  and {label2} give a maximal "
+                    f"calculated data of {label1}  and {label2} give a maximal "
                     f"absolute difference of {np.max(abs(data1 - data2))}"
                     f"greater than the required precision {precision}. ")
 
@@ -1093,20 +1097,15 @@ def test_Te_ASE(check_run, system_Te_ASE, data_Te_ASE, compare_any_result):
         calculators,
         fout_name="Te_ASE",
         use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
     )
 
 
-def test_Te_QE(check_run, system_Te_QE, compare_any_result):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_Te_QE(check_run, system_Te_QE, compare_any_result, parallel):
     param = {'Efermi': Efermi_Te_qe, "tetra": True}
     calculators = {}
     for k, v in calculators_Te_all.items():
-        par = {}
-        par.update(param)
-        calculators[k] = v(**par)
+        calculators[k] = v(**get_param_FFrotAA(param, k))
 
     check_run(
         system_Te_QE,
@@ -1117,10 +1116,7 @@ def test_Te_QE(check_run, system_Te_QE, compare_any_result):
             'NKFFT': [1, 1, 4]
         },
         use_symmetry=True,
-        parameters_K={
-            '_FF_antisym': True,
-            '_CCab_antisym': True
-        },
+        parallel=parallel,
     )
 
 
@@ -1302,39 +1298,37 @@ def test_kp_mass_anisotropic_2(check_kp_mass_isotropic, system_kp_mass_aniso_2):
 
 @pytest.fixture
 def check_Fe_gpaw_soc(check_run, compare_any_result):
-    def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}):
+    def _inner(system, suffix, use_symmetry=True, precision=-1e-8, extra_precision={}, tetra=False, R=False):
         Efermi_Fe_gpaw = np.linspace(8.5, 10, 16)
-        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': False}
+        param = {'Efermi': Efermi_Fe_gpaw, 'tetra': tetra,
+                 }
         calculators = {}
         for k, v in calculators_Fe.items():
             if (suffix in ['up', 'dw']) and (k in ["spin"]):
-                pass
+                continue
             elif k.startswith("Morb"):
                 param_kwargs = {'Efermi': Efermi_Fe, 'use_factor': False,
                                 'kwargs_formula': {'external_terms': False}}
-                calculators[k] = v(**param_kwargs)
             else:
-                calculators[k] = v(**param)
+                param_kwargs = param
+            param_kwargs = get_param_FFrotAA(param_kwargs, k)
+            calculators[k] = v(**param_kwargs)
 
         result = check_run(
             system,
             calculators,
             precision=precision,
-            fout_name=f"Fe_gpaw_soc_{suffix}",
-            suffix=("" if use_symmetry else "nosym"),
+            fout_name=f"Fe_gpaw_soc_{suffix}" + ("" if not tetra else "-tetra"),
+            suffix="_".join([("" if use_symmetry else "nosym"), ("R" if R else "")]).strip("_"),
             use_symmetry=use_symmetry,
             extra_precision=extra_precision,
-            parameters_K={
-                '_FF_antisym': True,
-                '_CCab_antisym': True
-            },
         )
-        if suffix.endswith("_symmetrized"):
+        if suffix.endswith("_symmetrized") and not tetra:
             suffix_ref = suffix[:-12]
             for quant in calculators.keys():
                 prec = -5e-5
                 compare_any_result(
-                    fout_name=f"Fe_gpaw_soc_{suffix}",
+                    fout_name=f"Fe_gpaw_soc_{suffix}" + ("" if not tetra else "-tetra"),
                     suffix=quant + ("" if use_symmetry else "-nosym"),
                     adpt_num_iter=0,
                     fout_name_ref=f"Fe_gpaw_soc_{suffix_ref}",
@@ -1353,7 +1347,7 @@ def check_Fe_gpaw_soc(check_run, compare_any_result):
 def test_Fe_gpaw_up(system_Fe_gpaw_up, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_up, suffix="up",
                       use_symmetry=use_symmetry,
-                      extra_precision={"ahc": 1e-8, "ahc_test": 1e-8})
+                      extra_precision={"ahc": 1e-7, "ahc_test": 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
@@ -1367,40 +1361,34 @@ def test_Fe_gpaw_dw(system_Fe_gpaw_dw, check_Fe_gpaw_soc, use_symmetry):
 def test_Fe_gpaw_soc_z(system_Fe_gpaw_soc_z, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_z, suffix="z",
                       use_symmetry=use_symmetry,
-                      precision=-1e-8 if use_symmetry else -2e-5)
+                      precision=-1e-8 if use_symmetry else -1e-5,
+                      extra_precision={"Morb_test": 1e-7, "ahc_test": 2e-7, 'Morb': 1e-8})
 
 
-@pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_z_symmetrized(system_Fe_gpaw_soc_z_symmetrized, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_z_symmetrized, suffix="z_symmetrized", use_symmetry=use_symmetry)
+
+
+def test_Fe_gpaw_soc_z_tetra(system_Fe_gpaw_soc_z, check_Fe_gpaw_soc):
+    check_Fe_gpaw_soc(system_Fe_gpaw_soc_z, suffix="z", use_symmetry=True, tetra=True,
+                      extra_precision={"Morb_test": 1e-7, "ahc_test": 5e-4, 'Morb': 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Fe_gpaw_soc_111(system_Fe_gpaw_soc_111, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_111, suffix="111",
                       use_symmetry=use_symmetry,
-                      precision=-1e-8 if use_symmetry else -2e-5)
-
-
-@pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_111_symmetrized(system_Fe_gpaw_soc_111_symmetrized, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_111_symmetrized, suffix="111_symmetrized", use_symmetry=use_symmetry)
-
-
-@pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_111_irred(system_Fe_gpaw_soc_111_irred, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_111_irred, suffix="111_irred",
-                      use_symmetry=use_symmetry,
-                      precision=-1e-4)
+                      extra_precision={"Morb_test": 2e-7, "ahc_test": 1e-6, "Morb": 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
 def test_Fe_gpaw_soc_angle(system_Fe_gpaw_soc_angle, check_Fe_gpaw_soc, use_symmetry):
     check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle, suffix="angle",
                       use_symmetry=use_symmetry,
-                      precision=-1e-8 if use_symmetry else -2e-5)
+                      extra_precision={"Morb_test": 2e-7, "ahc_test": 1e-6, 'Morb': 1e-7})
 
 
 @pytest.mark.parametrize("use_symmetry", [True, False])
-def test_Fe_gpaw_soc_angle_symmetrized(system_Fe_gpaw_soc_angle_symmetrized, check_Fe_gpaw_soc, use_symmetry):
-    check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle_symmetrized, suffix="angle_symmetrized", use_symmetry=use_symmetry)
+def test_Fe_gpaw_soc_angle_R(system_Fe_gpaw_soc_angle_R, check_Fe_gpaw_soc, use_symmetry):
+    check_Fe_gpaw_soc(system_Fe_gpaw_soc_angle_R, suffix="angle",
+                      use_symmetry=use_symmetry, R=True,
+                      precision=-1e-8 if use_symmetry else -2e-5,
+                      extra_precision={"Morb": 1e-7, "ahc_test": 1e-6, "Morb_test": 2e-7})

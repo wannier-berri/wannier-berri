@@ -4,7 +4,7 @@ import numpy as np
 from pytest import approx
 import wannierberri as wberri
 from wannierberri.grid.Kpoint import KpointBZparallel
-from wannierberri.data_K import get_data_k
+from wannierberri.data_K import get_data_k_class_from_system
 
 
 def test_fourier(system_Fe_W90):
@@ -13,7 +13,7 @@ def test_fourier(system_Fe_W90):
 
     k = np.array([0.1, 0.2, -0.3])
 
-    grid = wberri.Grid(system, NKFFT=[4, 3, 2], NKdiv=1, use_symmetry=False)
+    grid = wberri.Grid(system=system, NKFFT=[4, 3, 2], NKdiv=1, use_symmetry=False)
 
     dK = 1. / grid.div
     NKFFT = grid.FFT
@@ -22,17 +22,27 @@ def test_fourier(system_Fe_W90):
     kpoint = KpointBZparallel(K=k, dK=dK, NKFFT=NKFFT, factor=factor, pointgroup=None)
 
     assert kpoint.Kp_fullBZ == approx(k / grid.FFT)
+    data_k_class = get_data_k_class_from_system(system)
 
-    data_fftw = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='fftw')
-    data_slow = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='slow')
-    data_numpy = get_data_k(system, kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, npar_k=0, fftlib='numpy')
+    data_fftw = data_k_class(system, dK=kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='fftw')
+    data_slow = data_k_class(system, dK=kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='slow')
+    data_numpy = data_k_class(system, dK=kpoint.Kp_fullBZ, grid=grid, Kpoint=kpoint, fftlib='numpy')
 
     test_fields = ["E_K", "D_H", "A_H", "dEig_inv"]
 
     for field in test_fields:
-        assert getattr(data_fftw, field) == approx(getattr(data_slow, field)), f"fftw  does not match slow for {field}"
-        assert getattr(data_numpy, field) == approx(getattr(data_slow, field)), f"numpy does not match slow for {field}"
-        assert getattr(data_numpy, field) == approx(getattr(data_fftw, field)), f"numpy does not match fftw for {field}"
+        if field == "A_H":
+            val_slow = data_slow.get_A_H()
+            val_fftw = data_fftw.get_A_H()
+            val_numpy = data_numpy.get_A_H()
+        else:
+            val_slow = getattr(data_slow, field)
+            val_fftw = getattr(data_fftw, field)
+            val_numpy = getattr(data_numpy, field)
+        assert val_fftw == approx(val_slow), f"fftw  does not match slow for {field}"
+        assert val_numpy == approx(val_slow), f"numpy does not match slow for {field}"
+        assert val_numpy == approx(val_fftw), f"numpy does not match fftw for {field}"
+
 
     test_fields = ['Ham']
     for field in test_fields:
@@ -45,3 +55,16 @@ def test_fourier(system_Fe_W90):
                 f"numpy does not match fftw for {field}_bar_der{der} "
 
     # TODO: Allow gauge degree of freedom
+
+
+def test_soc_spin_operator_first_derivative(system_Fe_gpaw_soc_z):
+    """The first spin-operator derivative has a spin and a Cartesian axis."""
+    system = system_Fe_gpaw_soc_z
+    grid = wberri.Grid(system=system, NKFFT=1, NKdiv=1, use_symmetry=False)
+    data_k_class = get_data_k_class_from_system(system)
+    data_k = data_k_class(system, dK=np.zeros(3), grid=grid, fftlib="numpy")
+
+    spin_derivative = data_k.SS_W(der=1)
+
+    assert spin_derivative.shape == (1, system.num_wann, system.num_wann, 3, 3)
+    assert np.isfinite(spin_derivative).all()

@@ -1,13 +1,12 @@
-from gpaw import GPAW
+import numpy as np
+from ase import Atoms
+from gpaw import GPAW, PW, MixerSum
 
 do_scf = False
 do_nscf = False
 do_write_w90 = True
 seed = "mnte"
 
-from gpaw import GPAW, PW, MixerSum
-from ase import Atoms
-import numpy as np
 
 
 
@@ -24,7 +23,7 @@ if do_scf:
             [2 / 3, 1 / 3, 3 / 4],
         ]
     )
-    typeat = [1, 1, 2, 2]
+    typat = [1, 1, 2, 2]
     magmom = [[0, 1, 0], [0, -1, 0], [0, 0, 0], [0, 0, 0]]
 
     atoms = Atoms(
