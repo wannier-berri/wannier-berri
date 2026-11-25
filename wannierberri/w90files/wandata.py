@@ -1173,7 +1173,7 @@ class WannierData:
 
         exp_one = np.exp(2j * np.pi / (mp_grid * real_grid))
 
-        exp_grid = [np.cumprod([exp_one[i]] * real_grid[i]) for i in range(3)]
+        exp_grid = [exp_one[i] ** np.arange(real_grid[i]) for i in range(3)]  # phases at x_j = j / n, j = 0 … n-1
 
         output_grid_size = real_grid * sc_size_vec
 
