@@ -896,6 +896,13 @@ class WannierData:
         return self.get_file('shu')
 
     @property
+    def oam(self):
+        """
+        Returns the OAM file
+        """
+        return self.get_file('oam')
+
+    @property
     def unk(self):
         """
         Returns the UNK files

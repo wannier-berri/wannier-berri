@@ -16,6 +16,7 @@ class NeededData:
     needed_files['SA'] = ['siu', 'mmn']
     needed_files['SHA'] = ['shu', 'mmn']
     needed_files['Ham'] = ['eig']
+    needed_files['LL'] = ['oam']
 
     @classmethod
     def get_parameters(cls, **parameters):
@@ -28,7 +29,8 @@ class NeededData:
                        "SHCryoo", "SHCqiao",
                        "OSD", "qmetric",
                        "force_internal_terms_only",
-                       "keepOOGG", "FF", "OOGG_to_FF",
+                       "keepOOGG", "FF", "OOGG_to_FF", 
+                       "LL",
                        "chk"]:
                 return_dict[key] = val
                 if key in ["force_internal_terms_only"]:
@@ -48,12 +50,15 @@ class NeededData:
                  force_internal_terms_only=False,
                  keepOOGG=False,
                  OOGG_to_FF=True,
+                 LL=False,
                  chk=True,
                  **kwargs):
         self.matrices = {'Ham'}
         self.files = set()
         if morb:
             self.matrices.update(['AA', 'BB', 'CC'])
+        if LL:
+            self.matrices.add('LL')
         if berry:
             self.matrices.add('AA')
         if qmetric:

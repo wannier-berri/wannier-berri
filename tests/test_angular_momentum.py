@@ -6,8 +6,11 @@ from .common import ROOT_DIR
 from wannierberri.symmetry.angular_momentum import get_L_shell
 import numpy as np
 import os
+from wannierberri.symmetry.projections import ProjectionsSet, Projection
+from irrep.spacegroup import SpaceGroup
 
 from wannierberri.w90files.wandata_soc import WannierDataSOC
+from wannierberri.system.system_soc import SystemSOC
 from .test_formula import get_datak
 
 r3 = np.sqrt(3)
@@ -154,8 +157,6 @@ def test_projection_L():
 
 
 def test_ohe(system_Fe_gpaw_soc_z):
-    from wannierberri.symmetry.projections import ProjectionsSet, Projection
-    from irrep.spacegroup import SpaceGroup
     sg = SpaceGroup.get_trivial(lattice=np.eye(3))
     proj_s = Projection(position_num=[[0., 0, 0]], orbital='s', spacegroup=sg)
     proj_p = Projection(position_num=[[0., 0, 0]], orbital='p', spacegroup=sg)
@@ -181,8 +182,18 @@ def test_ohe(system_Fe_gpaw_soc_z):
 def test_oam():
     from gpaw import GPAW
     path_data = os.path.join(ROOT_DIR, "data", "Fe-gpaw-irred")
-
     calc = GPAW(path_data + "/Fe-nscf-irred-222.gpw", txt=None)
-    wandata = WannierDataSOC.from_gpaw(calc, files=["oam"])
+    sg = SpaceGroup.from_gpaw(calc)
+    proj_s = Projection(position_num=[[0., 0, 0]], orbital='s', spacegroup=sg)
+    proj_p = Projection(position_num=[[0., 0, 0]], orbital='p', spacegroup=sg)
+    proj_d = Projection(position_num=[[0., 0, 0]], orbital='d', spacegroup=sg)
+    projections = ProjectionsSet([proj_s, proj_p, proj_d])
+    wandata = WannierDataSOC.from_gpaw(calc, files=["chk", "eig", "amn", "mmn", "symmetrizer", "oam", "soc"],
+                                       irreducible=True,
+                                       mp_grid=[2, 2, 2],
+                                       projections=projections)
+    wandata.wannierise(num_iter=5)
     for ik, data in wandata.data_up.get_file("oam").data.items():
         print(f"K-point {ik}: {np.linalg.norm(data)}")
+    system = SystemSOC.from_wannierdata(wandata, LL=True)
+    print(system.system_down.get_R_mat('LL'))
