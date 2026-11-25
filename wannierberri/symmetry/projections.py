@@ -388,7 +388,7 @@ class ProjectionsSet:
             L_scalar[i:i + n, i:i + n, :] = L
             i += n
         if self.spinor:
-            L = np.zeros((2 * L_scalar.shape[0], 2 * L_scalar.shape[1]), 3)
+            L = np.zeros((2 * L_scalar.shape[0], 2 * L_scalar.shape[1], 3), dtype=complex)
             L[0::2, 0::2] = L_scalar
             L[1::2, 1::2] = L_scalar
             return L

@@ -47,10 +47,7 @@ class OAM(W90_file):
 
         L_matrices, start, end = [], [], []
         for l in l_list:
-            if start:
-                start.append(start[-1] + 2 * l + 1)
-            else:
-                start.append(0)
+            start.append(end[-1] if end else 0)  # each block starts where the previous one ends
             end.append(start[-1] + 2 * l + 1)
             L_matrices.append(get_L_shell_gpaw(l).transpose(1, 2, 0))  # shape (n_orb, n_orb, 3)
 
