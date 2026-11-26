@@ -718,7 +718,10 @@ class SpinVelocity(Matrix_ln):
         super(Matrix_ln, self).__init__(data_K, external_terms=external_terms)
         if spin_current_type == "simple":
             # tight-binding case
-            super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms))
+            super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms, keyL='SS'))
+        elif spin_current_type == "orb_loc":
+            # tight-binding case
+            super().__init__(self._J_H_simple(data_K, external_terms=self.external_terms, keyL='LL'))
         elif spin_current_type == "qiao":
             # J. Qiao et al PRB (2018)
             super().__init__(self._J_H_qiao(data_K, external_terms=self.external_terms))
@@ -726,15 +729,16 @@ class SpinVelocity(Matrix_ln):
             # J. H. Ryoo et al PRB (2019)
             super().__init__(self._J_H_ryoo(data_K, external_terms=self.external_terms))
         else:
-            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple`, not {spin_current_type}")
+            raise ValueError(f"spin_current_type must be `qiao` or `ryoo` or `simple` or `orb_loc`, not {spin_current_type}")
         self.transformTR = transform_ident
         self.transformInv = transform_odd
 
+
     @classmethod
-    def _J_H_simple(cls, data_K, external_terms=True):
+    def _J_H_simple(cls, data_K, external_terms=True, keyL='SS'):
         # Spin current operator, J. Qiao et al PRB (2019)
         # J_H[k,m,n,a,s] = <mk| {S^s, v^a} |nk> / 2
-        S = data_K.Xbar('SS')
+        S = data_K.Xbar(keyL)
         V = Velocity(data_K, external_terms=external_terms).matrix
         J = cached_einsum("klms,kmna->klnas", S, V)
         return hermitize(J, 1, 2)
@@ -769,6 +773,8 @@ class SpinVelocity(Matrix_ln):
         J = -1j * (data_K.E_K[:, None, :, None, None] * SA_H - SHA_H)
         _spin_velocity_einsum_opt(J, data_K.Xbar('SS'), data_K.Xbar('Ham', 1))
         return hermitize(J, 1, 2)
+
+
 
 
 class SpinOmega(Formula_ln):

@@ -49,7 +49,7 @@ class SystemInterpolator:
                 new_matrix[iRmap] = sys._XX_R[key]
                 sys._XX_R[key] = new_matrix
             shifts_left, shifts_right = copy.copy(self.rvec.shifts_left_red), copy.copy(self.rvec.shifts_right_red)
-            sys.rvec = copy.deepcopy(self.rvec)    
+            sys.rvec = copy.deepcopy(self.rvec)
             sys.rvec.shifts_left_red, self.rvec.shifts_right_red = shifts_left, shifts_right
             sys.clear_cached_R()
 

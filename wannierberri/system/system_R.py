@@ -178,6 +178,14 @@ class System_R(System):
             else:
                 self._XX_R[key] = value
 
+    def set_LL_from_projections(self, projections_set):
+        LL = projections_set.get_orbital_moment_matrix()
+        print("L-matrix shape:", LL.shape)
+        print("Lz = 'n", LL[:, :, 2])
+        print("Lx = 'n", LL[:, :, 0])
+        print("Ly = 'n", LL[:, :, 1])
+        self.set_R_mat('LL', LL, R=[0, 0, 0], reset=True)
+
     def add_minus_R(self):
         self.rvec.add_minus_R(self._XX_R)
 
@@ -912,7 +920,7 @@ class System_R(System):
 
     @cached_property
     def optional_properties(self):
-        return ["positions", "magnetic_moments", "atom_labels", "atom_centers_red", 
+        return ["positions", "magnetic_moments", "atom_labels", "atom_centers_red",
                 "wannier_names", "wannier_to_atom_map",
                 "number_of_electrons"]
 

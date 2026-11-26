@@ -78,7 +78,7 @@ def get_system_w90(
 
     if transl_inv_JM:
         unknown = needed_data.not_in_list(
-            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'FF', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR'])
+            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'FF', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR', 'LL'])
         if len(unknown) > 0:
             raise NotImplementedError(f"transl_inv_JM for {list(unknown)} is not implemented")
         # Deactivate transl_inv_MV if Jae-Mo's scheme is used
@@ -88,7 +88,7 @@ def get_system_w90(
             transl_inv_MV = False
     else:
         unknown = needed_data.not_in_list(
-            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR', 'FF'])
+            ['Ham', 'AA', 'BB', 'CC', 'OO', 'GG', 'SS', 'SH', 'SHR', 'SHA', 'SA', 'SR', 'FF', 'LL'])
         if len(unknown) > 0:
             raise NotImplementedError(f"unknown matrices requested: {list(unknown)} is not implemented")
 
@@ -147,6 +147,9 @@ def get_system_w90(
 
     if needed_data.need_any('SS'):
         system.set_R_mat('SS', system.rvec.q_to_R(chk.get_SS_q(wandata.spn, kptirr=kptirr, weights_k=weights_k)))
+
+    if needed_data.need_any('LL'):
+        system.set_R_mat('LL', system.rvec.q_to_R(chk.get_SS_q(wandata.oam, kptirr=kptirr, weights_k=weights_k)))
 
     if soc is not None:
         if soc_ispin is None:

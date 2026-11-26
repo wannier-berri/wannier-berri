@@ -111,6 +111,8 @@ def wannierise(wandata,
     """
     if wandata.irreducible:
         irreducible = True
+    if irreducible:
+        sitesym = True
 
     t0 = time()
     if froz_min > froz_max:
